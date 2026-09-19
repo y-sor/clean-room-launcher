@@ -14,11 +14,14 @@ permalink: /limitations.html
   `2.1.273` on macOS Apple Silicon and admits exactly one already-installed
   provider-native plugin per launch. Other provider tuples fail closed for this
   activation path.
-- The initial v0.4 whole-plugin qualification accepts only bundles whose
-  observed effective surface is skill-only. Bundles exposing hooks, MCP
-  servers, agents, LSP servers, background monitors, plugin executables, or
-  plugin settings fail closed. This avoids reopening ambient `~/.claude`
-  state that those components may depend on.
+- The initial v0.4 whole-plugin qualification is narrower than Claude's full
+  plugin discovery semantics. Activation requires a matching
+  `.claude-plugin/plugin.json` identity and only default one-level
+  `skills/<name>/SKILL.md` components. Manifestless plugins, root `SKILL.md`
+  single-skill plugins, custom skill paths, slash commands, hooks, MCP servers,
+  agents, LSP servers, background monitors, plugin executables, or plugin
+  settings may still be observed by inventory but fail closed for activation.
+  This avoids reopening broader ambient provider state.
 - Component-level filtering, Codex plugin activation, standalone MCP resource
   selection, presets, and `--with=all` are not qualified by this slice.
 - The protection is a narrow macOS filesystem denylist, not a VM, container,

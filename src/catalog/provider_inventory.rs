@@ -155,26 +155,54 @@ pub fn inspect_plugin_with_home(
         ),
     };
 
-    let (declared_components, effective_components) = root
-        .as_deref()
-        .map(|root| inspect_plugin_surface(provider.plugin_semantics(), root))
-        .map(|result| match result {
-            Ok(surface) => (surface.declared, surface.effective),
-            Err(error) => {
-                let blocker = plugin_surface_error_code(error).to_owned();
-                reason_code = plugin_surface_error_code(error);
-                conflicts.push(blocker);
-                (Vec::new(), Vec::new())
-            }
-        })
-        .unwrap_or_default();
+    let (declared_components, effective_components, manifest_name, activation_surface_eligible) =
+        root.as_deref()
+            .map(|root| inspect_plugin_surface(provider.plugin_semantics(), root))
+            .map(|result| match result {
+                Ok(surface) => (
+                    surface.declared,
+                    surface.effective,
+                    surface.plugin_name,
+                    surface.activation_eligible,
+                ),
+                Err(error) => {
+                    let blocker = plugin_surface_error_code(error).to_owned();
+                    reason_code = plugin_surface_error_code(error);
+                    conflicts.push(blocker);
+                    (Vec::new(), Vec::new(), None, false)
+                }
+            })
+            .unwrap_or_default();
 
-    let activation_surface_qualified = !effective_components.is_empty()
+    let expected_plugin_name = plugin_id.rsplit_once('@').map(|(name, _)| name);
+    let activation_identity_qualified = provider != Provider::Claude
+        || manifest_name.as_deref() == expected_plugin_name;
+    let activation_identity_blocker = if provider != Provider::Claude
+        || activation_identity_qualified
+    {
+        None
+    } else if manifest_name.is_none() {
+        Some("PLUGIN_IDENTITY_UNPROVEN")
+    } else {
+        Some("PLUGIN_IDENTITY_MISMATCH")
+    };
+    if installation_state == InstallationState::Installed
+        && root.is_some()
+        && conflicts.is_empty()
+        && let Some(blocker) = activation_identity_blocker
+    {
+        reason_code = blocker;
+        conflicts.push(blocker.to_owned());
+    }
+
+    let activation_surface_qualified = activation_surface_eligible
+        && !effective_components.is_empty()
         && effective_components
             .iter()
             .all(|component| component.kind == ResourceKind::Skill);
     let activation_qualified = provider == Provider::Claude
         && activation_tuple_qualified
+        && activation_identity_qualified
         && activation_surface_qualified
         && installation_state == InstallationState::Installed
         && root.is_some()
@@ -184,6 +212,8 @@ pub fn inspect_plugin_with_home(
     {
         let blocker = if !activation_tuple_qualified {
             "PROVIDER_TUPLE_NOT_QUALIFIED"
+        } else if let Some(blocker) = activation_identity_blocker {
+            blocker
         } else if !activation_surface_qualified {
             "PLUGIN_ACTIVATION_SURFACE_UNQUALIFIED"
         } else {
@@ -356,6 +386,125 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn manifestless_claude_plugin_surface_is_observed_but_not_selectable() {
+        let (home, plugin) = fixture();
+        fs::remove_file(plugin.join(".claude-plugin/plugin.json")).unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Claude,
+            &home,
+            None,
+            "superpowers@example",
+            true,
+        );
+
+        assert!(inventory
+            .effective_components
+            .iter()
+            .any(|component| component.kind == ResourceKind::Skill));
+        assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+        assert!(inventory
+            .conflicts
+            .iter()
+            .any(|reason| reason == "PLUGIN_IDENTITY_UNPROVEN"));
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn root_skill_surface_is_observed_but_not_activation_qualified() {
+        let (home, plugin) = fixture();
+        fs::remove_file(plugin.join(".claude-plugin/plugin.json")).unwrap();
+        fs::remove_dir_all(plugin.join("skills")).unwrap();
+        fs::write(plugin.join("SKILL.md"), "fixture\n").unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Claude,
+            &home,
+            None,
+            "superpowers@example",
+            true,
+        );
+
+        assert!(inventory
+            .effective_components
+            .iter()
+            .any(|component| component.kind == ResourceKind::Skill));
+        assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn manifest_identity_mismatch_is_not_activation_qualified() {
+        let (home, plugin) = fixture();
+        fs::write(
+            plugin.join(".claude-plugin/plugin.json"),
+            r#"{"name":"other","version":"6.3.0"}"#,
+        )
+        .unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Claude,
+            &home,
+            None,
+            "superpowers@example",
+            true,
+        );
+
+        assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+        assert!(
+            inventory
+                .conflicts
+                .iter()
+                .any(|reason| reason == "PLUGIN_IDENTITY_MISMATCH")
+        );
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn nested_agent_and_command_surfaces_are_not_activation_qualified() {
+        for (relative, expected_kind) in [
+            ("agents/review/security.md", ResourceKind::Agent),
+            ("commands/tools/inspect.md", ResourceKind::Command),
+        ] {
+            let (home, plugin) = fixture();
+            let path = plugin.join(relative);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "fixture\n").unwrap();
+
+            let inventory = inspect_plugin(
+                Provider::Claude,
+                &home,
+                None,
+                "superpowers@example",
+                true,
+            );
+
+            assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+            assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+            assert!(
+                inventory
+                    .effective_components
+                    .iter()
+                    .any(|component| component.kind == expected_kind)
+            );
+            assert!(
+                inventory
+                    .conflicts
+                    .iter()
+                    .any(|reason| reason == "PLUGIN_ACTIVATION_SURFACE_UNQUALIFIED")
+            );
+
+            let _ = fs::remove_dir_all(home.parent().unwrap());
+        }
     }
 
     #[test]

@@ -52,7 +52,10 @@ directory and its supporting files; package hooks, MCP, agents, executables,
 settings, and notifications are not activated. By contrast, the v0.4.0
 whole-plugin selector deliberately passes one qualified provider-native plugin
 bundle as an atomic unit; it does not perform component-level surgery. The
-initial activation qualification is skill-only: observed hook, MCP, agent, LSP,
-monitor, executable, or settings components make the bundle fail closed.
+initial activation qualification is narrower than provider inventory: a matching
+plugin manifest identity plus only the default one-level `skills/<name>/SKILL.md`
+layout is required. Manifestless/root-single-skill/custom-skill-path bundles and
+observed command, hook, MCP, agent, LSP, monitor, executable, or settings
+components make activation fail closed.
 
 For support limits and security scope, read [Limitations](limitations.md) and the [Threat model](threat-model.md).

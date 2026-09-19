@@ -251,12 +251,16 @@ launch, and asks Claude to load it for this session. Raw Claude
 resource selection.
 
 This whole-plugin path is currently an exact macOS Apple Silicon qualification
-for Claude Code `2.1.273`. v0.4.0 qualifies only bundles whose observed
-effective surface is skill-only. Bundles that expose hooks, MCP servers, agents,
-LSP servers, background monitors, plugin executables, or plugin settings fail
-closed instead of receiving a broader `~/.claude` filesystem seam. The whole
-qualified bundle is still passed to Claude atomically; CLROOM does not extract
-individual components.
+for Claude Code `2.1.273`. v0.4.0 deliberately qualifies a narrower subset of
+Claude's plugin format: the installed provider-native ID must have a matching
+`.claude-plugin/plugin.json` identity, and the observed effective components
+must come only from the default one-level `skills/<name>/SKILL.md` layout.
+Manifestless plugins, root `SKILL.md` single-skill plugins, custom skill paths,
+slash commands, hooks, MCP servers, agents, LSP servers, background monitors,
+plugin executables, or plugin settings may be observed by inventory but are not
+activation-qualified in v0.4.0. They fail closed instead of receiving a broader
+filesystem seam. The qualified bundle is still passed to Claude atomically;
+CLROOM does not extract individual components.
 
 Baseline clean-launch exact qualification remains Claude Code `2.1.272`; the
 whole-plugin activation path is separately qualified on Claude Code `2.1.273`.

@@ -1,10 +1,7 @@
-use crate::adapters::{
-    claude::plugin_state,
-    identity::ProviderIdentity,
-};
+use crate::adapters::identity::ProviderIdentity;
 use crate::catalog::{
     provider_inventory::{self, PluginInventory, Provider},
-    resource::ResourceKind,
+    resource::{QualificationState, ResourceKind, SelectionState},
     selection::{plan_selection, SelectionError, SelectionRequest, SelectionTarget},
 };
 use std::path::{Path, PathBuf};
@@ -37,9 +34,21 @@ impl PluginActivationPlan {
     }
 
     pub fn revalidate(&self, home: &Path) -> Result<(), ActivationError> {
-        match plugin_state::locate(home, &self.plugin_id) {
-            plugin_state::PluginInstallation::Installed(root) if root == self.root => Ok(()),
-            _ => Err(ActivationError::StateChanged),
+        let inventory = provider_inventory::inspect_plugin(
+            Provider::Claude,
+            home,
+            None,
+            &self.plugin_id,
+            true,
+        );
+        if inventory.root.as_deref() == Some(self.root.as_path())
+            && inventory.entry.selection == SelectionState::Selectable
+            && inventory.entry.qualification == QualificationState::Qualified
+            && inventory.conflicts.is_empty()
+        {
+            Ok(())
+        } else {
+            Err(ActivationError::StateChanged)
         }
     }
 }
@@ -247,6 +256,31 @@ mod tests {
         assert_eq!(
             plan(&home, &request, &identity(drifted)),
             Err(ActivationError::ProviderTupleNotQualified)
+        );
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn surface_change_after_planning_is_refused() {
+        let (home, plugin) = fixture();
+        let mut request = SelectionRequest::default();
+        request.include_value("plugin:superpowers@example").unwrap();
+        let activation = plan(
+            &home,
+            &request,
+            &identity(CLAUDE_PLUGIN_ACTIVATION_EXACT),
+        )
+        .unwrap()
+        .unwrap();
+
+        let nested_agent = plugin.join("agents/review/security.md");
+        fs::create_dir_all(nested_agent.parent().unwrap()).unwrap();
+        fs::write(&nested_agent, "fixture\n").unwrap();
+
+        assert_eq!(
+            activation.revalidate(&home),
+            Err(ActivationError::StateChanged)
         );
 
         let _ = fs::remove_dir_all(home.parent().unwrap());

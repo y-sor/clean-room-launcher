@@ -66,9 +66,13 @@ admits the qualified bundle root or refuses the plugin; it does not extract
 individual files or components.
 
 The initial v0.4.0 qualification is intentionally narrower than Claude's full
-plugin format. The observed effective surface must be skill-only. If inventory
-finds hooks, MCP servers, agents, LSP servers, background monitors, plugin
-executables, or plugin settings, selection fails closed. Real-provider testing
+plugin format. Inventory follows Claude provider semantics broadly enough to
+observe provider-visible plugin surfaces, but activation requires a matching
+`.claude-plugin/plugin.json` identity and only the default one-level
+`skills/<name>/SKILL.md` layout. Manifestless plugins, root `SKILL.md`
+single-skill plugins, custom skill paths, slash commands, hooks, MCP servers,
+agents, LSP servers, background monitors, plugin executables, or plugin settings
+remain observable but fail closed for activation. Real-provider testing
 showed why this boundary is necessary: a hook-bearing plugin can load through
 `--plugin-dir` while its hook still depends on provider-global runtime state
 under `~/.claude`, which the clean launch intentionally keeps unavailable.

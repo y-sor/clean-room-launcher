@@ -17,6 +17,7 @@ pub struct NativeKind {
 #[allow(non_upper_case_globals)]
 impl NativeKind {
     pub const Skill: Self = Self::from_static("skill");
+    pub const Command: Self = Self::from_static("command");
     pub const Plugin: Self = Self::from_static("plugin");
     pub const McpServer: Self = Self::from_static("mcp");
     pub const HookSet: Self = Self::from_static("hook");
