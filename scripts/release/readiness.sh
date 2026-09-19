@@ -36,6 +36,8 @@ else
 fi
 
 ./scripts/check-public-boundary.sh --root "$root" || fail "PUBLIC_BOUNDARY"
+python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
+python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
 release_workflow=.github/workflows/release.yml
 bash scripts/release/check-attestation-contract.sh "$release_workflow" || fail "RELEASE_ATTESTATION_CONTRACT"
 bash scripts/release/check-provider-canary-contract.sh || fail "PROVIDER_CANARY_CONTRACT"
@@ -46,6 +48,9 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
     scripts/release/provision-provider-canaries.sh \
+    scripts/release/local-release-audit.sh \
+    scripts/release/push-release-tag.sh \
+    scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -54,6 +59,9 @@ else
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
     scripts/release/provision-provider-canaries.sh \
+    scripts/release/local-release-audit.sh \
+    scripts/release/push-release-tag.sh \
+    scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi

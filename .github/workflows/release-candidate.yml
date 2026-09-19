@@ -16,6 +16,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
       - name: Prove release attestation contract fails closed
         shell: bash
@@ -88,4 +90,5 @@ jobs:
       - name: Run canonical fail-closed gate
         env:
           CLROOM_RELEASE_VERSION: 0.4.0
+          GITHUB_TOKEN: ${{ github.token }}
         run: scripts/release/readiness.sh

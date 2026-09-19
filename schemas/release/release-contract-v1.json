@@ -1,0 +1,79 @@
+{
+  "schema_version": "clroom.release-contract.v1",
+  "policy": {
+    "baseline": "latest_published_stable_github_release",
+    "unclassified_delta": "fail",
+    "changed_domain_without_disposition": "fail",
+    "near_miss_without_disposition": "fail",
+    "reviewed_content_drift": "fail"
+  },
+  "domains": [
+    {
+      "id": "runtime",
+      "patterns": [
+        "src/**"
+      ]
+    },
+    {
+      "id": "tests",
+      "patterns": [
+        "tests/**",
+        "fixtures/**",
+        "fuzz/**"
+      ]
+    },
+    {
+      "id": "dependencies",
+      "patterns": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "deny.toml"
+      ]
+    },
+    {
+      "id": "ci",
+      "patterns": [
+        ".github/workflows/**"
+      ]
+    },
+    {
+      "id": "release",
+      "patterns": [
+        "scripts/release/**",
+        "packaging/**",
+        "install.sh",
+        "schemas/release/**",
+        "reports/release/**"
+      ]
+    },
+    {
+      "id": "public_claims",
+      "patterns": [
+        "README.md",
+        "SECURITY.md",
+        "CHANGELOG.md",
+        "docs/**",
+        "CONTRIBUTING.md",
+        "GOVERNANCE.md",
+        "_config.yml",
+        "robots.txt",
+        "sitemap.xml"
+      ]
+    }
+  ],
+  "domain_satisfying_dispositions": [
+    "COVERED",
+    "CONTRACT_EXPAND",
+    "NOT_APPLICABLE"
+  ],
+  "near_miss_dispositions": [
+    "COVERED",
+    "CONTRACT_EXPAND",
+    "NOT_APPLICABLE",
+    "FOLLOW_UP"
+  ],
+  "contract_evolution_decisions": [
+    "EXPAND",
+    "NO_CHANGE"
+  ]
+}

@@ -26,6 +26,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Verify whole-release contract
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/check-release-contract.py --report
       - name: Bind tag, version, changelog, and action-time default branch
         id: release
         shell: bash
@@ -33,18 +37,54 @@ jobs:
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
           version="${tag#v}"
-          python3 - "$tag" "$version" <<'PY'
+          git fetch --force origin "refs/tags/$tag:refs/tags/$tag"
+          test "$(git cat-file -t "refs/tags/$tag")" = "tag" || {
+            echo "release tag must be annotated" >&2
+            exit 1
+          }
+          expected_title="$tag — Clean Room Launcher"
+          actual_title="$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")"
+          test "$actual_title" = "$expected_title" || {
+            echo "annotated tag message must be version-first: $expected_title" >&2
+            exit 1
+          }
+          tag_date="$(python3 - "$tag" <<'PY'
+          import datetime
+          import re
+          import subprocess
+          import sys
+
+          tag = sys.argv[1]
+          raw = subprocess.check_output(
+              ["git", "cat-file", "-p", f"refs/tags/{tag}"], text=True
+          )
+          line = next((line for line in raw.splitlines() if line.startswith("tagger ")), None)
+          if line is None:
+              raise SystemExit("annotated tagger line missing")
+          match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)
+          if match is None:
+              raise SystemExit("annotated tagger timestamp malformed")
+          epoch = int(match.group(1))
+          minutes = int(match.group(3)) * 60 + int(match.group(4))
+          if match.group(2) == "-":
+              minutes = -minutes
+          tz = datetime.timezone(datetime.timedelta(minutes=minutes))
+          print(datetime.datetime.fromtimestamp(epoch, tz=tz).date().isoformat())
+          PY
+          )"
+          test -n "$tag_date" || { echo "annotated tagger date missing" >&2; exit 1; }
+          python3 - "$tag" "$version" "$tag_date" <<'PY'
           import re, sys
           from pathlib import Path
 
-          tag, version = sys.argv[1:]
+          tag, version, tag_date = sys.argv[1:]
           if tag != "v" + version:
               raise SystemExit("release tag must start with v")
           if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", version):
               raise SystemExit("release tag must be vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-rc.N")
-          heading = re.compile(rf"^## \[{re.escape(version)}\] - [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$")
-          if not any(heading.fullmatch(line) for line in Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()):
-              raise SystemExit(f"CHANGELOG.md has no dated entry for {version}")
+          heading = f"## [{version}] - {tag_date}"
+          if heading not in Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines():
+              raise SystemExit(f"CHANGELOG.md must bind {version} to annotated tagger date {tag_date}")
           PY
           manifest_version=$(python3 - <<'PY'
           import tomllib
@@ -158,11 +198,16 @@ jobs:
             exit 1
           }
           artifact="target/release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
-          codex_candidate="target/aarch64-apple-darwin/release/clroom-codex"
-          claude_candidate="target/aarch64-apple-darwin/release/clroom-claude"
           evidence_dir="$RUNNER_TEMP/clroom-release-qualification"
-          mkdir -p "$evidence_dir"
+          extract_dir="$RUNNER_TEMP/clroom-release-archive"
+          rm -rf "$extract_dir"
+          mkdir -p "$evidence_dir" "$extract_dir"
           test -f "$artifact"
+          tar -xzf "$artifact" -C "$extract_dir"
+          archive_root="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$archive_root"
+          codex_candidate="$archive_root/bin/clroom-codex"
+          claude_candidate="$archive_root/bin/clroom-claude"
           test -x "$codex_candidate"
           test -x "$claude_candidate"
           scripts/release/qualify-real-provider.sh \
@@ -259,6 +304,13 @@ jobs:
               --source-ref "$GITHUB_REF" \
               --deny-self-hosted-runners
           done
+          gh attestation verify "release-artifacts/$ARTIFACT" \
+            -R "$GITHUB_REPOSITORY" \
+            --bundle "$sbom" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners
       - name: Upload release-visible attestation bundles
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

@@ -16,6 +16,20 @@ Semantic Versioning after the first public release.
   plugin loading path without installing, updating, or persistently rewriting
   provider state.
 
+### Changed
+
+- Clarified interactive `clroom codex` as the primary Codex path while keeping
+  `codex exec` for non-interactive automation; this is documentation-only.
+- Updated pinned CI checkout usage to `actions/checkout` v7.0.1 and added
+  OpenSSF Best Practices status badges; these do not change shipped runtime
+  behavior.
+- Hardened public search-discovery metadata and crawler/sitemap policy without
+  changing the shipped runtime surface.
+- Added Release Contract v1: every stable release is checked against the full
+  delta from the latest published stable release, with fail-closed change
+  classification, explicit contract-evolution review, exact tracked-content
+  review sealing, and a local whole-release audit command.
+
 ### Compatibility
 
 - Whole-plugin activation is exactly qualified for Claude Code `2.1.273` on
@@ -35,6 +49,14 @@ Semantic Versioning after the first public release.
   and fails closed unless the effective bundle is skill-only. Hook, MCP, agent,
   LSP, monitor, executable, and settings surfaces remain unqualified rather
   than widening the clean `~/.claude` boundary.
+- Updated the shipped `cap-std` / `cap-primitives` dependency from `4.0.2`
+  to `4.0.3`, incorporating the upstream fix for
+  `GHSA-hp8f-xmx4-4qrg` affecting trailing-slash symlink containment on
+  platforms including macOS.
+- Release qualification now executes provider canaries against binaries
+  extracted from the exact release archive and explicitly verifies both
+  exported provenance and SBOM attestation bundles before Draft Release
+  creation.
 
 ## [0.3.1] - 2026-09-17
 
