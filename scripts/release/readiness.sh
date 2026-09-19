@@ -36,6 +36,10 @@ else
 fi
 
 ./scripts/check-public-boundary.sh --root "$root" || fail "PUBLIC_BOUNDARY"
+python3 scripts/release/check-provider-version-sync.py || fail "PROVIDER_VERSION_SYNC"
+python3 -m py_compile \
+  scripts/release/check-release-review.py \
+  scripts/release/check-repository-release-policy.py || fail "RELEASE_REVIEW_SCRIPT"
 release_workflow=.github/workflows/release.yml
 bash scripts/release/check-attestation-contract.sh "$release_workflow" || fail "RELEASE_ATTESTATION_CONTRACT"
 bash scripts/release/check-provider-canary-contract.sh || fail "PROVIDER_CANARY_CONTRACT"
@@ -46,6 +50,12 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
     scripts/release/provision-provider-canaries.sh \
+    scripts/release/qualify-real-provider.sh \
+    scripts/release/review-release-delta.sh \
+    scripts/release/push-release-tag.sh \
+    scripts/release/publish-release.sh \
+    scripts/release/local-release-smoke.sh \
+    scripts/release/post-publish-smoke.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -54,6 +64,12 @@ else
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
     scripts/release/provision-provider-canaries.sh \
+    scripts/release/qualify-real-provider.sh \
+    scripts/release/review-release-delta.sh \
+    scripts/release/push-release-tag.sh \
+    scripts/release/publish-release.sh \
+    scripts/release/local-release-smoke.sh \
+    scripts/release/post-publish-smoke.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
@@ -76,12 +92,21 @@ CLROOM_TARGET='' \
 artifact=$(sed -n 's/^ARTIFACT=//p' /tmp/clroom-release-build.log)
 [[ -n "$artifact" && -f "$artifact" ]] || fail "ARTIFACT_MISSING"
 if [[ -n ${CLROOM_PROVIDER_CODEX:-} && -n ${CLROOM_PROVIDER_CLAUDE:-} && -n ${CLROOM_QUALIFICATION_EVIDENCE_DIR:-} ]]; then
-  candidate_dir="$root/target/${CLROOM_TARGET:+$CLROOM_TARGET/}release"
+  qualification_extract="$artifact_dir/.qualification-extract"
+  rm -rf "$qualification_extract"
+  mkdir -p "$qualification_extract"
+  tar -xzf "$artifact" -C "$qualification_extract" || fail "ARTIFACT_EXTRACT"
+  archive_root=$(find "$qualification_extract" -mindepth 1 -maxdepth 1 -type d -print -quit)
+  [[ -n "$archive_root" ]] || fail "ARTIFACT_EXTRACT_ROOT"
+  candidate_dir="$archive_root/bin"
+  [[ -x "$candidate_dir/clroom-codex" && -x "$candidate_dir/clroom-claude" ]] || fail "ARTIFACT_PROVIDER_BINARIES"
   mkdir -p "$CLROOM_QUALIFICATION_EVIDENCE_DIR"
   scripts/release/qualify-real-provider.sh --provider codex --executable "$CLROOM_PROVIDER_CODEX" --candidate "$candidate_dir/clroom-codex" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/codex.json" || fail "REAL_PROVIDER_CODEX"
   scripts/release/qualify-real-provider.sh --provider claude --executable "$CLROOM_PROVIDER_CLAUDE" --candidate "$candidate_dir/clroom-claude" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/claude.json" || fail "REAL_PROVIDER_CLAUDE"
+  rm -rf "$qualification_extract"
 fi
 python3 packaging/verify-artifact.py "$artifact" || fail "ARTIFACT_METADATA"
+scripts/release/check-claude-plugin-artifact.sh "$artifact" || fail "CLAUDE_PLUGIN_ARTIFACT"
 if [[ -n ${CLROOM_QUALIFICATION_EVIDENCE_DIR:-} ]]; then
   for provider in codex claude; do
     evidence="$CLROOM_QUALIFICATION_EVIDENCE_DIR/$provider.json"

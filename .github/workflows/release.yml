@@ -28,23 +28,36 @@ jobs:
           persist-credentials: false
       - name: Bind tag, version, changelog, and action-time default branch
         id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
           version="${tag#v}"
-          python3 - "$tag" "$version" <<'PY'
+          test "$(git cat-file -t "refs/tags/$tag")" = tag || {
+            echo "release tag must be an annotated tag" >&2
+            exit 1
+          }
+          tag_date=$(git for-each-ref --format='%(taggerdate:short)' "refs/tags/$tag")
+          test -n "$tag_date" || {
+            echo "could not resolve annotated tagger date" >&2
+            exit 1
+          }
+          python3 - "$tag" "$version" "$tag_date" <<'PY'
           import re, sys
           from pathlib import Path
 
-          tag, version = sys.argv[1:]
+          tag, version, tag_date = sys.argv[1:]
           if tag != "v" + version:
               raise SystemExit("release tag must start with v")
           if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", version):
               raise SystemExit("release tag must be vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-rc.N")
-          heading = re.compile(rf"^## \[{re.escape(version)}\] - [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$")
-          if not any(heading.fullmatch(line) for line in Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()):
-              raise SystemExit(f"CHANGELOG.md has no dated entry for {version}")
+          expected = f"## [{version}] - {tag_date}"
+          if expected not in Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines():
+              raise SystemExit(
+                  f"CHANGELOG.md release date must match tag creator date: {expected}"
+              )
           PY
           manifest_version=$(python3 - <<'PY'
           import tomllib
@@ -56,6 +69,14 @@ jobs:
             echo "Cargo.toml version $manifest_version does not match tag $tag" >&2
             exit 1
           }
+          python3 scripts/release/check-provider-version-sync.py
+          python3 scripts/release/check-repository-release-policy.py --mode visible
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          test -n "$latest" || {
+            echo "could not resolve latest published stable release" >&2
+            exit 1
+          }
+          python3 scripts/release/check-release-review.py --base-tag "$latest" --candidate HEAD
           default_ref=$(git ls-remote --symref origin HEAD | awk '$1 == "ref:" && $3 == "HEAD" {print $2}')
           test -n "$default_ref" || {
             echo "could not resolve the repository default branch" >&2
@@ -142,6 +163,12 @@ jobs:
               > SHA256SUMS
             shasum -a 256 -c SHA256SUMS
           )
+      - name: Exercise Claude plugin capability on exact archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact="target/release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
+          scripts/release/check-claude-plugin-artifact.sh "$artifact"
       - name: Provision pinned real provider canaries
         shell: bash
         run: |
@@ -158,24 +185,28 @@ jobs:
             exit 1
           }
           artifact="target/release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
-          codex_candidate="target/aarch64-apple-darwin/release/clroom-codex"
-          claude_candidate="target/aarch64-apple-darwin/release/clroom-claude"
           evidence_dir="$RUNNER_TEMP/clroom-release-qualification"
-          mkdir -p "$evidence_dir"
+          qualification_extract="$RUNNER_TEMP/clroom-release-archive"
+          rm -rf "$qualification_extract"
+          mkdir -p "$evidence_dir" "$qualification_extract"
           test -f "$artifact"
-          test -x "$codex_candidate"
-          test -x "$claude_candidate"
+          tar -xzf "$artifact" -C "$qualification_extract"
+          archive_root=$(find "$qualification_extract" -mindepth 1 -maxdepth 1 -type d -print -quit)
+          test -n "$archive_root"
+          candidate_dir="$archive_root/bin"
+          test -x "$candidate_dir/clroom-codex"
+          test -x "$candidate_dir/clroom-claude"
           scripts/release/qualify-real-provider.sh \
             --provider codex \
             --executable "$CLROOM_PROVIDER_CODEX" \
-            --candidate "$codex_candidate" \
+            --candidate "$candidate_dir/clroom-codex" \
             --source-head "$GITHUB_SHA" \
             --version "$CLROOM_RELEASE_VERSION" \
             --output "$evidence_dir/codex.json"
           scripts/release/qualify-real-provider.sh \
             --provider claude \
             --executable "$CLROOM_PROVIDER_CLAUDE" \
-            --candidate "$claude_candidate" \
+            --candidate "$candidate_dir/clroom-claude" \
             --source-head "$GITHUB_SHA" \
             --version "$CLROOM_RELEASE_VERSION" \
             --output "$evidence_dir/claude.json"
@@ -259,6 +290,13 @@ jobs:
               --source-ref "$GITHUB_REF" \
               --deny-self-hosted-runners
           done
+          gh attestation verify "release-artifacts/$ARTIFACT" \
+            -R "$GITHUB_REPOSITORY" \
+            --bundle "$sbom" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners
       - name: Upload release-visible attestation bundles
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

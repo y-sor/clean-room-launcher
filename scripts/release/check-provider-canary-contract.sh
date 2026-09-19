@@ -6,21 +6,39 @@ provisioner="$root/scripts/release/provision-provider-canaries.sh"
 qualifier="$root/scripts/release/qualify-real-provider.sh"
 release_candidate="$root/.github/workflows/release-candidate.yml"
 release="$root/.github/workflows/release.yml"
+pins="$root/release/qualification.json"
+version_sync="$root/scripts/release/check-provider-version-sync.py"
 
 fail() {
   printf 'PROVIDER_CANARY_CONTRACT_BLOCKED:%s\n' "$1" >&2
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$release_candidate" "$release" "$pins" "$version_sync"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
+read -r codex_pin claude_pin < <(
+  python3 - "$pins" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    data = json.load(handle)
+print(
+    data["providers"]["codex"]["clean_exact"],
+    data["providers"]["claude"]["clean_exact"],
+)
+PY
+) || fail "PIN_SOURCE_INVALID"
+
+python3 "$version_sync" >/dev/null || fail "VERSION_SYNC"
+
 for needle in \
-  '@openai/codex@0.154.0' \
-  '@openai/codex@0.154.0-darwin-arm64' \
-  '@anthropic-ai/claude-code@2.1.272' \
-  '@anthropic-ai/claude-code-darwin-arm64@2.1.272' \
+  "@openai/codex@$codex_pin" \
+  "@openai/codex@$codex_pin-darwin-arm64" \
+  "@anthropic-ai/claude-code@$claude_pin" \
+  "@anthropic-ai/claude-code-darwin-arm64@$claude_pin" \
   'FV/x1OHXYv/ifjf3mXj9ThTTAWcUZN6cGIRQRhRxkKNOPuImu1WW0c8ev1vUkE9XGH90dEnYG1tBjIkxRikg0w==' \
   'HP/vJCH/t2hB9Kg6hotN9UglClJ6/z584fal5lEP14C9gNAgAQS4/kTQC7l5V+BA3TqwDPwINSjul28cX8AYXg==' \
   'sOwHBM69H8Zka3/D3rc2VNNemPYNlgfYTdhsoqPoXZdK5KcKQlzoue4asJ2RVc+tGb/Pz1qxjVV9nVJQ87W7Ng==' \
@@ -45,6 +63,29 @@ for workflow in "$release_candidate" "$release"; do
   fi
 done
 
+for needle in \
+  '.qualification-extract' \
+  'tar -xzf "$artifact"' \
+  'candidate_dir="$archive_root/bin"' \
+  'clroom-codex' \
+  'clroom-claude'; do
+  grep -Fq "$needle" "$root/scripts/release/readiness.sh" || fail "READINESS_ARTIFACT_BINDING_MISSING"
+done
+
+for needle in \
+  'qualification_extract="$RUNNER_TEMP/clroom-release-archive"' \
+  'tar -xzf "$artifact" -C "$qualification_extract"' \
+  'candidate_dir="$archive_root/bin"' \
+  '--candidate "$candidate_dir/clroom-codex"' \
+  '--candidate "$candidate_dir/clroom-claude"'; do
+  grep -Fq -- "$needle" "$release" || fail "TAG_WORKFLOW_ARTIFACT_BINDING_MISSING"
+done
+
+if grep -Fq 'target/aarch64-apple-darwin/release/clroom-codex' "$release" \
+  || grep -Fq 'target/aarch64-apple-darwin/release/clroom-claude' "$release"; then
+  fail "TAG_WORKFLOW_SIBLING_BUILD_QUALIFICATION_FORBIDDEN"
+fi
+
 if grep -Eq 'npm[[:space:]]+install[[:space:]]' "$provisioner"; then
   fail "PROVISIONER_NPM_INSTALL_FORBIDDEN"
 fi
@@ -64,10 +105,10 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   record="$tmp/record.json"
   stderr_log="$tmp/stderr.log"
 
-  cat > "$fake_provider" <<'SH'
+  cat > "$fake_provider" <<SH
 #!/usr/bin/env bash
-if [[ ${1:-} == --version ]]; then
-  printf 'codex-cli 0.154.0\n'
+if [[ \${1:-} == --version ]]; then
+  printf 'codex-cli %s\\n' '$codex_pin'
 fi
 exit 0
 SH

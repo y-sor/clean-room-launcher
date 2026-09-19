@@ -1,0 +1,50 @@
+{
+  "schema_version": "clroom.release-review.v1",
+  "release_version": "0.4.0",
+  "previous_published_stable_tag": "v0.3.1",
+  "strategic_product_outcome": "Ship the first bounded selective-restore slice: exact one-launch Claude skill-only whole-plugin activation without widening clean-by-default behavior.",
+  "declared_change_classes": [
+    "ci_release",
+    "dependencies",
+    "docs_public",
+    "runtime",
+    "security_boundary",
+    "tests"
+  ],
+  "required_evidence": [
+    "artifact-binding",
+    "attestation",
+    "contract-evolution-review",
+    "dependency-sca",
+    "full-regression",
+    "public-truth-review",
+    "real-provider",
+    "security-review",
+    "strategic-fit-review",
+    "whole-release-review"
+  ],
+  "contract_evolution": {
+    "reviewed": true,
+    "result": "expanded",
+    "release_contract_changed": true,
+    "promoted_controls": [
+      "whole-release delta review from the previous published stable release",
+      "fresh provider-version truth before stable release",
+      "real-provider qualification against binaries extracted from the release archive",
+      "accepted-main pre-tag local artifact smoke",
+      "exact Draft Release artifact smoke before publish",
+      "evidence invalidation after source/provider/artifact drift",
+      "two-stage v* tag policy proof with strict no-bypass verification immediately before annotated tag push",
+      "ambiguous-outcome reconciliation for protected tag creation and immutable release publication",
+      "rename-safe whole-release path classification that preserves both source and destination risk classes",
+      "deterministic Claude plugin activation and fail-closed hook-surface check against the exact release archive",
+      "fresh installed-provider version revalidation immediately before irreversible tag push",
+      "post-publication verification of the immutable GitHub Release attestation",
+      "squash-stable semantic review seal bound to exact tracked repository content excluding only the review declaration itself",
+      "action-time remote-main, tag-absence, no-bypass tag-policy, provider-version, and provider-byte revalidation immediately before protected tag push",
+      "Draft smoke sealing of release-notes body plus SHA-256 digests for all six mutable release assets",
+      "action-time Draft body, asset-digest, provider-byte, tag-source, and immutable-policy revalidation immediately before publication",
+      "post-publication binding of release-notes body and exact immutable asset-set digests to accepted Draft-smoke evidence"
+    ]
+  }
+}

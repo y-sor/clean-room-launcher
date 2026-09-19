@@ -15,6 +15,7 @@ grep -Fq -- 'subject-checksums: release-artifacts/SHA256SUMS' "$workflow" || fai
 grep -Fq -- 'PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}' "$workflow" || fail "PROVENANCE_BUNDLE_OUTPUT"
 grep -Fq -- 'SBOM_BUNDLE: ${{ steps.sbom_attestation.outputs.bundle-path }}' "$workflow" || fail "SBOM_BUNDLE_OUTPUT"
 grep -Fq -- '--bundle "$provenance"' "$workflow" || fail "PROVENANCE_BUNDLE_VERIFY"
+grep -Fq -- '--bundle "$sbom"' "$workflow" || fail "SBOM_BUNDLE_VERIFY"
 grep -Fq -- '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"' "$workflow" || fail "SIGNER_WORKFLOW_BINDING"
 grep -Fq -- '--source-digest "$GITHUB_SHA"' "$workflow" || fail "SOURCE_DIGEST_BINDING"
 grep -Fq -- '--source-ref "$GITHUB_REF"' "$workflow" || fail "SOURCE_REF_BINDING"

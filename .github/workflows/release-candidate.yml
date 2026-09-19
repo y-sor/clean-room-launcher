@@ -16,7 +16,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Bind whole-release review to latest published stable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          test -n "$latest"
+          python3 scripts/release/check-release-review.py \
+            --base-tag "$latest" \
+            --candidate HEAD
+          python3 scripts/release/check-repository-release-policy.py --mode visible
       - name: Prove release attestation contract fails closed
         shell: bash
         run: |

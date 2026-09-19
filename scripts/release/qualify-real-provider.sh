@@ -19,7 +19,16 @@ done
 executable="$(cd "$(dirname "$executable")" && pwd -P)/$(basename "$executable")"
 candidate="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
 provider_version=$($executable --version 2>/dev/null | sed -nE 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -1)
-expected_provider_version=$([[ $provider == codex ]] && echo 0.154.0 || echo 2.1.272)
+root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+expected_provider_version=$(python3 - "$root_dir/release/qualification.json" "$provider" <<'PY'
+import json
+import sys
+path, provider = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    data = json.load(handle)
+print(data["providers"][provider]["clean_exact"])
+PY
+)
 candidate_digest=$(shasum -a 256 "$candidate" | awk '{print $1}')
 provider_digest=$(shasum -a 256 "$executable" | awk '{print $1}')
 target=$(rustc -vV | sed -n 's/^host: //p')

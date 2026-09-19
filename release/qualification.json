@@ -1,0 +1,25 @@
+{
+  "schema_version": "clroom.release-qualification.v1",
+  "contract_version": 1,
+  "platform": {
+    "os": "macos",
+    "arch": "aarch64",
+    "rust_target": "aarch64-apple-darwin"
+  },
+  "providers": {
+    "codex": {
+      "minimum": "0.147.0",
+      "clean_exact": "0.154.0"
+    },
+    "claude": {
+      "minimum": "2.1.223",
+      "clean_exact": "2.1.272",
+      "plugin_activation_exact": "2.1.273"
+    }
+  },
+  "manual_release_policy": {
+    "pretag_requires_installed_provider_versions_match_exact_pins": true,
+    "draft_requires_same_provider_versions_as_pretag": true,
+    "provider_drift_invalidates_provider_and_manual_evidence": true
+  }
+}
