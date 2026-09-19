@@ -171,6 +171,91 @@ fn release_lifecycle_resolver_and_local_audit_are_fail_closed() {
 }
 
 #[test]
+fn tag_push_revalidates_mutable_remote_state_at_action_time() {
+    let source = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+
+    assert!(source.contains("REMOTE_TAG_QUERY_$phase"));
+    assert!(source.contains("REMOTE_TAG_PRESENT_$phase"));
+
+    let action_time = source
+        .find("# Mutable remote release state is refreshed immediately before the irreversible push.")
+        .expect("tag helper must have an explicit action-time refresh boundary");
+    let provider_evidence = source
+        .find("evidence_claude_version=$(python3 - \"$evidence\"")
+        .expect("action-time provider evidence must be loaded");
+    let provider_version = source
+        .find("CLAUDE_PROVIDER_DRIFT_ACTION_TIME")
+        .expect("provider version must be revalidated");
+    let provider_bytes = source
+        .find("CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME")
+        .expect("provider bytes must be revalidated");
+    let push = source
+        .find("git push origin \"refs/tags/$tag\"")
+        .expect("tag helper must push the protected tag");
+    let reconciliation = source
+        .find("TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED")
+        .expect("tag push must reconcile the remote result");
+
+    assert_eq!(
+        source.matches("git push origin \"refs/tags/$tag\"").count(),
+        1,
+        "tag helper must perform exactly one irreversible tag push"
+    );
+    assert_eq!(
+        source.matches("TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED").count(),
+        1,
+        "tag push reconciliation must exist only after the actual push"
+    );
+    assert!(
+        action_time < provider_evidence
+            && provider_evidence < provider_version
+            && provider_version < provider_bytes
+            && provider_bytes < push
+            && push < reconciliation,
+        "all action-time provider checks must finish before the single push; reconciliation must follow it"
+    );
+
+    let guard = &source[action_time..push];
+    for required in [
+        "git fetch --quiet origin main",
+        "MAIN_DRIFT_ACTION_TIME",
+        "LOCAL_HEAD_DRIFT_ACTION_TIME",
+        "ensure_remote_tag_absent ACTION_TIME",
+        "verify_tag_ruleset",
+        "check-release-contract.py --report",
+        "RELEASE_CONTRACT_ACTION_TIME",
+        "CLAUDE_PROVIDER_DRIFT_ACTION_TIME",
+        "CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME",
+    ] {
+        assert!(guard.contains(required), "missing action-time tag guard: {required}");
+    }
+}
+
+#[test]
+fn draft_release_smoke_requires_repository_release_immutability() {
+    let source = std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
+
+    assert!(source.contains("repos/y-sor/clean-room-launcher/immutable-releases"));
+    assert!(source.contains("IMMUTABLE_RELEASE_POLICY_UNVERIFIED"));
+    assert!(source.contains("IMMUTABLE_RELEASE_POLICY_DISABLED"));
+    assert!(source.contains("\"claude_provider_sha256\":claude_provider_sha"));
+
+    let draft_branch = source
+        .find("if [[ \"$phase\" == \"pretag\" ]]; then")
+        .expect("release smoke must branch between pretag and draft behavior");
+    let policy = source
+        .find("immutable-releases --jq .enabled")
+        .expect("draft smoke must verify release immutability");
+    let release_download = source
+        .find("gh release download \"$tag\" --dir \"$assets\"")
+        .expect("draft smoke must download the exact Draft assets");
+    assert!(
+        draft_branch < policy && policy < release_download,
+        "immutability must be proven in the Draft pre-publish path before accepting release assets"
+    );
+}
+
+#[test]
 fn draft_plugin_release_smoke_binds_cyclonedx_predicate() {
     let source = std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
     assert!(

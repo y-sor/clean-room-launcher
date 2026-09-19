@@ -70,6 +70,9 @@ if [[ "$phase" == "pretag" ]]; then
 else
   command -v gh >/dev/null 2>&1 || fail "GH_REQUIRED"
   gh auth status >/dev/null 2>&1 || fail "GH_AUTH_REQUIRED"
+  immutable_enabled=$(gh api repos/y-sor/clean-room-launcher/immutable-releases --jq .enabled 2>/dev/null) \
+    || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
+  [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
   git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
   source_head=$(git rev-list -n 1 "$tag")
   [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
@@ -128,6 +131,10 @@ for raw in paths:
 print(h.hexdigest())
 PY
 }
+
+claude_executable=$(command -v claude)
+claude_provider_sha=$(shasum -a 256 "$claude_executable" | awk '{print $1}')
+[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CLAUDE_PROVIDER_SHA256"
 
 before=$(fingerprint)
 "$clroom" --output json info claude "plugin:$plugin_id" >"$tmp/info.json" 2>"$tmp/info.err"   || fail "PLUGIN_INFO"
@@ -254,9 +261,9 @@ evidence_dir="$root/target/release-evidence"
 mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/${phase}-v${version}-${short}.json"
-python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha"   "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$(claude --version 2>&1 | head -1)" <<'PY'
+python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha"   "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$(claude --version 2>&1 | head -1)" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,claude_version=sys.argv[1:]
+output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,claude_version,claude_provider_sha=sys.argv[1:]
 record={
   "schema_version":"clroom.plugin-release-smoke.v1",
   "result":"PASS",
@@ -266,6 +273,7 @@ record={
   "artifact_sha256":artifact_sha,
   "platform":"macos-aarch64",
   "claude_version_output":claude_version,
+  "claude_provider_sha256":claude_provider_sha,
   "plugin_id":plugin_id,
   "clean_system_init":True,
   "selected_system_init":True,

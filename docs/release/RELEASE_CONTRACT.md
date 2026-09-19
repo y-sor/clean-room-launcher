@@ -57,7 +57,11 @@ release archive, not sibling build outputs. The archive, installer, SBOM,
 checksums, provenance attestation bundle, and SBOM attestation bundle are
 verified before a guarded Draft Release is created.
 
-Publishing remains a separate action.
+Publishing remains a separate action. Immediately before a protected tag
+push, the tag helper refreshes the remote `main` tip, confirms the tag is still
+absent, revalidates the active no-bypass `v*` tag ruleset, and reruns the
+whole-release contract against the current published baseline. Any drift blocks
+the push.
 
 Because stable `v*` tags are protected against update/deletion, the new
 Claude plugin capability is exercised twice:
@@ -65,11 +69,13 @@ Claude plugin capability is exercised twice:
 1. **Pre-tag:** exact accepted `main` builds a candidate archive locally,
    proves clean/selected plugin separation and unchanged provider config, then
    opens the selected-plugin TUI without sending a model prompt. The PASS
-   evidence is bound to the exact accepted-main SHA and is required by the tag
-   helper.
-2. **Pre-publish:** the exact Draft Release archive is downloaded, checksum and
-   attestation bundles are verified, and the same automated plugin separation
-   checks run against those downloaded bytes.
+   evidence is bound to the exact accepted-main SHA and records the observed
+   Claude provider version and executable SHA-256; both are revalidated
+   immediately before the protected tag push.
+2. **Pre-publish:** repository release immutability must still be enabled, then
+   the exact Draft Release archive is downloaded, checksum and attestation
+   bundles are verified, and the same automated plugin separation checks run
+   against those downloaded bytes.
 
 Use:
 
