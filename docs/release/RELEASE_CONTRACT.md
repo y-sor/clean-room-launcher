@@ -128,10 +128,14 @@ current-project boundary while retaining the same names at or below the project
 boundary. Regression tests must prove both the negative external-ancestor case
 and the positive project case.
 
-Accepted Claude pre-tag evidence is invalid unless the real selected-plugin TUI
-confirms that no external ancestor AGENTS.md was reported as loaded. A provider
-pin move requires this instruction-surface evidence to be refreshed before a
-protected tag can be created.
+Accepted Claude evidence is invalid unless the exact candidate/Draft artifact
+passes a synthetic launched-provider sandbox probe proving external ancestor
+AGENTS.md and .claude/AGENTS.md are unreadable while project-local equivalents
+remain readable. Accepted pre-tag evidence additionally requires the real
+selected-plugin TUI to confirm that no external ancestor AGENTS.md was reported
+as loaded. A provider pin move requires both the machine boundary probe and this
+real-provider instruction-surface evidence to be refreshed before a protected
+tag can be created.
 
 ## Exact-tag pre-publish reconciliation
 
