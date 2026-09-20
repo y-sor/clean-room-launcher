@@ -1,3 +1,4 @@
+pub mod activation;
 pub mod context_canaries;
 pub mod environment;
 pub mod identity;
