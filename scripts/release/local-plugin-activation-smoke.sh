@@ -120,7 +120,11 @@ tar -xzf "$artifact" -C "$tmp/unpack"
 archive_root=$(find "$tmp/unpack" -mindepth 1 -maxdepth 1 -type d -print -quit)
 [[ -n "$archive_root" ]] || fail "ARCHIVE_ROOT_MISSING"
 clroom="$archive_root/bin/clroom"
+clroom_claude="$archive_root/bin/clroom-claude"
 [[ -x "$clroom" ]] || fail "ARCHIVE_CLROOM_MISSING"
+[[ -x "$clroom_claude" ]] || fail "ARCHIVE_CLROOM_CLAUDE_MISSING"
+bash "$root/scripts/probe/check-claude-instruction-isolation.sh" "$clroom_claude" \
+  || fail "CLAUDE_INSTRUCTION_ISOLATION"
 grep -Fqx "version=$version" "$archive_root/VERSION" || fail "ARCHIVE_VERSION"
 grep -Fqx "source_commit=$source_head" "$archive_root/VERSION" || fail "ARCHIVE_SOURCE"
 
@@ -253,17 +257,59 @@ for pid in installed:
 print("AUTOMATED_PLUGIN_E2E=PASS")
 PY
 
+python3 - "$HOME" "$root" "$tmp/clean.jsonl" "$tmp/clean.err" "$tmp/selected.jsonl" "$tmp/selected.err" <<'PY' \
+  || fail "AMBIENT_AGENTS_MD_LOG_SCOPE"
+import os, sys
+home, project, *paths = sys.argv[1:]
+home = os.path.realpath(home)
+project = os.path.realpath(project)
+repo = project
+cursor = project
+while True:
+    marker = os.path.join(cursor, ".git")
+    if os.path.isfile(marker) or os.path.isdir(marker):
+        repo = cursor
+        break
+    parent = os.path.dirname(cursor)
+    if parent == cursor:
+        break
+    cursor = parent
+candidates = []
+if repo.startswith(home + os.sep) and repo != home:
+    cursor = os.path.dirname(repo)
+    while cursor.startswith(home):
+        candidates.extend([
+            os.path.join(cursor, "AGENTS.md"),
+            os.path.join(cursor, ".claude", "AGENTS.md"),
+        ])
+        if cursor == home:
+            break
+        cursor = os.path.dirname(cursor)
+payload = b""
+for path in paths:
+    try:
+        with open(path, "rb") as handle:
+            payload += handle.read()
+    except OSError:
+        pass
+for candidate in candidates:
+    if os.fsencode(candidate) in payload:
+        raise SystemExit("ambient-agents-md-reported")
+print("CLAUDE_AMBIENT_AGENTS_LOG_SCOPE=PASS")
+PY
+
 interactive=false
 if [[ "$phase" == "pretag" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
   echo
   echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
-  echo "Confirm the normal Claude TUI opens and the selected plugin skill is visible in autocomplete."
+  echo "Confirm the normal Claude TUI opens, the selected plugin skill is visible in autocomplete,"
+  echo "and no AGENTS.md outside the current repository is reported as loaded."
   echo "Exit normally with /exit."
   echo
   "$clroom" claude --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
-  printf 'TUI opened normally and selected plugin skill was visible [y/N]: '
+  printf 'TUI opened normally, selected plugin skill was visible, and no ambient AGENTS.md was loaded [y/N]: '
   read -r answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
   interactive=true
@@ -283,7 +329,7 @@ python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
 import datetime, json, sys
 output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
-  "schema_version":"clroom.plugin-release-smoke.v1",
+  "schema_version":"clroom.plugin-release-smoke.v2",
   "result":"PASS",
   "phase":phase,
   "release_version":version,
@@ -301,7 +347,10 @@ record={
   "new_sibling_plugins":0,
   "selected_plugin_errors":0,
   "persistent_config_unchanged":True,
+  "ambient_agents_md_isolation":True,
+  "ambient_agents_md_log_scope_checked":True,
   "interactive_selected_tui_confirmed": interactive=="true",
+  "interactive_no_ambient_agents_md_confirmed": interactive=="true",
   "automated_probe_prompt_supplied":True,
   "interactive_no_model_prompt_confirmed": interactive=="true",
   "clean_provider_rc":int(clean_rc),
@@ -321,4 +370,5 @@ echo "PLUGIN_ID=$plugin_id"
 echo "CLEAN_PROVIDER_RC=$clean_rc"
 echo "SELECTED_PROVIDER_RC=$selected_rc"
 echo "PERSISTENT_CONFIG_UNCHANGED=YES"
+echo "AMBIENT_AGENTS_MD_ISOLATION=YES"
 echo "EVIDENCE_FILE=${evidence#$root/}"
