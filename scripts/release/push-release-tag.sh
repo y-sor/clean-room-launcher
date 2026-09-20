@@ -169,7 +169,7 @@ required = {
     "clean_before_expected_mcp": False,
     "selected_expected_mcp": True,
     "clean_after_expected_mcp": False,
-    "persistent_provider_state_unchanged": True,
+    "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
     "interactive_selected_tui_confirmed": True,
     "interactive_no_model_prompt_confirmed": True,
