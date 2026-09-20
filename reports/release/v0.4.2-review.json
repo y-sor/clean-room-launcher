@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "1e58f63747cc6a45d900deb124264f86efc62a0f",
+  "reviewed_through_commit": "f6aada1ef38f306b3d638ee3c6a293dcee2e6d49",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -227,5 +227,5 @@
       "executed-provider proof for the Claude AGENTS synthetic artifact probe: normal launch path plus post-assertion execution marker, with version-preflight-only success explicitly insufficient"
     ]
   },
-  "reviewed_content_digest": "245b2cd3af7306705f2cfa6e9b1575d6c2dfc4dde855d6b3b36333647ced6431"
+  "reviewed_content_digest": "a1224d37b1c6f4440b1e6611610c0b1a776019ce588d5d1350f4e96f0528c76f"
 }
