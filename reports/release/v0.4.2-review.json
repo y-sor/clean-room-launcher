@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "ea38776ee1776940a4d398bb2270f178eacce796",
+  "reviewed_through_commit": "7ab2224a181638e70ac716f2ea677f00f477428b",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -25,7 +25,8 @@
     "ci": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Real Codex provider qualification requires two provider observations on the same synthetic HOME and v2 evidence. The provider-canary contract itself now asserts the lifecycle-v2 smoke, two-run qualifier, tag-evidence fields and v0.4.2 negative fixture so release hardening cannot silently regress to the former v1 contract."
+        "Real Codex provider qualification requires two provider observations on the same synthetic HOME and v2 evidence. The provider-canary contract itself now asserts the lifecycle-v2 smoke, two-run qualifier, tag-evidence fields and v0.4.2 negative fixture so release hardening cannot silently regress to the former v1 contract.",
+        "Public discovery verification now validates the explicit sitemap source contract in CI and, after same-SHA CI plus Pages deployment, probes the canonical published sitemap over HTTPS with redirects refused, bounded retries/size, XML parsing, canonical-host/path enforcement, duplicate rejection, and canonical-home presence before IndexNow notification."
       ]
     },
     "release": {
@@ -37,7 +38,8 @@
     "public_claims": {
       "decision": "COVERED",
       "evidence": [
-        "Current README and Codex/Claude/limitations documentation identify v0.4.2 as the candidate capability version, while CHANGELOG records that v0.4.1 remained an unpublished Draft candidate and that v0.4.2 supersedes it."
+        "Current README and Codex/Claude/limitations documentation identify v0.4.2 as the candidate capability version, while CHANGELOG records that v0.4.1 remained an unpublished Draft candidate and that v0.4.2 supersedes it.",
+        "The published GitHub Pages sitemap is now checked end to end against the canonical y-sor.github.io/clean-room-launcher URL surface, so malformed XML, foreign-host entries, duplicates, missing canonical home, redirects, and non-XML responses fail the discovery pipeline instead of being inferred from source configuration alone."
       ]
     }
   },
@@ -136,6 +138,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The previous evidence field name persistent_provider_state_unchanged overstated what the smoke actually fingerprinted: ambient config.toml and the ambient plugin tree, while CLROOM shadow provider state is intentionally allowed to evolve.",
       "durable_control": "Codex v2 evidence names the measured invariant ambient_config_and_plugin_tree_unchanged and separately proves provider_state_lifecycle_closed, preventing evidence semantics from claiming stronger state immutability than was measured."
+    },
+    {
+      "id": "published-sitemap-source-only-verification-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Source-level sitemap configuration could pass while the deployed GitHub Pages sitemap was malformed, redirected, stale, foreign-hosted, or otherwise unusable by crawlers.",
+      "durable_control": "CI validates the sitemap template and negative fixtures, while the same-SHA post-Pages IndexNow workflow fetches the canonical live sitemap with redirects refused and bounded XML/canonical-URL validation before search-engine notification."
     }
   ],
   "artifact_capability_gates": [
@@ -160,10 +168,10 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.2 bytes after checksum and attestation verification, bound to Claude Code 2.1.278, then include its evidence in canonical exact-tag pre-publish reconciliation."
     }
   ],
-  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness.",
+  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness. The same candidate also hardens public discovery by verifying the deployed canonical sitemap before IndexNow notification.",
   "contract_evolution_review": {
     "decision": "EXPAND",
-    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance.",
+    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance. The candidate also closes a public-discovery verification gap by promoting the sitemap from source-only checks to a same-SHA deployed canary before IndexNow notification.",
     "promoted_controls": [
       "initialized-only Codex .tmp provider-state admission with preexisting-unowned-state negative coverage",
       "two-start real Codex qualification against one synthetic HOME with v2 machine-verified lifecycle evidence",
@@ -172,7 +180,8 @@
       "exact-tag pre-publish verifier reconciling all tag push Actions, Draft assets, checksums, attestations, provider pins and local pre-tag/Draft evidence",
       "canonical readiness ownership of the Draft verifier executable and shellcheck/syntax surface",
       "evidence naming that distinguishes unchanged ambient config/plugin inputs from intentionally evolving CLROOM shadow provider state",
-      "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta"
+      "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta",
+      "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification"
     ]
   },
   "reviewed_content_digest": "5826bef75b9aa29453ec4c8b0a96adca11b72b6d14a0432c253d276cceead060"
