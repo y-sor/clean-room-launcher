@@ -1,3 +1,4 @@
+use super::SHADOW_STATE_DIR;
 use std::{
     collections::{BTreeMap, BTreeSet},
     env, fs,
@@ -109,7 +110,7 @@ pub fn plan_with_skills(
         codex_home.join("skills/.system"),
         PathBuf::from("/private/etc/codex/skills"),
     ];
-    let shadow_home = codex_home.join(".clroom-clean-state-v1/home");
+    let shadow_home = codex_home.join(SHADOW_STATE_DIR).join("home");
     let shadow_plugin_cache = shadow_home.join("plugins/cache");
     let shadow_plugin_marker = shadow_home.join(".clroom-plugin-projection-v1");
     let credential_roots = [
@@ -446,4 +447,60 @@ fn validate_executable(executable: &Path) -> Result<(), IsolationError> {
 fn escape_scheme_path(path: &Path) -> Result<String, IsolationError> {
     let value = path.to_str().ok_or(IsolationError::InvalidHome)?;
     Ok(value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+
+#[cfg(all(test, target_os = "macos", target_arch = "aarch64"))]
+mod tests {
+    use super::{plan, IsolationInputs, SHADOW_STATE_DIR};
+    use std::{
+        fs,
+        os::unix::fs::PermissionsExt,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+    };
+
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+    #[test]
+    fn sandbox_profile_write_denial_tracks_active_shadow_generation() {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-codex-isolation-shadow-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let project = root.join("project");
+        let home = root.join("home");
+        let codex_home = home.join(".codex");
+        let executable = root.join("codex");
+        fs::create_dir_all(&project).unwrap();
+        fs::create_dir_all(&codex_home).unwrap();
+        fs::write(&executable, b"#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&executable, fs::Permissions::from_mode(0o700)).unwrap();
+
+        let plan = plan(
+            &project,
+            &executable,
+            &IsolationInputs {
+                home: home.clone(),
+                codex_home: codex_home.clone(),
+            },
+        )
+        .unwrap();
+
+        let active_cache = codex_home
+            .join(SHADOW_STATE_DIR)
+            .join("home/plugins/cache")
+            .to_string_lossy()
+            .into_owned();
+        let legacy_cache = codex_home
+            .join(".clroom-clean-state-v1/home/plugins/cache")
+            .to_string_lossy()
+            .into_owned();
+
+        assert!(plan.profile.contains(&active_cache));
+        assert!(!plan.profile.contains(&legacy_cache));
+
+        let _ = fs::remove_dir_all(root);
+    }
 }
