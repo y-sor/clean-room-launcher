@@ -10,6 +10,8 @@ const CODEX_CLEAN_DEFAULTS: &[&str] = &[
     "-c",
     "features.plugins=false",
     "-c",
+    "features.remote_plugin=false",
+    "-c",
     "developer_instructions=\"\"",
     "-c",
     "notify=[]",
@@ -159,6 +161,19 @@ impl LaunchContract {
             boundary_controls,
             managed: Some(managed),
             user_or_provider_model_choice: model_choice,
+        }
+    }
+
+    pub fn add_codex_plugin_activation(&mut self, activation_args: &[String]) {
+        if self.provider != Provider::Codex || activation_args.is_empty() {
+            return;
+        }
+        let insert_at = CODEX_CLEAN_DEFAULTS.len();
+        self.argv
+            .splice(insert_at..insert_at, activation_args.iter().cloned());
+        self.boundary = BoundaryState::Expanded;
+        if !self.boundary_controls.contains(&"plugin") {
+            self.boundary_controls.push("plugin");
         }
     }
 
@@ -386,6 +401,38 @@ mod tests {
                 .windows(2)
                 .any(|pair| { pair[0] == "-c" && pair[1] == "features.plugins=false" })
         );
+    }
+
+    #[test]
+    fn codex_owned_plugin_activation_overrides_clean_plugin_default_only_for_selected_path() {
+        let mut contract = LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]);
+        contract.add_codex_plugin_activation(&[
+            "-c".to_owned(),
+            "features.plugins=true".to_owned(),
+            "-c".to_owned(),
+            "plugins.\"codex-app-tools@openai-bundled\".enabled=true".to_owned(),
+        ]);
+
+        let plugin_false = contract
+            .argv
+            .windows(2)
+            .position(|pair| pair[0] == "-c" && pair[1] == "features.plugins=false")
+            .unwrap();
+        let plugin_true = contract
+            .argv
+            .windows(2)
+            .position(|pair| pair[0] == "-c" && pair[1] == "features.plugins=true")
+            .unwrap();
+        assert!(plugin_true > plugin_false);
+        assert!(
+            contract
+                .argv
+                .windows(2)
+                .any(|pair| pair[0] == "-c"
+                    && pair[1] == "features.remote_plugin=false")
+        );
+        assert_eq!(contract.boundary, BoundaryState::Expanded);
+        assert!(contract.boundary_controls.contains(&"plugin"));
     }
 
     #[test]
