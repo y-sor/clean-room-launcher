@@ -141,7 +141,9 @@ and the positive project case.
 Accepted Claude evidence is invalid unless the exact candidate/Draft artifact
 passes a synthetic launched-provider sandbox probe proving external ancestor
 AGENTS.md and .claude/AGENTS.md are unreadable while project-local equivalents
-remain readable. Accepted pre-tag evidence additionally requires the real
+remain readable. The probe must separately prove that the launched provider
+body executed after version preflight; a provider `--version` success alone
+cannot satisfy this evidence. Accepted pre-tag evidence additionally requires the real
 selected-plugin TUI to confirm that no external ancestor AGENTS.md was reported
 as loaded. A provider pin move requires both the machine boundary probe and this
 real-provider instruction-surface evidence to be refreshed before a protected
