@@ -584,8 +584,8 @@ mod tests {
         fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
         assert!(fs::metadata(ambient_codex_home.join("auth.json")).is_ok());
 
-        let first = prepare(&home, &ambient_codex_home, &[]).unwrap();
-        let second = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let first = prepare(&home, &ambient_codex_home, &[], None).unwrap();
+        let second = prepare(&home, &ambient_codex_home, &[], None).unwrap();
 
         assert_eq!(first, second);
         assert!(first.shadow_home.join("auth.json").is_symlink());
@@ -607,7 +607,7 @@ mod tests {
         let ambient_codex_home = home.join(".codex");
         fs::create_dir_all(&ambient_codex_home).unwrap();
 
-        let error = prepare(&home, &ambient_codex_home, &[]).unwrap_err();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
         assert_eq!(error, "CLROOM_CODEX_AUTH_UNAVAILABLE");
         assert!(
@@ -627,7 +627,7 @@ mod tests {
         fs::create_dir_all(&shadow_home).unwrap();
         fs::write(shadow_home.join("config.toml"), b"owner state").unwrap();
 
-        let error = prepare(&home, &ambient_codex_home, &[]).unwrap_err();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
         assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
         assert_eq!(
@@ -649,10 +649,10 @@ mod tests {
         fs::write(source.join("SKILL.md"), b"selected").unwrap();
 
         let selected = [("arrow".to_owned(), source.clone())];
-        let first = prepare(&home, &ambient_codex_home, &selected).unwrap();
-        let second = prepare(&home, &ambient_codex_home, &selected).unwrap();
+        let first = prepare(&home, &ambient_codex_home, &selected, None).unwrap();
+        let second = prepare(&home, &ambient_codex_home, &selected, None).unwrap();
         assert!(second.shadow_home.join("skills/arrow").is_symlink());
-        let clean = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let clean = prepare(&home, &ambient_codex_home, &[], None).unwrap();
 
         assert_eq!(first, second);
         assert!(!clean.shadow_home.join("skills/arrow").exists());
@@ -667,11 +667,11 @@ mod tests {
         fs::create_dir_all(&ambient_codex_home).unwrap();
         fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
 
-        let state = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
         fs::write(state.shadow_home.join("config.toml"), b"provider state").unwrap();
         fs::create_dir_all(state.shadow_home.join("sessions")).unwrap();
 
-        let resumed = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let resumed = prepare(&home, &ambient_codex_home, &[], None).unwrap();
 
         assert_eq!(resumed, state);
     }
@@ -685,7 +685,7 @@ mod tests {
         fs::create_dir_all(&ambient_codex_home).unwrap();
         fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
 
-        let state = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
         let cache_catalog = state.shadow_home.join("cache/remote_plugin_catalog");
         let plugin_cache = state.shadow_home.join("plugins/cache");
         let plugin_data = state.shadow_home.join("plugins/data");
@@ -707,7 +707,7 @@ mod tests {
         )
         .unwrap();
 
-        let resumed = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let resumed = prepare(&home, &ambient_codex_home, &[], None).unwrap();
 
         assert_eq!(resumed, state);
         assert_eq!(
@@ -737,7 +737,7 @@ mod tests {
         )
         .unwrap();
 
-        let error = prepare(&home, &ambient_codex_home, &[]).unwrap_err();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
         assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
     }
@@ -757,10 +757,10 @@ mod tests {
         )
         .unwrap();
 
-        let state = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
         symlink(&plugin_source, state.shadow_home.join("plugins")).unwrap();
 
-        let error = prepare(&home, &ambient_codex_home, &[]).unwrap_err();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
         assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
     }
@@ -778,10 +778,10 @@ mod tests {
         )
         .unwrap();
 
-        let state = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
         fs::write(state.shadow_home.join("cache"), b"not a directory").unwrap();
 
-        let error = prepare(&home, &ambient_codex_home, &[]).unwrap_err();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
         assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
     }
@@ -799,7 +799,7 @@ mod tests {
         )
         .unwrap();
 
-        let state = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
         fs::create_dir_all(state.shadow_home.join("skills/.system")).unwrap();
         for name in [
             ".sandbox_migration",
@@ -824,7 +824,7 @@ mod tests {
         }
         fs::remove_file(state.shadow_home.join(STATE_MARKER)).unwrap();
 
-        let resumed = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let resumed = prepare(&home, &ambient_codex_home, &[], None).unwrap();
 
         assert_eq!(resumed, state);
     }
@@ -842,10 +842,10 @@ mod tests {
         )
         .unwrap();
 
-        let state = prepare(&home, &ambient_codex_home, &[]).unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
         fs::write(state.shadow_home.join("foreign.txt"), b"unexpected").unwrap();
 
-        let error = prepare(&home, &ambient_codex_home, &[]).unwrap_err();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
         assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
     }
