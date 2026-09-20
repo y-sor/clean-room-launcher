@@ -2,12 +2,12 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "44c9da2e370d1a8c861c0ef7e72f884fcb588946",
+  "reviewed_through_commit": "ea38776ee1776940a4d398bb2270f178eacce796",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only inside an already initialized CLROOM v2 shadow, preserves its contents, and retains fail-closed rejection for preexisting unowned .tmp and unknown top-level siblings."
+        "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed."
       ]
     },
     "tests": {
@@ -25,7 +25,7 @@
     "ci": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Real Codex provider qualification now requires two provider observations on the same synthetic HOME and v2 evidence. Existing exact provider pins and registry integrity checks remain mandatory."
+        "Real Codex provider qualification requires two provider observations on the same synthetic HOME and v2 evidence. The provider-canary contract itself now asserts the lifecycle-v2 smoke, two-run qualifier, tag-evidence fields and v0.4.2 negative fixture so release hardening cannot silently regress to the former v1 contract."
       ]
     },
     "release": {
@@ -175,5 +175,5 @@
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta"
     ]
   },
-  "reviewed_content_digest": "538b6a48925c8c83d94ad59a32b68042791a44c276cb9e1b8027662c630f31c4"
+  "reviewed_content_digest": "63eacfac3a227da7041053340a92a36c5dcfcc11b18ffe8d2b9fc94195bb1d4d"
 }
