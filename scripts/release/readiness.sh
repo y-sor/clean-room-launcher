@@ -54,6 +54,7 @@ fi
 ./scripts/check-public-boundary.sh --root "$root" || fail "PUBLIC_BOUNDARY"
 [[ -x scripts/release/local-release-audit.sh ]] || fail "RELEASE_AUDIT_EXECUTABLE"
 [[ -x scripts/release/local-plugin-activation-smoke.sh ]] || fail "PLUGIN_SMOKE_EXECUTABLE"
+[[ -x scripts/release/verify-draft-release.sh ]] || fail "DRAFT_RELEASE_VERIFY_EXECUTABLE"
 python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
   python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
@@ -76,6 +77,7 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/push-release-tag.sh \
     scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/local-codex-plugin-activation-smoke.sh \
+    scripts/release/verify-draft-release.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -90,6 +92,7 @@ else
     scripts/release/push-release-tag.sh \
     scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/local-codex-plugin-activation-smoke.sh \
+    scripts/release/verify-draft-release.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
