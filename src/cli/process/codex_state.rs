@@ -6,9 +6,9 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-const APP_SUPPORT_DIR: &str = ".clroom-clean-state-v1";
-const STATE_MARKER: &str = ".clroom-state-v1";
-const STATE_MARKER_BYTES: &[u8] = b"clroom-state-v1\n";
+const APP_SUPPORT_DIR: &str = ".clroom-clean-state-v2";
+const STATE_MARKER: &str = ".clroom-state-v2";
+const STATE_MARKER_BYTES: &[u8] = b"clroom-state-v2\n";
 const PLUGIN_PROJECTION_MARKER: &str = ".clroom-plugin-projection-v1";
 const PLUGIN_PROJECTION_HEADER: &str = "clroom-plugin-projection-v1";
 const PROVIDER_AUTH_FILES: &[&str] = &["auth.json", ".credentials.json"];
@@ -919,6 +919,49 @@ mod tests {
         .unwrap()
         .unwrap();
         (home, ambient_codex_home, activation)
+    }
+
+    #[test]
+    fn legacy_v1_shadow_plugin_cache_is_preserved_and_does_not_contaminate_v2() {
+        let scratch = Scratch::new();
+        let (home, ambient_codex_home, activation) = plugin_activation_fixture(&scratch);
+        let legacy_shadow = ambient_codex_home.join(".clroom-clean-state-v1/home");
+        let legacy_sibling =
+            legacy_shadow.join("plugins/cache/legacy-market/sibling/1.0.0");
+        fs::create_dir_all(&legacy_sibling).unwrap();
+        fs::write(
+            legacy_shadow.join(".clroom-state-v1"),
+            b"clroom-state-v1\n",
+        )
+        .unwrap();
+
+        let state = prepare(
+            &home,
+            &ambient_codex_home,
+            &[],
+            Some(&activation),
+        )
+        .unwrap();
+
+        assert!(legacy_sibling.exists());
+        assert_eq!(
+            fs::read(legacy_shadow.join(".clroom-state-v1")).unwrap(),
+            b"clroom-state-v1\n"
+        );
+        assert!(state.root.ends_with(".clroom-clean-state-v2"));
+        assert!(state.shadow_home.join(".clroom-state-v2").is_file());
+
+        let projected = state
+            .shadow_home
+            .join("plugins/cache")
+            .join(activation.relative_store_path());
+        assert!(projected.is_dir());
+        assert!(
+            !state
+                .shadow_home
+                .join("plugins/cache/legacy-market")
+                .exists()
+        );
     }
 
     #[test]
