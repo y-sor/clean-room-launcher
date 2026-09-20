@@ -63,32 +63,48 @@ absent, revalidates the active no-bypass `v*` tag ruleset, and reruns the
 whole-release contract against the current published baseline. Any drift blocks
 the push.
 
-Because stable `v*` tags are protected against update/deletion, the new
-Claude plugin capability is exercised twice:
+Because stable `v*` tags are protected against update/deletion, provider
+capabilities with release-specific behavior are exercised on exact candidate
+bytes before the irreversible tag/publish boundaries.
 
-1. **Pre-tag:** exact accepted `main` builds a candidate archive locally,
-   proves clean/selected plugin separation and unchanged provider config, then
-   opens the selected-plugin TUI without sending a model prompt. The PASS
-   evidence is bound to the exact accepted-main SHA and records the observed
-   Claude provider version and executable SHA-256; both are revalidated
-   immediately before the protected tag push.
-2. **Pre-publish:** repository release immutability must still be enabled, then
-   the exact Draft Release archive is downloaded, checksum and attestation
-   bundles are verified, and the same automated plugin separation checks run
-   against those downloaded bytes.
+Before provider canaries or tag push, `scripts/release/check-provider-pins.sh`
+fresh-resolves npm `latest` and registry integrity for the exact Codex and
+Claude Code pins. A provider stable-version move blocks the release until pins,
+qualification, and evidence are refreshed.
+
+For whole-plugin activation:
+
+1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
+   proves clean/selected plugin separation and its selected-plugin TUI. Codex
+   proves clean → selected → clean MCP visibility through one exact installed
+   plugin, sibling absence through the runtime contract, unchanged ambient
+   provider/plugin state, and its selected-plugin TUI. No model prompt is sent
+   during the interactive confirmation.
+2. **Action-time tag guard:** the helper rechecks live stable provider pins and
+   revalidates both local provider executable version/bytes against the accepted
+   pre-tag evidence immediately before the protected tag push.
+3. **Pre-publish:** repository release immutability must still be enabled, then
+   the exact Draft Release archive is downloaded and its checksums/attestations
+   plus the provider-specific automated capability probes are re-run.
 
 Use:
 
 ```sh
-scripts/release/local-plugin-activation-smoke.sh pretag --plugin-id <qualified-id>
-scripts/release/local-plugin-activation-smoke.sh draft --tag vX.Y.Z --plugin-id <qualified-id>
+bash scripts/release/local-plugin-activation-smoke.sh pretag --plugin-id <qualified-claude-id>
+bash scripts/release/local-codex-plugin-activation-smoke.sh pretag \
+  --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
+
+bash scripts/release/local-plugin-activation-smoke.sh draft \
+  --tag vX.Y.Z --plugin-id <qualified-claude-id>
+bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
+  --tag vX.Y.Z --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
 ```
 
-The smoke never installs, updates, enables, disables, or downgrades Claude or a
-plugin. Automated clean/selected probes use a fixed sentinel print-mode prompt
-only to expose startup `system/init` evidence; model response content and
-success are ignored. The pre-tag interactive TUI check sends no model prompt and
-requires explicit confirmation before its evidence is accepted.
+These smokes never install, update, enable persistently, remove, or downgrade a
+provider/plugin. Claude's automated probe uses its established startup evidence
+path. Codex uses `mcp list --json` only as a no-model capability probe; the
+selected MCP must be absent before selection, present only in the selected
+launch, and absent again on the following clean launch.
 
 ## Local audit
 

@@ -109,6 +109,9 @@ pub fn plan_with_skills(
         codex_home.join("skills/.system"),
         PathBuf::from("/private/etc/codex/skills"),
     ];
+    let shadow_home = codex_home.join(".clroom-clean-state-v1/home");
+    let shadow_plugin_cache = shadow_home.join("plugins/cache");
+    let shadow_plugin_marker = shadow_home.join(".clroom-plugin-projection-v1");
     let credential_roots = [
         home.join(".ssh"),
         home.join(".aws"),
@@ -184,6 +187,12 @@ pub fn plan_with_skills(
         profile.push_str(&escape_scheme_path(path)?);
         profile.push_str("\")");
     }
+    profile.push_str("\n  (literal \"");
+    profile.push_str(&escape_scheme_path(&shadow_plugin_marker)?);
+    profile.push_str("\")");
+    profile.push_str("\n  (subpath \"");
+    profile.push_str(&escape_scheme_path(&shadow_plugin_cache)?);
+    profile.push_str("\")");
     for path in denied_roots
         .iter()
         .chain(provider_skill_roots.iter())

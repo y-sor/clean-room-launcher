@@ -33,7 +33,7 @@ pub struct SourceRecord {
 }
 
 impl SourceRecord {
-    pub(crate) fn content(&self) -> &[u8] {
+    pub fn content(&self) -> &[u8] {
         &self.content
     }
 }

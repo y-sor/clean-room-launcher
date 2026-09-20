@@ -40,9 +40,9 @@ internal teammate independently.
 
 For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-sets.md).
 
-## v0.4.0: select one installed whole plugin
+## v0.4.x: select one installed whole plugin
 
-The v0.4.0 source adds one bounded whole-plugin selector:
+v0.4.0 introduced one bounded whole-plugin selector:
 
 ```sh
 claude plugin list
@@ -65,7 +65,7 @@ Whole-plugin still means the provider-native bundle is atomic: CLROOM either
 admits the qualified bundle root or refuses the plugin; it does not extract
 individual files or components.
 
-The initial v0.4.0 qualification is intentionally narrower than Claude's full
+The v0.4.x qualification is intentionally narrower than Claude's full
 plugin format. Inventory follows Claude provider semantics broadly enough to
 observe provider-visible plugin surfaces, but activation requires a matching
 `.claude-plugin/plugin.json` identity and only the default one-level
@@ -83,15 +83,15 @@ While a CLROOM resource selection is active, raw `--plugin-dir` and
 `--plugin-url` arguments are refused to avoid two competing activation
 authorities. More than one selected whole plugin is also refused.
 
-The exact qualification target for this activation path is Claude Code
-`2.1.273` on macOS Apple Silicon. Other provider tuples fail closed for plugin
-activation. The baseline interactive clean-launch exact qualification remains
-Claude Code `2.1.272`; the ordinary parser/runtime minimum remains
-`2.1.223+`.
+v0.4.1 requalifies both the ordinary clean launch and this whole-plugin path on
+the current stable Claude Code `2.1.278` for macOS Apple Silicon. Release
+qualification fails closed if the npm stable tag moves before the candidate is
+tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
-This slice does not add Codex plugin activation, MCP resource activation,
+This Claude slice still does not add standalone MCP resource activation,
 `--with=all`, presets, installation/update/removal, or component-level
-selection.
+selection. Codex whole-plugin activation is a separate v0.4.1 provider-specific
+path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?
 
@@ -163,4 +163,4 @@ This is also why managed-policy interactions around selected skills require care
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
 - [Claude Code documentation index](https://code.claude.com/docs/llms.txt)
 
-Last verified against current Anthropic documentation: **2026-09-18**.
+Last verified against current Anthropic documentation: **2026-09-20**.

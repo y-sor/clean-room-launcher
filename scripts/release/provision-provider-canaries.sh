@@ -17,6 +17,11 @@ command -v openssl >/dev/null 2>&1 || fail "OPENSSL_REQUIRED"
 command -v python3 >/dev/null 2>&1 || fail "PYTHON_REQUIRED"
 command -v cmp >/dev/null 2>&1 || fail "CMP_REQUIRED"
 
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+# shellcheck source=provider-pins.sh
+source "$root/scripts/release/provider-pins.sh"
+bash "$root/scripts/release/check-provider-pins.sh"
+
 rm -rf "$provider_root"
 mkdir -p "$provider_root/packs"
 pack_dir="$provider_root/packs"
@@ -98,21 +103,21 @@ PY
 }
 
 codex_archive=$(pack_and_verify \
-  '@openai/codex@0.154.0' \
-  'openai-codex-0.154.0.tgz' \
-  'FV/x1OHXYv/ifjf3mXj9ThTTAWcUZN6cGIRQRhRxkKNOPuImu1WW0c8ev1vUkE9XGH90dEnYG1tBjIkxRikg0w==')
+  "@openai/codex@$CODEX_VERSION" \
+  "openai-codex-$CODEX_VERSION.tgz" \
+  "$CODEX_SHA512")
 codex_platform_archive=$(pack_and_verify \
-  '@openai/codex@0.154.0-darwin-arm64' \
-  'openai-codex-0.154.0-darwin-arm64.tgz' \
-  'HP/vJCH/t2hB9Kg6hotN9UglClJ6/z584fal5lEP14C9gNAgAQS4/kTQC7l5V+BA3TqwDPwINSjul28cX8AYXg==')
+  "@openai/codex@$CODEX_VERSION-darwin-arm64" \
+  "openai-codex-$CODEX_VERSION-darwin-arm64.tgz" \
+  "$CODEX_PLATFORM_SHA512")
 claude_archive=$(pack_and_verify \
-  '@anthropic-ai/claude-code@2.1.272' \
-  'anthropic-ai-claude-code-2.1.272.tgz' \
-  'sOwHBM69H8Zka3/D3rc2VNNemPYNlgfYTdhsoqPoXZdK5KcKQlzoue4asJ2RVc+tGb/Pz1qxjVV9nVJQ87W7Ng==')
+  "@anthropic-ai/claude-code@$CLAUDE_VERSION" \
+  "anthropic-ai-claude-code-$CLAUDE_VERSION.tgz" \
+  "$CLAUDE_SHA512")
 claude_platform_archive=$(pack_and_verify \
-  '@anthropic-ai/claude-code-darwin-arm64@2.1.272' \
-  'anthropic-ai-claude-code-darwin-arm64-2.1.272.tgz' \
-  'l3CI1gPSCGkWNbAnX66SbDF4uFBecCCLu9FLN43JSbMMds5cb6tjOTBMSTr1ydZRZALW9AC/PYabtQOgXIbK5Q==')
+  "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" \
+  "anthropic-ai-claude-code-darwin-arm64-$CLAUDE_VERSION.tgz" \
+  "$CLAUDE_PLATFORM_SHA512")
 
 safe_extract "$codex_archive" "$provider_root/codex"
 safe_extract "$codex_platform_archive" "$provider_root/codex-platform"
@@ -157,4 +162,6 @@ cmp -s "$claude_native" "$claude_canary" || fail "CLAUDE_CANARY_COPY_MISMATCH"
 [[ -f "$env_file" || -e "$env_file" ]] || :
 printf 'CLROOM_PROVIDER_CODEX=%s\n' "$codex_native" >> "$env_file"
 printf 'CLROOM_PROVIDER_CLAUDE=%s\n' "$claude_canary" >> "$env_file"
-printf 'PROVIDER_CANARY_PASS codex=0.154.0 claude=2.1.272\n'
+printf 'CLROOM_PROVIDER_CODEX_VERSION=%s\n' "$CODEX_VERSION" >> "$env_file"
+printf 'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n' "$CLAUDE_VERSION" >> "$env_file"
+printf 'PROVIDER_CANARY_PASS codex=%s claude=%s\n' "$CODEX_VERSION" "$CLAUDE_VERSION"

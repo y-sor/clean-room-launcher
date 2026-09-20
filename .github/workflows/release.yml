@@ -193,7 +193,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$CLROOM_RELEASE_VERSION" = "0.4.0" || {
+          test "$CLROOM_RELEASE_VERSION" = "0.4.1" || {
             echo "exact release qualification pins must be reviewed for $CLROOM_RELEASE_VERSION" >&2
             exit 1
           }
@@ -213,6 +213,7 @@ jobs:
           scripts/release/qualify-real-provider.sh \
             --provider codex \
             --executable "$CLROOM_PROVIDER_CODEX" \
+            --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" \
             --candidate "$codex_candidate" \
             --source-head "$GITHUB_SHA" \
             --version "$CLROOM_RELEASE_VERSION" \
@@ -220,16 +221,17 @@ jobs:
           scripts/release/qualify-real-provider.sh \
             --provider claude \
             --executable "$CLROOM_PROVIDER_CLAUDE" \
+            --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION" \
             --candidate "$claude_candidate" \
             --source-head "$GITHUB_SHA" \
             --version "$CLROOM_RELEASE_VERSION" \
             --output "$evidence_dir/claude.json"
           python3 scripts/release/verify-qualification.py \
             "$artifact" "$evidence_dir/codex.json" \
-            "$GITHUB_SHA" "$CLROOM_RELEASE_VERSION" codex
+            "$GITHUB_SHA" "$CLROOM_RELEASE_VERSION" codex "$CLROOM_PROVIDER_CODEX_VERSION"
           python3 scripts/release/verify-qualification.py \
             "$artifact" "$evidence_dir/claude.json" \
-            "$GITHUB_SHA" "$CLROOM_RELEASE_VERSION" claude
+            "$GITHUB_SHA" "$CLROOM_RELEASE_VERSION" claude "$CLROOM_PROVIDER_CLAUDE_VERSION"
       - name: Upload verified release bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

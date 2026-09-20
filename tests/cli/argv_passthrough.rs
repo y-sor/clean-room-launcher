@@ -14,7 +14,7 @@ use super::cli_entry;
 const ZERO_AUTH_REFUSAL: &str = "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n";
 const ZERO_AUTH_ARGUMENT_REFUSAL: &str =
     "ZERO_AUTH_ARGUMENT_REFUSAL: sensitive argument refused before dispatch; continue locally\n";
-const CODEX_CLEAN_DEFAULTS: &str = "-c\0features.apps=false\0-c\0features.hooks=false\0-c\0features.plugins=false\0-c\0developer_instructions=\"\"\0-c\0notify=[]\0-c\0shell_environment_policy.inherit=\"none\"\0-c\0shell_environment_policy.include_only=[\"PATH\",\"HOME\",\"TMPDIR\",\"TERM\",\"COLORTERM\",\"LANG\",\"LC_ALL\",\"LC_CTYPE\",\"TZ\"]\0-c\0shell_environment_policy.ignore_default_excludes=false\0";
+const CODEX_CLEAN_DEFAULTS: &str = "-c\0features.apps=false\0-c\0features.hooks=false\0-c\0features.plugins=false\0-c\0features.remote_plugin=false\0-c\0developer_instructions=\"\"\0-c\0notify=[]\0-c\0shell_environment_policy.inherit=\"none\"\0-c\0shell_environment_policy.include_only=[\"PATH\",\"HOME\",\"TMPDIR\",\"TERM\",\"COLORTERM\",\"LANG\",\"LC_ALL\",\"LC_CTYPE\",\"TZ\"]\0-c\0shell_environment_policy.ignore_default_excludes=false\0";
 static SCRATCH_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn scratch(name: &str) -> PathBuf {

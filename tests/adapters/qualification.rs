@@ -130,10 +130,11 @@ fn portable_receipt_is_canonical_bound_and_rejects_tampering() {
     );
 }
 #[cfg(target_os = "macos")]
-fn codex_executable_for_negative_test() -> Option<std::path::PathBuf> {
+fn codex_provider_for_negative_test() -> Option<(std::path::PathBuf, String)> {
     use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
 
-    if let Some(configured) = std::env::var_os("CLROOM_PROVIDER_CODEX") {
+    let path = if let Some(configured) = std::env::var_os("CLROOM_PROVIDER_CODEX") {
         let path = std::path::PathBuf::from(configured);
         let metadata = std::fs::metadata(&path).expect("CLROOM_PROVIDER_CODEX must exist");
         assert!(metadata.is_file(), "CLROOM_PROVIDER_CODEX must be a file");
@@ -141,13 +142,30 @@ fn codex_executable_for_negative_test() -> Option<std::path::PathBuf> {
             metadata.permissions().mode() & 0o111 != 0,
             "CLROOM_PROVIDER_CODEX must be executable"
         );
-        return Some(path);
-    }
+        path
+    } else {
+        ["/opt/homebrew/bin/codex", "/usr/local/bin/codex", "/usr/bin/codex"]
+            .into_iter()
+            .map(std::path::PathBuf::from)
+            .find(|path| path.is_file())?
+    };
 
-    ["/opt/homebrew/bin/codex", "/usr/local/bin/codex", "/usr/bin/codex"]
-        .into_iter()
-        .map(std::path::PathBuf::from)
-        .find(|path| path.is_file())
+    let output = Command::new(&path).arg("--version").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8(output.stdout).ok()?;
+    let version = text
+        .split(|character: char| !(character.is_ascii_digit() || character == '.'))
+        .find(|candidate| {
+            let parts = candidate.split('.').collect::<Vec<_>>();
+            parts.len() == 3
+                && parts
+                    .iter()
+                    .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
+        })?
+        .to_owned();
+    Some((path, version))
 }
 
 #[cfg(target_os = "macos")]
@@ -174,7 +192,7 @@ fn sleeping_candidate_cannot_qualify_as_real_codex() {
     fs::write(&candidate, "#!/bin/sh\n/bin/sleep 8\n").expect("candidate script");
     fs::set_permissions(&candidate, fs::Permissions::from_mode(0o700)).expect("candidate mode");
     let evidence = root.join("evidence.json");
-    let Some(executable) = codex_executable_for_negative_test() else {
+    let Some((executable, provider_version)) = codex_provider_for_negative_test() else {
         return;
     };
     let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -184,6 +202,7 @@ fn sleeping_candidate_cannot_qualify_as_real_codex() {
             script.to_str().expect("script path"),
             "--provider", "codex",
             "--executable", executable.to_str().expect("Codex executable path"),
+            "--expected-provider-version", provider_version.as_str(),
             "--candidate", candidate.to_str().expect("candidate path"),
             "--source-head", "0000000000000000000000000000000000000000",
             "--version", "0.2.0",
@@ -205,13 +224,13 @@ fn sandbox_wrapper_argv_cannot_qualify_without_codex_image() {
 
     let root = std::env::temp_dir().join(format!("clroom-qualification-wrapper-{}", std::process::id()));
     fs::create_dir(&root).expect("temporary qualification directory");
-    let Some(executable) = codex_executable_for_negative_test() else {
+    let Some((executable, provider_version)) = codex_provider_for_negative_test() else {
         fs::remove_dir_all(root).expect("temporary qualification cleanup");
         return;
     };
     let candidate = root.join("sandbox-wrapper-candidate");
     let wrapper = format!(
-        "#!/bin/sh\nexec /bin/sh -c 'sleep 8' sandbox-exec '{}' \"$@\"\n",
+        "#!/bin/sh\nexec /bin/sh -c 'sleep 1' sandbox-exec '{}' \"$@\"\n",
         executable.display()
     );
     fs::write(&candidate, wrapper).expect("candidate script");
@@ -224,6 +243,7 @@ fn sandbox_wrapper_argv_cannot_qualify_without_codex_image() {
             script.to_str().expect("script path"),
             "--provider", "codex",
             "--executable", executable.to_str().expect("Codex executable path"),
+            "--expected-provider-version", provider_version.as_str(),
             "--candidate", candidate.to_str().expect("candidate path"),
             "--source-head", "0000000000000000000000000000000000000000",
             "--version", "0.2.0",

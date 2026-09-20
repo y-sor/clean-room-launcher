@@ -69,10 +69,13 @@ if command -v shellcheck >/dev/null 2>&1; then
     packaging/build-artifacts.sh \
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
+    scripts/release/check-provider-pins.sh \
+    scripts/release/provider-pins.sh \
     scripts/release/provision-provider-canaries.sh \
     scripts/release/local-release-audit.sh \
     scripts/release/push-release-tag.sh \
     scripts/release/local-plugin-activation-smoke.sh \
+    scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -80,10 +83,13 @@ else
     packaging/build-artifacts.sh \
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
+    scripts/release/check-provider-pins.sh \
+    scripts/release/provider-pins.sh \
     scripts/release/provision-provider-canaries.sh \
     scripts/release/local-release-audit.sh \
     scripts/release/push-release-tag.sh \
     scripts/release/local-plugin-activation-smoke.sh \
+    scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
@@ -113,16 +119,22 @@ artifact=$(sed -n 's/^ARTIFACT=//p' /tmp/clroom-release-build.log)
 if [[ -n ${CLROOM_PROVIDER_CODEX:-} && -n ${CLROOM_PROVIDER_CLAUDE:-} && -n ${CLROOM_QUALIFICATION_EVIDENCE_DIR:-} ]]; then
   candidate_dir="$root/target/${CLROOM_TARGET:+$CLROOM_TARGET/}release"
   mkdir -p "$CLROOM_QUALIFICATION_EVIDENCE_DIR"
-  scripts/release/qualify-real-provider.sh --provider codex --executable "$CLROOM_PROVIDER_CODEX" --candidate "$candidate_dir/clroom-codex" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/codex.json" || fail "REAL_PROVIDER_CODEX"
-  scripts/release/qualify-real-provider.sh --provider claude --executable "$CLROOM_PROVIDER_CLAUDE" --candidate "$candidate_dir/clroom-claude" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/claude.json" || fail "REAL_PROVIDER_CLAUDE"
+  scripts/release/qualify-real-provider.sh --provider codex --executable "$CLROOM_PROVIDER_CODEX" --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" --candidate "$candidate_dir/clroom-codex" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/codex.json" || fail "REAL_PROVIDER_CODEX"
+  scripts/release/qualify-real-provider.sh --provider claude --executable "$CLROOM_PROVIDER_CLAUDE" --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION" --candidate "$candidate_dir/clroom-claude" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/claude.json" || fail "REAL_PROVIDER_CLAUDE"
 fi
 python3 packaging/verify-artifact.py "$artifact" || fail "ARTIFACT_METADATA"
 if [[ -n ${CLROOM_QUALIFICATION_EVIDENCE_DIR:-} ]]; then
   for provider in codex claude; do
     evidence="$CLROOM_QUALIFICATION_EVIDENCE_DIR/$provider.json"
     [[ -f "$evidence" ]] || fail "REAL_PROVIDER_EVIDENCE_MISSING_$provider"
+    case "$provider" in
+      codex) expected_provider_version="$CLROOM_PROVIDER_CODEX_VERSION" ;;
+      claude) expected_provider_version="$CLROOM_PROVIDER_CLAUDE_VERSION" ;;
+      *) fail "REAL_PROVIDER_EVIDENCE_PROVIDER_$provider" ;;
+    esac
     python3 scripts/release/verify-qualification.py "$artifact" "$evidence" \
-      "$(git rev-parse HEAD)" "$version" "$provider" || fail "REAL_PROVIDER_EVIDENCE_$provider"
+      "$(git rev-parse HEAD)" "$version" "$provider" "$expected_provider_version" \
+      || fail "REAL_PROVIDER_EVIDENCE_$provider"
   done
 else
   [[ ${CLROOM_ARTIFACT_QUALIFICATION:-} != QUALIFIED ]] || fail "CALLER_QUALIFICATION_FORBIDDEN"

@@ -8,7 +8,7 @@ use std::{
 
 static SCRATCH_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-const CODEX_CLEAN_DEFAULTS: &str = "-c\0features.apps=false\0-c\0features.hooks=false\0-c\0features.plugins=false\0-c\0developer_instructions=\"\"\0-c\0notify=[]\0-c\0shell_environment_policy.inherit=\"none\"\0-c\0shell_environment_policy.include_only=[\"PATH\",\"HOME\",\"TMPDIR\",\"TERM\",\"COLORTERM\",\"LANG\",\"LC_ALL\",\"LC_CTYPE\",\"TZ\"]\0-c\0shell_environment_policy.ignore_default_excludes=false\0";
+const CODEX_CLEAN_DEFAULTS: &str = "-c\0features.apps=false\0-c\0features.hooks=false\0-c\0features.plugins=false\0-c\0features.remote_plugin=false\0-c\0developer_instructions=\"\"\0-c\0notify=[]\0-c\0shell_environment_policy.inherit=\"none\"\0-c\0shell_environment_policy.include_only=[\"PATH\",\"HOME\",\"TMPDIR\",\"TERM\",\"COLORTERM\",\"LANG\",\"LC_ALL\",\"LC_CTYPE\",\"TZ\"]\0-c\0shell_environment_policy.ignore_default_excludes=false\0";
 
 fn fake_codex() -> (PathBuf, PathBuf) {
     let dir = std::env::temp_dir().join(format!(

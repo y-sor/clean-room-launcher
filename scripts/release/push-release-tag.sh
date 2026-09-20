@@ -19,6 +19,9 @@ expected=$2
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 cd "$root"
 
+# shellcheck source=provider-pins.sh
+source "$root/scripts/release/provider-pins.sh"
+
 git diff --quiet
 git diff --cached --quiet
 git fetch --quiet origin main
@@ -109,9 +112,9 @@ evidence="target/release-evidence/pretag-v${version}-${expected:0:12}.json"
   echo "TAG_GATE_BLOCKED:PRETAG_EVIDENCE_MISSING:$evidence" >&2
   exit 75
 }
-python3 - "$evidence" "$version" "$expected" <<'PY'
+python3 - "$evidence" "$version" "$expected" "$CLAUDE_VERSION" <<'PY'
 import json, re, sys
-path, version, expected = sys.argv[1:]
+path, version, expected, expected_claude_version = sys.argv[1:]
 with open(path, encoding="utf-8") as handle:
     record = json.load(handle)
 required = {
@@ -139,9 +142,52 @@ if not record.get("artifact_sha256") or not record.get("plugin_id"):
     raise SystemExit("TAG_GATE_BLOCKED:PRETAG_EVIDENCE_INCOMPLETE")
 if not isinstance(record.get("claude_version_output"), str) or not record["claude_version_output"]:
     raise SystemExit("TAG_GATE_BLOCKED:PRETAG_CLAUDE_VERSION_MISSING")
+if record.get("claude_version") != expected_claude_version:
+    raise SystemExit("TAG_GATE_BLOCKED:PRETAG_CLAUDE_NOT_CURRENT_STABLE")
 if not isinstance(record.get("claude_provider_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", record["claude_provider_sha256"]):
     raise SystemExit("TAG_GATE_BLOCKED:PRETAG_CLAUDE_SHA256_MISSING")
-print("PRETAG_EVIDENCE_PASS")
+print("PRETAG_CLAUDE_EVIDENCE_PASS")
+PY
+
+codex_evidence="target/release-evidence/codex-pretag-v${version}-${expected:0:12}.json"
+[[ -f "$codex_evidence" ]] || {
+  echo "TAG_GATE_BLOCKED:CODEX_PRETAG_EVIDENCE_MISSING:$codex_evidence" >&2
+  exit 80
+}
+python3 - "$codex_evidence" "$version" "$expected" "$CODEX_VERSION" <<'PY'
+import json, re, sys
+path, version, expected, expected_codex_version = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    record = json.load(handle)
+required = {
+    "schema_version": "clroom.codex-plugin-release-smoke.v1",
+    "result": "PASS",
+    "phase": "pretag",
+    "release_version": version,
+    "source_head": expected,
+    "platform": "macos-aarch64",
+    "clean_before_expected_mcp": False,
+    "selected_expected_mcp": True,
+    "clean_after_expected_mcp": False,
+    "persistent_provider_state_unchanged": True,
+    "plugin_source_unchanged": True,
+    "interactive_selected_tui_confirmed": True,
+    "interactive_no_model_prompt_confirmed": True,
+}
+for key, value in required.items():
+    if record.get(key) != value:
+        raise SystemExit(f"TAG_GATE_BLOCKED:CODEX_PRETAG_EVIDENCE:{key}")
+if not record.get("artifact_sha256") or not record.get("plugin_id") or not record.get("expected_mcp"):
+    raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_EVIDENCE_INCOMPLETE")
+if record.get("codex_version") != expected_codex_version:
+    raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_NOT_CURRENT_STABLE")
+if not isinstance(record.get("codex_version_output"), str) or not record["codex_version_output"]:
+    raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_VERSION_MISSING")
+if not isinstance(record.get("codex_provider_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", record["codex_provider_sha256"]):
+    raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_SHA256_MISSING")
+if not isinstance(record.get("plugin_source_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", record["plugin_source_sha256"]):
+    raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_PLUGIN_SOURCE_SHA256_MISSING")
+print("PRETAG_CODEX_EVIDENCE_PASS")
 PY
 
 title="$tag — Clean Room Launcher"
@@ -226,6 +272,11 @@ if ! python3 scripts/release/check-release-contract.py --report >/dev/null; then
   echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
   exit 77
 fi
+if ! bash scripts/release/check-provider-pins.sh; then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:PROVIDER_PINS_ACTION_TIME" >&2
+  exit 79
+fi
 
 evidence_claude_version=$(python3 - "$evidence" <<'PY'
 import json
@@ -241,6 +292,22 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     print(json.load(handle)["claude_provider_sha256"])
+PY
+)
+evidence_codex_version=$(python3 - "$codex_evidence" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["codex_version_output"])
+PY
+)
+evidence_codex_sha=$(python3 - "$codex_evidence" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["codex_provider_sha256"])
 PY
 )
 
@@ -268,6 +335,32 @@ fi
   cleanup_local_tag
   echo "TAG_GATE_BLOCKED:CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME" >&2
   exit 78
+}
+
+if ! codex_executable=$(command -v codex); then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_MISSING_ACTION_TIME" >&2
+  exit 81
+fi
+if ! codex_version_now=$(codex --version 2>&1 | head -1); then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_VERSION_ACTION_TIME" >&2
+  exit 81
+fi
+if ! codex_sha_now=$(shasum -a 256 "$codex_executable" | awk '{print $1}'); then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_HASH_ACTION_TIME" >&2
+  exit 81
+fi
+[[ "$codex_version_now" == "$evidence_codex_version" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME" >&2
+  exit 81
+}
+[[ "$codex_sha_now" == "$evidence_codex_sha" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME" >&2
+  exit 81
 }
 
 set +e

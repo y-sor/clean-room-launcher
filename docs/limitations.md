@@ -8,12 +8,15 @@ permalink: /limitations.html
 - Distributed macOS release artifacts are unsigned and unnotarized;
   qualification is limited to the documented macOS Apple Silicon release path.
 - Only macOS on Apple Silicon is supported. The minimum accepted versions are
-  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. Baseline clean-launch
-  exact qualification is Codex `0.154.0` and Claude Code `2.1.272`.
-- The v0.4.0 whole-plugin selector is separately qualified only for Claude Code
-  `2.1.273` on macOS Apple Silicon and admits exactly one already-installed
-  provider-native plugin per launch. Other provider tuples fail closed for this
-  activation path.
+  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.1 exact
+  qualification targets are Codex `0.155.1` and Claude Code `2.1.278`.
+  Release qualification fails closed if either stable provider version moves
+  before tagging.
+- The v0.4.1 whole-plugin selector admits at most one already-installed
+  provider-native plugin per launch. Codex `0.155.1` uses an exact private
+  shadow-PluginStore projection for the interactive path; Claude Code `2.1.278`
+  uses its separately qualified session-only plugin-directory path. Other
+  provider tuples fail closed for activation.
 - The initial v0.4 whole-plugin qualification is narrower than Claude's full
   plugin discovery semantics. Activation requires a matching
   `.claude-plugin/plugin.json` identity and only default one-level
@@ -22,14 +25,15 @@ permalink: /limitations.html
   agents, LSP servers, background monitors, plugin executables, or plugin
   settings may still be observed by inventory but fail closed for activation.
   This avoids reopening broader ambient provider state.
-- Component-level filtering, Codex plugin activation, standalone MCP resource
+- Multi-plugin selection, component-level filtering, standalone MCP resource
   selection, presets, and `--with=all` are not qualified by this slice.
 - The protection is a narrow macOS filesystem denylist, not a VM, container,
   network sandbox or complete home-directory isolation.
 - A provider may visibly warn that reading a blocked global instruction is not
   permitted. This is expected and does not mean the provider itself failed.
-- User arguments are intentionally last. Explicit overrides can re-enable apps,
-  hooks or plugins and therefore reduce the clean defaults.
+- User arguments are intentionally last for ordinary clean launches. During a
+  CLROOM whole-plugin selection, overlapping provider plugin/config activation
+  controls are refused so they cannot override the exact selection claim.
 - The project directory and other host paths remain available unless macOS or
   the selected provider applies an additional restriction.
 - Ordinary project, user, or other ambient MCP configurations are not loaded by

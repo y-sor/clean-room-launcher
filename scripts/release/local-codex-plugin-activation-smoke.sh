@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: scripts/release/local-codex-plugin-activation-smoke.sh pretag --plugin-id ID --expected-mcp NAME" >&2
+  echo "       scripts/release/local-codex-plugin-activation-smoke.sh draft --tag vX.Y.Z --plugin-id ID --expected-mcp NAME" >&2
+  exit 64
+}
+
+fail() {
+  echo "CODEX_PLUGIN_RELEASE_SMOKE_BLOCKED:$1" >&2
+  exit "${2:-1}"
+}
+
+phase=${1:-}
+[[ "$phase" == "pretag" || "$phase" == "draft" ]] || usage
+shift || true
+
+tag=
+plugin_id=
+expected_mcp=
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --tag) tag=${2:-}; shift 2 ;;
+    --plugin-id) plugin_id=${2:-}; shift 2 ;;
+    --expected-mcp) expected_mcp=${2:-}; shift 2 ;;
+    *) usage ;;
+  esac
+done
+[[ -n "$plugin_id" ]] || fail "PLUGIN_ID_REQUIRED"
+[[ "$expected_mcp" =~ ^[A-Za-z0-9._-]+$ ]] || fail "EXPECTED_MCP_INVALID"
+if [[ "$phase" == "draft" ]]; then
+  [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
+else
+  [[ -z "$tag" ]] || usage
+fi
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+cd "$root"
+
+[[ "$(uname -s)" == "Darwin" ]] || fail "MACOS_REQUIRED"
+[[ "$(uname -m)" == "arm64" ]] || fail "APPLE_SILICON_REQUIRED"
+for name in git cargo python3 codex npm shasum tar; do
+  command -v "$name" >/dev/null 2>&1 || fail "COMMAND_MISSING:$name"
+done
+[[ -z "$(git status --porcelain)" ]] || fail "WORKTREE_NOT_CLEAN"
+
+# shellcheck source=provider-pins.sh
+source "$root/scripts/release/provider-pins.sh"
+bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+codex_executable=$(command -v codex)
+codex_version_output=$(codex --version 2>&1 | head -1) || fail "CODEX_VERSION"
+codex_version=$(python3 - "$codex_version_output" <<'PY'
+import re, sys
+match = re.search(r"([0-9]+\.[0-9]+\.[0-9]+)", sys.argv[1])
+if match is None:
+    raise SystemExit(1)
+print(match.group(1))
+PY
+) || fail "CODEX_VERSION_PARSE"
+[[ "$codex_version" == "$CODEX_VERSION" ]] || fail "CODEX_NOT_CURRENT_STABLE"
+codex_provider_sha=$(shasum -a 256 "$codex_executable" | awk '{print $1}')
+[[ "$codex_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CODEX_PROVIDER_SHA256"
+
+version=$(python3 - <<'PY'
+import tomllib
+with open("Cargo.toml", "rb") as handle:
+    print(tomllib.load(handle)["package"]["version"])
+PY
+)
+head=$(git rev-parse HEAD)
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-codex-plugin-release-smoke.XXXXXX")
+trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
+
+artifact=
+source_head=
+assets="$tmp/assets"
+mkdir -p "$assets"
+
+if [[ "$phase" == "pretag" ]]; then
+  git fetch --quiet --no-tags origin main
+  source_head=$(git rev-parse FETCH_HEAD)
+  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_ACCEPTED_MAIN"
+  python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
+
+  cargo fetch --locked >/dev/null
+  CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET='' \
+    ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
+  artifact=$(sed -n 's/^ARTIFACT=//p' "$tmp/build.log" | tail -1)
+  [[ -n "$artifact" && -f "$artifact" ]] || fail "ARTIFACT_MISSING"
+else
+  command -v gh >/dev/null 2>&1 || fail "GH_REQUIRED"
+  gh auth status >/dev/null 2>&1 || fail "GH_AUTH_REQUIRED"
+  immutable_enabled=$(gh api repos/y-sor/clean-room-launcher/immutable-releases --jq .enabled 2>/dev/null) \
+    || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
+  [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
+  git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
+  source_head=$(git rev-list -n 1 "$tag")
+  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
+  [[ "${tag#v}" == "$version" ]] || fail "TAG_VERSION_MISMATCH"
+  [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == "true" ]] \
+    || fail "RELEASE_NOT_DRAFT"
+
+  gh release download "$tag" --dir "$assets"
+  artifact="$assets/clean-room-launcher-${tag}-aarch64-apple-darwin.tar.gz"
+  [[ -f "$artifact" ]] || fail "DRAFT_ARCHIVE_MISSING"
+  [[ -f "$assets/SHA256SUMS" ]] || fail "DRAFT_SHA256SUMS_MISSING"
+  (
+    cd "$assets"
+    shasum -a 256 -c SHA256SUMS
+  ) >/dev/null || fail "DRAFT_CHECKSUMS"
+
+  provenance="$artifact.provenance.sigstore.json"
+  sbom="$artifact.sbom.sigstore.json"
+  [[ -s "$provenance" && -s "$sbom" ]] || fail "DRAFT_ATTESTATION_BUNDLE_MISSING"
+  gh attestation verify "$artifact" \
+    -R y-sor/clean-room-launcher \
+    --bundle "$provenance" \
+    --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml \
+    --source-digest "$source_head" \
+    --source-ref "refs/tags/$tag" \
+    --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE"
+  gh attestation verify "$artifact" \
+    -R y-sor/clean-room-launcher \
+    --bundle "$sbom" \
+    --predicate-type https://cyclonedx.org/bom \
+    --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml \
+    --source-digest "$source_head" \
+    --source-ref "refs/tags/$tag" \
+    --deny-self-hosted-runners >/dev/null || fail "DRAFT_SBOM_ATTESTATION"
+fi
+
+python3 packaging/verify-artifact.py "$artifact" >/dev/null || fail "ARTIFACT_METADATA"
+artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
+
+mkdir "$tmp/unpack"
+tar -xzf "$artifact" -C "$tmp/unpack"
+archive_root=$(find "$tmp/unpack" -mindepth 1 -maxdepth 1 -type d -print -quit)
+[[ -n "$archive_root" ]] || fail "ARCHIVE_ROOT_MISSING"
+clroom="$archive_root/bin/clroom"
+[[ -x "$clroom" ]] || fail "ARCHIVE_CLROOM_MISSING"
+grep -Fqx "version=$version" "$archive_root/VERSION" || fail "ARCHIVE_VERSION"
+grep -Fqx "source_commit=$source_head" "$archive_root/VERSION" || fail "ARCHIVE_SOURCE"
+
+ambient_codex_home="${CODEX_HOME:-$HOME/.codex}"
+plugin_source=$(python3 - "$ambient_codex_home" "$plugin_id" <<'PY'
+import os, pathlib, re, sys
+home = pathlib.Path(sys.argv[1]).expanduser()
+plugin_id = sys.argv[2]
+try:
+    plugin, marketplace = plugin_id.rsplit("@", 1)
+except ValueError:
+    raise SystemExit(1)
+if not re.fullmatch(r"[A-Za-z0-9_.-]+", plugin) or plugin in {".", ".."}:
+    raise SystemExit(1)
+if not re.fullmatch(r"[A-Za-z0-9_-]+", marketplace):
+    raise SystemExit(1)
+cache = (home / "plugins" / "cache").resolve()
+base = cache / marketplace / plugin
+if not base.is_dir() or base.is_symlink():
+    raise SystemExit(1)
+local = base / "local"
+if local.is_dir() and not local.is_symlink():
+    candidates = [local]
+else:
+    candidates = sorted(
+        path for path in base.iterdir()
+        if path.is_dir() and not path.is_symlink()
+    )
+if len(candidates) != 1:
+    raise SystemExit(1)
+root = candidates[0].resolve()
+if cache not in root.parents:
+    raise SystemExit(1)
+print(root)
+PY
+) || fail "PLUGIN_ROOT_NOT_EXACT"
+
+fingerprint_tree() {
+  python3 - "$@" <<'PY'
+import hashlib, os, pathlib, stat, sys
+h = hashlib.sha256()
+for raw in sys.argv[1:]:
+    root = pathlib.Path(raw).expanduser()
+    h.update(str(root).encode() + b"\0")
+    if not root.exists() and not root.is_symlink():
+        h.update(b"<missing>\0")
+        continue
+    paths = [root]
+    if root.is_dir() and not root.is_symlink():
+        paths.extend(sorted(root.rglob("*"), key=lambda p: str(p)))
+    for path in paths:
+        rel = "." if path == root else str(path.relative_to(root))
+        st = path.lstat()
+        h.update(rel.encode() + b"\0")
+        h.update(oct(stat.S_IFMT(st.st_mode)).encode() + b"\0")
+        if stat.S_ISLNK(st.st_mode):
+            h.update(os.readlink(path).encode() + b"\0")
+        elif stat.S_ISREG(st.st_mode):
+            with open(path, "rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    h.update(chunk)
+            h.update(b"\0")
+        elif stat.S_ISDIR(st.st_mode):
+            h.update(b"<dir>\0")
+        else:
+            h.update(b"<other>\0")
+print(h.hexdigest())
+PY
+}
+
+ambient_before=$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")
+source_before=$(fingerprint_tree "$plugin_source")
+
+"$clroom" --output json info codex "plugin:$plugin_id" >"$tmp/info.json" 2>"$tmp/info.err" \
+  || fail "PLUGIN_INFO"
+
+"$clroom" codex mcp list --json >"$tmp/clean-before.json" 2>"$tmp/clean-before.err" \
+  || fail "CLEAN_BEFORE_MCP_LIST"
+"$clroom" codex --with="plugin:$plugin_id" mcp list --json \
+  >"$tmp/selected.json" 2>"$tmp/selected.err" || fail "SELECTED_MCP_LIST"
+"$clroom" codex mcp list --json >"$tmp/clean-after.json" 2>"$tmp/clean-after.err" \
+  || fail "CLEAN_AFTER_MCP_LIST"
+
+ambient_after=$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")
+source_after=$(fingerprint_tree "$plugin_source")
+[[ "$ambient_before" == "$ambient_after" ]] || fail "PERSISTENT_PROVIDER_STATE_CHANGED"
+[[ "$source_before" == "$source_after" ]] || fail "PLUGIN_SOURCE_CHANGED"
+
+python3 - "$plugin_id" "$expected_mcp" "$tmp/info.json" \
+  "$tmp/clean-before.json" "$tmp/selected.json" "$tmp/clean-after.json" <<'PY' \
+  || fail "AUTOMATED_CODEX_PLUGIN_E2E"
+import json, sys
+plugin_id, expected_mcp, info_path, clean_before_path, selected_path, clean_after_path = sys.argv[1:]
+
+info = json.load(open(info_path, encoding="utf-8"))
+entries = info.get("native_entries") or []
+if len(entries) != 1:
+    raise SystemExit("info-entry-count")
+entry = entries[0]
+native = entry.get("native") or {}
+if not (
+    native.get("id") == plugin_id
+    and entry.get("installation") == "installed"
+    and entry.get("selection") == "selectable"
+    and entry.get("qualification") == "qualified"
+    and entry.get("activation_policy") == "atomic_bundle"
+    and not (entry.get("conflicts") or [])
+    and (entry.get("effective_components") or [])
+):
+    raise SystemExit("plugin-not-qualified")
+
+def names(path):
+    data = json.load(open(path, encoding="utf-8"))
+    if not isinstance(data, list):
+        raise SystemExit("mcp-list-not-array")
+    result = set()
+    for item in data:
+        if isinstance(item, dict) and isinstance(item.get("name"), str):
+            result.add(item["name"])
+    return result
+
+clean_before = names(clean_before_path)
+selected = names(selected_path)
+clean_after = names(clean_after_path)
+if expected_mcp in clean_before:
+    raise SystemExit("expected-mcp-present-before-selection")
+if expected_mcp not in selected:
+    raise SystemExit("expected-mcp-absent-in-selected")
+if expected_mcp in clean_after:
+    raise SystemExit("expected-mcp-present-after-clean")
+print("AUTOMATED_CODEX_PLUGIN_E2E=PASS")
+PY
+
+interactive=false
+if [[ "$phase" == "pretag" ]]; then
+  [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
+  echo
+  echo "=== INTERACTIVE CODEX SELECTED-PLUGIN TUI ==="
+  echo "Do not send a model prompt."
+  echo "Confirm the normal Codex TUI opens and /mcp shows: $expected_mcp"
+  echo "Exit normally."
+  echo
+  "$clroom" codex --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
+  printf 'TUI opened normally and /mcp showed %s [y/N]: ' "$expected_mcp"
+  read -r answer
+  [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
+  interactive=true
+  [[ "$ambient_before" == "$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")" ]] \
+    || fail "PERSISTENT_PROVIDER_STATE_CHANGED_INTERACTIVE"
+  [[ "$source_before" == "$(fingerprint_tree "$plugin_source")" ]] \
+    || fail "PLUGIN_SOURCE_CHANGED_INTERACTIVE"
+fi
+
+evidence_dir="$root/target/release-evidence"
+mkdir -p "$evidence_dir"
+short=${source_head:0:12}
+evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
+python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
+  "$plugin_id" "$expected_mcp" "$interactive" "$codex_version_output" \
+  "$codex_version" "$codex_provider_sha" "$source_before" <<'PY'
+import datetime, json, sys
+(
+    output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
+    interactive, codex_version_output, codex_version, codex_provider_sha,
+    plugin_source_sha,
+) = sys.argv[1:]
+record = {
+    "schema_version": "clroom.codex-plugin-release-smoke.v1",
+    "result": "PASS",
+    "phase": phase,
+    "release_version": version,
+    "source_head": source,
+    "artifact_sha256": artifact_sha,
+    "platform": "macos-aarch64",
+    "codex_version_output": codex_version_output,
+    "codex_version": codex_version,
+    "codex_provider_sha256": codex_provider_sha,
+    "plugin_id": plugin_id,
+    "expected_mcp": expected_mcp,
+    "plugin_source_sha256": plugin_source_sha,
+    "clean_before_expected_mcp": False,
+    "selected_expected_mcp": True,
+    "clean_after_expected_mcp": False,
+    "persistent_provider_state_unchanged": True,
+    "plugin_source_unchanged": True,
+    "interactive_selected_tui_confirmed": interactive == "true",
+    "interactive_no_model_prompt_confirmed": interactive == "true",
+    "observed_at_utc": datetime.datetime.now(
+        datetime.timezone.utc
+    ).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+}
+with open(output, "w", encoding="utf-8") as handle:
+    json.dump(record, handle, sort_keys=True, indent=2)
+    handle.write("\n")
+PY
+
+echo "CODEX_PLUGIN_RELEASE_SMOKE=PASS"
+echo "PHASE=$phase"
+echo "SOURCE_HEAD=$source_head"
+echo "ARTIFACT_SHA256=$artifact_sha"
+echo "PLUGIN_ID=$plugin_id"
+echo "EXPECTED_MCP=$expected_mcp"
+echo "PERSISTENT_PROVIDER_STATE_UNCHANGED=YES"
+echo "EVIDENCE_FILE=${evidence#$root/}"

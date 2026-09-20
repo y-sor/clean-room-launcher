@@ -17,6 +17,8 @@ const CODEX_CLEAN_DEFAULTS: &[&str] = &[
     "-c",
     "features.plugins=false",
     "-c",
+    "features.remote_plugin=false",
+    "-c",
     "developer_instructions=\"\"",
     "-c",
     "notify=[]",

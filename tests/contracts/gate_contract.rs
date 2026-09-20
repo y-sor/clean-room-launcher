@@ -73,11 +73,39 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
     assert!(source.contains(
         "./scripts/release/provision-provider-canaries.sh \"$RUNNER_TEMP/clroom-providers\" \"$GITHUB_ENV\""
     ));
+    let provider_pins =
+        std::fs::read_to_string("scripts/release/provider-pins.sh").unwrap();
     assert!(!source.contains("npm install"));
-    assert!(provisioner.contains("@openai/codex@0.154.0"));
-    assert!(provisioner.contains("@openai/codex@0.154.0-darwin-arm64"));
-    assert!(provisioner.contains("@anthropic-ai/claude-code@2.1.272"));
-    assert!(provisioner.contains("HP/vJCH/t2hB9Kg6hotN9UglClJ6/z584fal5lEP14C9gNAgAQS4/kTQC7l5V+BA3TqwDPwINSjul28cX8AYXg=="));
+    assert!(provisioner.contains("source \"$root/scripts/release/provider-pins.sh\""));
+    assert!(provisioner.contains("bash \"$root/scripts/release/check-provider-pins.sh\""));
+    for required in [
+        "CODEX_VERSION=0.155.1",
+        "CLAUDE_VERSION=2.1.278",
+        "CODEX_SHA512=",
+        "CODEX_PLATFORM_SHA512=",
+        "CLAUDE_SHA512=",
+        "CLAUDE_PLATFORM_SHA512=",
+    ] {
+        assert!(
+            provider_pins.contains(required),
+            "release provider pins must contain {required}"
+        );
+    }
+    for required in [
+        "\"@openai/codex@$CODEX_VERSION\"",
+        "\"@openai/codex@$CODEX_VERSION-darwin-arm64\"",
+        "\"@anthropic-ai/claude-code@$CLAUDE_VERSION\"",
+        "\"@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION\"",
+        "\"$CODEX_SHA512\"",
+        "\"$CODEX_PLATFORM_SHA512\"",
+        "\"$CLAUDE_SHA512\"",
+        "\"$CLAUDE_PLATFORM_SHA512\"",
+    ] {
+        assert!(
+            provisioner.contains(required),
+            "provider canary provisioning must consume canonical pin {required}"
+        );
+    }
     assert!(!provisioner.contains("npm install"));
     assert!(
         source.contains("tar -xzf \"$artifact\" -C \"$extract_dir\""),
@@ -101,6 +129,36 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
         source.matches("scripts/release/verify-qualification.py").count(),
         2,
         "both qualification records must be rebound to the exact release archive"
+    );
+    assert!(
+        source.contains(
+            "\"$GITHUB_SHA\" \"$CLROOM_RELEASE_VERSION\" codex \"$CLROOM_PROVIDER_CODEX_VERSION\""
+        ),
+        "Codex archive evidence verification must consume the canonical pinned provider version"
+    );
+    assert!(
+        source.contains(
+            "\"$GITHUB_SHA\" \"$CLROOM_RELEASE_VERSION\" claude \"$CLROOM_PROVIDER_CLAUDE_VERSION\""
+        ),
+        "Claude archive evidence verification must consume the canonical pinned provider version"
+    );
+    let verifier =
+        std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
+    assert!(
+        verifier.contains("record[\"provider_version\"] != expected_provider_version"),
+        "qualification verifier must compare evidence to its explicit pinned provider version"
+    );
+    assert!(
+        !verifier.contains("\"0.154.0\"") && !verifier.contains("\"2.1.272\""),
+        "qualification verifier must not keep a second stale copy of provider pins"
+    );
+    assert!(
+        verifier.contains(r#"r"[0-9]+\.[0-9]+\.[0-9]+""#),
+        "qualification verifier must accept ordinary three-part semantic versions"
+    );
+    assert!(
+        !verifier.contains(r#"r"[0-9]+\\.[0-9]+\\.[0-9]+""#),
+        "qualification verifier must not double-escape semantic-version separators"
     );
 }
 

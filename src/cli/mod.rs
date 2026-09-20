@@ -26,7 +26,10 @@ use clroom::adapters::claude::{
     projection::{ProjectionError, project},
 };
 use clroom::catalog::selection::SelectionRequest;
-use clroom::adapters::codex::isolation::{IsolationError, IsolationInputs, plan_with_skills};
+use clroom::adapters::codex::{
+    activation::{self as codex_activation, ActivationError as CodexActivationError},
+    isolation::{IsolationError, IsolationInputs, plan_with_skills},
+};
 
 pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode {
     if std::env::var_os(process::INTERNAL_PROVIDER_CHAIN_GUARD).is_some() {
@@ -143,7 +146,12 @@ fn run_codex(source: &mut impl Iterator<Item = String>) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match launch_isolated_codex(&selection_terms, &provider_args, &pass_env) {
+    match launch_isolated_codex(
+        &selection_terms,
+        &provider_args,
+        &pass_env,
+        &prepared.request,
+    ) {
         Ok(exit) => exit,
         Err(message) => {
             eprintln!("{message}");
@@ -203,6 +211,7 @@ fn launch_isolated_codex(
     selection_terms: &[String],
     provider_args: &[String],
     pass_env: &[String],
+    resource_request: &SelectionRequest,
 ) -> Result<ExitCode, String> {
     let home = std::env::var_os("HOME").map(PathBuf::from).ok_or_else(|| {
         "CLROOM_ISOLATION_INVALID: HOME is unavailable; continue locally".to_owned()
@@ -258,17 +267,40 @@ fn launch_isolated_codex(
             return Err(error);
         }
     };
-    let state = if launch_contract::classify_codex_invocation(&provider_args)
-        == launch_contract::CodexInvocation::Interactive
-    {
+    let invocation = launch_contract::classify_codex_invocation(&provider_args);
+    let activation = if resource_request.is_empty() {
+        None
+    } else {
+        if invocation != launch_contract::CodexInvocation::Interactive {
+            return Err(
+                "CLROOM_RESOURCE_NOT_SELECTABLE: v0.4.1 Codex whole-plugin activation is qualified only for interactive launch; continue locally"
+                    .to_owned(),
+            );
+        }
+        codex_activation::plan(&home, &inputs.codex_home, resource_request, &identity)
+            .map_err(codex_activation_error_message)?
+    };
+    if let Some(activation) = activation.as_ref() {
+        activation
+            .revalidate(&home, &inputs.codex_home)
+            .map_err(codex_activation_error_message)?;
+    }
+    let state = if invocation == launch_contract::CodexInvocation::Interactive {
         Some(process::prepare_codex_state(
             &home,
             &inputs.codex_home,
             &plan.selected_global_skill_paths,
+            activation.as_ref(),
         )?)
     } else {
         None
     };
+    if let Some(activation) = activation.as_ref() {
+        activation
+            .revalidate(&home, &inputs.codex_home)
+            .map_err(codex_activation_error_message)?;
+        contract.add_codex_plugin_activation(&activation.provider_config_args());
+    }
     if std::io::stderr().is_terminal() {
         let feature_state = screen::PlaqueFeatureState::from_provider_args(&provider_args);
         eprintln!(
@@ -287,7 +319,10 @@ fn launch_isolated_codex(
         &contract,
         &identity,
         pass_env,
+        &home,
+        &inputs.codex_home,
         state.as_ref(),
+        activation.as_ref(),
     )
 }
 
@@ -562,6 +597,33 @@ fn projection_error_message(error: ProjectionError) -> String {
 fn claude_isolation_error_message(_: ClaudeIsolationError) -> String {
     "CLROOM_CLAUDE_ISOLATION_INVALID: current project or context boundary is invalid; continue locally"
         .to_owned()
+}
+
+fn codex_activation_error_message(error: CodexActivationError) -> String {
+    match error {
+        CodexActivationError::ProviderTupleNotQualified => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.1 plugin activation; continue locally".to_owned()
+        }
+        CodexActivationError::MultiplePlugins => {
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.1 admits one exact Codex plugin per launch".to_owned()
+        }
+        CodexActivationError::StateChanged => {
+            "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
+        }
+        CodexActivationError::UnsupportedRequest => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.1; continue locally".to_owned()
+        }
+        CodexActivationError::InvalidSource => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: selected Codex plugin source is invalid; continue locally".to_owned()
+        }
+        CodexActivationError::ProjectionFailed => {
+            "CLROOM_CODEX_PLUGIN_PROJECTION_FAILED: selected Codex plugin could not be projected safely; continue locally".to_owned()
+        }
+        CodexActivationError::Selection(selection) => format!(
+            "{}: selected Codex plugin is unavailable or unqualified; continue locally",
+            selection.code()
+        ),
+    }
 }
 
 fn claude_activation_error_message(error: ClaudeActivationError) -> String {

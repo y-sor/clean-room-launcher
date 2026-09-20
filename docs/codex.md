@@ -68,6 +68,41 @@ CLROOM preflights this capability and injects the flag for its qualified
 selected-skill inventory. Interactive Codex uses the same existing isolation
 path without that exec-only flag.
 
+## v0.4.1: select one installed whole plugin
+
+The v0.4.1 source adds one bounded Codex whole-plugin selector for the
+interactive launch path:
+
+```sh
+codex plugin list --json
+clroom codex --with=plugin:plugin-name@marketplace-name
+```
+
+The selector preserves Codex's provider-native plugin ID and admits at most one
+already-installed bundle for that launch. CLROOM does not install, update,
+remove, or refresh plugins or marketplaces.
+
+For a selected launch, CLROOM revalidates the exact installed source bundle,
+copies only that bundle into its existing private shadow `CODEX_HOME`
+`PluginStore`, makes the projection non-writable, keeps sibling plugins absent,
+and enables only that plugin through session-layer Codex configuration.
+`features.apps`, `features.hooks`, and `features.remote_plugin` remain off.
+The following ordinary clean launch removes only the verified CLROOM-owned
+projection and does not inherit the selected plugin.
+
+Raw Codex configuration/plugin controls such as `-c`, `--config`,
+`--profile`, `--enable`, `--disable`, and `--plugin` are refused while a
+CLROOM plugin selection is active, so there is only one activation authority.
+
+The exact v0.4.1 qualification target is Codex CLI `0.155.1` on macOS Apple
+Silicon. Release qualification additionally requires clean → selected → clean
+evidence against the exact candidate bytes and the current stable provider
+bytes. The ordinary parser/runtime minimum remains `0.147.0+`.
+
+This slice does not add multi-plugin selection, standalone MCP restore,
+`--with=all`, component-level plugin surgery, persistent Codex configuration
+mutation, or marketplace installation/update behavior.
+
 ## Is CLROOM a way around managed Codex controls?
 
 No.

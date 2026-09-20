@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
-usage() { echo "usage: $0 --provider NAME --executable PATH --candidate PATH --source-head SHA --version VERSION --output PATH" >&2; exit 2; }
-provider= executable= candidate= source_head= release_version= output=
+usage() { echo "usage: $0 --provider NAME --executable PATH --expected-provider-version VERSION --candidate PATH --source-head SHA --version VERSION --output PATH" >&2; exit 2; }
+provider= executable= expected_provider_version= candidate= source_head= release_version= output=
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --provider) provider=${2:-}; shift 2;;
     --executable) executable=${2:-}; shift 2;;
+    --expected-provider-version) expected_provider_version=${2:-}; shift 2;;
     --candidate) candidate=${2:-}; shift 2;;
     --source-head) source_head=${2:-}; shift 2;;
     --version) release_version=${2:-}; shift 2;;
@@ -15,11 +16,10 @@ while [[ $# -gt 0 ]]; do
 done
 [[ $provider == codex || $provider == claude ]] || usage
 [[ -x $executable && -x $candidate ]] || { echo "qualification executable missing" >&2; exit 2; }
-[[ $source_head =~ ^[0-9a-f]{40,64}$ && $release_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && -n $output ]] || usage
+[[ $source_head =~ ^[0-9a-f]{40,64}$ && $release_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && $expected_provider_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && -n $output ]] || usage
 executable="$(cd "$(dirname "$executable")" && pwd -P)/$(basename "$executable")"
 candidate="$(cd "$(dirname "$candidate")" && pwd -P)/$(basename "$candidate")"
 provider_version=$($executable --version 2>/dev/null | sed -nE 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -1)
-expected_provider_version=$([[ $provider == codex ]] && echo 0.154.0 || echo 2.1.272)
 candidate_digest=$(shasum -a 256 "$candidate" | awk '{print $1}')
 provider_digest=$(shasum -a 256 "$executable" | awk '{print $1}')
 target=$(rustc -vV | sed -n 's/^host: //p')

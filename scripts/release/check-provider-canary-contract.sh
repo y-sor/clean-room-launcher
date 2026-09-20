@@ -4,6 +4,10 @@ set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 provisioner="$root/scripts/release/provision-provider-canaries.sh"
 qualifier="$root/scripts/release/qualify-real-provider.sh"
+pins="$root/scripts/release/provider-pins.sh"
+pin_checker="$root/scripts/release/check-provider-pins.sh"
+codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
+tag_helper="$root/scripts/release/push-release-tag.sh"
 release_candidate="$root/.github/workflows/release-candidate.yml"
 release="$root/.github/workflows/release.yml"
 
@@ -12,29 +16,65 @@ fail() {
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$tag_helper" "$release_candidate" "$release"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
 for needle in \
-  '@openai/codex@0.154.0' \
-  '@openai/codex@0.154.0-darwin-arm64' \
-  '@anthropic-ai/claude-code@2.1.272' \
-  '@anthropic-ai/claude-code-darwin-arm64@2.1.272' \
-  'FV/x1OHXYv/ifjf3mXj9ThTTAWcUZN6cGIRQRhRxkKNOPuImu1WW0c8ev1vUkE9XGH90dEnYG1tBjIkxRikg0w==' \
-  'HP/vJCH/t2hB9Kg6hotN9UglClJ6/z584fal5lEP14C9gNAgAQS4/kTQC7l5V+BA3TqwDPwINSjul28cX8AYXg==' \
-  'sOwHBM69H8Zka3/D3rc2VNNemPYNlgfYTdhsoqPoXZdK5KcKQlzoue4asJ2RVc+tGb/Pz1qxjVV9nVJQ87W7Ng==' \
-  'l3CI1gPSCGkWNbAnX66SbDF4uFBecCCLu9FLN43JSbMMds5cb6tjOTBMSTr1ydZRZALW9AC/PYabtQOgXIbK5Q==' \
+  'CODEX_VERSION=0.155.1' \
+  'CLAUDE_VERSION=2.1.278' \
+  'CODEX_SHA512=' \
+  'CODEX_PLATFORM_SHA512=' \
+  'CLAUDE_SHA512=' \
+  'CLAUDE_PLATFORM_SHA512='; do
+  grep -Fq "$needle" "$pins" || fail "PIN_MISSING"
+done
+
+for needle in \
+  "verify_latest '@openai/codex' \"\$CODEX_VERSION\"" \
+  "verify_latest '@anthropic-ai/claude-code' \"\$CLAUDE_VERSION\"" \
+  'verify_integrity "@openai/codex@$CODEX_VERSION"' \
+  'verify_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64"' \
+  'verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION"' \
+  'verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION"' \
+  'PROVIDER_PIN_CHECK_PASS'; do
+  grep -Fq "$needle" "$pin_checker" || fail "LATEST_OR_INTEGRITY_GATE_MISSING"
+done
+
+for needle in \
+  'source "$root/scripts/release/provider-pins.sh"' \
+  'bash "$root/scripts/release/check-provider-pins.sh"' \
   'aarch64-apple-darwin/bin/codex' \
   'claude_platform_root="$provider_root/claude-platform/package"' \
   'claude_native="$claude_platform_root/claude"' \
   'claude_canary="$provider_root/bin/claude"' \
   'cmp -s "$claude_native" "$claude_canary"' \
   'CLROOM_PROVIDER_CODEX=%s\n' \
-  '"$codex_native" >> "$env_file"' \
   'CLROOM_PROVIDER_CLAUDE=%s\n' \
-  '"$claude_canary" >> "$env_file"'; do
+  'CLROOM_PROVIDER_CODEX_VERSION=%s\n' \
+  'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n'; do
   grep -Fq "$needle" "$provisioner" || fail "PIN_OR_LAYOUT_MISSING"
+done
+
+
+for needle in \
+  'bash "$root/scripts/release/check-provider-pins.sh"' \
+  '[[ "$codex_version" == "$CODEX_VERSION" ]]' \
+  '"$clroom" codex mcp list --json' \
+  '"$clroom" codex --with="plugin:$plugin_id" mcp list --json' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v1"' \
+  '"clean_before_expected_mcp": False' \
+  '"selected_expected_mcp": True' \
+  '"clean_after_expected_mcp": False'; do
+  grep -Fq "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
+done
+
+for needle in \
+  'codex-pretag-v${version}-${expected:0:12}.json' \
+  'PRETAG_CODEX_EVIDENCE_PASS' \
+  'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
+  'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
+  grep -Fq "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
 done
 
 for workflow in "$release_candidate" "$release"; do
@@ -50,6 +90,10 @@ if grep -Eq 'npm[[:space:]]+install[[:space:]]' "$provisioner"; then
 fi
 
 bash -n "$provisioner" || fail "PROVISIONER_SYNTAX"
+bash -n "$pin_checker" || fail "PIN_CHECKER_SYNTAX"
+bash -n "$pins" || fail "PINS_SYNTAX"
+bash -n "$codex_smoke" || fail "CODEX_SMOKE_SYNTAX"
+bash -n "$tag_helper" || fail "TAG_HELPER_SYNTAX"
 bash -n "$qualifier" || fail "QUALIFIER_SYNTAX"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -67,7 +111,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   cat > "$fake_provider" <<'SH'
 #!/usr/bin/env bash
 if [[ ${1:-} == --version ]]; then
-  printf 'codex-cli 0.154.0\n'
+  printf 'codex-cli 0.155.1\n'
 fi
 exit 0
 SH
@@ -81,9 +125,10 @@ SH
   "$qualifier" \
     --provider codex \
     --executable "$fake_provider" \
+    --expected-provider-version 0.155.1 \
     --candidate "$early_exit_candidate" \
     --source-head 0000000000000000000000000000000000000000 \
-    --version 0.4.0 \
+    --version 0.4.1 \
     --output "$record" \
     >"$tmp/stdout.log" 2>"$stderr_log"
   status=$?

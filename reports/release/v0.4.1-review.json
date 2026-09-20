@@ -1,0 +1,138 @@
+{
+  "schema_version": "clroom.release-review.v1",
+  "release": "v0.4.1",
+  "baseline_release": "v0.4.0",
+  "reviewed_through_commit": "c802ccbf88b933eb3c46bf2a35f5b8fc7efde2df",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Codex v0.4.1 whole-plugin activation is bounded to one exact provider-native ID on Codex 0.155.1 / macOS Apple Silicon, projects only the selected captured bundle into the private shadow PluginStore, keeps sibling bundles absent, write-denies the projection, preserves clean defaults, and revalidates source/provider/projection state before provider birth."
+      ]
+    },
+    "tests": {
+      "decision": "COVERED",
+      "evidence": [
+        "Locked all-target CI plus focused Codex projection, source-drift, sibling, symlink, tamper, raw-control-conflict, clean-after-selected, public-identity, fuzz and CodeQL coverage exercise the affected trust boundaries."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "Cargo.toml/Cargo.lock change only the package version to 0.4.1; no runtime/build dependency is added or replaced, and Dependency Review remains required."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Release candidate CI provisions exact current-stable Codex and Claude Code canaries from canonical provider pins, verifies npm latest tags and registry integrity, and binds qualification to those provisioned provider versions."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The full v0.4.0→v0.4.1 delta includes the post-v0.4.0 CycloneDX/action-time release hardening plus new Codex clean→selected→clean artifact smoke evidence, canonical provider pin freshness checks, and action-time provider revalidation before protected tag push."
+      ]
+    },
+    "public_claims": {
+      "decision": "COVERED",
+      "evidence": [
+        "README, Codex/Claude docs, limitations and changelog bind v0.4.1 claims to Codex 0.155.1 and Claude Code 2.1.278 on macOS Apple Silicon and keep MCP restore, --with=all, multi-plugin, component surgery and other platforms explicitly unqualified."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "codex-session-flags-without-active-pluginstore-bundle",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex activation requires both exact-bundle projection into the active private shadow PluginStore and session-layer exact plugin enablement; session flags alone are not treated as qualification evidence."
+    },
+    {
+      "id": "codex-projection-admits-sibling-or-stale-bundle",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Shadow PluginStore selection is single-bundle only, verified by path+digest ownership marker and cache-only-selected checks; stale owned projections are reconciled, while unknown siblings or tampered projections fail closed and are preserved rather than blindly deleted."
+    },
+    {
+      "id": "codex-projected-bundle-writable-or-mode-corrupted",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Projection preserves executable bits while removing write bits recursively; provider sandbox also write-denies the shadow plugin cache and marker, with regression tests for read-only and executable semantics."
+    },
+    {
+      "id": "codex-plugin-source-or-provider-drifts-after-plan",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Provider identity/version, installed source identity/digest and projected bundle are revalidated after planning and again immediately before provider exec; any drift refuses before provider birth."
+    },
+    {
+      "id": "raw-codex-controls-create-second-activation-authority",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "When CLROOM plugin selection is active, raw Codex config/profile/feature/plugin controls are refused before provider birth; arguments after the provider terminator remain literal."
+    },
+    {
+      "id": "daily-provider-release-drift-invalidates-exact-qualification",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Canonical provider-pins.sh records exact current-stable versions and npm integrity; check-provider-pins.sh verifies latest tags and integrity during candidate provisioning and again at the action-time tag boundary."
+    },
+    {
+      "id": "provider-pin-contract-test-split-brain",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release contract tests and qualification evidence verification consume the canonical pinned provider versions instead of duplicating stale provider version/digest literals; evidence is rejected unless its provider version exactly matches the pinned canary version."
+    },
+    {
+      "id": "clean-default-expansion-breaks-public-native-identity-contract",
+      "decision": "COVERED",
+      "durable_control": "Public identity tests include features.remote_plugin=false in the exact Codex clean argv contract while preserving native Codex process identity and passthrough semantics."
+    },
+    {
+      "id": "sbom-attestation-predicate-not-explicitly-cyclonedx",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "The post-v0.4.0 release delta explicitly verifies the exported SBOM attestation bundle with the CycloneDX predicate before publication."
+    },
+    {
+      "id": "tag-action-uses-stale-main-provider-or-release-state",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Protected-tag helper refreshes main/tag/ruleset/release-contract/provider-pin state at action time, compares local provider version and bytes to pretag evidence, performs one tag push, then reconciles the authoritative remote result."
+    },
+    {
+      "id": "negative-provider-qualification-test-skipped-without-real-provider",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release readiness provisions the pinned current Codex canary before full locked tests; negative qualification tests derive the executable's actual provider version and therefore exercise the fail-closed harness instead of returning early or failing before evidence creation."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRE_TAG",
+      "requirement": "Build exact accepted-main v0.4.1 archive on macOS Apple Silicon with current-stable Codex 0.155.1 and an already-installed exact Codex plugin; prove clean-before absence, selected capability presence, clean-after absence, unchanged ambient provider/plugin state and source bytes, exact provider/plugin evidence, and normal selected-plugin interactive TUI without a model prompt."
+    },
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "DRAFT_ARTIFACT_PRE_PUBLISH",
+      "requirement": "Download exact Draft Release v0.4.1 archive, verify checksums/provenance/SBOM bundles, then prove the same clean→selected→clean Codex plugin behavior and unchanged provider/plugin state against the Draft bytes."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRE_TAG",
+      "requirement": "Requalify the shipped Claude whole-plugin path on current-stable Claude Code 2.1.278 using exact accepted-main v0.4.1 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, and normal selected-plugin interactive TUI without a model prompt."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "DRAFT_ARTIFACT_PRE_PUBLISH",
+      "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.1 bytes after checksum and attestation verification, bound to current-stable Claude Code 2.1.278."
+    }
+  ],
+  "reviewed_content_digest": "2e5fc78b85cceb18c1cb7acefd465a25815dbf7ae253cbdb46e4c86ac615df89",
+  "product_outcome": "Ship v0.4.1 as the bounded exact Codex whole-plugin selective-restore slice while preserving clean-by-default behavior, requalifying Codex and Claude Code against their current stable releases, and strengthening release drift controls without widening to standalone MCP, --with=all, multi-plugin selection, component surgery, new dependencies or additional platforms.",
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "v0.4.1 adds a new provider activation trust boundary and exposes fast-moving provider-version drift as a release correctness risk. Existing v0.4.0 controls remain necessary but are not sufficient for Codex shadow-PluginStore projection or daily provider updates, so deterministic artifact smoke and current-provider freshness/integrity controls are promoted.",
+    "promoted_controls": [
+      "exact one-bundle Codex shadow PluginStore projection with sibling absence and write denial",
+      "action-time Codex source/provider/projection revalidation before provider birth",
+      "clean→selected→clean Codex artifact capability smoke for accepted main and Draft release bytes",
+      "canonical exact provider pins with npm latest-tag and registry-integrity checks for Codex and Claude Code",
+      "provider freshness recheck at the protected tag action boundary",
+      "release contract tests and qualification evidence verification bound to canonical provider pins rather than duplicated version literals",
+      "continued CycloneDX bundle predicate verification and action-time release-state guards from the post-v0.4.0 main delta"
+    ]
+  }
+}
