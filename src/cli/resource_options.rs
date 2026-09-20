@@ -33,13 +33,28 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                 .exclude_value(value)
                 .map_err(selection_error_message)?;
         } else {
-            if provider == Provider::Claude && launcher_options {
-                if matches!(argument.as_str(), "--chrome" | "--no-chrome") {
-                    raw_chrome_override = true;
-                }
-                if matches!(argument.as_str(), "--plugin-dir" | "--plugin-url")
-                    || argument.starts_with("--plugin-dir=")
-                    || argument.starts_with("--plugin-url=")
+            if launcher_options {
+                if provider == Provider::Claude {
+                    if matches!(argument.as_str(), "--chrome" | "--no-chrome") {
+                        raw_chrome_override = true;
+                    }
+                    if matches!(argument.as_str(), "--plugin-dir" | "--plugin-url")
+                        || argument.starts_with("--plugin-dir=")
+                        || argument.starts_with("--plugin-url=")
+                    {
+                        raw_plugin_activation = true;
+                    }
+                } else if provider == Provider::Codex
+                    && matches!(
+                        argument.as_str(),
+                        "-c"
+                            | "--config"
+                            | "--profile"
+                            | "-p"
+                            | "--enable"
+                            | "--disable"
+                            | "--plugin"
+                    )
                 {
                     raw_plugin_activation = true;
                 }
@@ -65,21 +80,19 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .iter()
         .chain(request.excludes.iter())
         .any(|target| match target {
-            SelectionTarget::Exact { kind, .. } => {
-                provider != Provider::Claude || *kind != ResourceKind::Plugin
-            }
+            SelectionTarget::Exact { kind, .. } => *kind != ResourceKind::Plugin,
             SelectionTarget::All => false,
         });
     if unsupported_exact {
         return Err(
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Claude whole-plugin selection is available in v0.4.0; continue locally"
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available in v0.4.x; continue locally"
                 .to_owned(),
         );
     }
 
     if !request.is_empty() && raw_plugin_activation {
         return Err(
-            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: raw Claude plugin activation flags cannot be combined with CLROOM --with/--without selection"
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: raw provider plugin/config activation controls cannot be combined with CLROOM --with/--without selection"
                 .to_owned(),
         );
     }
@@ -169,11 +182,11 @@ mod tests {
     }
 
     #[test]
-    fn codex_mcp_and_all_remain_closed_in_v0_4_0() {
+    fn unsupported_resource_kinds_and_all_remain_closed_in_v0_4_x() {
         for (provider, selector, code) in [
             (
                 Provider::Codex,
-                "--with=plugin:review-tools@team",
+                "--without=mcp:local-tools",
                 "CLROOM_RESOURCE_NOT_SELECTABLE:",
             ),
             (
@@ -190,6 +203,62 @@ mod tests {
             let error = prepare(provider, &strings(&[selector])).unwrap_err();
             assert!(error.starts_with(code), "{error}");
         }
+    }
+
+    #[test]
+    fn codex_exact_plugin_is_preserved_as_structured_selection() {
+        let prepared = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=plugin:codex-app-tools@openai-bundled",
+                "--model",
+                "gpt-5",
+            ]),
+        )
+        .unwrap();
+
+        assert_eq!(
+            prepared.request.includes.iter().collect::<Vec<_>>(),
+            vec![&SelectionTarget::Exact {
+                kind: ResourceKind::Plugin,
+                id: "codex-app-tools@openai-bundled".to_owned(),
+            }]
+        );
+        assert_eq!(prepared.provider_args, strings(&["--model", "gpt-5"]));
+    }
+
+    #[test]
+    fn raw_codex_plugin_or_config_controls_conflict_only_before_terminator() {
+        for flag in ["-c", "--config", "--profile", "-p", "--enable", "--disable", "--plugin"] {
+            let error = prepare(
+                Provider::Codex,
+                &strings(&[
+                    "--with=plugin:codex-app-tools@openai-bundled",
+                    flag,
+                    "synthetic",
+                ]),
+            )
+            .unwrap_err();
+            assert!(
+                error.starts_with("CLROOM_RESOURCE_ACTIVATION_CONFLICT:"),
+                "{flag}: {error}"
+            );
+        }
+
+        let literal = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=plugin:codex-app-tools@openai-bundled",
+                "--",
+                "-c",
+                "features.plugins=false",
+            ]),
+        )
+        .unwrap();
+        assert_eq!(
+            literal.provider_args,
+            strings(&["--", "-c", "features.plugins=false"])
+        );
     }
 
     #[test]
