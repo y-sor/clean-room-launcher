@@ -17,41 +17,10 @@ command -v openssl >/dev/null 2>&1 || fail "OPENSSL_REQUIRED"
 command -v python3 >/dev/null 2>&1 || fail "PYTHON_REQUIRED"
 command -v cmp >/dev/null 2>&1 || fail "CMP_REQUIRED"
 
-CODEX_VERSION=0.155.1
-CLAUDE_VERSION=2.1.278
-CODEX_SHA512='FV/x1OHXYv/ifjf3mXj9ThTTAWcUZN6cGIRQRhRxkKNOPuImu1WW0c8ev1vUkE9XGH90dEnYG1tBjIkxRikg0w=='
-CODEX_PLATFORM_SHA512='HP/vJCH/t2hB9Kg6hotN9UglClJ6/z584fal5lEP14C9gNAgAQS4/kTQC7l5V+BA3TqwDPwINSjul28cX8AYXg=='
-CLAUDE_SHA512='sOwHBM69H8Zka3/D3rc2VNNemPYNlgfYTdhsoqPoXZdK5KcKQlzoue4asJ2RVc+tGb/Pz1qxjVV9nVJQ87W7Ng=='
-CLAUDE_PLATFORM_SHA512='l3CI1gPSCGkWNbAnX66SbDF4uFBecCCLu9FLN43JSbMMds5cb6tjOTBMSTr1ydZRZALW9AC/PYabtQOgXIbK5Q=='
-
-pin_mismatch=0
-verify_latest() {
-  local package=$1 expected=$2 latest
-  latest=$(npm view "$package" dist-tags.latest --silent) || fail "LATEST_LOOKUP_FAILED"
-  if [[ "$latest" != "$expected" ]]; then
-    printf 'PROVIDER_LATEST_MISMATCH package=%s pinned=%s latest=%s\n' "$package" "$expected" "$latest" >&2
-    pin_mismatch=1
-  fi
-}
-
-verify_registry_integrity() {
-  local spec=$1 expected_sha512=$2 actual
-  actual=$(npm view "$spec" dist.integrity --silent) || fail "INTEGRITY_LOOKUP_FAILED"
-  if [[ "$actual" != "sha512-$expected_sha512" ]]; then
-    printf 'PROVIDER_REGISTRY_INTEGRITY_MISMATCH spec=%s expected=sha512-%s actual=%s\n' \
-      "$spec" "$expected_sha512" "$actual" >&2
-    pin_mismatch=1
-  fi
-}
-
-verify_latest '@openai/codex' "$CODEX_VERSION"
-verify_latest '@anthropic-ai/claude-code' "$CLAUDE_VERSION"
-verify_latest '@anthropic-ai/claude-code-darwin-arm64' "$CLAUDE_VERSION"
-verify_registry_integrity "@openai/codex@$CODEX_VERSION" "$CODEX_SHA512"
-verify_registry_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64" "$CODEX_PLATFORM_SHA512"
-verify_registry_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION" "$CLAUDE_SHA512"
-verify_registry_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" "$CLAUDE_PLATFORM_SHA512"
-[[ $pin_mismatch -eq 0 ]] || fail "PIN_REGISTRY_MISMATCH"
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+# shellcheck source=provider-pins.sh
+source "$root/scripts/release/provider-pins.sh"
+bash "$root/scripts/release/check-provider-pins.sh"
 
 rm -rf "$provider_root"
 mkdir -p "$provider_root/packs"
