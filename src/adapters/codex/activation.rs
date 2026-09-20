@@ -3,9 +3,9 @@ use crate::{
     catalog::{
         provider_inventory::{self, PluginInventory, Provider},
         resource::{QualificationState, ResourceKind, SelectionState},
-        selection::{SelectionError, SelectionRequest, SelectionTarget, plan_selection},
+        selection::{plan_selection, SelectionError, SelectionRequest, SelectionTarget},
     },
-    core::inventory::{AdmittedRoot, SourceRecord, inventory, sha256_hex},
+    core::inventory::{inventory, sha256_hex, AdmittedRoot, SourceRecord},
 };
 use std::{
     fs,
@@ -19,6 +19,7 @@ const LOGICAL_PREFIX: &str = "plugin";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PluginActivationPlan {
     plugin_id: String,
+    mcp_server_ids: Vec<String>,
     root: PathBuf,
     relative_store_path: PathBuf,
     source_digest: String,
@@ -52,13 +53,25 @@ impl PluginActivationPlan {
         &self.source_digest
     }
 
-    pub fn provider_config_args(&self) -> Vec<String> {
-        vec![
+    pub fn provider_config_args(&self) -> Result<Vec<String>, ActivationError> {
+        let plugin_key = toml_basic_string(&self.plugin_id)?;
+        let mcp_servers = self
+            .mcp_server_ids
+            .iter()
+            .map(|id| Ok(format!("{}={{enabled=true}}", toml_basic_string(id)?)))
+            .collect::<Result<Vec<_>, ActivationError>>()?;
+        let mut plugin_config = "enabled=true".to_owned();
+        if !mcp_servers.is_empty() {
+            plugin_config.push_str(",mcp_servers={");
+            plugin_config.push_str(&mcp_servers.join(","));
+            plugin_config.push('}');
+        }
+        Ok(vec![
             "-c".to_owned(),
             "features.plugins=true".to_owned(),
             "-c".to_owned(),
-            format!("plugins.\"{}\".enabled=true", self.plugin_id),
-        ]
+            format!("plugins={{{plugin_key}={{{plugin_config}}}}}"),
+        ])
     }
 
     pub fn revalidate(
@@ -78,6 +91,9 @@ impl PluginActivationPlan {
             || inventory.entry.qualification != QualificationState::Qualified
             || !inventory.conflicts.is_empty()
         {
+            return Err(ActivationError::StateChanged);
+        }
+        if mcp_server_ids(&inventory) != self.mcp_server_ids {
             return Err(ActivationError::StateChanged);
         }
         if relative_store_path(ambient_codex_home, &self.root).as_deref()
@@ -241,10 +257,43 @@ fn activation_from_inventory(
     let source_digest = bundle_digest(&root)?;
     Ok(Some(PluginActivationPlan {
         plugin_id: inventory.entry.resource.id.clone(),
+        mcp_server_ids: mcp_server_ids(inventory),
         root,
         relative_store_path,
         source_digest,
     }))
+}
+
+fn mcp_server_ids(inventory: &PluginInventory) -> Vec<String> {
+    let mut ids = inventory
+        .effective_components
+        .iter()
+        .filter(|component| component.kind == ResourceKind::McpServer)
+        .map(|component| component.id.clone())
+        .collect::<Vec<_>>();
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
+fn toml_basic_string(value: &str) -> Result<String, ActivationError> {
+    let mut encoded = String::with_capacity(value.len() + 2);
+    encoded.push('"');
+    for character in value.chars() {
+        match character {
+            '"' => encoded.push_str("\\\""),
+            '\\' => encoded.push_str("\\\\"),
+            '\u{08}' => encoded.push_str("\\b"),
+            '\u{0c}' => encoded.push_str("\\f"),
+            '\n' => encoded.push_str("\\n"),
+            '\r' => encoded.push_str("\\r"),
+            '\t' => encoded.push_str("\\t"),
+            character if character.is_control() => return Err(ActivationError::InvalidSource),
+            character => encoded.push(character),
+        }
+    }
+    encoded.push('"');
+    Ok(encoded)
 }
 
 fn relative_store_path(ambient_codex_home: &Path, root: &Path) -> Option<PathBuf> {
@@ -384,15 +433,16 @@ fn make_tree_read_only(root: &Path) -> Result<(), ActivationError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ActivationError, bundle_digest, plan};
+    use super::{bundle_digest, plan, toml_basic_string, ActivationError, PluginActivationPlan};
     use crate::{
         adapters::identity::ProviderIdentity,
-        catalog::{
-            provider_inventory::CODEX_PLUGIN_ACTIVATION_EXACT,
-            selection::SelectionRequest,
-        },
+        catalog::{provider_inventory::CODEX_PLUGIN_ACTIVATION_EXACT, selection::SelectionRequest},
     };
-    use std::{fs, path::PathBuf, sync::atomic::{AtomicU64, Ordering}};
+    use std::{
+        fs,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+    };
 
     static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -405,14 +455,17 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         let home = root.join("home");
         let codex_home = home.join(".codex");
-        let plugin = codex_home.join(
-            "plugins/cache/openai-bundled/codex-app-tools/0.1.4",
-        );
+        let plugin = codex_home.join("plugins/cache/openai-bundled/codex-app-tools/0.1.4");
         fs::create_dir_all(plugin.join(".codex-plugin")).unwrap();
         fs::create_dir_all(plugin.join("skills/review")).unwrap();
         fs::write(
             plugin.join(".codex-plugin/plugin.json"),
             r#"{"name":"codex-app-tools","skills":["./skills"]}"#,
+        )
+        .unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            r#"{"mcpServers":{"alpha.server":{"command":"node","args":[]},"zeta":{"command":"node","args":[]}}}"#,
         )
         .unwrap();
         fs::write(plugin.join("skills/review/SKILL.md"), "fixture\n").unwrap();
@@ -455,12 +508,12 @@ mod tests {
         );
         assert_eq!(activation.source_digest(), bundle_digest(&plugin).unwrap());
         assert_eq!(
-            activation.provider_config_args(),
+            activation.provider_config_args().unwrap(),
             vec![
                 "-c",
                 "features.plugins=true",
                 "-c",
-                "plugins.\"codex-app-tools@openai-bundled\".enabled=true",
+                "plugins={\"codex-app-tools@openai-bundled\"={enabled=true,mcp_servers={\"alpha.server\"={enabled=true},\"zeta\"={enabled=true}}}}",
             ]
         );
         assert_eq!(activation.revalidate(&home, &codex_home), Ok(()));
@@ -484,6 +537,90 @@ mod tests {
         assert_eq!(
             plan(&home, &codex_home, &request, &identity(drifted)),
             Err(ActivationError::ProviderTupleNotQualified)
+        );
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn provider_owned_dots_remain_single_plugin_and_mcp_keys() {
+        let activation = PluginActivationPlan {
+            plugin_id: "vendor.plugin@openai-bundled".to_owned(),
+            mcp_server_ids: vec!["server.one".to_owned()],
+            root: PathBuf::new(),
+            relative_store_path: PathBuf::new(),
+            source_digest: String::new(),
+        };
+
+        assert_eq!(
+            activation.provider_config_args().unwrap(),
+            vec![
+                "-c",
+                "features.plugins=true",
+                "-c",
+                "plugins={\"vendor.plugin@openai-bundled\"={enabled=true,mcp_servers={\"server.one\"={enabled=true}}}}",
+            ]
+        );
+    }
+
+    #[test]
+    fn zero_mcp_plugins_receive_only_exact_plugin_enablement() {
+        let activation = PluginActivationPlan {
+            plugin_id: "codex-app-tools@openai-bundled".to_owned(),
+            mcp_server_ids: Vec::new(),
+            root: PathBuf::new(),
+            relative_store_path: PathBuf::new(),
+            source_digest: String::new(),
+        };
+
+        let args = activation.provider_config_args().unwrap();
+        assert_eq!(
+            args[3],
+            "plugins={\"codex-app-tools@openai-bundled\"={enabled=true}}"
+        );
+        assert!(!args[3].contains("mcp_servers"));
+        assert!(!args[3].contains("marketplaces"));
+    }
+
+    #[test]
+    fn provider_id_escaping_is_deterministic_and_control_safe() {
+        assert_eq!(
+            toml_basic_string("vendor\\\\plugin\"name"),
+            Ok("\"vendor\\\\\\\\plugin\\\"name\"".to_owned())
+        );
+        assert_eq!(
+            toml_basic_string("line\nfeed"),
+            Ok("\"line\\nfeed\"".to_owned())
+        );
+        assert_eq!(
+            toml_basic_string("bad\u{0001}"),
+            Err(ActivationError::InvalidSource)
+        );
+    }
+
+    #[test]
+    fn mcp_component_drift_is_refused_during_revalidation() {
+        let (home, codex_home, plugin) = fixture();
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        let activation = plan(
+            &home,
+            &codex_home,
+            &request,
+            &identity(CODEX_PLUGIN_ACTIVATION_EXACT),
+        )
+        .unwrap()
+        .unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            r#"{"mcpServers":{"alpha.server":{"command":"node","args":[]},"other.server":{"command":"node","args":[]}}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            activation.revalidate(&home, &codex_home),
+            Err(ActivationError::StateChanged)
         );
         let _ = fs::remove_dir_all(home.parent().unwrap());
     }

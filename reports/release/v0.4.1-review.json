@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.1",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "3c4d2ece00a45378eba332252901dfd2f9d76751",
+  "reviewed_through_commit": "e5c8968209ec673fe30c60dff0cd7e47ca4052cb",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -106,6 +106,12 @@
       "id": "codex-shadow-generation-sandbox-protection-drift",
       "decision": "CONTRACT_EXPAND",
       "durable_control": "Codex state management and sandbox write denial consume the same shared active shadow-generation constant; regression coverage requires the sandbox profile to protect the active v2 plugin cache and not the preserved legacy v1 cache."
+    },
+    {
+      "id": "codex-cli-plugin-map-path-and-mcp-policy-misaddress",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Codex CLI dotted-path encoding can misaddress provider-owned plugin IDs, and selected whole-plugin MCP capability can remain disabled by provider MCP policy.",
+      "durable_control": "Atomic root-level exact-plugin config with MCP enablement derived only from the captured exact bundle inventory, covered by real-provider clean→selected→clean qualification."
     }
   ],
   "artifact_capability_gates": [
@@ -130,7 +136,7 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.1 bytes after checksum and attestation verification, bound to current-stable Claude Code 2.1.278."
     }
   ],
-  "reviewed_content_digest": "41e1932b8c3b995a0d16296e9194f978c8f3ece96ed3527d6ed245a45d4369ef",
+  "reviewed_content_digest": "1c3ece5778d8d798951a8febc59b03bde4ade2493dcc776aeadbf54b9952a382",
   "product_outcome": "Ship v0.4.1 as the bounded exact Codex whole-plugin selective-restore slice while preserving clean-by-default behavior, requalifying Codex and Claude Code against their current stable releases, and strengthening release drift controls without widening to standalone MCP, --with=all, multi-plugin selection, component surgery, new dependencies or additional platforms.",
   "contract_evolution_review": {
     "decision": "EXPAND",
