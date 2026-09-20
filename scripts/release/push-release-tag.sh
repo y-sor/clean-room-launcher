@@ -118,7 +118,7 @@ path, version, expected, expected_claude_version = sys.argv[1:]
 with open(path, encoding="utf-8") as handle:
     record = json.load(handle)
 required = {
-    "schema_version": "clroom.plugin-release-smoke.v1",
+    "schema_version": "clroom.plugin-release-smoke.v2",
     "result": "PASS",
     "phase": "pretag",
     "release_version": version,
@@ -131,7 +131,10 @@ required = {
     "new_sibling_plugins": 0,
     "selected_plugin_errors": 0,
     "persistent_config_unchanged": True,
+    "ambient_agents_md_isolation": True,
+    "ambient_agents_md_log_scope_checked": True,
     "interactive_selected_tui_confirmed": True,
+    "interactive_no_ambient_agents_md_confirmed": True,
     "automated_probe_prompt_supplied": True,
     "interactive_no_model_prompt_confirmed": True,
 }
