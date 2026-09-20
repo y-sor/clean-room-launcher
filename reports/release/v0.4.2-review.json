@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "3a5a74c58be45a2366e7586e0749bf78760631b6",
+  "reviewed_through_commit": "44c9da2e370d1a8c861c0ef7e72f884fcb588946",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -175,5 +175,5 @@
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta"
     ]
   },
-  "reviewed_content_digest": "91abf6287ea5b85b340fcaa3ab3acf2c44de2aceb0aa0eea115fee0ab6833ca0"
+  "reviewed_content_digest": "538b6a48925c8c83d94ad59a32b68042791a44c276cb9e1b8027662c630f31c4"
 }
