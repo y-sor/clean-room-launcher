@@ -76,6 +76,8 @@ done
 for needle in \
   '"schema_version":"clroom.plugin-release-smoke.v2"' \
   '"external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true"' \
+  '"external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true"' \
+  'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS' \
   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'; do
   grep -Fq "$needle" "$claude_smoke" || fail "CLAUDE_INSTRUCTION_BOUNDARY_SMOKE_MISSING"
 done
@@ -93,6 +95,7 @@ done
 for needle in \
   '"schema_version": "clroom.plugin-release-smoke.v2"' \
   '"external_ancestor_agents_absent_confirmed": True' \
+  '"external_ancestor_agents_sandbox_probe_passed": True' \
   'PRETAG_CLAUDE_EVIDENCE_PASS'; do
   grep -Fq "$needle" "$tag_helper" || fail "CLAUDE_TAG_GATE_MISSING"
 done
