@@ -75,6 +75,7 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/local-release-audit.sh \
     scripts/release/push-release-tag.sh \
     scripts/release/local-plugin-activation-smoke.sh \
+    scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -88,6 +89,7 @@ else
     scripts/release/local-release-audit.sh \
     scripts/release/push-release-tag.sh \
     scripts/release/local-plugin-activation-smoke.sh \
+    scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
