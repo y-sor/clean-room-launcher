@@ -16,7 +16,7 @@
       "evidence": [
         "Regression coverage proves initialized .tmp provider state survives a later CLROOM launch, preexisting unowned .tmp still fails closed, real Codex qualification executes twice against one synthetic home, pre-tag whole-plugin evidence cannot be written until a post-interactive clean relaunch succeeds, and canonical readiness owns the exact-tag Draft verifier.",
         "Release-domain classification explicitly maps scripts/probe/** to the tests domain, and the release-contract self-test includes the sitemap probe path so future probe scripts cannot silently become unclassified release delta.",
-        "macOS isolation coverage proves HOME/workspace ancestor AGENTS.md and .claude/AGENTS.md are unreadable while project AGENTS.md variants remain readable; the launched Claude fixture also requires project AGENTS readability and ambient HOME/AGENTS denial."
+        "macOS Seatbelt isolation coverage models a project nested beneath HOME/workspace and proves external ancestor AGENTS.md and .claude/AGENTS.md are unreadable while project AGENTS.md variants remain readable."
       ]
     },
     "dependencies": {
