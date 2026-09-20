@@ -68,9 +68,9 @@ CLROOM preflights this capability and injects the flag for its qualified
 selected-skill inventory. Interactive Codex uses the same existing isolation
 path without that exec-only flag.
 
-## v0.4.1: select one installed whole plugin
+## v0.4.2: select one installed whole plugin
 
-The v0.4.1 source adds one bounded Codex whole-plugin selector for the
+The v0.4.2 source adds one bounded Codex whole-plugin selector for the
 interactive launch path:
 
 ```sh
@@ -94,7 +94,7 @@ Raw Codex configuration/plugin controls such as `-c`, `--config`,
 `--profile`, `--enable`, `--disable`, and `--plugin` are refused while a
 CLROOM plugin selection is active, so there is only one activation authority.
 
-The exact v0.4.1 qualification target is Codex CLI `0.155.1` on macOS Apple
+The exact v0.4.2 qualification target is Codex CLI `0.155.1` on macOS Apple
 Silicon. Release qualification additionally requires clean → selected → clean
 evidence against the exact candidate bytes and the current stable provider
 bytes. The ordinary parser/runtime minimum remains `0.147.0+`.
