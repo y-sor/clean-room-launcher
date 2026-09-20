@@ -5,8 +5,9 @@ import hashlib, json, os, re, sys, tarfile, tempfile
 FIELDS = {"schema_version", "qualification", "scope", "real_provider_executed", "fake_provider", "provider", "provider_version", "provider_digest", "clroom_source_head", "release_version", "target", "candidate_digest", "launch_path", "synthetic_ambient_config_present", "synthetic_ambient_config_applied", "exit_class"}
 def fail(message):
     raise SystemExit("QUALIFICATION_INVALID:" + message)
-if len(sys.argv) != 6: fail("usage")
-archive, evidence, source, version, provider = sys.argv[1:]
+if len(sys.argv) != 7: fail("usage")
+archive, evidence, source, version, provider, expected_provider_version = sys.argv[1:]
+if not re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", expected_provider_version): fail("expected-provider-version")
 try:
     record = json.load(open(evidence, encoding="utf-8"))
 except (OSError, ValueError): fail("malformed")
@@ -16,7 +17,7 @@ expected_scope = "real-provider-interactive-startup-no-model" if provider == "co
 if record["scope"] != expected_scope or not record["real_provider_executed"] or record["fake_provider"] or record["synthetic_ambient_config_applied"] is not False: fail("provider-evidence")
 if provider == "codex" and record["launch_path"] != "clroom codex --no-alt-screen (PTY)": fail("interactive-path")
 if provider == "codex" and record["exit_class"] != "interactive-provider-observed": fail("provider-observation")
-if record["provider"] != provider or record["provider_version"] not in {"0.154.0", "2.1.272"}: fail("provider-version")
+if record["provider"] != provider or record["provider_version"] != expected_provider_version: fail("provider-version")
 if record["clroom_source_head"] != source or record["release_version"] != version: fail("source-version")
 if not record["synthetic_ambient_config_present"] or record["synthetic_ambient_config_applied"]: fail("ambient-config")
 if not re.fullmatch(r"[0-9a-f]{64}", record["candidate_digest"]): fail("candidate-digest")
