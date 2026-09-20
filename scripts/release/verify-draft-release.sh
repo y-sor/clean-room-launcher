@@ -181,6 +181,7 @@ for record, phase in [(cp, "pretag"), (cd, "draft")]:
         "new_sibling_plugins": 0,
         "selected_plugin_errors": 0,
         "persistent_config_unchanged": True,
+        "external_ancestor_agents_sandbox_probe_passed": True,
     }
     for key, value in required.items():
         if record.get(key) != value:
