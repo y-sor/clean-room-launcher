@@ -2,19 +2,21 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "7ab2224a181638e70ac716f2ea677f00f477428b",
+  "reviewed_through_commit": "5f8e4c6416d5fcdbed4adbcdadfe2dd876c973c8",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed."
+        "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed.",
+        "Claude Code 2.1.278 introduced a built-in agents-md ancestor walk for AGENTS.md and .claude/AGENTS.md. CLROOM now denies those exact files only above the selected current-project boundary while preserving the same instruction names at and below the project boundary."
       ]
     },
     "tests": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Regression coverage proves initialized .tmp provider state survives a later CLROOM launch, preexisting unowned .tmp still fails closed, real Codex qualification executes twice against one synthetic home, pre-tag whole-plugin evidence cannot be written until a post-interactive clean relaunch succeeds, and canonical readiness owns the exact-tag Draft verifier.",
-        "Release-domain classification explicitly maps scripts/probe/** to the tests domain, and the release-contract self-test includes the sitemap probe path so future probe scripts cannot silently become unclassified release delta."
+        "Release-domain classification explicitly maps scripts/probe/** to the tests domain, and the release-contract self-test includes the sitemap probe path so future probe scripts cannot silently become unclassified release delta.",
+        "macOS isolation coverage proves HOME/workspace ancestor AGENTS.md and .claude/AGENTS.md are unreadable while project AGENTS.md variants remain readable; the launched Claude fixture also requires project AGENTS readability and ambient HOME/AGENTS denial."
       ]
     },
     "dependencies": {
@@ -33,14 +35,16 @@
     "release": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "The pre-tag helper accepts only lifecycle-aware Codex v2 evidence with a successful clean relaunch after the interactive selected-plugin TUI. A new canonical verify-draft-release.sh reconciles exact tag/SHA identity, Draft assets, checksums, attestations, current provider pins, local pre-tag/Draft evidence, and every exact-tag push Action before any publish gate; canonical readiness verifies this verifier is executable and shell-valid."
+        "The pre-tag helper accepts only lifecycle-aware Codex v2 evidence with a successful clean relaunch after the interactive selected-plugin TUI. A new canonical verify-draft-release.sh reconciles exact tag/SHA identity, Draft assets, checksums, attestations, current provider pins, local pre-tag/Draft evidence, and every exact-tag push Action before any publish gate; canonical readiness verifies this verifier is executable and shell-valid.",
+        "Claude pre-tag evidence advances to clroom.plugin-release-smoke.v2 and protected-tag validation requires external_ancestor_agents_absent_confirmed=true, so a real selected-plugin TUI that reports an external ancestor AGENTS.md cannot authorize a tag."
       ]
     },
     "public_claims": {
       "decision": "COVERED",
       "evidence": [
         "Current README and Codex/Claude/limitations documentation identify v0.4.2 as the candidate capability version, while CHANGELOG records that v0.4.1 remained an unpublished Draft candidate and that v0.4.2 supersedes it.",
-        "The published GitHub Pages sitemap is now checked end to end against the canonical y-sor.github.io/clean-room-launcher URL surface, so malformed XML, foreign-host entries, duplicates, missing canonical home, redirects, and non-XML responses fail the discovery pipeline instead of being inferred from source configuration alone."
+        "The published GitHub Pages sitemap is now checked end to end against the canonical y-sor.github.io/clean-room-launcher URL surface, so malformed XML, foreign-host entries, duplicates, missing canonical home, redirects, and non-XML responses fail the discovery pipeline instead of being inferred from source configuration alone.",
+        "The Claude launch plaque now reports Global AGENTS.md off, and Claude documentation describes the 2.1.278 agents-md boundary instead of implying that CLAUDE.md is the provider's only instruction surface."
       ]
     }
   },
@@ -145,6 +149,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Source-level sitemap configuration could pass while the deployed GitHub Pages sitemap was malformed, redirected, stale, foreign-hosted, or otherwise unusable by crawlers.",
       "durable_control": "CI validates the sitemap template and negative fixtures, while the same-SHA post-Pages IndexNow workflow fetches the canonical live sitemap with redirects refused and bounded XML/canonical-URL validation before search-engine notification."
+    },
+    {
+      "id": "claude-provider-pin-added-ambient-agents-instruction-surface",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Pinned Claude Code 2.1.278 added a built-in agents-md ancestor walk. The existing clean-launch model and pre-tag smoke covered CLAUDE.md/settings/skills but allowed an external ancestor AGENTS.md to enter the real selected-plugin TUI.",
+      "durable_control": "Claude isolation now denies AGENTS.md and .claude/AGENTS.md above the selected current-project boundary while preserving project-local files; regression coverage proves both directions, the plaque exposes the boundary, and pre-tag evidence v2 plus the tag helper require real-TUI confirmation that no external ancestor AGENTS.md was loaded."
     }
   ],
   "artifact_capability_gates": [
@@ -161,7 +171,7 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRE_TAG",
-      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.278 using exact accepted-main v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, and normal selected-plugin interactive TUI without a model prompt."
+      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.278 using exact accepted-main v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, project AGENTS retention, external ancestor AGENTS exclusion, and a normal selected-plugin interactive TUI without a model prompt. Accepted v2 evidence must confirm no external ancestor AGENTS.md was reported as loaded."
     },
     {
       "id": "claude-skill-only-plugin-activation",
@@ -169,10 +179,10 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.2 bytes after checksum and attestation verification, bound to Claude Code 2.1.278, then include its evidence in canonical exact-tag pre-publish reconciliation."
     }
   ],
-  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness. The same candidate also hardens public discovery by verifying the deployed canonical sitemap before IndexNow notification.",
+  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness. The same candidate also hardens public discovery by verifying the deployed canonical sitemap before IndexNow notification. The candidate also closes Claude 2.1.278 built-in agents-md ambient-instruction drift so external ancestor AGENTS instructions cannot cross the selected current-project boundary.",
   "contract_evolution_review": {
     "decision": "EXPAND",
-    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance. The candidate also closes a public-discovery verification gap by promoting the sitemap from source-only checks to a same-SHA deployed canary before IndexNow notification.",
+    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance. The candidate also closes a public-discovery verification gap by promoting the sitemap from source-only checks to a same-SHA deployed canary before IndexNow notification. A second pre-tag near miss showed that a provider pin can add a new ambient instruction surface without a CLROOM code change: Claude 2.1.278 loaded an external ancestor AGENTS.md through built-in agents-md, so provider-version qualification now includes ambient-input-surface revalidation.",
     "promoted_controls": [
       "initialized-only Codex .tmp provider-state admission with preexisting-unowned-state negative coverage",
       "two-start real Codex qualification against one synthetic HOME with v2 machine-verified lifecycle evidence",
@@ -182,7 +192,9 @@
       "canonical readiness ownership of the Draft verifier executable and shellcheck/syntax surface",
       "evidence naming that distinguishes unchanged ambient config/plugin inputs from intentionally evolving CLROOM shadow provider state",
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta",
-      "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification"
+      "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification",
+      "Claude 2.1.278 external-ancestor AGENTS.md/.claude/AGENTS.md deny with positive project-local retention tests and truthful Global AGENTS.md launch status",
+      "Claude pre-tag smoke/evidence v2 and protected-tag gate requiring confirmation that the real selected-plugin TUI loaded no external ancestor AGENTS.md"
     ]
   },
   "reviewed_content_digest": "562d2a75045ec1e488d7df12dc63b38333a8047ebbdfeab85d10491630eda379"
