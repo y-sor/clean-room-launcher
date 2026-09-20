@@ -7,7 +7,7 @@ def fail(message):
     raise SystemExit("QUALIFICATION_INVALID:" + message)
 if len(sys.argv) != 7: fail("usage")
 archive, evidence, source, version, provider, expected_provider_version = sys.argv[1:]
-if not re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", expected_provider_version): fail("expected-provider-version")
+if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", expected_provider_version): fail("expected-provider-version")
 try:
     record = json.load(open(evidence, encoding="utf-8"))
 except (OSError, ValueError): fail("malformed")
