@@ -10,9 +10,10 @@ use crate::catalog::resource::{
 };
 use std::path::{Path, PathBuf};
 
-pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 154, 0);
-pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 272);
-pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 273);
+pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 155, 1);
+pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 278);
+pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 155, 1);
+pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 278);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Provider {
@@ -86,8 +87,10 @@ pub fn plugin_activation_exact_tuple(
 ) -> bool {
     os == "macos"
         && arch == "aarch64"
-        && provider == Provider::Claude
-        && version == CLAUDE_PLUGIN_ACTIVATION_EXACT
+        && match provider {
+            Provider::Codex => version == CODEX_PLUGIN_ACTIVATION_EXACT,
+            Provider::Claude => version == CLAUDE_PLUGIN_ACTIVATION_EXACT,
+        }
 }
 
 pub fn valid_plugin_key(provider: Provider, value: &str) -> bool {
@@ -175,11 +178,8 @@ pub fn inspect_plugin_with_home(
             .unwrap_or_default();
 
     let expected_plugin_name = plugin_id.rsplit_once('@').map(|(name, _)| name);
-    let activation_identity_qualified = provider != Provider::Claude
-        || manifest_name.as_deref() == expected_plugin_name;
-    let activation_identity_blocker = if provider != Provider::Claude
-        || activation_identity_qualified
-    {
+    let activation_identity_qualified = manifest_name.as_deref() == expected_plugin_name;
+    let activation_identity_blocker = if activation_identity_qualified {
         None
     } else if manifest_name.is_none() {
         Some("PLUGIN_IDENTITY_UNPROVEN")
@@ -195,13 +195,17 @@ pub fn inspect_plugin_with_home(
         conflicts.push(blocker.to_owned());
     }
 
-    let activation_surface_qualified = activation_surface_eligible
-        && !effective_components.is_empty()
-        && effective_components
-            .iter()
-            .all(|component| component.kind == ResourceKind::Skill);
-    let activation_qualified = provider == Provider::Claude
-        && activation_tuple_qualified
+    let activation_surface_qualified = match provider {
+        Provider::Claude => {
+            activation_surface_eligible
+                && !effective_components.is_empty()
+                && effective_components
+                    .iter()
+                    .all(|component| component.kind == ResourceKind::Skill)
+        }
+        Provider::Codex => !effective_components.is_empty(),
+    };
+    let activation_qualified = activation_tuple_qualified
         && activation_identity_qualified
         && activation_surface_qualified
         && installation_state == InstallationState::Installed
@@ -315,6 +319,7 @@ mod tests {
     use super::{
         clean_launch_exact_tuple, inspect_plugin, plugin_activation_exact_tuple, Provider,
         CLAUDE_CLEAN_EXACT, CLAUDE_PLUGIN_ACTIVATION_EXACT, CODEX_CLEAN_EXACT,
+        CODEX_PLUGIN_ACTIVATION_EXACT,
     };
     use crate::catalog::resource::{QualificationState, ResourceKind, SelectionState};
     use std::{
@@ -546,16 +551,22 @@ mod tests {
     }
 
     #[test]
-    fn clean_launch_and_plugin_activation_tuples_are_behavior_specific() {
+    fn current_exact_tuples_are_provider_specific_and_platform_bound() {
+        assert!(clean_launch_exact_tuple(
+            Provider::Codex,
+            CODEX_CLEAN_EXACT,
+            "macos",
+            "aarch64"
+        ));
         assert!(clean_launch_exact_tuple(
             Provider::Claude,
             CLAUDE_CLEAN_EXACT,
             "macos",
             "aarch64"
         ));
-        assert!(!clean_launch_exact_tuple(
-            Provider::Claude,
-            CLAUDE_PLUGIN_ACTIVATION_EXACT,
+        assert!(plugin_activation_exact_tuple(
+            Provider::Codex,
+            CODEX_PLUGIN_ACTIVATION_EXACT,
             "macos",
             "aarch64"
         ));
@@ -566,8 +577,8 @@ mod tests {
             "aarch64"
         ));
         assert!(!plugin_activation_exact_tuple(
-            Provider::Claude,
-            CLAUDE_CLEAN_EXACT,
+            Provider::Codex,
+            (0, 155, 0),
             "macos",
             "aarch64"
         ));
@@ -577,11 +588,57 @@ mod tests {
             "linux",
             "aarch64"
         ));
-        assert!(!plugin_activation_exact_tuple(
-            Provider::Codex,
-            CODEX_CLEAN_EXACT,
-            "macos",
-            "aarch64"
+    }
+
+    #[test]
+    fn codex_plugin_is_selectable_only_on_the_exact_activation_tuple() {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-provider-codex-plugin-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ));
+        let _ = fs::remove_dir_all(&root);
+        let home = root.join("home");
+        let codex_home = home.join(".codex");
+        let plugin = codex_home.join(
+            "plugins/cache/openai-bundled/codex-app-tools/0.1.4",
+        );
+        fs::create_dir_all(plugin.join(".codex-plugin")).unwrap();
+        fs::create_dir_all(plugin.join("skills/review")).unwrap();
+        fs::write(
+            plugin.join(".codex-plugin/plugin.json"),
+            r#"{"name":"codex-app-tools","skills":["./skills"]}"#,
+        )
+        .unwrap();
+        fs::write(plugin.join("skills/review/SKILL.md"), "fixture\n").unwrap();
+
+        let qualified = inspect_plugin(
+            Provider::Codex,
+            &home,
+            Some(&codex_home),
+            "codex-app-tools@openai-bundled",
+            true,
+        );
+        assert_eq!(qualified.entry.selection, SelectionState::Selectable);
+        assert_eq!(qualified.entry.qualification, QualificationState::Qualified);
+        assert!(qualified.conflicts.is_empty());
+
+        let drifted = inspect_plugin(
+            Provider::Codex,
+            &home,
+            Some(&codex_home),
+            "codex-app-tools@openai-bundled",
+            false,
+        );
+        assert_eq!(drifted.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(drifted.entry.qualification, QualificationState::Unqualified);
+        assert!(
+            drifted
+                .conflicts
+                .iter()
+                .any(|reason| reason == "PROVIDER_TUPLE_NOT_QUALIFIED")
+        );
+
+        let _ = fs::remove_dir_all(root);
     }
 }
