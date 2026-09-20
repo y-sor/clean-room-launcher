@@ -932,7 +932,7 @@ fn interactive_claude_launch_keeps_the_clean_room_plaque_visible() {
     );
     let transcript = String::from_utf8(output.stdout).unwrap().replace('\r', "");
     assert!(transcript.contains("CLEAN ROOM"));
-    assert!(transcript.contains("Global CLAUDE.md"));
+    assert!(transcript.contains("Global instructions"));
     assert!(transcript.contains("Global skills"));
     assert!(transcript.contains("2 on"));
     assert!(transcript.contains("User settings"));
