@@ -550,7 +550,18 @@ mod tests {
         sync::atomic::{AtomicU64, Ordering},
     };
 
-    use super::{prepare, STATE_MARKER};
+    use clroom::{
+        adapters::{
+            codex::activation,
+            identity::ProviderIdentity,
+        },
+        catalog::{
+            provider_inventory::CODEX_PLUGIN_ACTIVATION_EXACT,
+            selection::SelectionRequest,
+        },
+    };
+
+    use super::{prepare, PLUGIN_PROJECTION_MARKER, STATE_MARKER};
 
     static TEST_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -827,6 +838,141 @@ mod tests {
         let resumed = prepare(&home, &ambient_codex_home, &[], None).unwrap();
 
         assert_eq!(resumed, state);
+    }
+
+    fn plugin_activation_fixture(
+        scratch: &Scratch,
+    ) -> (PathBuf, PathBuf, activation::PluginActivationPlan) {
+        let home = scratch.0.join("plugin-home");
+        let ambient_codex_home = home.join(".codex");
+        let plugin = ambient_codex_home.join(
+            "plugins/cache/openai-bundled/codex-app-tools/0.1.4",
+        );
+        fs::create_dir_all(plugin.join(".codex-plugin")).unwrap();
+        fs::create_dir_all(plugin.join("skills/review")).unwrap();
+        fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
+        fs::write(
+            plugin.join(".codex-plugin/plugin.json"),
+            r#"{"name":"codex-app-tools","skills":["./skills"]}"#,
+        )
+        .unwrap();
+        fs::write(plugin.join("skills/review/SKILL.md"), b"fixture\n").unwrap();
+
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        let identity = ProviderIdentity {
+            provider_id: "codex".to_owned(),
+            real_executable: PathBuf::from("/usr/local/bin/codex"),
+            artifact_digest: "0".repeat(64),
+            version: CODEX_PLUGIN_ACTIVATION_EXACT,
+            os: "macos".to_owned(),
+            arch: "aarch64".to_owned(),
+            interpreter: None,
+        };
+        let activation = activation::plan(
+            &home,
+            &ambient_codex_home,
+            &request,
+            &identity,
+        )
+        .unwrap()
+        .unwrap();
+        (home, ambient_codex_home, activation)
+    }
+
+    #[test]
+    fn selected_plugin_projection_is_exact_read_only_and_following_clean_removes_it() {
+        let scratch = Scratch::new();
+        let (home, ambient_codex_home, activation) = plugin_activation_fixture(&scratch);
+
+        let selected = prepare(
+            &home,
+            &ambient_codex_home,
+            &[],
+            Some(&activation),
+        )
+        .unwrap();
+        let projected = selected
+            .shadow_home
+            .join("plugins/cache")
+            .join(activation.relative_store_path());
+
+        assert_eq!(
+            activation::bundle_digest(&projected).unwrap(),
+            activation.source_digest()
+        );
+        assert_eq!(
+            fs::metadata(&projected).unwrap().permissions().mode() & 0o222,
+            0
+        );
+        assert!(selected.shadow_home.join(PLUGIN_PROJECTION_MARKER).is_file());
+
+        let clean = prepare(&home, &ambient_codex_home, &[], None).unwrap();
+        assert!(!projected.exists());
+        assert!(!clean.shadow_home.join(PLUGIN_PROJECTION_MARKER).exists());
+        assert!(
+            !clean.shadow_home.join("plugins/cache").exists()
+                || fs::read_dir(clean.shadow_home.join("plugins/cache"))
+                    .unwrap()
+                    .next()
+                    .is_none()
+        );
+    }
+
+    #[test]
+    fn selected_plugin_refuses_unknown_sibling_in_shadow_cache() {
+        let scratch = Scratch::new();
+        let (home, ambient_codex_home, activation) = plugin_activation_fixture(&scratch);
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
+        fs::create_dir_all(
+            state
+                .shadow_home
+                .join("plugins/cache/other-market/sibling/1.0.0"),
+        )
+        .unwrap();
+
+        let error = prepare(
+            &home,
+            &ambient_codex_home,
+            &[],
+            Some(&activation),
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "CLROOM_CODEX_PLUGIN_SIBLING_PRESENT");
+        assert!(
+            state
+                .shadow_home
+                .join("plugins/cache/other-market/sibling/1.0.0")
+                .exists()
+        );
+    }
+
+    #[test]
+    fn tampered_owned_projection_is_preserved_and_refused_not_deleted() {
+        let scratch = Scratch::new();
+        let (home, ambient_codex_home, activation) = plugin_activation_fixture(&scratch);
+        let state = prepare(
+            &home,
+            &ambient_codex_home,
+            &[],
+            Some(&activation),
+        )
+        .unwrap();
+        let projected_file = state
+            .shadow_home
+            .join("plugins/cache")
+            .join(activation.relative_store_path())
+            .join("skills/review/SKILL.md");
+        fs::set_permissions(&projected_file, fs::Permissions::from_mode(0o600)).unwrap();
+        fs::write(&projected_file, b"tampered\n").unwrap();
+
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
+
+        assert_eq!(error, "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED");
+        assert_eq!(fs::read(projected_file).unwrap(), b"tampered\n");
     }
 
     #[test]
