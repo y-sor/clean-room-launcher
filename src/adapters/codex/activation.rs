@@ -10,7 +10,7 @@ use crate::{
 use std::{
     fs,
     io::Write,
-    os::unix::fs::{OpenOptionsExt, PermissionsExt},
+    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Component, Path, PathBuf},
 };
 
@@ -98,10 +98,13 @@ impl PluginActivationPlan {
         }
 
         let records = bundle_records(&self.root)?;
-        if digest_records(&records) != self.source_digest {
+        if digest_records(&self.root, &records)? != self.source_digest {
             return Err(ActivationError::StateChanged);
         }
-        write_records(&destination, &records)?;
+        if let Err(error) = write_records(&destination, &self.root, &records) {
+            cleanup_created_projection(&destination);
+            return Err(error);
+        }
         if bundle_digest(&self.root)? != self.source_digest
             || bundle_digest(&destination)? != self.source_digest
         {
@@ -171,7 +174,8 @@ pub fn plan(
 }
 
 pub fn bundle_digest(root: &Path) -> Result<String, ActivationError> {
-    Ok(digest_records(&bundle_records(root)?))
+    let records = bundle_records(root)?;
+    digest_records(root, &records)
 }
 
 fn bundle_records(root: &Path) -> Result<Vec<SourceRecord>, ActivationError> {
@@ -179,17 +183,29 @@ fn bundle_records(root: &Path) -> Result<Vec<SourceRecord>, ActivationError> {
         .map_err(|_| ActivationError::InvalidSource)
 }
 
-fn digest_records(records: &[SourceRecord]) -> String {
+fn digest_records(root: &Path, records: &[SourceRecord]) -> Result<String, ActivationError> {
     let mut bytes = Vec::new();
     for record in records {
+        let relative = record
+            .logical_path
+            .strip_prefix("plugin/")
+            .ok_or(ActivationError::InvalidSource)?;
+        let metadata = fs::symlink_metadata(root.join(relative))
+            .map_err(|_| ActivationError::InvalidSource)?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err(ActivationError::InvalidSource);
+        }
+        let executable = metadata.mode() & 0o111;
         bytes.extend_from_slice(record.logical_path.as_bytes());
         bytes.push(0);
         bytes.extend_from_slice(record.sha256.as_bytes());
         bytes.push(0);
         bytes.extend_from_slice(record.byte_len.to_string().as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(format!("{executable:o}").as_bytes());
         bytes.push(b'\n');
     }
-    sha256_hex(&bytes)
+    Ok(sha256_hex(&bytes))
 }
 
 fn exact_plugin_ids(request: &SelectionRequest) -> Result<Vec<String>, ActivationError> {
@@ -240,7 +256,11 @@ fn relative_store_path(ambient_codex_home: &Path, root: &Path) -> Option<PathBuf
     Some(relative.to_path_buf())
 }
 
-fn write_records(destination: &Path, records: &[SourceRecord]) -> Result<(), ActivationError> {
+fn write_records(
+    destination: &Path,
+    source_root: &Path,
+    records: &[SourceRecord],
+) -> Result<(), ActivationError> {
     fs::create_dir_all(destination).map_err(|_| ActivationError::ProjectionFailed)?;
     fs::set_permissions(destination, fs::Permissions::from_mode(0o700))
         .map_err(|_| ActivationError::ProjectionFailed)?;
@@ -250,19 +270,60 @@ fn write_records(destination: &Path, records: &[SourceRecord]) -> Result<(), Act
             .logical_path
             .strip_prefix("plugin/")
             .ok_or(ActivationError::InvalidSource)?;
+        let source_metadata = fs::symlink_metadata(source_root.join(relative))
+            .map_err(|_| ActivationError::StateChanged)?;
+        if source_metadata.file_type().is_symlink() || !source_metadata.is_file() {
+            return Err(ActivationError::StateChanged);
+        }
+        let executable = source_metadata.mode() & 0o111;
         let path = destination.join(relative);
         let parent = path.parent().ok_or(ActivationError::InvalidSource)?;
         fs::create_dir_all(parent).map_err(|_| ActivationError::ProjectionFailed)?;
         let mut file = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
-            .mode(0o600)
+            .mode(0o600 | executable)
             .open(&path)
             .map_err(|_| ActivationError::ProjectionFailed)?;
         file.write_all(record.content())
             .map_err(|_| ActivationError::ProjectionFailed)?;
         file.sync_all()
             .map_err(|_| ActivationError::ProjectionFailed)?;
+    }
+    Ok(())
+}
+
+fn cleanup_created_projection(root: &Path) {
+    let Ok(metadata) = fs::symlink_metadata(root) else {
+        return;
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return;
+    }
+    if make_directories_owner_writable(root).is_ok() {
+        let _ = fs::remove_dir_all(root);
+    }
+}
+
+fn make_directories_owner_writable(root: &Path) -> Result<(), ActivationError> {
+    let metadata = fs::symlink_metadata(root).map_err(|_| ActivationError::ProjectionFailed)?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err(ActivationError::ProjectionFailed);
+    }
+    fs::set_permissions(root, fs::Permissions::from_mode(0o700))
+        .map_err(|_| ActivationError::ProjectionFailed)?;
+    for entry in fs::read_dir(root).map_err(|_| ActivationError::ProjectionFailed)? {
+        let entry = entry.map_err(|_| ActivationError::ProjectionFailed)?;
+        let metadata =
+            fs::symlink_metadata(entry.path()).map_err(|_| ActivationError::ProjectionFailed)?;
+        if metadata.file_type().is_symlink() {
+            return Err(ActivationError::ProjectionFailed);
+        }
+        if metadata.is_dir() {
+            make_directories_owner_writable(&entry.path())?;
+        } else if !metadata.is_file() {
+            return Err(ActivationError::ProjectionFailed);
+        }
     }
     Ok(())
 }
@@ -286,7 +347,8 @@ fn make_tree_read_only(root: &Path) -> Result<(), ActivationError> {
         if metadata.is_dir() {
             make_tree_read_only(&path)?;
         } else if metadata.is_file() {
-            fs::set_permissions(&path, fs::Permissions::from_mode(0o444))
+            let executable = metadata.permissions().mode() & 0o111;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o444 | executable))
                 .map_err(|_| ActivationError::ProjectionFailed)?;
         } else {
             return Err(ActivationError::ProjectionFailed);
@@ -399,6 +461,46 @@ mod tests {
             plan(&home, &codex_home, &request, &identity(drifted)),
             Err(ActivationError::ProviderTupleNotQualified)
         );
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn projection_preserves_execute_bits_while_removing_write_bits() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let (home, codex_home, plugin) = fixture();
+        let executable = plugin.join("bin/tool");
+        fs::create_dir_all(executable.parent().unwrap()).unwrap();
+        fs::write(&executable, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&executable, fs::Permissions::from_mode(0o755)).unwrap();
+
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        let activation = plan(
+            &home,
+            &codex_home,
+            &request,
+            &identity(CODEX_PLUGIN_ACTIVATION_EXACT),
+        )
+        .unwrap()
+        .unwrap();
+
+        let shadow = home.join("shadow");
+        fs::create_dir_all(&shadow).unwrap();
+        let projected = activation.project_into(&shadow).unwrap();
+        let mode = fs::metadata(projected.join("bin/tool"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o222, 0);
+        assert_eq!(mode & 0o111, 0o111);
+        assert_eq!(
+            activation.source_digest(),
+            bundle_digest(&projected).unwrap()
+        );
+
         let _ = fs::remove_dir_all(home.parent().unwrap());
     }
 
