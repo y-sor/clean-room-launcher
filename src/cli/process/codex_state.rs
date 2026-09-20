@@ -1,4 +1,4 @@
-use clroom::adapters::codex::activation::{self, PluginActivationPlan};
+use clroom::adapters::codex::{\n    activation::{self, PluginActivationPlan},\n    SHADOW_STATE_DIR,\n};
 use std::{
     fs,
     io::Write,
@@ -6,7 +6,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-const APP_SUPPORT_DIR: &str = ".clroom-clean-state-v2";
+const APP_SUPPORT_DIR: &str = SHADOW_STATE_DIR;
 const STATE_MARKER: &str = ".clroom-state-v2";
 const STATE_MARKER_BYTES: &[u8] = b"clroom-state-v2\n";
 const PLUGIN_PROJECTION_MARKER: &str = ".clroom-plugin-projection-v1";
