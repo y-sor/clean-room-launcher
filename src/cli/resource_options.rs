@@ -45,7 +45,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                         raw_plugin_activation = true;
                     }
                 } else if provider == Provider::Codex
-                    && matches!(
+                    && (matches!(
                         argument.as_str(),
                         "-c"
                             | "--config"
@@ -55,6 +55,13 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                             | "--disable"
                             | "--plugin"
                     )
+                        || argument.starts_with("-c=")
+                        || argument.starts_with("-p=")
+                        || argument.starts_with("--config=")
+                        || argument.starts_with("--profile=")
+                        || argument.starts_with("--enable=")
+                        || argument.starts_with("--disable=")
+                        || argument.starts_with("--plugin="))
                 {
                     raw_plugin_activation = true;
                 }
@@ -229,7 +236,22 @@ mod tests {
 
     #[test]
     fn raw_codex_plugin_or_config_controls_conflict_only_before_terminator() {
-        for flag in ["-c", "--config", "--profile", "-p", "--enable", "--disable", "--plugin"] {
+        for flag in [
+            "-c",
+            "--config",
+            "--profile",
+            "-p",
+            "--enable",
+            "--disable",
+            "--plugin",
+            "-c=features.plugins=false",
+            "-p=ambient",
+            "--config=features.plugins=false",
+            "--profile=ambient",
+            "--enable=plugins",
+            "--disable=plugins",
+            "--plugin=ambient",
+        ] {
             let error = prepare(
                 Provider::Codex,
                 &strings(&[
