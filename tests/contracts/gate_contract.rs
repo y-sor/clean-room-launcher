@@ -346,6 +346,30 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
 }
 
 #[test]
+fn release_review_boundary_is_commit_bound_before_seal_acceptance() {
+    let checker =
+        std::fs::read_to_string("scripts/release/check-release-contract.py").unwrap();
+    let contract =
+        std::fs::read_to_string("docs/release/RELEASE_CONTRACT.md").unwrap();
+
+    for required in [
+        "git", "merge-base", "--is-ancestor"",
+        "REVIEWED_COMMIT_NOT_ANCESTOR",
+        "CHANGES_AFTER_REVIEW_BOUNDARY",
+        "CHANGE_AFTER_REVIEW_BOUNDARY:",
+    ] {
+        assert!(
+            checker.contains(required),
+            "release checker must fail closed on review-boundary drift: {required}"
+        );
+    }
+    assert!(
+        contract.contains("every tracked change after"),
+        "release contract must document the commit-bound review invariant"
+    );
+}
+
+#[test]
 fn draft_release_smoke_requires_repository_release_immutability() {
     let source = std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
 

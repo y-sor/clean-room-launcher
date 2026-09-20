@@ -17,8 +17,18 @@ known near-misses, and decide whether the release contract itself must expand.
 - a known near-miss lacks a disposition;
 - contract expansion is declared without a durable promoted control;
 - semantic product outcome is missing;
+- `reviewed_through_commit` is not an ancestor of the exact candidate HEAD;
+- any tracked path other than the release-review snapshot changes after
+  `reviewed_through_commit`;
 - any tracked byte, executable mode, symlink, or semantic review declaration
   changes after the semantic review seal.
+
+The semantic review boundary is also commit-bound. `reviewed_through_commit`
+must be an ancestor of the exact candidate HEAD, and every tracked change after
+that commit must be confined to the release-review snapshot itself. Runtime,
+tests, docs, workflows, scripts, packaging or any other tracked change after the
+declared review boundary fails closed instead of being silently covered by a
+later digest-only reseal.
 
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
