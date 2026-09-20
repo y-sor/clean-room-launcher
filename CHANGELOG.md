@@ -40,8 +40,9 @@ Semantic Versioning after the first public release.
   the pre-tag interactive confirmation to escape revalidation until the Draft
   artifact smoke.
 - Block Claude Code 2.1.278 built-in `agents-md` from importing `AGENTS.md`
-  or `.claude/AGENTS.md` from ancestor directories above the selected current
-  project while retaining project-local AGENTS instructions.
+  or `.claude/AGENTS.md` above the nearest Git worktree boundary (or launch
+  directory outside Git) while retaining repo-root and nested project AGENTS
+  instructions when Claude starts from a subdirectory.
 
 ### Compatibility
 

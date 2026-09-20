@@ -128,21 +128,26 @@ agents_boundary_probe=false
 probe_root="$tmp/agents-boundary-probe"
 probe_home="$probe_root/home"
 probe_workspace="$probe_home/workspace"
-probe_project="$probe_workspace/project"
+probe_repository="$probe_workspace/repo"
+probe_project="$probe_repository/nested"
 probe_bin="$probe_root/bin"
 probe_tmp="$probe_root/tmp"
 probe_marker="$probe_tmp/provider-executed"
 mkdir -p \
   "$probe_home/.claude/skills" \
   "$probe_workspace/.claude" \
+  "$probe_repository/.git" \
+  "$probe_repository/.claude" \
   "$probe_project/.claude" \
   "$probe_bin" \
   "$probe_tmp"
 printf '%s\n' 'ambient home instructions' >"$probe_home/AGENTS.md"
 printf '%s\n' 'ambient workspace instructions' >"$probe_workspace/AGENTS.md"
 printf '%s\n' 'ambient hidden workspace instructions' >"$probe_workspace/.claude/AGENTS.md"
-printf '%s\n' 'project instructions' >"$probe_project/AGENTS.md"
-printf '%s\n' 'project hidden instructions' >"$probe_project/.claude/AGENTS.md"
+printf '%s\n' 'repository instructions' >"$probe_repository/AGENTS.md"
+printf '%s\n' 'repository hidden instructions' >"$probe_repository/.claude/AGENTS.md"
+printf '%s\n' 'nested instructions' >"$probe_project/AGENTS.md"
+printf '%s\n' 'nested hidden instructions' >"$probe_project/.claude/AGENTS.md"
 cat >"$probe_bin/claude" <<'SH'
 #!/bin/sh
 if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then
@@ -152,9 +157,11 @@ fi
 for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.claude/AGENTS.md"; do
   /bin/cat "$path" >/dev/null 2>&1 && exit 100
 done
-/bin/cat "$PWD/AGENTS.md" >/dev/null 2>&1 || exit 101
-/bin/cat "$PWD/.claude/AGENTS.md" >/dev/null 2>&1 || exit 102
-printf '%s\n' executed >"$TMPDIR/provider-executed" || exit 103
+/bin/cat "$HOME/workspace/repo/AGENTS.md" >/dev/null 2>&1 || exit 101
+/bin/cat "$HOME/workspace/repo/.claude/AGENTS.md" >/dev/null 2>&1 || exit 102
+/bin/cat "$PWD/AGENTS.md" >/dev/null 2>&1 || exit 103
+/bin/cat "$PWD/.claude/AGENTS.md" >/dev/null 2>&1 || exit 104
+printf '%s\n' executed >"$TMPDIR/provider-executed" || exit 105
 exit 0
 SH
 chmod 0700 "$probe_bin/claude"
@@ -312,7 +319,8 @@ if [[ "$phase" == "pretag" ]]; then
   echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
   echo "Confirm the normal Claude TUI opens and the selected plugin skill is visible in autocomplete."
-  echo "Also confirm no AGENTS.md outside the current project is reported as loaded."
+  echo "Also confirm no AGENTS.md above the Git worktree root is reported as loaded."
+  echo "If this launch is outside Git, treat the launch directory as the boundary."
   echo "If agents-md reports an external ancestor path, reject this smoke."
   echo "Exit normally with /exit."
   echo

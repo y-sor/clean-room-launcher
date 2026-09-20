@@ -133,10 +133,13 @@ therefore insufficient for a clean-launch claim.
 For every newly pinned provider tuple, release qualification must re-prove the
 ambient input classes CLROOM claims to suppress. For Claude Code 2.1.278 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
-through ancestor directories. CLROOM denies those files above the selected
-current-project boundary while retaining the same names at or below the project
-boundary. Regression tests must prove both the negative external-ancestor case
-and the positive project case.
+through ancestor directories. For Git projects, CLROOM uses the nearest real
+(non-symlink) `.git` file or directory as the project instruction boundary;
+outside Git it falls back to the launch directory. Those instruction names are
+denied only above that boundary, so launching from a nested project directory
+must still retain repo-root and nested project AGENTS files. Regression tests
+must prove both the negative external-ancestor case and this nested-cwd positive
+project case.
 
 Accepted Claude evidence is invalid unless the exact candidate/Draft artifact
 passes a synthetic launched-provider sandbox probe proving external ancestor

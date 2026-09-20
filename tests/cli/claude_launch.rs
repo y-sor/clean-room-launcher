@@ -160,8 +160,10 @@ fn fixture() -> (Scratch, PathBuf, PathBuf, PathBuf, PathBuf) {
            for path in \"$HOME/AGENTS.md\" \"$HOME/workspace/AGENTS.md\" \"$HOME/workspace/.claude/AGENTS.md\"; do\n\
              /bin/cat \"$path\" >/dev/null 2>&1 && exit 100\n\
            done\n\
-           /bin/cat \"$PWD/AGENTS.md\" >/dev/null 2>&1 || exit 101\n\
-           /bin/cat \"$PWD/.claude/AGENTS.md\" >/dev/null 2>&1 || exit 102\n\
+           /bin/cat \"$HOME/workspace/repo/AGENTS.md\" >/dev/null 2>&1 || exit 101\n\
+           /bin/cat \"$HOME/workspace/repo/.claude/AGENTS.md\" >/dev/null 2>&1 || exit 102\n\
+           /bin/cat \"$PWD/AGENTS.md\" >/dev/null 2>&1 || exit 103\n\
+           /bin/cat \"$PWD/.claude/AGENTS.md\" >/dev/null 2>&1 || exit 104\n\
          else\n\
            [ -r \"$PWD/CLAUDE.md\" ] || exit 71\n\
          fi\n\
@@ -775,11 +777,14 @@ fn managed_policy_probe_reports_presence_without_reading_policy_contents() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn launched_claude_denies_external_ancestor_agents_and_keeps_project_agents() {
+fn launched_claude_denies_external_agents_and_keeps_git_root_agents_from_nested_cwd() {
     let (_root, _existing_project, home, bin, _capture) = fixture();
     let workspace = home.join("workspace");
-    let project = workspace.join("project");
+    let repository = workspace.join("repo");
+    let project = repository.join("nested");
     fs::create_dir_all(workspace.join(".claude")).unwrap();
+    fs::create_dir_all(repository.join(".git")).unwrap();
+    fs::create_dir_all(repository.join(".claude")).unwrap();
     fs::create_dir_all(project.join(".claude/skills/project-only")).unwrap();
 
     fs::write(home.join("AGENTS.md"), b"ambient home instructions\n").unwrap();
@@ -789,10 +794,16 @@ fn launched_claude_denies_external_ancestor_agents_and_keeps_project_agents() {
         b"ambient hidden workspace instructions\n",
     )
     .unwrap();
-    fs::write(project.join("AGENTS.md"), b"project instructions\n").unwrap();
+    fs::write(repository.join("AGENTS.md"), b"repository instructions\n").unwrap();
+    fs::write(
+        repository.join(".claude/AGENTS.md"),
+        b"repository hidden instructions\n",
+    )
+    .unwrap();
+    fs::write(project.join("AGENTS.md"), b"nested instructions\n").unwrap();
     fs::write(
         project.join(".claude/AGENTS.md"),
-        b"project hidden instructions\n",
+        b"nested hidden instructions\n",
     )
     .unwrap();
     fs::write(
@@ -816,7 +827,7 @@ fn launched_claude_denies_external_ancestor_agents_and_keeps_project_agents() {
     assert_eq!(
         output.status.code(),
         Some(42),
-        "launched Claude must deny external ancestor AGENTS while retaining project AGENTS:\n{}",
+        "launched Claude must deny external AGENTS while retaining Git-root and nested project AGENTS:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
