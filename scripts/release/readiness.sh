@@ -127,8 +127,14 @@ if [[ -n ${CLROOM_QUALIFICATION_EVIDENCE_DIR:-} ]]; then
   for provider in codex claude; do
     evidence="$CLROOM_QUALIFICATION_EVIDENCE_DIR/$provider.json"
     [[ -f "$evidence" ]] || fail "REAL_PROVIDER_EVIDENCE_MISSING_$provider"
+    case "$provider" in
+      codex) expected_provider_version="$CLROOM_PROVIDER_CODEX_VERSION" ;;
+      claude) expected_provider_version="$CLROOM_PROVIDER_CLAUDE_VERSION" ;;
+      *) fail "REAL_PROVIDER_EVIDENCE_PROVIDER_$provider" ;;
+    esac
     python3 scripts/release/verify-qualification.py "$artifact" "$evidence" \
-      "$(git rev-parse HEAD)" "$version" "$provider" || fail "REAL_PROVIDER_EVIDENCE_$provider"
+      "$(git rev-parse HEAD)" "$version" "$provider" "$expected_provider_version" \
+      || fail "REAL_PROVIDER_EVIDENCE_$provider"
   done
 else
   [[ ${CLROOM_ARTIFACT_QUALIFICATION:-} != QUALIFIED ]] || fail "CALLER_QUALIFICATION_FORBIDDEN"
