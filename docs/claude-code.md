@@ -17,7 +17,8 @@ A simplified view:
 
 | Claude Code scope | Examples | Current CLROOM direction |
 | --- | --- | --- |
-| User | `~/.claude/settings.json`, user `CLAUDE.md`, ancestor `AGENTS.md`, user rules/skills | Ordinary user settings source omitted; known personal-global instruction/skill roots restricted |
+| User | `~/.claude/settings.json`, user `CLAUDE.md`, user rules/skills | Ordinary user settings source omitted; known personal-global instruction/skill roots restricted |
+| External ancestor | `AGENTS.md` / `.claude/AGENTS.md` above the selected current-project boundary | Restricted for this launch |
 | Project | project `CLAUDE.md` / `AGENTS.md`, `.claude/settings.json`, project rules/skills | Retained |
 | Project local | `CLAUDE.local.md`, `.claude/settings.local.json` | Retained |
 | Managed / organization | managed settings delivered through supported admin mechanisms | Must remain authoritative |
