@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.1",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "13d48e81941cd95e9b2c257a851bf291684bf391",
+  "reviewed_through_commit": "9439233bd575ebb19e9b96be2872ddebbb9b9bef",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -91,6 +91,11 @@
       "id": "tag-action-uses-stale-main-provider-or-release-state",
       "decision": "CONTRACT_EXPAND",
       "durable_control": "Protected-tag helper refreshes main/tag/ruleset/release-contract/provider-pin state at action time, compares local provider version and bytes to pretag evidence, performs one tag push, then reconciles the authoritative remote result."
+    },
+    {
+      "id": "negative-provider-qualification-test-skipped-without-real-provider",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release readiness provisions the pinned current Codex canary before full locked tests; negative qualification tests derive the executable's actual provider version and therefore exercise the fail-closed harness instead of returning early or failing before evidence creation."
     }
   ],
   "artifact_capability_gates": [
@@ -115,7 +120,7 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.1 bytes after checksum and attestation verification, bound to current-stable Claude Code 2.1.278."
     }
   ],
-  "reviewed_content_digest": "a8db59567ea15552967053afb099dfe8e39205166a3807fbeb26910fb6e50e9e",
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000",
   "product_outcome": "Ship v0.4.1 as the bounded exact Codex whole-plugin selective-restore slice while preserving clean-by-default behavior, requalifying Codex and Claude Code against their current stable releases, and strengthening release drift controls without widening to standalone MCP, --with=all, multi-plugin selection, component surgery, new dependencies or additional platforms.",
   "contract_evolution_review": {
     "decision": "EXPAND",
