@@ -494,7 +494,7 @@ mod tests {
             .to_string_lossy()
             .into_owned();
         let legacy_cache = codex_home
-            .join(".clroom-clean-state-v1/home/plugins/cache")
+            .join(".clroom-clean-state-v1").join("home/plugins/cache")
             .to_string_lossy()
             .into_owned();
 
