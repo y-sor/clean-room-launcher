@@ -135,6 +135,7 @@ required = {
     "automated_probe_prompt_supplied": True,
     "interactive_no_model_prompt_confirmed": True,
     "external_ancestor_agents_absent_confirmed": True,
+    "project_agents_retained_confirmed": True,
     "external_ancestor_agents_sandbox_probe_passed": True,
 }
 for key, value in required.items():

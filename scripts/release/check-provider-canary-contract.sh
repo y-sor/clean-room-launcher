@@ -76,7 +76,10 @@ done
 for needle in \
   '"schema_version":"clroom.plugin-release-smoke.v2"' \
   '"external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true"' \
+  '"project_agents_retained_confirmed": project_agents_retained=="true"' \
   '"external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true"' \
+  'PROJECT_AGENTS_NOT_CONFIRMED' \
+  'real-tui-workspace' \
   'AGENTS_BOUNDARY_PROVIDER_EXECUTED=PASS' \
   'AGENTS_BOUNDARY_PROVIDER_NOT_EXECUTED' \
   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS' \
@@ -97,6 +100,7 @@ done
 for needle in \
   '"schema_version": "clroom.plugin-release-smoke.v2"' \
   '"external_ancestor_agents_absent_confirmed": True' \
+  '"project_agents_retained_confirmed": True' \
   '"external_ancestor_agents_sandbox_probe_passed": True' \
   'PRETAG_CLAUDE_EVIDENCE_PASS'; do
   grep -Fq "$needle" "$tag_helper" || fail "CLAUDE_TAG_GATE_MISSING"

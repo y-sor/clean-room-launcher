@@ -146,11 +146,14 @@ passes a synthetic launched-provider sandbox probe proving external ancestor
 AGENTS.md and .claude/AGENTS.md are unreadable while project-local equivalents
 remain readable. The probe must separately prove that the launched provider
 body executed after version preflight; a provider `--version` success alone
-cannot satisfy this evidence. Accepted pre-tag evidence additionally requires the real
-selected-plugin TUI to confirm that no external ancestor AGENTS.md was reported
-as loaded. A provider pin move requires both the machine boundary probe and this
-real-provider instruction-surface evidence to be refreshed before a protected
-tag can be created.
+cannot satisfy this evidence. Accepted pre-tag evidence additionally requires the real pinned-provider
+selected-plugin TUI to run inside a task-owned synthetic nested Git project and
+confirm both sides of the boundary: repo/nested project AGENTS.md is reported as
+loaded, while AGENTS.md and .claude/AGENTS.md above that Git project are not.
+This prevents a permission-denied ancestor walk that drops all project
+instructions from being mistaken for a clean PASS. A provider pin move requires
+both the machine boundary probe and this real-provider instruction-surface
+evidence to be refreshed before a protected tag can be created.
 
 ## Exact-tag pre-publish reconciliation
 

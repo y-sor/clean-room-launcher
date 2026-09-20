@@ -313,25 +313,46 @@ PY
 
 interactive=false
 external_ancestor_agents_absent=false
+project_agents_retained=false
 if [[ "$phase" == "pretag" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
+
+  tui_workspace="$tmp/real-tui-workspace"
+  tui_repository="$tui_workspace/repo"
+  tui_project="$tui_repository/nested"
+  mkdir -p     "$tui_workspace/.claude"     "$tui_repository/.claude"     "$tui_project/.claude"
+  printf '%s\n' 'external TUI probe instruction' >"$tui_workspace/AGENTS.md"
+  printf '%s\n' 'external hidden TUI probe instruction' >"$tui_workspace/.claude/AGENTS.md"
+  printf '%s\n' 'gitdir: synthetic-worktree' >"$tui_repository/.git"
+  printf '%s\n' 'repository TUI probe instruction' >"$tui_repository/AGENTS.md"
+  printf '%s\n' 'repository hidden TUI probe instruction' >"$tui_repository/.claude/AGENTS.md"
+  printf '%s\n' 'nested TUI probe instruction' >"$tui_project/AGENTS.md"
+  printf '%s\n' 'nested hidden TUI probe instruction' >"$tui_project/.claude/AGENTS.md"
+
   echo
   echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
-  echo "Confirm the normal Claude TUI opens and the selected plugin skill is visible in autocomplete."
-  echo "Also confirm no AGENTS.md above the Git worktree root is reported as loaded."
-  echo "If this launch is outside Git, treat the launch directory as the boundary."
-  echo "If agents-md reports an external ancestor path, reject this smoke."
+  echo "This TUI runs in a task-owned synthetic nested Git project."
+  echo "Confirm the selected plugin skill is visible in autocomplete."
+  echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
+  echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
   echo "Exit normally with /exit."
   echo
-  "$clroom" claude --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
+  (
+    cd "$tui_project"
+    "$clroom" claude --with="plugin:$plugin_id"
+  ) || fail "SELECTED_TUI_EXIT"
   printf 'TUI opened normally and selected plugin skill was visible [y/N]: '
   read -r answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
-  printf 'No AGENTS.md outside the current project was reported as loaded [y/N]: '
+  printf 'Repo/nested project AGENTS.md was reported as loaded [y/N]: '
+  read -r project_agents_answer
+  [[ "$project_agents_answer" == "y" || "$project_agents_answer" == "Y" ]]     || fail "PROJECT_AGENTS_NOT_CONFIRMED"
+  printf 'No AGENTS.md above the synthetic Git project was reported as loaded [y/N]: '
   read -r agents_answer
-  [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
+  [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]]     || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
   interactive=true
+  project_agents_retained=true
   external_ancestor_agents_absent=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_INTERACTIVE"
 fi
@@ -345,9 +366,10 @@ short=${source_head:0:12}
 evidence="$evidence_dir/${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
   "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
-  "$agents_boundary_probe" "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
+  "$project_agents_retained" "$agents_boundary_probe" "$claude_version_output" \
+  "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
+output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,project_agents_retained,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
   "schema_version":"clroom.plugin-release-smoke.v2",
   "result":"PASS",
@@ -371,6 +393,7 @@ record={
   "automated_probe_prompt_supplied":True,
   "interactive_no_model_prompt_confirmed": interactive=="true",
   "external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true",
+  "project_agents_retained_confirmed": project_agents_retained=="true",
   "external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true",
   "clean_provider_rc":int(clean_rc),
   "selected_provider_rc":int(selected_rc),

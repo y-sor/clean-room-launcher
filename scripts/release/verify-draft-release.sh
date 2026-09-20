@@ -197,6 +197,8 @@ if cp.get("interactive_no_model_prompt_confirmed") is not True:
     raise SystemExit("claude-pretag:no-model")
 if cp.get("external_ancestor_agents_absent_confirmed") is not True:
     raise SystemExit("claude-pretag:external-ancestor-agents")
+if cp.get("project_agents_retained_confirmed") is not True:
+    raise SystemExit("claude-pretag:project-agents-retention")
 if cp.get("plugin_id") != cd.get("plugin_id"):
     raise SystemExit("claude-plugin-drift")
 if cp.get("claude_provider_sha256") != cd.get("claude_provider_sha256"):
