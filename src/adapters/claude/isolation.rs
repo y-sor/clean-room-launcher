@@ -65,6 +65,12 @@ pub fn plan(
         home.join(".config/gcloud"),
         home.join(".azure"),
     ];
+    // Claude Code 2.1.278's built-in agents-md walks AGENTS.md and
+    // .claude/AGENTS.md through ancestor directories. CLROOM treats the
+    // current directory as the selected project boundary: instructions above
+    // it are ambient/global for this launch, while files at or below it remain
+    // project context.
+    let denied_read_files = external_ancestor_instruction_files(&project);
     let mut denied_write_roots = vec![
         home.join(".claude/skills"),
         home.join(".agents/skills"),
@@ -88,6 +94,9 @@ pub fn plan(
     profile.push_str("(deny file-read*");
     for path in &denied_read_roots {
         push_subpath(&mut profile, path)?;
+    }
+    for path in &denied_read_files {
+        push_literal(&mut profile, path)?;
     }
     for path in denied_source_paths {
         push_literal(&mut profile, path)?;
@@ -136,6 +145,19 @@ pub fn plan(
     profile.push_str(")\n");
 
     Ok(IsolationPlan { profile, project })
+}
+
+fn external_ancestor_instruction_files(project: &Path) -> Vec<PathBuf> {
+    project
+        .ancestors()
+        .skip(1)
+        .flat_map(|directory| {
+            [
+                directory.join("AGENTS.md"),
+                directory.join(".claude/AGENTS.md"),
+            ]
+        })
+        .collect()
 }
 
 fn safe_allowed_directory(path: &Path, project: &Path) -> Option<PathBuf> {
@@ -314,6 +336,51 @@ mod tests {
             &[selected],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn external_ancestor_agents_are_denied_but_project_agents_remain_readable() {
+        let fixture = Fixture::create();
+        let workspace = fixture.home.join("workspace");
+        let project = workspace.join("project");
+        fs::create_dir_all(project.join(".claude")).unwrap();
+        fs::create_dir_all(workspace.join(".claude")).unwrap();
+
+        let home_agents = fixture.home.join("AGENTS.md");
+        let workspace_agents = workspace.join("AGENTS.md");
+        let workspace_hidden_agents = workspace.join(".claude/AGENTS.md");
+        let project_agents = project.join("AGENTS.md");
+        let project_hidden_agents = project.join(".claude/AGENTS.md");
+        for path in [
+            &home_agents,
+            &workspace_agents,
+            &workspace_hidden_agents,
+            &project_agents,
+            &project_hidden_agents,
+        ] {
+            fs::write(path, "instruction\n").unwrap();
+        }
+
+        let selected = fs::canonicalize(&fixture.selected).unwrap();
+        let plan = plan(
+            &project,
+            Path::new("/bin/cat"),
+            &fixture.home,
+            &fixture.projection_root,
+            &fixture.projection_view,
+            &[],
+            &[selected],
+        )
+        .unwrap();
+
+        for path in [&home_agents, &workspace_agents, &workspace_hidden_agents] {
+            assert!(!sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+        for path in [&project_agents, &project_hidden_agents] {
+            assert!(sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+
+        fixture.cleanup();
     }
 
     #[test]

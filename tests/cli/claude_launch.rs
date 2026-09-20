@@ -102,6 +102,8 @@ fn fixture() -> (Scratch, PathBuf, PathBuf, PathBuf, PathBuf) {
     }
     fs::create_dir_all(&bin).unwrap();
     fs::write(project.join("CLAUDE.md"), b"project context\n").unwrap();
+    fs::write(project.join("AGENTS.md"), b"project agent context\n").unwrap();
+    fs::write(home.join("AGENTS.md"), b"ambient agent context\n").unwrap();
     fs::write(
         project.join(".claude/skills/project-only/SKILL.md"),
         b"project skill\n",
@@ -157,6 +159,8 @@ fn fixture() -> (Scratch, PathBuf, PathBuf, PathBuf, PathBuf) {
          [ \"$CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN\" = 1 ] || exit 87\n\
          [ \"$CLAUDE_CODE_SUBPROCESS_ENV_SCRUB\" = 1 ] || exit 96\n\
          [ -r \"$PWD/CLAUDE.md\" ] || exit 71\n\
+         [ -r \"$PWD/AGENTS.md\" ] || exit 100\n\
+         [ ! -r \"$HOME/AGENTS.md\" ] || exit 101\n\
          [ -r \"$PWD/.claude/skills/project-only/SKILL.md\" ] || exit 72\n\
          [ ! -r \"$HOME/.claude/CLAUDE.md\" ] || exit 83\n\
          [ ! -r \"$HOME/.claude/settings.json\" ] || exit 84\n\
@@ -933,19 +937,14 @@ fn interactive_claude_launch_keeps_the_clean_room_plaque_visible() {
     let transcript = String::from_utf8(output.stdout).unwrap().replace('\r', "");
     assert!(transcript.contains("CLEAN ROOM"));
     assert!(transcript.contains("Global CLAUDE.md"));
+    assert!(transcript.contains("Global AGENTS.md"));
     assert!(transcript.contains("Global skills"));
     assert!(transcript.contains("2 on"));
     assert!(transcript.contains("User settings"));
     assert!(transcript.contains("Auto memory"));
     assert!(transcript.contains("Project skills"));
     assert!(transcript.contains("1 on"));
-    for codex_only in [
-        "Global AGENTS.md",
-        "Apps",
-        "Hooks/plugins",
-        "Dev prompt",
-        "Notifications",
-    ] {
+    for codex_only in ["Apps", "Hooks/plugins", "Dev prompt", "Notifications"] {
         assert!(
             !transcript.contains(codex_only),
             "unexpected Codex-only plaque claim: {codex_only}"
