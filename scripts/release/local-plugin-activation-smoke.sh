@@ -124,6 +124,49 @@ clroom="$archive_root/bin/clroom"
 grep -Fqx "version=$version" "$archive_root/VERSION" || fail "ARCHIVE_VERSION"
 grep -Fqx "source_commit=$source_head" "$archive_root/VERSION" || fail "ARCHIVE_SOURCE"
 
+agents_boundary_probe=false
+probe_root="$tmp/agents-boundary-probe"
+probe_home="$probe_root/home"
+probe_workspace="$probe_home/workspace"
+probe_project="$probe_workspace/project"
+probe_bin="$probe_root/bin"
+mkdir -p \
+  "$probe_home/.claude/skills" \
+  "$probe_workspace/.claude" \
+  "$probe_project/.claude" \
+  "$probe_bin"
+printf '%s\n' 'ambient home instructions' >"$probe_home/AGENTS.md"
+printf '%s\n' 'ambient workspace instructions' >"$probe_workspace/AGENTS.md"
+printf '%s\n' 'ambient hidden workspace instructions' >"$probe_workspace/.claude/AGENTS.md"
+printf '%s\n' 'project instructions' >"$probe_project/AGENTS.md"
+printf '%s\n' 'project hidden instructions' >"$probe_project/.claude/AGENTS.md"
+cat >"$probe_bin/claude" <<'SH'
+#!/bin/sh
+if [ "${1:-}" = "--version" ]; then
+  printf '2.1.278\n'
+  exit 0
+fi
+for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.claude/AGENTS.md"; do
+  /bin/cat "$path" >/dev/null 2>&1 && exit 100
+done
+/bin/cat "$PWD/AGENTS.md" >/dev/null 2>&1 || exit 101
+/bin/cat "$PWD/.claude/AGENTS.md" >/dev/null 2>&1 || exit 102
+exit 0
+SH
+chmod 0700 "$probe_bin/claude"
+if ! (
+  cd "$probe_project"
+  HOME="$probe_home" \
+  PATH="$probe_bin:/usr/bin:/bin" \
+  TERM="${TERM:-dumb}" \
+    "$clroom" claude --version \
+      >"$probe_root/stdout.log" 2>"$probe_root/stderr.log"
+); then
+  fail "AGENTS_BOUNDARY_SANDBOX_PROBE"
+fi
+agents_boundary_probe=true
+echo "AGENTS_BOUNDARY_SANDBOX_PROBE=PASS"
+
 registry="$HOME/.claude/plugins/installed_plugins.json"
 [[ -f "$registry" ]] || fail "PLUGIN_REGISTRY_MISSING"
 
@@ -286,9 +329,9 @@ short=${source_head:0:12}
 evidence="$evidence_dir/${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
   "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
-  "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
+  "$agents_boundary_probe" "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
+output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
   "schema_version":"clroom.plugin-release-smoke.v2",
   "result":"PASS",
@@ -312,6 +355,7 @@ record={
   "automated_probe_prompt_supplied":True,
   "interactive_no_model_prompt_confirmed": interactive=="true",
   "external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true",
+  "external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true",
   "clean_provider_rc":int(clean_rc),
   "selected_provider_rc":int(selected_rc),
   "observed_at_utc":datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z"),
