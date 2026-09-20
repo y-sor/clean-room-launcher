@@ -80,6 +80,8 @@ for needle in \
   '"external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true"' \
   'PROJECT_AGENTS_NOT_CONFIRMED' \
   'real-tui-workspace' \
+  'chmod 0700 "$probe_tmp"' \
+  'AGENTS_BOUNDARY_TMPDIR_NOT_PRIVATE' \
   'AGENTS_BOUNDARY_PROVIDER_EXECUTED=PASS' \
   'AGENTS_BOUNDARY_PROVIDER_NOT_EXECUTED' \
   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS' \
