@@ -230,7 +230,7 @@ fn sandbox_wrapper_argv_cannot_qualify_without_codex_image() {
     };
     let candidate = root.join("sandbox-wrapper-candidate");
     let wrapper = format!(
-        "#!/bin/sh\nexec /bin/sh -c 'sleep 8' sandbox-exec '{}' \"$@\"\n",
+        "#!/bin/sh\nexec /bin/sh -c 'sleep 1' sandbox-exec '{}' \"$@\"\n",
         executable.display()
     );
     fs::write(&candidate, wrapper).expect("candidate script");
