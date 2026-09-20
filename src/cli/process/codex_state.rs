@@ -222,8 +222,14 @@ fn reconcile_plugin_projection(
     let projected = activation
         .project_into(shadow_home)
         .map_err(plugin_projection_error)?;
-    verify_projected_plugin(shadow_home, activation, &projected)?;
-    write_plugin_projection_marker(shadow_home, activation)?;
+    if let Err(error) = verify_projected_plugin(shadow_home, activation, &projected) {
+        rollback_unmarked_projection(&cache_root, activation)?;
+        return Err(error);
+    }
+    if let Err(error) = write_plugin_projection_marker(shadow_home, activation) {
+        rollback_unmarked_projection(&cache_root, activation)?;
+        return Err(error);
+    }
     Ok(())
 }
 
@@ -265,17 +271,36 @@ fn cleanup_previous_plugin_projection(shadow_home: &Path) -> Result<(), String> 
         return Ok(());
     };
     let cache_root = shadow_home.join("plugins/cache");
-    let projected = cache_root.join(&relative);
-    if activation::bundle_digest(&projected).map_err(plugin_projection_error)? != digest {
+    remove_exact_projection(&cache_root, &relative, &digest)?;
+    fs::remove_file(shadow_home.join(PLUGIN_PROJECTION_MARKER))
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
+    Ok(())
+}
+
+fn rollback_unmarked_projection(
+    cache_root: &Path,
+    activation: &PluginActivationPlan,
+) -> Result<(), String> {
+    remove_exact_projection(
+        cache_root,
+        activation.relative_store_path(),
+        activation.source_digest(),
+    )
+}
+
+fn remove_exact_projection(
+    cache_root: &Path,
+    relative: &Path,
+    expected_digest: &str,
+) -> Result<(), String> {
+    let projected = cache_root.join(relative);
+    if activation::bundle_digest(&projected).map_err(plugin_projection_error)? != expected_digest {
         return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
     }
     make_tree_owner_writable(&projected)?;
     fs::remove_dir_all(&projected)
         .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
-    remove_empty_plugin_ancestors(&cache_root, &relative)?;
-    fs::remove_file(shadow_home.join(PLUGIN_PROJECTION_MARKER))
-        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
-    Ok(())
+    remove_empty_plugin_ancestors(cache_root, relative)
 }
 
 fn ensure_empty_plugin_cache(cache_root: &Path) -> Result<(), String> {
@@ -310,16 +335,20 @@ fn write_plugin_projection_marker(
         .write(true)
         .create_new(true)
         .mode(0o600)
-        .open(marker)
+        .open(&marker)
         .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned())?;
-    writeln!(
+    let result = writeln!(
         file,
         "{PLUGIN_PROJECTION_HEADER}\n{relative}\n{}",
         activation.source_digest()
     )
-    .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned())?;
-    file.sync_all()
-        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned())
+    .and_then(|_| file.sync_all());
+    if result.is_err() {
+        drop(file);
+        let _ = fs::remove_file(&marker);
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned());
+    }
+    Ok(())
 }
 
 fn read_plugin_projection_marker(
