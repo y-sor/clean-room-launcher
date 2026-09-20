@@ -83,14 +83,14 @@ While a CLROOM resource selection is active, raw `--plugin-dir` and
 `--plugin-url` arguments are refused to avoid two competing activation
 authorities. More than one selected whole plugin is also refused.
 
-v0.4.1 requalifies both the ordinary clean launch and this whole-plugin path on
+v0.4.2 requalifies both the ordinary clean launch and this whole-plugin path on
 the current stable Claude Code `2.1.278` for macOS Apple Silicon. Release
 qualification fails closed if the npm stable tag moves before the candidate is
 tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
 This Claude slice still does not add standalone MCP resource activation,
 `--with=all`, presets, installation/update/removal, or component-level
-selection. Codex whole-plugin activation is a separate v0.4.1 provider-specific
+selection. Codex whole-plugin activation is a separate v0.4.2 provider-specific
 path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?

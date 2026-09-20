@@ -62,15 +62,32 @@ for needle in \
   '[[ "$codex_version" == "$CODEX_VERSION" ]]' \
   '"$clroom" codex mcp list --json' \
   '"$clroom" codex --with="plugin:$plugin_id" mcp list --json' \
-  '"schema_version": "clroom.codex-plugin-release-smoke.v1"' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v2"' \
   '"clean_before_expected_mcp": False' \
   '"selected_expected_mcp": True' \
-  '"clean_after_expected_mcp": False'; do
+  '"clean_after_expected_mcp": False' \
+  '"ambient_config_and_plugin_tree_unchanged": True' \
+  '"provider_state_lifecycle_closed": True' \
+  '"post_interactive_clean_confirmed": post_interactive_clean == "true"'; do
   grep -Fq "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
 done
 
 for needle in \
+  'scope="real-provider-repeat-interactive-startup-no-model"' \
+  'launch_path="clroom codex --no-alt-screen (PTY) x2 same HOME"' \
+  'lifecycle_runs=2' \
+  'for lifecycle_run in 1 2; do' \
+  '"schema_version":"clroom.real-provider-qualification.v2"' \
+  '"repeat_provider_executed":repeat_observed == "true"'; do
+  grep -Fq "$needle" "$qualifier" || fail "CODEX_REPEAT_LIFECYCLE_CONTRACT_MISSING"
+done
+
+for needle in \
   'codex-pretag-v${version}-${expected:0:12}.json' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v2"' \
+  '"ambient_config_and_plugin_tree_unchanged": True' \
+  '"provider_state_lifecycle_closed": True' \
+  '"post_interactive_clean_confirmed": True' \
   'PRETAG_CODEX_EVIDENCE_PASS' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
@@ -128,7 +145,7 @@ SH
     --expected-provider-version 0.155.1 \
     --candidate "$early_exit_candidate" \
     --source-head 0000000000000000000000000000000000000000 \
-    --version 0.4.1 \
+    --version 0.4.2 \
     --output "$record" \
     >"$tmp/stdout.log" 2>"$stderr_log"
   status=$?
@@ -145,10 +162,16 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     record = json.load(handle)
+if record.get("schema_version") != "clroom.real-provider-qualification.v2":
+    raise SystemExit("early-exit evidence schema must be lifecycle-aware")
 if record.get("qualification") != "FAIL":
     raise SystemExit("early-exit candidate must fail qualification")
 if record.get("real_provider_executed") is not False:
     raise SystemExit("early-exit candidate must not claim provider execution")
+if record.get("repeat_provider_executed") is not False:
+    raise SystemExit("early-exit candidate must not claim repeat provider execution")
+if record.get("lifecycle_runs") != 2:
+    raise SystemExit("Codex qualification must retain the two-run lifecycle contract")
 PY
 fi
 

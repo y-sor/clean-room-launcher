@@ -163,6 +163,62 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
 }
 
 #[test]
+fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
+    let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
+    let verifier = std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
+
+    assert!(qualifier.contains("real-provider-repeat-interactive-startup-no-model"));
+    assert!(qualifier.contains("for lifecycle_run in 1 2; do"));
+    assert!(qualifier.contains("provider-observed-$lifecycle_run"));
+    assert!(qualifier.contains("clroom.real-provider-qualification.v2"));
+    assert!(qualifier.contains("repeat_provider_executed"));
+    assert!(verifier.contains(r#"record["lifecycle_runs"] != 2"#));
+    assert!(verifier.contains(r#"record["repeat_provider_executed"] is not True"#));
+}
+
+#[test]
+fn codex_pretag_smoke_closes_state_after_interactive_provider_writes() {
+    let smoke =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    let tag_helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+
+    let tui = smoke
+        .find("=== INTERACTIVE CODEX SELECTED-PLUGIN TUI ===")
+        .expect("Codex pretag smoke must exercise the selected TUI");
+    let post_interactive = smoke
+        .find("POST_INTERACTIVE_CLEAN_MCP_LIST")
+        .expect("Codex pretag smoke must launch clean again after the TUI");
+    let evidence = smoke
+        .find("clroom.codex-plugin-release-smoke.v2")
+        .expect("Codex pretag evidence must use the lifecycle-aware schema");
+    assert!(
+        tui < post_interactive && post_interactive < evidence,
+        "post-interactive clean closure must happen before accepted evidence is written"
+    );
+    assert!(smoke.contains(r#""provider_state_lifecycle_closed": True"#));
+    assert!(smoke.contains(r#""post_interactive_clean_confirmed": post_interactive_clean == "true""#));
+    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v2""#));
+    assert!(tag_helper.contains(r#""provider_state_lifecycle_closed": True"#));
+    assert!(tag_helper.contains(r#""post_interactive_clean_confirmed": True"#));
+}
+
+#[test]
+fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
+    let verifier = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+
+    assert!(verifier.contains(r#"head_sha="$expected""#));
+    assert!(verifier.contains(r#"run.get("head_branch") == tag"#));
+    assert!(verifier.contains(r#"run.get("head_sha") == expected"#));
+    assert!(verifier.contains(r#"run.get("event") == "push""#));
+    assert!(verifier.contains(r#"for required in {"CI", "Release"}"#));
+    assert!(verifier.contains(r#"run.get("status") != "completed" or run.get("conclusion") != "success""#));
+    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v2"));
+    assert!(verifier.contains(r#""provider_state_lifecycle_closed": True"#));
+    assert!(verifier.contains(r#"xp.get("post_interactive_clean_confirmed") is not True"#));
+    assert!(verifier.contains("DRAFT_RELEASE_VERIFY_PASS"));
+}
+
+#[test]
 fn local_tag_helper_parses_annotated_tagger_timestamp_with_digit_regex() {
     let source = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
     assert!(
@@ -323,3 +379,25 @@ fn draft_plugin_release_smoke_binds_cyclonedx_predicate() {
 }
 
 use std::os::unix::fs::PermissionsExt;
+
+
+#[test]
+fn canonical_readiness_owns_the_draft_release_verifier() {
+    let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
+
+    assert!(readiness.contains("DRAFT_RELEASE_VERIFY_EXECUTABLE"));
+    assert!(readiness.matches("scripts/release/verify-draft-release.sh").count() >= 3);
+}
+
+#[test]
+fn codex_lifecycle_evidence_names_only_the_ambient_state_it_fingerprints() {
+    let smoke =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let draft = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+
+    assert!(smoke.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(!smoke.contains("persistent_provider_state_unchanged"));
+    assert!(tag.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(draft.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+}

@@ -34,11 +34,18 @@ mkdir -p "$(dirname "$output")"
 scope="real-provider-startup-no-model"
 launch_path="clroom provider --help"
 set +e
+status=0
+observed=false
+repeat_observed=false
+lifecycle_runs=1
 if [[ $provider == codex ]]; then
-  scope="real-provider-interactive-startup-no-model"
-  launch_path="clroom codex --no-alt-screen (PTY)"
-  observation="$root/provider-observed"
-  python3 - "$candidate" "$root/project" "$user_home" "$(dirname "$executable")" "$executable" "$observation" <<'PY'
+  scope="real-provider-repeat-interactive-startup-no-model"
+  launch_path="clroom codex --no-alt-screen (PTY) x2 same HOME"
+  lifecycle_runs=2
+  observed_count=0
+  for lifecycle_run in 1 2; do
+    observation="$root/provider-observed-$lifecycle_run"
+    python3 - "$candidate" "$root/project" "$user_home" "$(dirname "$executable")" "$executable" "$observation" <<'PY'
 import ctypes, os, pty, signal, subprocess, sys, time
 candidate, project, home, provider_dir, provider, observation_file = sys.argv[1:]
 provider = os.path.realpath(provider)
@@ -79,13 +86,16 @@ def provider_in_tree(root_pid):
             pid for pid, (_parent, process_group) in processes.items()
             if process_group == group
         )
-    for pid in descendants:
-        if process_path(pid) == provider:
-            return True
-    return False
+    return any(process_path(pid) == provider for pid in descendants)
 pid, fd = pty.fork()
 if pid == 0:
-    env = {"PATH": provider_dir + ":/usr/bin:/bin", "HOME": home, "TMPDIR": os.environ.get("TMPDIR", "/tmp"), "TERM": "dumb", "CODEX_HOME": home + "/.codex"}
+    env = {
+        "PATH": provider_dir + ":/usr/bin:/bin",
+        "HOME": home,
+        "TMPDIR": os.environ.get("TMPDIR", "/tmp"),
+        "TERM": "dumb",
+        "CODEX_HOME": home + "/.codex",
+    }
     os.chdir(project)
     os.execve(candidate, [candidate, "--no-alt-screen"], env)
 provider_observed = False
@@ -93,7 +103,7 @@ def finish():
     with open(observation_file, "w", encoding="ascii") as handle:
         handle.write("YES\n" if provider_observed else "NO\n")
     raise SystemExit(0 if provider_observed else 1)
-deadline = time.monotonic() + 5.0
+deadline = time.monotonic() + 10.0
 reaped = False
 while time.monotonic() < deadline:
     try:
@@ -131,6 +141,19 @@ except ChildProcessError:
     pass
 finish()
 PY
+    run_status=$?
+    if [[ -f "$observation" && $(sed -n '1p' "$observation") == YES ]]; then
+      observed_count=$((observed_count + 1))
+    fi
+    if [[ $run_status -ne 0 ]]; then
+      status=$run_status
+      break
+    fi
+  done
+  if [[ $observed_count -eq 2 && $status -eq 0 ]]; then
+    observed=true
+    repeat_observed=true
+  fi
 else
   python3 - "$candidate" "$root/project" "$user_home" "$(dirname "$executable")" <<'PY'
 import os, subprocess, sys
@@ -144,23 +167,50 @@ except subprocess.TimeoutExpired:
 except OSError:
     raise SystemExit(125)
 PY
+  status=$?
+  [[ $status -eq 0 ]] && observed=true
 fi
-status=$?
 set -e
 pass=false
-observed=false
-[[ -f ${observation:-} ]] && [[ $(sed -n '1p' "$observation") == YES ]] && observed=true
-[[ $provider == claude && $status -eq 0 ]] && observed=true
-[[ $status -eq 0 && $provider_version == "$expected_provider_version" && $observed == true ]] && pass=true
+if [[ $status -eq 0 && $provider_version == "$expected_provider_version" && $observed == true ]]; then
+  if [[ $provider != codex || $repeat_observed == true ]]; then
+    pass=true
+  fi
+fi
 exit_class=nonzero
 [[ $status -eq 0 ]] && exit_class=success
-[[ $provider == codex && $observed == true && $status -eq 0 ]] && exit_class=interactive-provider-observed
-python3 - "$output" "$provider" "$provider_version" "$provider_digest" "$candidate_digest" "$source_head" "$release_version" "$target" "$status" "$pass" "$scope" "$launch_path" "$observed" "$exit_class" <<'PY'
+[[ $provider == codex && $repeat_observed == true && $status -eq 0 ]] && exit_class=interactive-provider-repeat-observed
+python3 - "$output" "$provider" "$provider_version" "$provider_digest" "$candidate_digest" "$source_head" "$release_version" "$target" "$status" "$pass" "$scope" "$launch_path" "$observed" "$repeat_observed" "$lifecycle_runs" "$exit_class" <<'PY'
 import json, sys
-out, provider, provider_version, provider_digest, candidate_digest, source_head, release_version, target, status, passed, scope, launch_path, observed, exit_class = sys.argv[1:]
-record = {"schema_version":"clroom.real-provider-qualification.v1", "qualification":"PASS" if passed == "true" else "FAIL", "scope":scope, "real_provider_executed":observed == "true", "fake_provider":False, "provider":provider, "provider_version":provider_version, "provider_digest":provider_digest, "clroom_source_head":source_head, "release_version":release_version, "target":target, "candidate_digest":candidate_digest, "launch_path":launch_path, "synthetic_ambient_config_present":True, "synthetic_ambient_config_applied":False if observed == "true" else None, "exit_class":exit_class}
+(
+    out, provider, provider_version, provider_digest, candidate_digest,
+    source_head, release_version, target, status, passed, scope, launch_path,
+    observed, repeat_observed, lifecycle_runs, exit_class,
+) = sys.argv[1:]
+record = {
+    "schema_version":"clroom.real-provider-qualification.v2",
+    "qualification":"PASS" if passed == "true" else "FAIL",
+    "scope":scope,
+    "real_provider_executed":observed == "true",
+    "repeat_provider_executed":repeat_observed == "true",
+    "lifecycle_runs":int(lifecycle_runs),
+    "fake_provider":False,
+    "provider":provider,
+    "provider_version":provider_version,
+    "provider_digest":provider_digest,
+    "clroom_source_head":source_head,
+    "release_version":release_version,
+    "target":target,
+    "candidate_digest":candidate_digest,
+    "launch_path":launch_path,
+    "synthetic_ambient_config_present":True,
+    "synthetic_ambient_config_applied":False if observed == "true" else None,
+    "exit_class":exit_class,
+}
 with open(out, "w", encoding="utf-8") as handle:
-    json.dump(record, handle, sort_keys=True, separators=(",", ":")); handle.write("\n")
-if record["qualification"] != "PASS": raise SystemExit(1)
+    json.dump(record, handle, sort_keys=True, separators=(",", ":"))
+    handle.write("\n")
+if record["qualification"] != "PASS":
+    raise SystemExit(1)
 PY
 printf 'REAL_PROVIDER_QUALIFICATION_%s provider=%s version=%s scope=%s\n' "$([[ $pass == true ]] && echo PASS || echo FAIL)" "$provider" "$provider_version" "$scope"

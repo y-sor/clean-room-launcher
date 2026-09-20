@@ -1,0 +1,179 @@
+{
+  "schema_version": "clroom.release-review.v1",
+  "release": "v0.4.2",
+  "baseline_release": "v0.4.0",
+  "reviewed_through_commit": "ea38776ee1776940a4d398bb2270f178eacce796",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed."
+      ]
+    },
+    "tests": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Regression coverage proves initialized .tmp provider state survives a later CLROOM launch, preexisting unowned .tmp still fails closed, real Codex qualification executes twice against one synthetic home, pre-tag whole-plugin evidence cannot be written until a post-interactive clean relaunch succeeds, and canonical readiness owns the exact-tag Draft verifier."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "Cargo.toml/Cargo.lock advance only the package version to 0.4.2; no runtime or build dependency is added, removed, or replaced."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Real Codex provider qualification requires two provider observations on the same synthetic HOME and v2 evidence. The provider-canary contract itself now asserts the lifecycle-v2 smoke, two-run qualifier, tag-evidence fields and v0.4.2 negative fixture so release hardening cannot silently regress to the former v1 contract."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The pre-tag helper accepts only lifecycle-aware Codex v2 evidence with a successful clean relaunch after the interactive selected-plugin TUI. A new canonical verify-draft-release.sh reconciles exact tag/SHA identity, Draft assets, checksums, attestations, current provider pins, local pre-tag/Draft evidence, and every exact-tag push Action before any publish gate; canonical readiness verifies this verifier is executable and shell-valid."
+      ]
+    },
+    "public_claims": {
+      "decision": "COVERED",
+      "evidence": [
+        "Current README and Codex/Claude/limitations documentation identify v0.4.2 as the candidate capability version, while CHANGELOG records that v0.4.1 remained an unpublished Draft candidate and that v0.4.2 supersedes it."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "codex-session-flags-without-active-pluginstore-bundle",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex activation requires both exact-bundle projection into the active private shadow PluginStore and session-layer exact plugin enablement; session flags alone are not treated as qualification evidence."
+    },
+    {
+      "id": "codex-projection-admits-sibling-or-stale-bundle",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Shadow PluginStore selection is single-bundle only, verified by path+digest ownership marker and cache-only-selected checks; stale owned projections are reconciled, while unknown siblings or tampered projections fail closed and are preserved rather than blindly deleted."
+    },
+    {
+      "id": "codex-projected-bundle-writable-or-mode-corrupted",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Projection preserves executable bits while removing write bits recursively; provider sandbox also write-denies the shadow plugin cache and marker, with regression tests for read-only and executable semantics."
+    },
+    {
+      "id": "codex-plugin-source-or-provider-drifts-after-plan",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Provider identity/version, installed source identity/digest and projected bundle are revalidated after planning and again immediately before provider exec; any drift refuses before provider birth."
+    },
+    {
+      "id": "raw-codex-controls-create-second-activation-authority",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "When CLROOM plugin selection is active, raw Codex config/profile/feature/plugin controls are refused before provider birth; arguments after the provider terminator remain literal."
+    },
+    {
+      "id": "daily-provider-release-drift-invalidates-exact-qualification",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Canonical provider-pins.sh records exact current-stable versions and npm integrity; check-provider-pins.sh verifies latest tags and integrity during candidate provisioning and again at the action-time tag boundary."
+    },
+    {
+      "id": "provider-pin-contract-test-split-brain",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release contract tests and qualification evidence verification consume the canonical pinned provider versions instead of duplicating stale provider version/digest literals; evidence is rejected unless its provider version exactly matches the pinned canary version."
+    },
+    {
+      "id": "clean-default-expansion-breaks-public-native-identity-contract",
+      "decision": "COVERED",
+      "durable_control": "Public identity tests include features.remote_plugin=false in the exact Codex clean argv contract while preserving native Codex process identity and passthrough semantics."
+    },
+    {
+      "id": "sbom-attestation-predicate-not-explicitly-cyclonedx",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "The post-v0.4.0 release delta explicitly verifies the exported SBOM attestation bundle with the CycloneDX predicate before publication."
+    },
+    {
+      "id": "tag-action-uses-stale-main-provider-or-release-state",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Protected-tag helper refreshes main/tag/ruleset/release-contract/provider-pin state at action time, compares local provider version and bytes to pretag evidence, performs one tag push, then reconciles the authoritative remote result."
+    },
+    {
+      "id": "negative-provider-qualification-test-skipped-without-real-provider",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release readiness provisions the pinned current Codex canary before full locked tests; negative qualification tests derive the executable's actual provider version and therefore exercise the fail-closed harness instead of returning early or failing before evidence creation."
+    },
+    {
+      "id": "codex-shadow-generation-reuses-legacy-plugin-cache",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex v0.4.1 uses a new .clroom-clean-state-v2/.clroom-state-v2 shadow generation. Legacy v1 shadow state is preserved but never imported or deleted; regression coverage seeds stale plugin-cache content in v1 and proves selected projection starts in clean v2 state while the existing unknown-sibling guard remains fail-closed."
+    },
+    {
+      "id": "codex-shadow-generation-sandbox-protection-drift",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex state management and sandbox write denial consume the same shared active shadow-generation constant; regression coverage requires the sandbox profile to protect the active v2 plugin cache and not the preserved legacy v1 cache."
+    },
+    {
+      "id": "codex-cli-plugin-map-path-and-mcp-policy-misaddress",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Codex CLI dotted-path encoding can misaddress provider-owned plugin IDs, and selected whole-plugin MCP capability can remain disabled by provider MCP policy.",
+      "durable_control": "Atomic root-level exact-plugin config with MCP enablement derived only from the captured exact bundle inventory, covered by real-provider clean→selected→clean qualification."
+    },
+    {
+      "id": "codex-provider-owned-dot-tmp-breaks-repeat-launch",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Pinned Codex 0.155.1 legitimately creates CODEX_HOME/.tmp state after CLROOM shadow initialization; the previous static allowlist rejected that state on the next launch.",
+      "durable_control": "The initialized v2 shadow admits the exact provider-owned .tmp top-level class, with regression fixtures for pinned upstream plugin-share and rollout-maintenance state plus a negative test proving preexisting unowned .tmp remains fail-closed."
+    },
+    {
+      "id": "pretag-interactive-state-not-revalidated",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The v0.4.1 pre-tag smoke proved clean→selected→clean before the selected interactive TUI, then accepted evidence without proving the next clean launch after provider-written interactive state.",
+      "durable_control": "Codex pre-tag evidence schema v2 requires clean→selected→clean→selected interactive TUI→clean on the same persistent shadow; push-release-tag.sh rejects evidence without post_interactive_clean_confirmed=true."
+    },
+    {
+      "id": "manual-prepublish-review-missed-independent-tag-action",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A successful Release workflow was initially treated as the relevant Draft signal while a separate exact-tag CI run had failed, so manual review could miss an independent tag-triggered blocker.",
+      "durable_control": "Canonical verify-draft-release.sh requires all exact-tag push Actions for the exact source SHA, including CI and Release, to be completed successfully and also reconciles Draft identity/assets/attestations/provider pins/local evidence before a publish verdict."
+    },
+    {
+      "id": "codex-evidence-overstated-persistent-state-immutability",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The previous evidence field name persistent_provider_state_unchanged overstated what the smoke actually fingerprinted: ambient config.toml and the ambient plugin tree, while CLROOM shadow provider state is intentionally allowed to evolve.",
+      "durable_control": "Codex v2 evidence names the measured invariant ambient_config_and_plugin_tree_unchanged and separately proves provider_state_lifecycle_closed, preventing evidence semantics from claiming stronger state immutability than was measured."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRE_TAG",
+      "requirement": "Build exact accepted-main v0.4.2 archive on macOS Apple Silicon with pinned current-stable Codex 0.155.1 and an already-installed exact Codex plugin; prove clean→selected→clean MCP visibility, normal selected-plugin interactive TUI without a model prompt, then a final clean relaunch on the same persistent CLROOM shadow after provider-written state; bind v2 evidence to exact provider/plugin bytes and unchanged ambient config/plugin inputs."
+    },
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "DRAFT_ARTIFACT_PRE_PUBLISH",
+      "requirement": "Download exact Draft Release v0.4.2 archive, verify checksums/provenance/CycloneDX bundles, prove clean→selected→clean Codex plugin behavior against the Draft bytes, and pass canonical exact-tag pre-publish reconciliation including all tag-triggered Actions and accepted local evidence."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRE_TAG",
+      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.278 using exact accepted-main v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, and normal selected-plugin interactive TUI without a model prompt."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "DRAFT_ARTIFACT_PRE_PUBLISH",
+      "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.2 bytes after checksum and attestation verification, bound to Claude Code 2.1.278, then include its evidence in canonical exact-tag pre-publish reconciliation."
+    }
+  ],
+  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness.",
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance.",
+    "promoted_controls": [
+      "initialized-only Codex .tmp provider-state admission with preexisting-unowned-state negative coverage",
+      "two-start real Codex qualification against one synthetic HOME with v2 machine-verified lifecycle evidence",
+      "clean→selected→clean→selected interactive TUI→clean accepted-main pre-tag smoke on one persistent CLROOM shadow",
+      "protected tag helper requirement for post_interactive_clean_confirmed=true in Codex pre-tag evidence v2",
+      "exact-tag pre-publish verifier reconciling all tag push Actions, Draft assets, checksums, attestations, provider pins and local pre-tag/Draft evidence",
+      "canonical readiness ownership of the Draft verifier executable and shellcheck/syntax surface",
+      "evidence naming that distinguishes unchanged ambient config/plugin inputs from intentionally evolving CLROOM shadow provider state",
+      "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta"
+    ]
+  },
+  "reviewed_content_digest": "5826bef75b9aa29453ec4c8b0a96adca11b72b6d14a0432c253d276cceead060"
+}

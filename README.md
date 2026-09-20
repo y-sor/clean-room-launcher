@@ -122,7 +122,7 @@ summary of the active filesystem restrictions:
 - developer instructions and notifications are cleared by default.
 
 ```text
-╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.1 ─────────╮
+╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.2 ─────────╮
 ║░░░░░║⠒│                               │
 ║░░░░░║⠒│     Global AGENTS.md  off     │
 ║░░░░░║⠒│     Global skills    3 on     │
@@ -218,7 +218,7 @@ clroom codex --help
 clroom codex --version
 ```
 
-The v0.4.1 source can also admit exactly one already-installed whole Codex
+The v0.4.2 source can also admit exactly one already-installed whole Codex
 plugin for one interactive launch:
 
 ```sh
@@ -235,7 +235,7 @@ update, remove, or refresh Codex plugins or marketplaces.
 
 While this selection is active, raw Codex config/plugin controls such as
 `-c`, `--config`, `--profile`, `--enable`, `--disable`, and
-`--plugin` are refused before provider birth. The exact v0.4.1 qualification
+`--plugin` are refused before provider birth. The exact v0.4.2 qualification
 target for this path is Codex CLI `0.155.1` on macOS Apple Silicon.
 
 ### Claude Code
@@ -254,7 +254,7 @@ global skills for this launch with the same skill choice:
 clroom claude --skill-set=my-skill,@my-skill-set
 ```
 
-The v0.4.1 source can also admit exactly one already-installed whole Claude
+The v0.4.2 source can also admit exactly one already-installed whole Claude
 plugin for one launch:
 
 ```sh
@@ -282,7 +282,7 @@ activation-qualified in v0.4.x. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-v0.4.1 targets Claude Code `2.1.278` for both ordinary clean launch and the
+v0.4.2 targets Claude Code `2.1.278` for both ordinary clean launch and the
 whole-plugin activation path. Codex whole-plugin activation is separately
 qualified through its own shadow-PluginStore mechanism. Standalone MCP
 selection, `--with=all`, multi-plugin selection, and component-level plugin
@@ -495,14 +495,14 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.4.1` on macOS Apple Silicon. See the
+This source tree is prepared for `v0.4.2` on macOS Apple Silicon. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
 for publication status and downloadable artifacts. Real-provider qualification
 is bound to the exact behavior-specific provider versions above. The macOS
 archive is unsigned and unnotarized.
 
 It supports the documented Codex interactive and exec clean paths, the bounded
-v0.4.1 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
+v0.4.2 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
 and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
 Apple Silicon paths.
 

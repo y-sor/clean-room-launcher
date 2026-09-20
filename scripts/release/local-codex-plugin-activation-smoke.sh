@@ -12,6 +12,17 @@ fail() {
   exit "${2:-1}"
 }
 
+fail_from_stderr() {
+  local label=$1
+  local stderr_path=$2
+  local root_code=
+  root_code=$(grep -Eo 'CLROOM_[A-Z0-9_]+' "$stderr_path" 2>/dev/null | tail -1 || true)
+  if [[ -n "$root_code" ]]; then
+    fail "$label:$root_code"
+  fi
+  fail "$label"
+}
+
 phase=${1:-}
 [[ "$phase" == "pretag" || "$phase" == "draft" ]] || usage
 shift || true
@@ -215,12 +226,16 @@ source_before=$(fingerprint_tree "$plugin_source")
 "$clroom" --output json info codex "plugin:$plugin_id" >"$tmp/info.json" 2>"$tmp/info.err" \
   || fail "PLUGIN_INFO"
 
-"$clroom" codex mcp list --json >"$tmp/clean-before.json" 2>"$tmp/clean-before.err" \
-  || fail "CLEAN_BEFORE_MCP_LIST"
-"$clroom" codex --with="plugin:$plugin_id" mcp list --json \
-  >"$tmp/selected.json" 2>"$tmp/selected.err" || fail "SELECTED_MCP_LIST"
-"$clroom" codex mcp list --json >"$tmp/clean-after.json" 2>"$tmp/clean-after.err" \
-  || fail "CLEAN_AFTER_MCP_LIST"
+if ! "$clroom" codex mcp list --json >"$tmp/clean-before.json" 2>"$tmp/clean-before.err"; then
+  fail_from_stderr "CLEAN_BEFORE_MCP_LIST" "$tmp/clean-before.err"
+fi
+if ! "$clroom" codex --with="plugin:$plugin_id" mcp list --json \
+  >"$tmp/selected.json" 2>"$tmp/selected.err"; then
+  fail_from_stderr "SELECTED_MCP_LIST" "$tmp/selected.err"
+fi
+if ! "$clroom" codex mcp list --json >"$tmp/clean-after.json" 2>"$tmp/clean-after.err"; then
+  fail_from_stderr "CLEAN_AFTER_MCP_LIST" "$tmp/clean-after.err"
+fi
 
 ambient_after=$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")
 source_after=$(fingerprint_tree "$plugin_source")
@@ -273,6 +288,7 @@ print("AUTOMATED_CODEX_PLUGIN_E2E=PASS")
 PY
 
 interactive=false
+post_interactive_clean=false
 if [[ "$phase" == "pretag" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
   echo
@@ -286,6 +302,21 @@ if [[ "$phase" == "pretag" ]]; then
   read -r answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
   interactive=true
+  if ! "$clroom" codex mcp list --json \
+    >"$tmp/post-interactive-clean.json" 2>"$tmp/post-interactive-clean.err"; then
+    fail_from_stderr "POST_INTERACTIVE_CLEAN_MCP_LIST" "$tmp/post-interactive-clean.err"
+  fi
+  python3 - "$expected_mcp" "$tmp/post-interactive-clean.json" <<'PY' \
+    || fail "POST_INTERACTIVE_CLEAN_EXPECTED_MCP"
+import json, sys
+expected_mcp, path = sys.argv[1:]
+data = json.load(open(path, encoding="utf-8"))
+if not isinstance(data, list):
+    raise SystemExit("mcp-list-not-array")
+if any(isinstance(item, dict) and item.get("name") == expected_mcp for item in data):
+    raise SystemExit("expected-mcp-present-after-interactive")
+PY
+  post_interactive_clean=true
   [[ "$ambient_before" == "$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")" ]] \
     || fail "PERSISTENT_PROVIDER_STATE_CHANGED_INTERACTIVE"
   [[ "$source_before" == "$(fingerprint_tree "$plugin_source")" ]] \
@@ -297,16 +328,16 @@ mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
-  "$plugin_id" "$expected_mcp" "$interactive" "$codex_version_output" \
+  "$plugin_id" "$expected_mcp" "$interactive" "$post_interactive_clean" "$codex_version_output" \
   "$codex_version" "$codex_provider_sha" "$source_before" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
-    interactive, codex_version_output, codex_version, codex_provider_sha,
-    plugin_source_sha,
+    interactive, post_interactive_clean, codex_version_output, codex_version,
+    codex_provider_sha, plugin_source_sha,
 ) = sys.argv[1:]
 record = {
-    "schema_version": "clroom.codex-plugin-release-smoke.v1",
+    "schema_version": "clroom.codex-plugin-release-smoke.v2",
     "result": "PASS",
     "phase": phase,
     "release_version": version,
@@ -322,10 +353,12 @@ record = {
     "clean_before_expected_mcp": False,
     "selected_expected_mcp": True,
     "clean_after_expected_mcp": False,
-    "persistent_provider_state_unchanged": True,
+    "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
     "interactive_selected_tui_confirmed": interactive == "true",
     "interactive_no_model_prompt_confirmed": interactive == "true",
+    "provider_state_lifecycle_closed": True,
+    "post_interactive_clean_confirmed": post_interactive_clean == "true",
     "observed_at_utc": datetime.datetime.now(
         datetime.timezone.utc
     ).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
@@ -341,5 +374,7 @@ echo "SOURCE_HEAD=$source_head"
 echo "ARTIFACT_SHA256=$artifact_sha"
 echo "PLUGIN_ID=$plugin_id"
 echo "EXPECTED_MCP=$expected_mcp"
-echo "PERSISTENT_PROVIDER_STATE_UNCHANGED=YES"
+echo "AMBIENT_CONFIG_AND_PLUGIN_TREE_UNCHANGED=YES"
+echo "PROVIDER_STATE_LIFECYCLE_CLOSED=YES"
+echo "POST_INTERACTIVE_CLEAN_CONFIRMED=$post_interactive_clean"
 echo "EVIDENCE_FILE=${evidence#$root/}"
