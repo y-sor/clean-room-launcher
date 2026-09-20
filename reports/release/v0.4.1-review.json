@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.1",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "e5c8968209ec673fe30c60dff0cd7e47ca4052cb",
+  "reviewed_through_commit": "209059313887ed9deb36c9fcc64f5a7753eacedd",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -136,7 +136,7 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.1 bytes after checksum and attestation verification, bound to current-stable Claude Code 2.1.278."
     }
   ],
-  "reviewed_content_digest": "1c3ece5778d8d798951a8febc59b03bde4ade2493dcc776aeadbf54b9952a382",
+  "reviewed_content_digest": "ecb857e21c093d746f47e72bc8b63fb5331701f6ed193b9d3247174cf9f066b5",
   "product_outcome": "Ship v0.4.1 as the bounded exact Codex whole-plugin selective-restore slice while preserving clean-by-default behavior, requalifying Codex and Claude Code against their current stable releases, and strengthening release drift controls without widening to standalone MCP, --with=all, multi-plugin selection, component surgery, new dependencies or additional platforms.",
   "contract_evolution_review": {
     "decision": "EXPAND",
