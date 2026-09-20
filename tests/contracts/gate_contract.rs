@@ -130,6 +130,28 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
         2,
         "both qualification records must be rebound to the exact release archive"
     );
+    assert!(
+        source.contains(
+            "\"$GITHUB_SHA\" \"$CLROOM_RELEASE_VERSION\" codex \"$CLROOM_PROVIDER_CODEX_VERSION\""
+        ),
+        "Codex archive evidence verification must consume the canonical pinned provider version"
+    );
+    assert!(
+        source.contains(
+            "\"$GITHUB_SHA\" \"$CLROOM_RELEASE_VERSION\" claude \"$CLROOM_PROVIDER_CLAUDE_VERSION\""
+        ),
+        "Claude archive evidence verification must consume the canonical pinned provider version"
+    );
+    let verifier =
+        std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
+    assert!(
+        verifier.contains("record[\"provider_version\"] != expected_provider_version"),
+        "qualification verifier must compare evidence to its explicit pinned provider version"
+    );
+    assert!(
+        !verifier.contains("\"0.154.0\"") && !verifier.contains("\"2.1.272\""),
+        "qualification verifier must not keep a second stale copy of provider pins"
+    );
 }
 
 #[test]
