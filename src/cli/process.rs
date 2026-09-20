@@ -9,7 +9,10 @@ use std::{
 use clroom::adapters::claude::{
     isolation::IsolationPlan as ClaudeIsolationPlan, projection::Projection,
 };
-use clroom::adapters::codex::isolation::{IsolationInputs, IsolationPlan, plan_with_skills};
+use clroom::adapters::codex::{
+    activation::{self as codex_activation, PluginActivationPlan},
+    isolation::{IsolationInputs, IsolationPlan, plan_with_skills},
+};
 use clroom::adapters::{
     identity::{ProviderIdentity, resolve_identity, revalidate_identity},
     session::ProviderNativePreauthenticatedSession,
@@ -24,8 +27,14 @@ pub(super) fn prepare_codex_state(
     home: &Path,
     ambient_codex_home: &Path,
     selected_global_skill_paths: &[(String, PathBuf)],
+    plugin_activation: Option<&PluginActivationPlan>,
 ) -> Result<CodexState, String> {
-    codex_state::prepare(home, ambient_codex_home, selected_global_skill_paths)
+    codex_state::prepare(
+        home,
+        ambient_codex_home,
+        selected_global_skill_paths,
+        plugin_activation,
+    )
 }
 
 #[derive(Clone, Copy)]
@@ -348,7 +357,10 @@ pub fn launch_isolated_codex(
     contract: &LaunchContract,
     identity: &ProviderIdentity,
     requested_names: &[String],
+    home: &Path,
+    ambient_codex_home: &Path,
     state: Option<&CodexState>,
+    plugin_activation: Option<&PluginActivationPlan>,
 ) -> Result<ExitCode, String> {
     let sandbox = Path::new("/usr/bin/sandbox-exec");
     if !fs::metadata(sandbox).is_ok_and(|metadata| metadata.is_file()) {
@@ -373,14 +385,69 @@ pub fn launch_isolated_codex(
     }
     #[cfg(unix)]
     {
+        revalidate_codex_plugin_activation(
+            home,
+            ambient_codex_home,
+            state,
+            plugin_activation,
+        )?;
         revalidate_launch_identity(identity)?;
         Err(isolated_launch_error(command.exec()))
     }
     #[cfg(not(unix))]
     {
+        revalidate_codex_plugin_activation(
+            home,
+            ambient_codex_home,
+            state,
+            plugin_activation,
+        )?;
         revalidate_launch_identity(identity)?;
         let status = command.status().map_err(isolated_launch_error)?;
         Ok(ExitCode::from(status.code().unwrap_or(1) as u8))
+    }
+}
+
+fn revalidate_codex_plugin_activation(
+    home: &Path,
+    ambient_codex_home: &Path,
+    state: Option<&CodexState>,
+    activation: Option<&PluginActivationPlan>,
+) -> Result<(), String> {
+    let Some(activation) = activation else {
+        return Ok(());
+    };
+    activation
+        .revalidate(home, ambient_codex_home)
+        .map_err(codex_plugin_activation_error)?;
+    let state = state.ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_MISSING".to_owned())?;
+    codex_state::verify_plugin_projection(&state.shadow_home, activation)
+}
+
+fn codex_plugin_activation_error(error: codex_activation::ActivationError) -> String {
+    match error {
+        codex_activation::ActivationError::ProviderTupleNotQualified => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.1 plugin activation; continue locally".to_owned()
+        }
+        codex_activation::ActivationError::Selection(selection) => format!(
+            "{}: selected Codex plugin is unavailable or unqualified; continue locally",
+            selection.code()
+        ),
+        codex_activation::ActivationError::MultiplePlugins => {
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.1 admits one exact Codex plugin per launch".to_owned()
+        }
+        codex_activation::ActivationError::UnsupportedRequest => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.1; continue locally".to_owned()
+        }
+        codex_activation::ActivationError::StateChanged => {
+            "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
+        }
+        codex_activation::ActivationError::InvalidSource => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: selected Codex plugin source is invalid; continue locally".to_owned()
+        }
+        codex_activation::ActivationError::ProjectionFailed => {
+            "CLROOM_CODEX_PLUGIN_PROJECTION_FAILED: selected Codex plugin could not be projected safely; continue locally".to_owned()
+        }
     }
 }
 
