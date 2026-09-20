@@ -152,6 +152,14 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
         !verifier.contains("\"0.154.0\"") && !verifier.contains("\"2.1.272\""),
         "qualification verifier must not keep a second stale copy of provider pins"
     );
+    assert!(
+        verifier.contains(r#"r"[0-9]+\.[0-9]+\.[0-9]+""#),
+        "qualification verifier must accept ordinary three-part semantic versions"
+    );
+    assert!(
+        !verifier.contains(r#"r"[0-9]+\\.[0-9]+\\.[0-9]+""#),
+        "qualification verifier must not double-escape semantic-version separators"
+    );
 }
 
 #[test]
