@@ -1,4 +1,7 @@
-use clroom::adapters::codex::{\n    activation::{self, PluginActivationPlan},\n    SHADOW_STATE_DIR,\n};
+use clroom::adapters::codex::{
+    SHADOW_STATE_DIR,
+    activation::{self, PluginActivationPlan},
+};
 use std::{
     fs,
     io::Write,
