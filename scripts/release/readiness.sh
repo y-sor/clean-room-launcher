@@ -69,6 +69,8 @@ if command -v shellcheck >/dev/null 2>&1; then
     packaging/build-artifacts.sh \
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
+    scripts/release/check-provider-pins.sh \
+    scripts/release/provider-pins.sh \
     scripts/release/provision-provider-canaries.sh \
     scripts/release/local-release-audit.sh \
     scripts/release/push-release-tag.sh \
@@ -80,6 +82,8 @@ else
     packaging/build-artifacts.sh \
     scripts/release/check-attestation-contract.sh \
     scripts/release/check-provider-canary-contract.sh \
+    scripts/release/check-provider-pins.sh \
+    scripts/release/provider-pins.sh \
     scripts/release/provision-provider-canaries.sh \
     scripts/release/local-release-audit.sh \
     scripts/release/push-release-tag.sh \
