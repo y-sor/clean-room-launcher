@@ -55,6 +55,7 @@ fi
 [[ -x scripts/release/local-release-audit.sh ]] || fail "RELEASE_AUDIT_EXECUTABLE"
 [[ -x scripts/release/local-plugin-activation-smoke.sh ]] || fail "PLUGIN_SMOKE_EXECUTABLE"
 [[ -x scripts/release/verify-draft-release.sh ]] || fail "DRAFT_RELEASE_VERIFY_EXECUTABLE"
+[[ -x scripts/probe/check-claude-instruction-isolation.sh ]] || fail "CLAUDE_INSTRUCTION_PROBE_EXECUTABLE"
 python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
   python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
@@ -78,6 +79,7 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/verify-draft-release.sh \
+    scripts/probe/check-claude-instruction-isolation.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -93,6 +95,7 @@ else
     scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/verify-draft-release.sh \
+    scripts/probe/check-claude-instruction-isolation.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
@@ -121,6 +124,8 @@ artifact=$(sed -n 's/^ARTIFACT=//p' /tmp/clroom-release-build.log)
 [[ -n "$artifact" && -f "$artifact" ]] || fail "ARTIFACT_MISSING"
 if [[ -n ${CLROOM_PROVIDER_CODEX:-} && -n ${CLROOM_PROVIDER_CLAUDE:-} && -n ${CLROOM_QUALIFICATION_EVIDENCE_DIR:-} ]]; then
   candidate_dir="$root/target/${CLROOM_TARGET:+$CLROOM_TARGET/}release"
+  bash scripts/probe/check-claude-instruction-isolation.sh "$candidate_dir/clroom-claude" \
+    || fail "CLAUDE_INSTRUCTION_ISOLATION"
   mkdir -p "$CLROOM_QUALIFICATION_EVIDENCE_DIR"
   scripts/release/qualify-real-provider.sh --provider codex --executable "$CLROOM_PROVIDER_CODEX" --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" --candidate "$candidate_dir/clroom-codex" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/codex.json" || fail "REAL_PROVIDER_CODEX"
   scripts/release/qualify-real-provider.sh --provider claude --executable "$CLROOM_PROVIDER_CLAUDE" --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION" --candidate "$candidate_dir/clroom-claude" --source-head "$(git rev-parse HEAD)" --version "$version" --output "$CLROOM_QUALIFICATION_EVIDENCE_DIR/claude.json" || fail "REAL_PROVIDER_CLAUDE"
