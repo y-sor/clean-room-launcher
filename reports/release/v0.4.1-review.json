@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.1",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "819b0ea5bdaf31abd8b346bdbb2ad39f0b9de10c",
+  "reviewed_through_commit": "60637e33465a91b031613166da2813d9aec8fa5b",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -75,7 +75,7 @@
     {
       "id": "provider-pin-contract-test-split-brain",
       "decision": "CONTRACT_EXPAND",
-      "durable_control": "Release contract tests consume the canonical provider-pins.sh contract instead of duplicating stale provider version and digest literals."
+      "durable_control": "Release contract tests and qualification evidence verification consume the canonical pinned provider versions instead of duplicating stale provider version/digest literals; evidence is rejected unless its provider version exactly matches the pinned canary version."
     },
     {
       "id": "clean-default-expansion-breaks-public-native-identity-contract",
@@ -131,7 +131,7 @@
       "clean→selected→clean Codex artifact capability smoke for accepted main and Draft release bytes",
       "canonical exact provider pins with npm latest-tag and registry-integrity checks for Codex and Claude Code",
       "provider freshness recheck at the protected tag action boundary",
-      "release contract tests bound to canonical provider pins rather than duplicated version literals",
+      "release contract tests and qualification evidence verification bound to canonical provider pins rather than duplicated version literals",
       "continued CycloneDX bundle predicate verification and action-time release-state guards from the post-v0.4.0 main delta"
     ]
   }
