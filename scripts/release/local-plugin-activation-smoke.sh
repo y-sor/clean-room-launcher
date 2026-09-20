@@ -130,11 +130,14 @@ probe_home="$probe_root/home"
 probe_workspace="$probe_home/workspace"
 probe_project="$probe_workspace/project"
 probe_bin="$probe_root/bin"
+probe_tmp="$probe_root/tmp"
+probe_marker="$probe_tmp/provider-executed"
 mkdir -p \
   "$probe_home/.claude/skills" \
   "$probe_workspace/.claude" \
   "$probe_project/.claude" \
-  "$probe_bin"
+  "$probe_bin" \
+  "$probe_tmp"
 printf '%s\n' 'ambient home instructions' >"$probe_home/AGENTS.md"
 printf '%s\n' 'ambient workspace instructions' >"$probe_workspace/AGENTS.md"
 printf '%s\n' 'ambient hidden workspace instructions' >"$probe_workspace/.claude/AGENTS.md"
@@ -142,7 +145,7 @@ printf '%s\n' 'project instructions' >"$probe_project/AGENTS.md"
 printf '%s\n' 'project hidden instructions' >"$probe_project/.claude/AGENTS.md"
 cat >"$probe_bin/claude" <<'SH'
 #!/bin/sh
-if [ "${1:-}" = "--version" ]; then
+if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then
   printf '2.1.278\n'
   exit 0
 fi
@@ -151,6 +154,7 @@ for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.clau
 done
 /bin/cat "$PWD/AGENTS.md" >/dev/null 2>&1 || exit 101
 /bin/cat "$PWD/.claude/AGENTS.md" >/dev/null 2>&1 || exit 102
+printf '%s\n' executed >"$TMPDIR/provider-executed" || exit 103
 exit 0
 SH
 chmod 0700 "$probe_bin/claude"
@@ -158,13 +162,17 @@ if ! (
   cd "$probe_project"
   HOME="$probe_home" \
   PATH="$probe_bin:/usr/bin:/bin" \
+  TMPDIR="$probe_tmp" \
   TERM="${TERM:-dumb}" \
-    "$clroom" claude --version \
+    "$clroom" claude \
       >"$probe_root/stdout.log" 2>"$probe_root/stderr.log"
 ); then
   fail "AGENTS_BOUNDARY_SANDBOX_PROBE"
 fi
+[[ "$(cat "$probe_marker" 2>/dev/null || true)" == executed ]] \
+  || fail "AGENTS_BOUNDARY_PROVIDER_NOT_EXECUTED"
 agents_boundary_probe=true
+echo "AGENTS_BOUNDARY_PROVIDER_EXECUTED=PASS"
 echo "AGENTS_BOUNDARY_SANDBOX_PROBE=PASS"
 
 registry="$HOME/.claude/plugins/installed_plugins.json"

@@ -77,6 +77,8 @@ for needle in \
   '"schema_version":"clroom.plugin-release-smoke.v2"' \
   '"external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true"' \
   '"external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true"' \
+  'AGENTS_BOUNDARY_PROVIDER_EXECUTED=PASS' \
+  'AGENTS_BOUNDARY_PROVIDER_NOT_EXECUTED' \
   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS' \
   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'; do
   grep -Fq "$needle" "$claude_smoke" || fail "CLAUDE_INSTRUCTION_BOUNDARY_SMOKE_MISSING"
