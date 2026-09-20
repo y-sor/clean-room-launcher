@@ -168,8 +168,16 @@ fn validate_shadow_entries(shadow_home: &Path, initialized: bool) -> Result<(), 
             .ok_or_else(|| "CLROOM_CODEX_STATE_DIRTY".to_owned())?;
         if matches!(
             name.as_str(),
-            STATE_MARKER | PLUGIN_PROJECTION_MARKER | "auth.json" | ".credentials.json" | "skills"
+            STATE_MARKER | "auth.json" | ".credentials.json" | "skills"
         ) {
+            continue;
+        }
+        if name == PLUGIN_PROJECTION_MARKER {
+            let metadata = fs::symlink_metadata(entry.path())
+                .map_err(|_| "CLROOM_CODEX_STATE_DIRTY".to_owned())?;
+            if metadata.file_type().is_symlink() || !metadata.is_file() {
+                return Err("CLROOM_CODEX_STATE_DIRTY".to_owned());
+            }
             continue;
         }
         let initialized_capability_directory =
@@ -318,11 +326,16 @@ fn read_plugin_projection_marker(
     shadow_home: &Path,
 ) -> Result<Option<(PathBuf, String)>, String> {
     let marker = shadow_home.join(PLUGIN_PROJECTION_MARKER);
-    let bytes = match fs::read(&marker) {
-        Ok(bytes) => bytes,
+    match fs::symlink_metadata(&marker) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+            return Err("CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned());
+        }
+        Ok(_) => {}
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(_) => return Err("CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned()),
-    };
+    }
+    let bytes = fs::read(&marker)
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned())?;
     let text = std::str::from_utf8(&bytes)
         .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned())?;
     let mut lines = text.lines();
@@ -424,10 +437,7 @@ fn make_tree_owner_writable(root: &Path) -> Result<(), String> {
         }
         if metadata.is_dir() {
             make_tree_owner_writable(&entry.path())?;
-        } else if metadata.is_file() {
-            fs::set_permissions(entry.path(), fs::Permissions::from_mode(0o600))
-                .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
-        } else {
+        } else if !metadata.is_file() {
             return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
         }
     }
@@ -948,6 +958,24 @@ mod tests {
                 .join("plugins/cache/other-market/sibling/1.0.0")
                 .exists()
         );
+    }
+
+    #[test]
+    fn symlinked_projection_marker_is_refused_without_following_it() {
+        let scratch = Scratch::new();
+        let home = scratch.0.join("marker-home");
+        let ambient_codex_home = home.join(".codex");
+        fs::create_dir_all(&ambient_codex_home).unwrap();
+        fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
+        let state = prepare(&home, &ambient_codex_home, &[], None).unwrap();
+        let outside = scratch.0.join("outside-marker");
+        fs::write(&outside, b"outside\n").unwrap();
+        symlink(&outside, state.shadow_home.join(PLUGIN_PROJECTION_MARKER)).unwrap();
+
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
+
+        assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
+        assert_eq!(fs::read(outside).unwrap(), b"outside\n");
     }
 
     #[test]
