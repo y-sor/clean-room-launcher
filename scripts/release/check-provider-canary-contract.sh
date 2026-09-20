@@ -6,6 +6,8 @@ provisioner="$root/scripts/release/provision-provider-canaries.sh"
 qualifier="$root/scripts/release/qualify-real-provider.sh"
 pins="$root/scripts/release/provider-pins.sh"
 pin_checker="$root/scripts/release/check-provider-pins.sh"
+codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
+tag_helper="$root/scripts/release/push-release-tag.sh"
 release_candidate="$root/.github/workflows/release-candidate.yml"
 release="$root/.github/workflows/release.yml"
 
@@ -14,7 +16,7 @@ fail() {
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$tag_helper" "$release_candidate" "$release"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
@@ -55,6 +57,26 @@ for needle in \
 done
 
 
+for needle in \
+  'bash "$root/scripts/release/check-provider-pins.sh"' \
+  '[[ "$codex_version" == "$CODEX_VERSION" ]]' \
+  '"$clroom" codex mcp list --json' \
+  '"$clroom" codex --with="plugin:$plugin_id" mcp list --json' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v1"' \
+  '"clean_before_expected_mcp": False' \
+  '"selected_expected_mcp": True' \
+  '"clean_after_expected_mcp": False'; do
+  grep -Fq "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
+done
+
+for needle in \
+  'codex-pretag-v${version}-${expected:0:12}.json' \
+  'PRETAG_CODEX_EVIDENCE_PASS' \
+  'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
+  'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
+  grep -Fq "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
+done
+
 for workflow in "$release_candidate" "$release"; do
   grep -Fq './scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"' "$workflow" \
     || fail "WORKFLOW_PROVISIONER_MISSING"
@@ -70,6 +92,8 @@ fi
 bash -n "$provisioner" || fail "PROVISIONER_SYNTAX"
 bash -n "$pin_checker" || fail "PIN_CHECKER_SYNTAX"
 bash -n "$pins" || fail "PINS_SYNTAX"
+bash -n "$codex_smoke" || fail "CODEX_SMOKE_SYNTAX"
+bash -n "$tag_helper" || fail "TAG_HELPER_SYNTAX"
 bash -n "$qualifier" || fail "QUALIFIER_SYNTAX"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
