@@ -18,6 +18,9 @@ Semantic Versioning after the first public release.
 
 ### Changed
 
+- Claude release qualification now covers the provider instruction surface:
+  exact-artifact checks prove personal/global ancestor `AGENTS.md` inputs stay
+  outside the launch while repository/project instruction files remain readable.
 - Advanced exact macOS Apple Silicon release qualification to current stable
   Codex `0.155.1` and Claude Code `2.1.278`.
 - Release provider pins fail closed against live npm `latest` and registry
@@ -32,6 +35,9 @@ Semantic Versioning after the first public release.
 
 ### Fixed
 
+- Block Claude Code 2.1.278 built-in `agents-md` from importing personal/global
+  ancestor `AGENTS.md` or `.claude/AGENTS.md` into a clean launch while
+  preserving repository-root and project-local instruction context.
 - Accept Codex `0.155.1` provider-owned `$CODEX_HOME/.tmp` lifecycle state,
   including `plugin-share-local-paths-v1.json` and
   `rollout-maintenance.lock`, after the CLROOM shadow is initialized while
@@ -51,6 +57,9 @@ Semantic Versioning after the first public release.
 
 ### Security
 
+- Provider-version qualification now treats newly introduced ambient instruction
+  sources as release-contract changes; synthetic exact-artifact and real-provider
+  pre-tag evidence must cover the Claude `AGENTS.md` boundary before tagging.
 - Codex activation revalidates provider/source identity around launch, projects
   exact captured bundle bytes only, rejects symlink/path/drift/sibling states,
   makes the projected bundle non-writable, and refuses overlapping raw Codex
