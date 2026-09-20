@@ -25,10 +25,6 @@ const EXPECTED_PROVIDER_FILES: &[&str] = &[
     "version.json",
 ];
 const EXPECTED_PROVIDER_DIRECTORIES: &[&str] = &[
-    // Codex 0.155.1 writes provider-owned coordination and plugin cache state
-    // under CODEX_HOME/.tmp during a normal TUI lifecycle. Keep this exact
-    // directory typed and fail closed on unknown siblings.
-    ".tmp",
     "sessions",
     "archived_sessions",
     "logs",
@@ -36,7 +32,10 @@ const EXPECTED_PROVIDER_DIRECTORIES: &[&str] = &[
     "thread-writer-locks",
     "tmp",
 ];
-const INITIALIZED_CAPABILITY_PROVIDER_DIRECTORIES: &[&str] = &["cache", "plugins"];
+// These roots are provider-owned only after CLROOM has established its state
+// marker. Codex 0.155.1 writes coordination/plugin state under CODEX_HOME/.tmp;
+// never let the legacy .sandbox_migration compatibility path authorize it.
+const INITIALIZED_CAPABILITY_PROVIDER_DIRECTORIES: &[&str] = &[".tmp", "cache", "plugins"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CodexState {
@@ -818,6 +817,27 @@ mod tests {
         fs::create_dir_all(&dot_tmp).unwrap();
         let sentinel = dot_tmp.join("plugin-share-local-paths-v1.json");
         fs::write(&sentinel, b"preexisting unowned state\n").unwrap();
+
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
+
+        assert_eq!(error, "CLROOM_CODEX_STATE_DIRTY");
+        assert_eq!(fs::read(sentinel).unwrap(), b"preexisting unowned state\n");
+    }
+
+    #[test]
+    fn uninitialized_legacy_shadow_rejects_codex_dot_tmp_state() {
+        let scratch = Scratch::new();
+        let home = scratch.0.join("home");
+        fs::create_dir_all(&home).unwrap();
+        let ambient_codex_home = home.join(".codex");
+        let shadow_home = ambient_codex_home.join(APP_SUPPORT_DIR).join("home");
+        let dot_tmp = shadow_home.join(".tmp");
+        fs::create_dir_all(&dot_tmp).unwrap();
+        fs::write(shadow_home.join(".sandbox_migration"), b"legacy marker").unwrap();
+        let sentinel = dot_tmp.join("plugin-share-local-paths-v1.json");
+        fs::write(&sentinel, b"preexisting unowned state\n").unwrap();
+        fs::create_dir_all(&ambient_codex_home).unwrap();
+        fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
 
         let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
 
