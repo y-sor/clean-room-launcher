@@ -7,6 +7,60 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-09-20
+
+### Added
+
+- Added `clroom codex --with=plugin:<provider-native-id>` for one exact
+  already-installed Codex whole plugin per interactive launch. The selected
+  bundle is projected into CLROOM's private shadow `PluginStore`, siblings stay
+  absent, and activation is session-only.
+
+### Changed
+
+- Advanced exact macOS Apple Silicon release qualification to current stable
+  Codex `0.155.1` and Claude Code `2.1.278`.
+- Release provider pins fail closed against live npm `latest` and registry
+  integrity before canary provisioning and again at the protected tag boundary.
+- Codex release qualification now proves provider-state lifecycle continuity:
+  the generic real-provider canary starts Codex twice against the same synthetic
+  home, and accepted-main pre-tag qualification performs a final clean launch
+  after the selected interactive TUI on the same persistent CLROOM shadow.
+- Pre-publish verification now reconciles the exact tag/SHA, Draft identity and
+  asset set, checksums and attestations, provider pins, local pre-tag/Draft
+  evidence, and every exact-tag GitHub Actions run before a publish gate.
+
+### Fixed
+
+- Accept Codex `0.155.1` provider-owned `$CODEX_HOME/.tmp` lifecycle state,
+  including `plugin-share-local-paths-v1.json` and
+  `rollout-maintenance.lock`, after the CLROOM shadow is initialized while
+  preserving fail-closed rejection of preexisting or unknown shadow state.
+- Close the release-gate gap that allowed provider-written state created after
+  the pre-tag interactive confirmation to escape revalidation until the Draft
+  artifact smoke.
+
+### Compatibility
+
+- Codex whole-plugin activation remains limited to one provider-native plugin ID
+  and the interactive CLROOM Codex path. Existing clean Codex and Claude launch
+  behavior remains the default when no resource selection is requested.
+- Standalone MCP restore, `--with=all`, multi-plugin selection, component-level
+  plugin surgery, Linux, Windows, and Intel macOS remain outside this release.
+- No runtime dependency was added or replaced.
+
+### Security
+
+- Codex activation revalidates provider/source identity around launch, projects
+  exact captured bundle bytes only, rejects symlink/path/drift/sibling states,
+  makes the projected bundle non-writable, and refuses overlapping raw Codex
+  plugin/config activation controls.
+- Protected tag creation requires lifecycle-aware Codex pre-tag evidence,
+  including the post-interactive clean relaunch. Deleting provider-written
+  state merely to make qualification pass is not accepted evidence.
+- This release supersedes the unpublished v0.4.1 Draft candidate. v0.4.1 was
+  never published and is not the installable latest release.
+
 ## [0.4.1] - 2026-09-20
 
 ### Added
