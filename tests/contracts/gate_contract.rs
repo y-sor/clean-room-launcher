@@ -379,3 +379,25 @@ fn draft_plugin_release_smoke_binds_cyclonedx_predicate() {
 }
 
 use std::os::unix::fs::PermissionsExt;
+
+
+#[test]
+fn canonical_readiness_owns_the_draft_release_verifier() {
+    let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
+
+    assert!(readiness.contains("DRAFT_RELEASE_VERIFY_EXECUTABLE"));
+    assert!(readiness.matches("scripts/release/verify-draft-release.sh").count() >= 3);
+}
+
+#[test]
+fn codex_lifecycle_evidence_names_only_the_ambient_state_it_fingerprints() {
+    let smoke =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let draft = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+
+    assert!(smoke.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(!smoke.contains("persistent_provider_state_unchanged"));
+    assert!(tag.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(draft.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+}
