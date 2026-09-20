@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "b1a9338874d9977fa86f655f1b3d4e736c03782f",
+  "reviewed_through_commit": "1ed013420673a6bc25ea0dcfdbf3bd456c577fa5",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -235,5 +235,5 @@
       "Claude AGENTS accepted-main artifact probe private-TMPDIR invariant: synthetic TMPDIR is forced to mode 0700 and verified before launch, with provider-canary contract coverage for the setup and fail-closed marker"
     ]
   },
-  "reviewed_content_digest": "c781a9be744cd02677302a21ac87f31b5821bb2a659f9dee4451ace3b145e508"
+  "reviewed_content_digest": "28d0e643d54f2e24151120a597400c00f048e673ac284a9b5da98631e83771ea"
 }
