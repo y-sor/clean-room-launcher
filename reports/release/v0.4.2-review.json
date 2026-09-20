@@ -13,7 +13,8 @@
     "tests": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Regression coverage proves initialized .tmp provider state survives a later CLROOM launch, preexisting unowned .tmp still fails closed, real Codex qualification executes twice against one synthetic home, pre-tag whole-plugin evidence cannot be written until a post-interactive clean relaunch succeeds, and canonical readiness owns the exact-tag Draft verifier."
+        "Regression coverage proves initialized .tmp provider state survives a later CLROOM launch, preexisting unowned .tmp still fails closed, real Codex qualification executes twice against one synthetic home, pre-tag whole-plugin evidence cannot be written until a post-interactive clean relaunch succeeds, and canonical readiness owns the exact-tag Draft verifier.",
+        "Release-domain classification explicitly maps scripts/probe/** to the tests domain, and the release-contract self-test includes the sitemap probe path so future probe scripts cannot silently become unclassified release delta."
       ]
     },
     "dependencies": {

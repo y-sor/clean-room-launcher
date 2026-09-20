@@ -19,7 +19,8 @@
       "patterns": [
         "tests/**",
         "fixtures/**",
-        "fuzz/**"
+        "fuzz/**",
+        "scripts/probe/**"
       ]
     },
     {
