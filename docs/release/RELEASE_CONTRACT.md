@@ -17,8 +17,18 @@ known near-misses, and decide whether the release contract itself must expand.
 - a known near-miss lacks a disposition;
 - contract expansion is declared without a durable promoted control;
 - semantic product outcome is missing;
+- `reviewed_through_commit` is not an ancestor of the exact candidate HEAD;
+- any tracked path other than the release-review snapshot changes after
+  `reviewed_through_commit`;
 - any tracked byte, executable mode, symlink, or semantic review declaration
   changes after the semantic review seal.
+
+The semantic review boundary is also commit-bound. `reviewed_through_commit`
+must be an ancestor of the exact candidate HEAD, and every tracked change after
+that commit must be confined to the release-review snapshot itself. Runtime,
+tests, docs, workflows, scripts, packaging or any other tracked change after the
+declared review boundary fails closed instead of being silently covered by a
+later digest-only reseal.
 
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
@@ -75,7 +85,9 @@ qualification, and evidence are refreshed.
 For whole-plugin activation:
 
 1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
-   proves clean/selected plugin separation and its selected-plugin TUI. Codex
+   proves clean/selected plugin separation, its selected-plugin TUI, and that
+   the pinned provider did not load AGENTS.md from an ancestor outside the
+   selected current-project boundary. Codex
    proves clean → selected → clean MCP visibility through one exact installed
    plugin, sibling absence through the runtime contract, unchanged ambient
    provider/plugin state, and its selected-plugin TUI. No model prompt is sent
@@ -111,6 +123,37 @@ For Codex whole-plugin activation this means:
 
 A provider version change invalidates this lifecycle evidence and requires fresh
 qualification against the new exact provider tuple.
+
+## Provider ambient-input surface closure
+
+Provider version changes can add new instruction/configuration discovery
+surfaces without changing CLROOM itself. Startup/version/byte checks alone are
+therefore insufficient for a clean-launch claim.
+
+For every newly pinned provider tuple, release qualification must re-prove the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.278 the
+built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
+through ancestor directories. For Git projects, CLROOM uses the nearest real
+(non-symlink) `.git` file or directory as the project instruction boundary;
+outside Git it falls back to the launch directory. Those instruction names are
+denied only above that boundary, so launching from a nested project directory
+must still retain repo-root and nested project AGENTS files. Regression tests
+must prove both the negative external-ancestor case and this nested-cwd positive
+project case.
+
+Accepted Claude evidence is invalid unless the exact candidate/Draft artifact
+passes a synthetic launched-provider sandbox probe proving external ancestor
+AGENTS.md and .claude/AGENTS.md are unreadable while project-local equivalents
+remain readable. The probe must separately prove that the launched provider
+body executed after version preflight; a provider `--version` success alone
+cannot satisfy this evidence. Accepted pre-tag evidence additionally requires the real pinned-provider
+selected-plugin TUI to run inside a task-owned synthetic nested Git project and
+confirm both sides of the boundary: repo/nested project AGENTS.md is reported as
+loaded, while AGENTS.md and .claude/AGENTS.md above that Git project are not.
+This prevents a permission-denied ancestor walk that drops all project
+instructions from being mistaken for a clean PASS. A provider pin move requires
+both the machine boundary probe and this real-provider instruction-surface
+evidence to be refreshed before a protected tag can be created.
 
 ## Exact-tag pre-publish reconciliation
 

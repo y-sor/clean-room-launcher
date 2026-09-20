@@ -156,7 +156,17 @@ fn fixture() -> (Scratch, PathBuf, PathBuf, PathBuf, PathBuf) {
          [ \"$CLAUDE_CODE_DISABLE_AUTO_MEMORY\" = 1 ] || exit 82\n\
          [ \"$CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN\" = 1 ] || exit 87\n\
          [ \"$CLAUDE_CODE_SUBPROCESS_ENV_SCRUB\" = 1 ] || exit 96\n\
-         [ -r \"$PWD/CLAUDE.md\" ] || exit 71\n\
+         if [ -f \"$HOME/.clroom-probe-agents-boundary\" ]; then\n\
+           for path in \"$HOME/AGENTS.md\" \"$HOME/workspace/AGENTS.md\" \"$HOME/workspace/.claude/AGENTS.md\"; do\n\
+             /bin/cat \"$path\" >/dev/null 2>&1 && exit 100\n\
+           done\n\
+           /bin/cat \"$HOME/workspace/repo/AGENTS.md\" >/dev/null 2>&1 || exit 101\n\
+           /bin/cat \"$HOME/workspace/repo/.claude/AGENTS.md\" >/dev/null 2>&1 || exit 102\n\
+           /bin/cat \"$PWD/AGENTS.md\" >/dev/null 2>&1 || exit 103\n\
+           /bin/cat \"$PWD/.claude/AGENTS.md\" >/dev/null 2>&1 || exit 104\n\
+         else\n\
+           [ -r \"$PWD/CLAUDE.md\" ] || exit 71\n\
+         fi\n\
          [ -r \"$PWD/.claude/skills/project-only/SKILL.md\" ] || exit 72\n\
          [ ! -r \"$HOME/.claude/CLAUDE.md\" ] || exit 83\n\
          [ ! -r \"$HOME/.claude/settings.json\" ] || exit 84\n\
@@ -765,6 +775,63 @@ fn managed_policy_probe_reports_presence_without_reading_policy_contents() {
     assert_eq!(probe_paths(&[invalid]), Presence::Unknown);
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn launched_claude_denies_external_agents_and_keeps_git_root_agents_from_nested_cwd() {
+    let (_root, _existing_project, home, bin, _capture) = fixture();
+    let workspace = home.join("workspace");
+    let repository = workspace.join("repo");
+    let project = repository.join("nested");
+    fs::create_dir_all(workspace.join(".claude")).unwrap();
+    fs::create_dir_all(repository.join(".claude")).unwrap();
+    fs::create_dir_all(project.join(".claude/skills/project-only")).unwrap();
+    fs::write(repository.join(".git"), b"gitdir: synthetic-worktree\n").unwrap();
+
+    fs::write(home.join("AGENTS.md"), b"ambient home instructions\n").unwrap();
+    fs::write(workspace.join("AGENTS.md"), b"ambient workspace instructions\n").unwrap();
+    fs::write(
+        workspace.join(".claude/AGENTS.md"),
+        b"ambient hidden workspace instructions\n",
+    )
+    .unwrap();
+    fs::write(repository.join("AGENTS.md"), b"repository instructions\n").unwrap();
+    fs::write(
+        repository.join(".claude/AGENTS.md"),
+        b"repository hidden instructions\n",
+    )
+    .unwrap();
+    fs::write(project.join("AGENTS.md"), b"nested instructions\n").unwrap();
+    fs::write(
+        project.join(".claude/AGENTS.md"),
+        b"nested hidden instructions\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join(".claude/skills/project-only/SKILL.md"),
+        b"project skill\n",
+    )
+    .unwrap();
+    fs::write(home.join(".clroom-probe-agents-boundary"), b"synthetic\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_clroom"))
+        .current_dir(&project)
+        .env("PATH", &bin)
+        .env("HOME", &home)
+        .args([
+            "claude",
+            "--skill-set=arrow,superpowers:systematic-debugging",
+        ])
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(42),
+        "launched Claude must deny external AGENTS while retaining Git-root and nested project AGENTS:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[test]
 fn claude_parent_environment_is_closed_and_child_scrub_is_enabled() {
     let (_root, project, home, bin, _capture) = fixture();
@@ -933,19 +1000,14 @@ fn interactive_claude_launch_keeps_the_clean_room_plaque_visible() {
     let transcript = String::from_utf8(output.stdout).unwrap().replace('\r', "");
     assert!(transcript.contains("CLEAN ROOM"));
     assert!(transcript.contains("Global CLAUDE.md"));
+    assert!(transcript.contains("Global AGENTS.md"));
     assert!(transcript.contains("Global skills"));
     assert!(transcript.contains("2 on"));
     assert!(transcript.contains("User settings"));
     assert!(transcript.contains("Auto memory"));
     assert!(transcript.contains("Project skills"));
     assert!(transcript.contains("1 on"));
-    for codex_only in [
-        "Global AGENTS.md",
-        "Apps",
-        "Hooks/plugins",
-        "Dev prompt",
-        "Notifications",
-    ] {
+    for codex_only in ["Apps", "Hooks/plugins", "Dev prompt", "Notifications"] {
         assert!(
             !transcript.contains(codex_only),
             "unexpected Codex-only plaque claim: {codex_only}"

@@ -65,6 +65,12 @@ pub fn plan(
         home.join(".config/gcloud"),
         home.join(".azure"),
     ];
+    // Claude Code 2.1.278's built-in agents-md walks AGENTS.md and
+    // .claude/AGENTS.md through ancestor directories. Preserve instructions
+    // within the selected Git worktree when launching from a nested directory;
+    // only ancestors above the nearest real .git marker are ambient/global.
+    // Outside a Git worktree, the launch directory itself is the boundary.
+    let denied_read_files = external_ancestor_instruction_files(&project);
     let mut denied_write_roots = vec![
         home.join(".claude/skills"),
         home.join(".agents/skills"),
@@ -88,6 +94,9 @@ pub fn plan(
     profile.push_str("(deny file-read*");
     for path in &denied_read_roots {
         push_subpath(&mut profile, path)?;
+    }
+    for path in &denied_read_files {
+        push_literal(&mut profile, path)?;
     }
     for path in denied_source_paths {
         push_literal(&mut profile, path)?;
@@ -136,6 +145,31 @@ pub fn plan(
     profile.push_str(")\n");
 
     Ok(IsolationPlan { profile, project })
+}
+
+fn external_ancestor_instruction_files(project: &Path) -> Vec<PathBuf> {
+    project_instruction_root(project)
+        .ancestors()
+        .skip(1)
+        .flat_map(|directory| {
+            [
+                directory.join("AGENTS.md"),
+                directory.join(".claude/AGENTS.md"),
+            ]
+        })
+        .collect()
+}
+
+fn project_instruction_root(project: &Path) -> &Path {
+    for directory in project.ancestors() {
+        let marker = directory.join(".git");
+        if let Ok(metadata) = fs::symlink_metadata(marker) {
+            if !metadata.file_type().is_symlink() && (metadata.is_dir() || metadata.is_file()) {
+                return directory;
+            }
+        }
+    }
+    project
 }
 
 fn safe_allowed_directory(path: &Path, project: &Path) -> Option<PathBuf> {
@@ -314,6 +348,102 @@ mod tests {
             &[selected],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn external_ancestor_agents_are_denied_but_git_root_agents_survive_nested_cwd() {
+        let fixture = Fixture::create();
+        let workspace = fixture.home.join("workspace");
+        let repository = workspace.join("repo");
+        let project = repository.join("nested");
+        fs::create_dir_all(repository.join(".git")).unwrap();
+        fs::create_dir_all(repository.join(".claude")).unwrap();
+        fs::create_dir_all(project.join(".claude")).unwrap();
+        fs::create_dir_all(workspace.join(".claude")).unwrap();
+
+        let home_agents = fixture.home.join("AGENTS.md");
+        let workspace_agents = workspace.join("AGENTS.md");
+        let workspace_hidden_agents = workspace.join(".claude/AGENTS.md");
+        let repository_agents = repository.join("AGENTS.md");
+        let repository_hidden_agents = repository.join(".claude/AGENTS.md");
+        let project_agents = project.join("AGENTS.md");
+        let project_hidden_agents = project.join(".claude/AGENTS.md");
+        let symlink_target = fixture.root.join("ambient-agents-target.md");
+
+        fs::write(&home_agents, "instruction\n").unwrap();
+        fs::write(&symlink_target, "symlinked ambient instruction\n").unwrap();
+        symlink(&symlink_target, &workspace_agents).unwrap();
+        fs::write(&workspace_hidden_agents, "instruction\n").unwrap();
+        fs::write(&repository_agents, "repository instruction\n").unwrap();
+        fs::write(&repository_hidden_agents, "repository hidden instruction\n").unwrap();
+        fs::write(&project_agents, "nested instruction\n").unwrap();
+        fs::write(&project_hidden_agents, "nested hidden instruction\n").unwrap();
+
+        let selected = fs::canonicalize(&fixture.selected).unwrap();
+        let plan = plan(
+            &project,
+            Path::new("/bin/cat"),
+            &fixture.home,
+            &fixture.projection_root,
+            &fixture.projection_view,
+            &[],
+            &[selected],
+        )
+        .unwrap();
+
+        for path in [&home_agents, &workspace_agents, &workspace_hidden_agents] {
+            assert!(!sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+        for path in [
+            &repository_agents,
+            &repository_hidden_agents,
+            &project_agents,
+            &project_hidden_agents,
+        ] {
+            assert!(sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn non_git_launch_directory_remains_the_agents_boundary() {
+        let fixture = Fixture::create();
+        let workspace = fixture.home.join("workspace");
+        let project = workspace.join("project");
+        fs::create_dir_all(project.join(".claude")).unwrap();
+        fs::create_dir_all(workspace.join(".claude")).unwrap();
+
+        let workspace_agents = workspace.join("AGENTS.md");
+        let workspace_hidden_agents = workspace.join(".claude/AGENTS.md");
+        let project_agents = project.join("AGENTS.md");
+        let project_hidden_agents = project.join(".claude/AGENTS.md");
+
+        fs::write(&workspace_agents, "ambient instruction\n").unwrap();
+        fs::write(&workspace_hidden_agents, "ambient hidden instruction\n").unwrap();
+        fs::write(&project_agents, "project instruction\n").unwrap();
+        fs::write(&project_hidden_agents, "project hidden instruction\n").unwrap();
+
+        let selected = fs::canonicalize(&fixture.selected).unwrap();
+        let plan = plan(
+            &project,
+            Path::new("/bin/cat"),
+            &fixture.home,
+            &fixture.projection_root,
+            &fixture.projection_view,
+            &[],
+            &[selected],
+        )
+        .unwrap();
+
+        for path in [&workspace_agents, &workspace_hidden_agents] {
+            assert!(!sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+        for path in [&project_agents, &project_hidden_agents] {
+            assert!(sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+
+        fixture.cleanup();
     }
 
     #[test]

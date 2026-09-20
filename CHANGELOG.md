@@ -39,6 +39,10 @@ Semantic Versioning after the first public release.
 - Close the release-gate gap that allowed provider-written state created after
   the pre-tag interactive confirmation to escape revalidation until the Draft
   artifact smoke.
+- Block Claude Code 2.1.278 built-in `agents-md` from importing `AGENTS.md`
+  or `.claude/AGENTS.md` above the nearest Git worktree boundary (or launch
+  directory outside Git) while retaining repo-root and nested project AGENTS
+  instructions when Claude starts from a subdirectory.
 
 ### Compatibility
 
@@ -58,6 +62,9 @@ Semantic Versioning after the first public release.
 - Protected tag creation requires lifecycle-aware Codex pre-tag evidence,
   including the post-interactive clean relaunch. Deleting provider-written
   state merely to make qualification pass is not accepted evidence.
+- Claude pre-tag evidence now requires a real pinned-provider TUI confirmation
+  that no external ancestor `AGENTS.md` was loaded; provider pin changes
+  require fresh ambient-instruction-surface qualification.
 - This release supersedes the unpublished v0.4.1 Draft candidate. v0.4.1 was
   never published and is not the installable latest release.
 

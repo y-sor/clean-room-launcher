@@ -191,6 +191,7 @@ fn claude_preview_reports_only_proven_claude_boundaries() {
     .join("\n");
 
     assert!(output.contains("Global CLAUDE.md"));
+    assert!(output.contains("Global AGENTS.md"));
     assert!(output.contains("Global skills"));
     assert!(output.contains("2 on"));
     assert!(output.contains("User settings"));
@@ -198,13 +199,7 @@ fn claude_preview_reports_only_proven_claude_boundaries() {
     assert!(output.contains("Project skills   2 on"));
     assert_project_supports_centered(&output);
     assert_eq!(output.matches(&package_version_label()).count(), 1);
-    for codex_only in [
-        "Global AGENTS.md",
-        "Apps",
-        "Hooks/plugins",
-        "Dev prompt",
-        "Notifications",
-    ] {
+    for codex_only in ["Apps", "Hooks/plugins", "Dev prompt", "Notifications"] {
         assert!(
             !output.contains(codex_only),
             "unexpected Claude claim: {codex_only}"
