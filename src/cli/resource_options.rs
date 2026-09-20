@@ -210,6 +210,11 @@ mod tests {
             let error = prepare(provider, &strings(&[selector])).unwrap_err();
             assert!(error.starts_with(code), "{error}");
         }
+
+        let all_error =
+            prepare(Provider::Claude, &strings(&["--with=all"])).unwrap_err();
+        assert!(all_error.contains("unavailable in v0.4.x"), "{all_error}");
+        assert!(!all_error.contains("unavailable in v0.4.0"), "{all_error}");
     }
 
     #[test]
