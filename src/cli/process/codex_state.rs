@@ -600,7 +600,7 @@ mod tests {
         },
     };
 
-    use super::{prepare, PLUGIN_PROJECTION_MARKER, STATE_MARKER};
+    use super::{APP_SUPPORT_DIR, prepare, PLUGIN_PROJECTION_MARKER, STATE_MARKER};
 
     static TEST_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -661,7 +661,7 @@ mod tests {
 
         assert_eq!(error, "CLROOM_CODEX_AUTH_UNAVAILABLE");
         assert!(
-            !ambient_codex_home.join(".clroom-clean-state-v1").exists()
+            !ambient_codex_home.join(APP_SUPPORT_DIR).exists()
         );
     }
 
@@ -673,7 +673,7 @@ mod tests {
         let ambient_codex_home = home.join(".codex");
         fs::create_dir_all(&ambient_codex_home).unwrap();
         fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
-        let shadow_home = ambient_codex_home.join(".clroom-clean-state-v1/home");
+        let shadow_home = ambient_codex_home.join(APP_SUPPORT_DIR).join("home");
         fs::create_dir_all(&shadow_home).unwrap();
         fs::write(shadow_home.join("config.toml"), b"owner state").unwrap();
 
@@ -776,7 +776,7 @@ mod tests {
         let home = scratch.0.join("home");
         fs::create_dir_all(&home).unwrap();
         let ambient_codex_home = home.join(".codex");
-        let shadow_home = ambient_codex_home.join(".clroom-clean-state-v1/home");
+        let shadow_home = ambient_codex_home.join(APP_SUPPORT_DIR).join("home");
         fs::create_dir_all(shadow_home.join("cache")).unwrap();
         fs::create_dir_all(shadow_home.join("plugins")).unwrap();
         fs::write(shadow_home.join(".sandbox_migration"), b"legacy marker").unwrap();
