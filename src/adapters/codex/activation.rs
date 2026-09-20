@@ -97,22 +97,27 @@ impl PluginActivationPlan {
             return Err(ActivationError::ProjectionFailed);
         }
 
-        let records = bundle_records(&self.root)?;
-        if digest_records(&self.root, &records)? != self.source_digest {
-            return Err(ActivationError::StateChanged);
-        }
-        if let Err(error) = write_records(&destination, &self.root, &records) {
-            cleanup_created_projection(&destination);
+        let result = (|| {
+            let records = bundle_records(&self.root)?;
+            if digest_records(&self.root, &records)? != self.source_digest {
+                return Err(ActivationError::StateChanged);
+            }
+            write_records(&destination, &self.root, &records)?;
+            if bundle_digest(&self.root)? != self.source_digest
+                || bundle_digest(&destination)? != self.source_digest
+            {
+                return Err(ActivationError::StateChanged);
+            }
+            make_tree_read_only(&destination)?;
+            if bundle_digest(&destination)? != self.source_digest {
+                return Err(ActivationError::ProjectionFailed);
+            }
+            Ok(())
+        })();
+
+        if let Err(error) = result {
+            cleanup_created_projection(shadow_home, &destination);
             return Err(error);
-        }
-        if bundle_digest(&self.root)? != self.source_digest
-            || bundle_digest(&destination)? != self.source_digest
-        {
-            return Err(ActivationError::StateChanged);
-        }
-        make_tree_read_only(&destination)?;
-        if bundle_digest(&destination)? != self.source_digest {
-            return Err(ActivationError::ProjectionFailed);
         }
         Ok(destination)
     }
@@ -293,15 +298,34 @@ fn write_records(
     Ok(())
 }
 
-fn cleanup_created_projection(root: &Path) {
+fn cleanup_created_projection(shadow_home: &Path, root: &Path) {
     let Ok(metadata) = fs::symlink_metadata(root) else {
         return;
     };
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
         return;
     }
-    if make_directories_owner_writable(root).is_ok() {
-        let _ = fs::remove_dir_all(root);
+    if make_directories_owner_writable(root).is_err() || fs::remove_dir_all(root).is_err() {
+        return;
+    }
+
+    let cache_root = shadow_home.join("plugins/cache");
+    let Some(plugin_root) = root.parent() else {
+        return;
+    };
+    let Some(marketplace_root) = plugin_root.parent() else {
+        return;
+    };
+    for path in [plugin_root, marketplace_root] {
+        if !path.starts_with(&cache_root) {
+            return;
+        }
+        match fs::remove_dir(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => break,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => break,
+        }
     }
 }
 
