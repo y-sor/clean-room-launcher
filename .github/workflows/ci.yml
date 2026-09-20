@@ -104,7 +104,28 @@ jobs:
           grep -Fq 'repository: y-sor/clean-room-launcher' docs/_config.yml
           grep -Fq 'baseurl: "/clean-room-launcher"' docs/_config.yml
           grep -Fq 'parse_block_html: true' docs/_config.yml
-          ! grep -Eq '^[[:space:]]*-[[:space:]]+jekyll-sitemap[[:space:]]*$' docs/_config.yml
+          ! grep -Eq '^[[:space:]]*-[[:space:]]+jekyll-sitemap[[:space:]]*    name: Build qualified target lane
+    needs: target-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: alpha-macos-aarch64
+            runner: macos-14
+            rust_target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: cargo test --locked --all-targets --target "${{ matrix.rust_target }}"
+      - name: Build shipped binaries without warnings
+        run: RUSTFLAGS='-D warnings' cargo build --locked --release --bins --target "${{ matrix.rust_target }}"
+ docs/_config.yml
+      - name: Validate sitemap parser and negative cases
+        run: python3 scripts/check-sitemap.py --source-root "$PWD"
+      - name: Verify published sitemap canary
+        run: python3 scripts/check-sitemap.py --live
 
   qualified-target-lanes:
     name: Build qualified target lane
