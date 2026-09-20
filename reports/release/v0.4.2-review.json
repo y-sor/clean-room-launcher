@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "cce5fd88335099ca8e99ac442f55638890ce834a",
+  "reviewed_through_commit": "a03fd79dc75c194d108f7c280dbbb0b802bd0375",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -36,7 +36,8 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "The pre-tag helper accepts only lifecycle-aware Codex v2 evidence with a successful clean relaunch after the interactive selected-plugin TUI. A new canonical verify-draft-release.sh reconciles exact tag/SHA identity, Draft assets, checksums, attestations, current provider pins, local pre-tag/Draft evidence, and every exact-tag push Action before any publish gate; canonical readiness verifies this verifier is executable and shell-valid.",
-        "Claude pre-tag evidence advances to clroom.plugin-release-smoke.v2 and protected-tag validation requires external_ancestor_agents_absent_confirmed=true, so a real selected-plugin TUI that reports an external ancestor AGENTS.md cannot authorize a tag."
+        "Claude pre-tag evidence advances to clroom.plugin-release-smoke.v2 and protected-tag validation requires external_ancestor_agents_absent_confirmed=true, so a real selected-plugin TUI that reports an external ancestor AGENTS.md cannot authorize a tag.",
+        "The release checker now binds reviewed_through_commit to the exact candidate history: it must be an ancestor of HEAD and every tracked change after that commit must be confined to the release-review snapshot, so substantive post-review changes cannot be legalized by a digest-only reseal."
       ]
     },
     "public_claims": {
@@ -155,6 +156,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Pinned Claude Code 2.1.278 added a built-in agents-md ancestor walk. The existing clean-launch model and pre-tag smoke covered CLAUDE.md/settings/skills but allowed an external ancestor AGENTS.md to enter the real selected-plugin TUI.",
       "durable_control": "Claude isolation now denies AGENTS.md and .claude/AGENTS.md above the selected current-project boundary while preserving project-local files; regression coverage proves both directions, the plaque exposes the boundary, and pre-tag evidence v2 plus the tag helper require real-TUI confirmation that no external ancestor AGENTS.md was loaded."
+    },
+    {
+      "id": "release-review-boundary-field-was-not-history-enforced",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The v0.4.2 review snapshot could carry a stale reviewed_through_commit while later substantive test/release-gate commits entered the candidate; the content digest detected tree drift but did not prove that the declared semantic review boundary actually covered those commits.",
+      "durable_control": "check-release-contract.py now requires reviewed_through_commit to be an ancestor of the exact HEAD and rejects every post-boundary tracked change except the release-review snapshot itself; contract regression coverage makes the history binding durable."
     }
   ],
   "artifact_capability_gates": [
@@ -194,7 +201,8 @@
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta",
       "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification",
       "Claude 2.1.278 external-ancestor AGENTS.md/.claude/AGENTS.md deny with positive project-local retention tests and truthful Global AGENTS.md launch status",
-      "Claude pre-tag smoke/evidence v2 and protected-tag gate requiring confirmation that the real selected-plugin TUI loaded no external ancestor AGENTS.md"
+      "Claude pre-tag smoke/evidence v2 and protected-tag gate requiring confirmation that the real selected-plugin TUI loaded no external ancestor AGENTS.md",
+      "commit-bound semantic release review: reviewed_through_commit must be an ancestor of exact HEAD and only the release-review snapshot may change afterward"
     ]
   },
   "reviewed_content_digest": "753f991f41f4eb18766480a051278116a137ddab3a5c2e6ef5445e998ae4bea8"
