@@ -95,9 +95,11 @@ Raw Codex configuration/plugin controls such as `-c`, `--config`,
 CLROOM plugin selection is active, so there is only one activation authority.
 
 The exact v0.4.2 qualification target is Codex CLI `0.155.1` on macOS Apple
-Silicon. Release qualification additionally requires clean → selected → clean
-evidence against the exact candidate bytes and the current stable provider
-bytes. The ordinary parser/runtime minimum remains `0.147.0+`.
+Silicon. Release qualification additionally requires clean → selected → clean, then
+a selected interactive TUI followed by one more clean launch on the same
+persistent CLROOM shadow. The evidence is bound to the exact candidate bytes
+and current stable provider bytes. The ordinary parser/runtime minimum remains
+`0.147.0+`.
 
 This slice does not add multi-plugin selection, standalone MCP restore,
 `--with=all`, component-level plugin surgery, persistent Codex configuration
