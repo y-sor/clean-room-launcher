@@ -301,7 +301,7 @@ fn codex_handoff_launches_interactive_provider_with_persistent_clean_state() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(capture.exists());
-    let state_root = codex_home.join(".clroom-clean-state-v1");
+    let state_root = codex_home.join(".clroom-clean-state-v2");
     assert!(state_root.join("home/auth.json").is_symlink());
     assert_eq!(state_root.parent(), Some(codex_home.as_path()));
 

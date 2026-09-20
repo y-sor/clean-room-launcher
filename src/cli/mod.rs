@@ -299,7 +299,11 @@ fn launch_isolated_codex(
         activation
             .revalidate(&home, &inputs.codex_home)
             .map_err(codex_activation_error_message)?;
-        contract.add_codex_plugin_activation(&activation.provider_config_args());
+        contract.add_codex_plugin_activation(
+            &activation
+                .provider_config_args()
+                .map_err(codex_activation_error_message)?,
+        );
     }
     if std::io::stderr().is_terminal() {
         let feature_state = screen::PlaqueFeatureState::from_provider_args(&provider_args);

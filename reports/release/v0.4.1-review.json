@@ -2,18 +2,18 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.1",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "c802ccbf88b933eb3c46bf2a35f5b8fc7efde2df",
+  "reviewed_through_commit": "209059313887ed9deb36c9fcc64f5a7753eacedd",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Codex v0.4.1 whole-plugin activation is bounded to one exact provider-native ID on Codex 0.155.1 / macOS Apple Silicon, projects only the selected captured bundle into the private shadow PluginStore, keeps sibling bundles absent, write-denies the projection, preserves clean defaults, and revalidates source/provider/projection state before provider birth."
+        "Codex v0.4.1 whole-plugin activation is bounded to one exact provider-native ID on Codex 0.155.1 / macOS Apple Silicon, projects only the selected captured bundle into the private v2 shadow PluginStore, preserves legacy v1 shadow state without importing or deleting it, binds state management and sandbox write denial to one shared shadow-generation constant, keeps sibling bundles absent, write-denies the projection, preserves clean defaults, and revalidates source/provider/projection state before provider birth."
       ]
     },
     "tests": {
       "decision": "COVERED",
       "evidence": [
-        "Locked all-target CI plus focused Codex projection, source-drift, sibling, symlink, tamper, raw-control-conflict, clean-after-selected, public-identity, fuzz and CodeQL coverage exercise the affected trust boundaries."
+        "Locked all-target CI plus focused Codex projection, source-drift, sibling, symlink, tamper, raw-control-conflict, clean-after-selected, legacy-v1-to-v2 shadow-generation isolation, sandbox-to-active-generation binding, public-identity, fuzz and CodeQL coverage exercise the affected trust boundaries."
       ]
     },
     "dependencies": {
@@ -96,6 +96,22 @@
       "id": "negative-provider-qualification-test-skipped-without-real-provider",
       "decision": "CONTRACT_EXPAND",
       "durable_control": "Release readiness provisions the pinned current Codex canary before full locked tests; negative qualification tests derive the executable's actual provider version and therefore exercise the fail-closed harness instead of returning early or failing before evidence creation."
+    },
+    {
+      "id": "codex-shadow-generation-reuses-legacy-plugin-cache",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex v0.4.1 uses a new .clroom-clean-state-v2/.clroom-state-v2 shadow generation. Legacy v1 shadow state is preserved but never imported or deleted; regression coverage seeds stale plugin-cache content in v1 and proves selected projection starts in clean v2 state while the existing unknown-sibling guard remains fail-closed."
+    },
+    {
+      "id": "codex-shadow-generation-sandbox-protection-drift",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex state management and sandbox write denial consume the same shared active shadow-generation constant; regression coverage requires the sandbox profile to protect the active v2 plugin cache and not the preserved legacy v1 cache."
+    },
+    {
+      "id": "codex-cli-plugin-map-path-and-mcp-policy-misaddress",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Codex CLI dotted-path encoding can misaddress provider-owned plugin IDs, and selected whole-plugin MCP capability can remain disabled by provider MCP policy.",
+      "durable_control": "Atomic root-level exact-plugin config with MCP enablement derived only from the captured exact bundle inventory, covered by real-provider clean→selected→clean qualification."
     }
   ],
   "artifact_capability_gates": [
@@ -120,11 +136,11 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.1 bytes after checksum and attestation verification, bound to current-stable Claude Code 2.1.278."
     }
   ],
-  "reviewed_content_digest": "2e5fc78b85cceb18c1cb7acefd465a25815dbf7ae253cbdb46e4c86ac615df89",
+  "reviewed_content_digest": "ecb857e21c093d746f47e72bc8b63fb5331701f6ed193b9d3247174cf9f066b5",
   "product_outcome": "Ship v0.4.1 as the bounded exact Codex whole-plugin selective-restore slice while preserving clean-by-default behavior, requalifying Codex and Claude Code against their current stable releases, and strengthening release drift controls without widening to standalone MCP, --with=all, multi-plugin selection, component surgery, new dependencies or additional platforms.",
   "contract_evolution_review": {
     "decision": "EXPAND",
-    "rationale": "v0.4.1 adds a new provider activation trust boundary and exposes fast-moving provider-version drift as a release correctness risk. Existing v0.4.0 controls remain necessary but are not sufficient for Codex shadow-PluginStore projection or daily provider updates, so deterministic artifact smoke and current-provider freshness/integrity controls are promoted.",
+    "rationale": "v0.4.1 adds a new provider activation trust boundary and exposes fast-moving provider-version drift as a release correctness risk. Pre-tag qualification exposed both legacy shadow-cache contamination and the risk that a shadow-generation migration can diverge from sandbox protection. Existing v0.4.0 controls remain necessary but are not sufficient for Codex shadow-PluginStore projection, shadow-generation migration, sandbox-generation binding, or daily provider updates, so deterministic artifact smoke, versioned shadow-state isolation, shared generation binding, and current-provider freshness/integrity controls are promoted.",
     "promoted_controls": [
       "exact one-bundle Codex shadow PluginStore projection with sibling absence and write denial",
       "action-time Codex source/provider/projection revalidation before provider birth",
@@ -132,7 +148,9 @@
       "canonical exact provider pins with npm latest-tag and registry-integrity checks for Codex and Claude Code",
       "provider freshness recheck at the protected tag action boundary",
       "release contract tests and qualification evidence verification bound to canonical provider pins rather than duplicated version literals",
-      "continued CycloneDX bundle predicate verification and action-time release-state guards from the post-v0.4.0 main delta"
+      "continued CycloneDX bundle predicate verification and action-time release-state guards from the post-v0.4.0 main delta",
+      "versioned Codex v2 shadow-state isolation that preserves but never imports or deletes legacy v1 state",
+      "shared active Codex shadow-generation binding across state management and sandbox write denial"
     ]
   }
 }
