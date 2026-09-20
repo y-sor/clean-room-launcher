@@ -175,5 +175,5 @@
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta"
     ]
   },
-  "reviewed_content_digest": "63eacfac3a227da7041053340a92a36c5dcfcc11b18ffe8d2b9fc94195bb1d4d"
+  "reviewed_content_digest": "5826bef75b9aa29453ec4c8b0a96adca11b72b6d14a0432c253d276cceead060"
 }
