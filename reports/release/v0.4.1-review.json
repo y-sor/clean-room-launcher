@@ -120,7 +120,7 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.1 bytes after checksum and attestation verification, bound to current-stable Claude Code 2.1.278."
     }
   ],
-  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "reviewed_content_digest": "0b328c8d64e50adfc3fa7cc9706fdb4cc06a3e480c17f229e604f89a154279bc",
   "product_outcome": "Ship v0.4.1 as the bounded exact Codex whole-plugin selective-restore slice while preserving clean-by-default behavior, requalifying Codex and Claude Code against their current stable releases, and strengthening release drift controls without widening to standalone MCP, --with=all, multi-plugin selection, component surgery, new dependencies or additional platforms.",
   "contract_evolution_review": {
     "decision": "EXPAND",
