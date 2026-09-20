@@ -243,6 +243,7 @@ fn sandbox_wrapper_argv_cannot_qualify_without_codex_image() {
             script.to_str().expect("script path"),
             "--provider", "codex",
             "--executable", executable.to_str().expect("Codex executable path"),
+            "--expected-provider-version", provider_version.as_str(),
             "--candidate", candidate.to_str().expect("candidate path"),
             "--source-head", "0000000000000000000000000000000000000000",
             "--version", "0.2.0",
