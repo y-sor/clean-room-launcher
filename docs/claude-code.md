@@ -24,6 +24,14 @@ A simplified view:
 
 Current CLROOM source launches Claude with `--setting-sources project,local`, `--strict-mcp-config`, fail-closed sandbox settings, disabled auto-memory, and additional filesystem controls for known personal-global roots.
 
+Claude Code 2.1.277 introduced the built-in `agents-md` project-instruction
+capability; the v2.1.278 release target keeps that behavior. In its default
+fallback mode, a project without its own `CLAUDE.md` can load `AGENTS.md`
+files found on the ancestor walk. CLROOM v0.4.2 treats ancestor instruction
+files above the repository root as personal/global ambient context: those
+`AGENTS.md` and `.claude/AGENTS.md` files are denied to the Claude launch,
+while repository-root and project-local instruction files remain available.
+
 The `--strict-mcp-config` flag is intentionally stricter than the project-settings row above. For the current CLROOM launch, ordinary project, user, and other ambient MCP configurations are not loaded. CLROOM does not synthesize an `--mcp-config`; Claude considers MCP servers only when you explicitly supply its own `--mcp-config` argument for that launch. This is an explicit current limitation, not a claim that project MCP configuration is preserved.
 
 Selected personal-global skills are exposed through a private temporary projection and `--add-dir`.
