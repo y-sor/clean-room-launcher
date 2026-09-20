@@ -407,6 +407,46 @@ mod tests {
     }
 
     #[test]
+    fn non_git_launch_directory_remains_the_agents_boundary() {
+        let fixture = Fixture::create();
+        let workspace = fixture.home.join("workspace");
+        let project = workspace.join("project");
+        fs::create_dir_all(project.join(".claude")).unwrap();
+        fs::create_dir_all(workspace.join(".claude")).unwrap();
+
+        let workspace_agents = workspace.join("AGENTS.md");
+        let workspace_hidden_agents = workspace.join(".claude/AGENTS.md");
+        let project_agents = project.join("AGENTS.md");
+        let project_hidden_agents = project.join(".claude/AGENTS.md");
+
+        fs::write(&workspace_agents, "ambient instruction\n").unwrap();
+        fs::write(&workspace_hidden_agents, "ambient hidden instruction\n").unwrap();
+        fs::write(&project_agents, "project instruction\n").unwrap();
+        fs::write(&project_hidden_agents, "project hidden instruction\n").unwrap();
+
+        let selected = fs::canonicalize(&fixture.selected).unwrap();
+        let plan = plan(
+            &project,
+            Path::new("/bin/cat"),
+            &fixture.home,
+            &fixture.projection_root,
+            &fixture.projection_view,
+            &[],
+            &[selected],
+        )
+        .unwrap();
+
+        for path in [&workspace_agents, &workspace_hidden_agents] {
+            assert!(!sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+        for path in [&project_agents, &project_hidden_agents] {
+            assert!(sandbox_status(&plan.profile, "/bin/cat", path).success());
+        }
+
+        fixture.cleanup();
+    }
+
+    #[test]
     fn selected_plugin_root_is_readable_but_sibling_remains_denied() {
         let fixture = Fixture::create();
         let plan = fixture_plan(&fixture);

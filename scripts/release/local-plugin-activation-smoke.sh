@@ -136,7 +136,6 @@ probe_marker="$probe_tmp/provider-executed"
 mkdir -p \
   "$probe_home/.claude/skills" \
   "$probe_workspace/.claude" \
-  "$probe_repository/.git" \
   "$probe_repository/.claude" \
   "$probe_project/.claude" \
   "$probe_bin" \
@@ -144,6 +143,7 @@ mkdir -p \
 printf '%s\n' 'ambient home instructions' >"$probe_home/AGENTS.md"
 printf '%s\n' 'ambient workspace instructions' >"$probe_workspace/AGENTS.md"
 printf '%s\n' 'ambient hidden workspace instructions' >"$probe_workspace/.claude/AGENTS.md"
+printf '%s\n' 'gitdir: synthetic-worktree' >"$probe_repository/.git"
 printf '%s\n' 'repository instructions' >"$probe_repository/AGENTS.md"
 printf '%s\n' 'repository hidden instructions' >"$probe_repository/.claude/AGENTS.md"
 printf '%s\n' 'nested instructions' >"$probe_project/AGENTS.md"

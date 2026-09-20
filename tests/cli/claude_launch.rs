@@ -783,9 +783,9 @@ fn launched_claude_denies_external_agents_and_keeps_git_root_agents_from_nested_
     let repository = workspace.join("repo");
     let project = repository.join("nested");
     fs::create_dir_all(workspace.join(".claude")).unwrap();
-    fs::create_dir_all(repository.join(".git")).unwrap();
     fs::create_dir_all(repository.join(".claude")).unwrap();
     fs::create_dir_all(project.join(".claude/skills/project-only")).unwrap();
+    fs::write(repository.join(".git"), b"gitdir: synthetic-worktree\n").unwrap();
 
     fs::write(home.join("AGENTS.md"), b"ambient home instructions\n").unwrap();
     fs::write(workspace.join("AGENTS.md"), b"ambient workspace instructions\n").unwrap();
