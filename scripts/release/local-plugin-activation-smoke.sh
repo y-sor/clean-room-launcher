@@ -140,6 +140,8 @@ mkdir -p \
   "$probe_project/.claude" \
   "$probe_bin" \
   "$probe_tmp"
+chmod 0700 "$probe_tmp"
+[[ "$(stat -f '%Lp' "$probe_tmp")" == 700 ]] || fail "AGENTS_BOUNDARY_TMPDIR_NOT_PRIVATE"
 printf '%s\n' 'ambient home instructions' >"$probe_home/AGENTS.md"
 printf '%s\n' 'ambient workspace instructions' >"$probe_workspace/AGENTS.md"
 printf '%s\n' 'ambient hidden workspace instructions' >"$probe_workspace/.claude/AGENTS.md"
