@@ -193,7 +193,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$CLROOM_RELEASE_VERSION" = "0.4.1" || {
+          test "$CLROOM_RELEASE_VERSION" = "0.4.2" || {
             echo "exact release qualification pins must be reviewed for $CLROOM_RELEASE_VERSION" >&2
             exit 1
           }
