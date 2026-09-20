@@ -353,7 +353,7 @@ fn release_review_boundary_is_commit_bound_before_seal_acceptance() {
         std::fs::read_to_string("docs/release/RELEASE_CONTRACT.md").unwrap();
 
     for required in [
-        "git", "merge-base", "--is-ancestor"",
+        "git", "merge-base", "--is-ancestor",
         "REVIEWED_COMMIT_NOT_ANCESTOR",
         "CHANGES_AFTER_REVIEW_BOUNDARY",
         "CHANGE_AFTER_REVIEW_BOUNDARY:",
