@@ -1,12 +1,16 @@
+use clroom::adapters::codex::activation::{self, PluginActivationPlan};
 use std::{
     fs,
-    os::unix::fs::{PermissionsExt, symlink},
-    path::{Path, PathBuf},
+    io::Write,
+    os::unix::fs::{OpenOptionsExt, PermissionsExt, symlink},
+    path::{Component, Path, PathBuf},
 };
 
 const APP_SUPPORT_DIR: &str = ".clroom-clean-state-v1";
 const STATE_MARKER: &str = ".clroom-state-v1";
 const STATE_MARKER_BYTES: &[u8] = b"clroom-state-v1\n";
+const PLUGIN_PROJECTION_MARKER: &str = ".clroom-plugin-projection-v1";
+const PLUGIN_PROJECTION_HEADER: &str = "clroom-plugin-projection-v1";
 const PROVIDER_AUTH_FILES: &[&str] = &["auth.json", ".credentials.json"];
 const EXPECTED_PROVIDER_FILES: &[&str] = &[
     ".sandbox_migration",
@@ -38,6 +42,7 @@ pub(super) fn prepare(
     home: &Path,
     ambient_codex_home: &Path,
     selected_global_skill_paths: &[(String, PathBuf)],
+    plugin_activation: Option<&PluginActivationPlan>,
 ) -> Result<CodexState, String> {
     let auth_files = PROVIDER_AUTH_FILES
         .iter()
@@ -66,6 +71,7 @@ pub(super) fn prepare(
         home,
         selected_global_skill_paths,
     )?;
+    reconcile_plugin_projection(&shadow_home, plugin_activation)?;
 
     for (name, ambient_auth) in auth_files {
         let auth_link = shadow_home.join(name);
@@ -160,7 +166,10 @@ fn validate_shadow_entries(shadow_home: &Path, initialized: bool) -> Result<(), 
             .to_str()
             .map(str::to_owned)
             .ok_or_else(|| "CLROOM_CODEX_STATE_DIRTY".to_owned())?;
-        if matches!(name.as_str(), STATE_MARKER | "auth.json" | ".credentials.json" | "skills") {
+        if matches!(
+            name.as_str(),
+            STATE_MARKER | PLUGIN_PROJECTION_MARKER | "auth.json" | ".credentials.json" | "skills"
+        ) {
             continue;
         }
         let initialized_capability_directory =
@@ -187,6 +196,271 @@ fn validate_shadow_entries(shadow_home: &Path, initialized: bool) -> Result<(), 
         }
     }
     Ok(())
+}
+
+fn reconcile_plugin_projection(
+    shadow_home: &Path,
+    activation: Option<&PluginActivationPlan>,
+) -> Result<(), String> {
+    cleanup_previous_plugin_projection(shadow_home)?;
+    let cache_root = shadow_home.join("plugins/cache");
+
+    if activation.is_none() {
+        return Ok(());
+    }
+
+    ensure_empty_plugin_cache(&cache_root)?;
+    let activation = activation.expect("checked above");
+    let projected = activation
+        .project_into(shadow_home)
+        .map_err(plugin_projection_error)?;
+    verify_projected_plugin(shadow_home, activation, &projected)?;
+    write_plugin_projection_marker(shadow_home, activation)?;
+    Ok(())
+}
+
+pub(super) fn verify_plugin_projection(
+    shadow_home: &Path,
+    activation: &PluginActivationPlan,
+) -> Result<(), String> {
+    let marker = read_plugin_projection_marker(shadow_home)?
+        .ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_MISSING".to_owned())?;
+    if marker.0 != activation.relative_store_path() || marker.1 != activation.source_digest() {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+    }
+    let projected = shadow_home
+        .join("plugins/cache")
+        .join(activation.relative_store_path());
+    verify_projected_plugin(shadow_home, activation, &projected)
+}
+
+fn verify_projected_plugin(
+    shadow_home: &Path,
+    activation: &PluginActivationPlan,
+    projected: &Path,
+) -> Result<(), String> {
+    let cache_root = shadow_home.join("plugins/cache");
+    if !cache_contains_only(&cache_root, activation.relative_store_path()) {
+        return Err("CLROOM_CODEX_PLUGIN_SIBLING_PRESENT".to_owned());
+    }
+    if activation::bundle_digest(projected).map_err(plugin_projection_error)?
+        != activation.source_digest()
+    {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+    }
+    verify_tree_read_only(projected)?;
+    Ok(())
+}
+
+fn cleanup_previous_plugin_projection(shadow_home: &Path) -> Result<(), String> {
+    let Some((relative, digest)) = read_plugin_projection_marker(shadow_home)? else {
+        return Ok(());
+    };
+    let cache_root = shadow_home.join("plugins/cache");
+    let projected = cache_root.join(&relative);
+    if activation::bundle_digest(&projected).map_err(plugin_projection_error)? != digest {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+    }
+    make_tree_owner_writable(&projected)?;
+    fs::remove_dir_all(&projected)
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
+    remove_empty_plugin_ancestors(&cache_root, &relative)?;
+    fs::remove_file(shadow_home.join(PLUGIN_PROJECTION_MARKER))
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
+    Ok(())
+}
+
+fn ensure_empty_plugin_cache(cache_root: &Path) -> Result<(), String> {
+    match fs::symlink_metadata(cache_root) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_dir() => {
+            Err("CLROOM_CODEX_STATE_DIRTY".to_owned())
+        }
+        Ok(_) => {
+            let mut entries = fs::read_dir(cache_root)
+                .map_err(|_| "CLROOM_CODEX_STATE_DIRTY".to_owned())?;
+            if entries.next().transpose().map_err(|_| "CLROOM_CODEX_STATE_DIRTY".to_owned())?.is_some() {
+                Err("CLROOM_CODEX_PLUGIN_SIBLING_PRESENT".to_owned())
+            } else {
+                Ok(())
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err("CLROOM_CODEX_STATE_DIRTY".to_owned()),
+    }
+}
+
+fn write_plugin_projection_marker(
+    shadow_home: &Path,
+    activation: &PluginActivationPlan,
+) -> Result<(), String> {
+    let relative = activation
+        .relative_store_path()
+        .to_str()
+        .ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_INVALID".to_owned())?;
+    let marker = shadow_home.join(PLUGIN_PROJECTION_MARKER);
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(marker)
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned())?;
+    writeln!(
+        file,
+        "{PLUGIN_PROJECTION_HEADER}\n{relative}\n{}",
+        activation.source_digest()
+    )
+    .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned())?;
+    file.sync_all()
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_FAILED".to_owned())
+}
+
+fn read_plugin_projection_marker(
+    shadow_home: &Path,
+) -> Result<Option<(PathBuf, String)>, String> {
+    let marker = shadow_home.join(PLUGIN_PROJECTION_MARKER);
+    let bytes = match fs::read(&marker) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned()),
+    };
+    let text = std::str::from_utf8(&bytes)
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned())?;
+    let mut lines = text.lines();
+    if lines.next() != Some(PLUGIN_PROJECTION_HEADER) {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned());
+    }
+    let relative = lines
+        .next()
+        .map(PathBuf::from)
+        .ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned())?;
+    let digest = lines
+        .next()
+        .map(str::to_owned)
+        .ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned())?;
+    if lines.next().is_some()
+        || digest.len() != 64
+        || !digest.bytes().all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+        || relative.components().count() != 3
+        || relative
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_MARKER_INVALID".to_owned());
+    }
+    Ok(Some((relative, digest)))
+}
+
+fn cache_contains_only(cache_root: &Path, relative: &Path) -> bool {
+    let parts = relative.components().collect::<Vec<_>>();
+    if parts.len() != 3 {
+        return false;
+    }
+    let mut current = cache_root.to_path_buf();
+    for part in parts {
+        let Ok(entries) = fs::read_dir(&current)
+            .and_then(|entries| entries.collect::<Result<Vec<_>, _>>())
+        else {
+            return false;
+        };
+        if entries.len() != 1 || entries[0].file_name() != part.as_os_str() {
+            return false;
+        }
+        let path = entries[0].path();
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            return false;
+        };
+        if metadata.file_type().is_symlink() || !metadata.is_dir() {
+            return false;
+        }
+        current = path;
+    }
+    true
+}
+
+fn verify_tree_read_only(root: &Path) -> Result<(), String> {
+    let metadata =
+        fs::symlink_metadata(root).map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned())?;
+    if metadata.file_type().is_symlink()
+        || !metadata.is_dir()
+        || metadata.permissions().mode() & 0o222 != 0
+    {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_WRITABLE".to_owned());
+    }
+    for entry in fs::read_dir(root)
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned())?
+    {
+        let entry = entry.map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned())?;
+        let metadata = fs::symlink_metadata(entry.path())
+            .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned())?;
+        if metadata.file_type().is_symlink() || metadata.permissions().mode() & 0o222 != 0 {
+            return Err("CLROOM_CODEX_PLUGIN_PROJECTION_WRITABLE".to_owned());
+        }
+        if metadata.is_dir() {
+            verify_tree_read_only(&entry.path())?;
+        } else if !metadata.is_file() {
+            return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+        }
+    }
+    Ok(())
+}
+
+fn make_tree_owner_writable(root: &Path) -> Result<(), String> {
+    let metadata =
+        fs::symlink_metadata(root).map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned())?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+    }
+    fs::set_permissions(root, fs::Permissions::from_mode(0o700))
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
+    for entry in fs::read_dir(root)
+        .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?
+    {
+        let entry =
+            entry.map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
+        let metadata = fs::symlink_metadata(entry.path())
+            .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned())?;
+        if metadata.file_type().is_symlink() {
+            return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+        }
+        if metadata.is_dir() {
+            make_tree_owner_writable(&entry.path())?;
+        } else if metadata.is_file() {
+            fs::set_permissions(entry.path(), fs::Permissions::from_mode(0o600))
+                .map_err(|_| "CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned())?;
+        } else {
+            return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
+        }
+    }
+    Ok(())
+}
+
+fn remove_empty_plugin_ancestors(cache_root: &Path, relative: &Path) -> Result<(), String> {
+    let plugin = relative.parent().ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_INVALID".to_owned())?;
+    let marketplace = plugin.parent().ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_INVALID".to_owned())?;
+    for path in [cache_root.join(plugin), cache_root.join(marketplace), cache_root.to_path_buf()] {
+        match fs::remove_dir(&path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => break,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CLEANUP_FAILED".to_owned()),
+        }
+    }
+    Ok(())
+}
+
+fn plugin_projection_error(error: activation::ActivationError) -> String {
+    match error {
+        activation::ActivationError::StateChanged => {
+            "CLROOM_CODEX_PLUGIN_SOURCE_CHANGED".to_owned()
+        }
+        activation::ActivationError::InvalidSource => {
+            "CLROOM_CODEX_PLUGIN_SOURCE_INVALID".to_owned()
+        }
+        activation::ActivationError::ProjectionFailed => {
+            "CLROOM_CODEX_PLUGIN_PROJECTION_FAILED".to_owned()
+        }
+        _ => "CLROOM_CODEX_PLUGIN_PROJECTION_INVALID".to_owned(),
+    }
 }
 
 fn project_selected_skills(
