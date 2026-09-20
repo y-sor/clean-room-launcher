@@ -427,17 +427,17 @@ fn revalidate_codex_plugin_activation(
 fn codex_plugin_activation_error(error: codex_activation::ActivationError) -> String {
     match error {
         codex_activation::ActivationError::ProviderTupleNotQualified => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.1 plugin activation; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.2 plugin activation; continue locally".to_owned()
         }
         codex_activation::ActivationError::Selection(selection) => format!(
             "{}: selected Codex plugin is unavailable or unqualified; continue locally",
             selection.code()
         ),
         codex_activation::ActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.1 admits one exact Codex plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.2 admits one exact Codex plugin per launch".to_owned()
         }
         codex_activation::ActivationError::UnsupportedRequest => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.1; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.2; continue locally".to_owned()
         }
         codex_activation::ActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
