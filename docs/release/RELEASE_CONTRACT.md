@@ -75,7 +75,9 @@ qualification, and evidence are refreshed.
 For whole-plugin activation:
 
 1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
-   proves clean/selected plugin separation and its selected-plugin TUI. Codex
+   proves clean/selected plugin separation, its selected-plugin TUI, and that
+   the pinned provider did not load AGENTS.md from an ancestor outside the
+   selected current-project boundary. Codex
    proves clean → selected → clean MCP visibility through one exact installed
    plugin, sibling absence through the runtime contract, unchanged ambient
    provider/plugin state, and its selected-plugin TUI. No model prompt is sent
@@ -111,6 +113,25 @@ For Codex whole-plugin activation this means:
 
 A provider version change invalidates this lifecycle evidence and requires fresh
 qualification against the new exact provider tuple.
+
+## Provider ambient-input surface closure
+
+Provider version changes can add new instruction/configuration discovery
+surfaces without changing CLROOM itself. Startup/version/byte checks alone are
+therefore insufficient for a clean-launch claim.
+
+For every newly pinned provider tuple, release qualification must re-prove the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.278 the
+built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
+through ancestor directories. CLROOM denies those files above the selected
+current-project boundary while retaining the same names at or below the project
+boundary. Regression tests must prove both the negative external-ancestor case
+and the positive project case.
+
+Accepted Claude pre-tag evidence is invalid unless the real selected-plugin TUI
+confirms that no external ancestor AGENTS.md was reported as loaded. A provider
+pin move requires this instruction-surface evidence to be refreshed before a
+protected tag can be created.
 
 ## Exact-tag pre-publish reconciliation
 
