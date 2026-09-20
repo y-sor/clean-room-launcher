@@ -37,10 +37,27 @@ cd "$root"
 
 [[ "$(uname -s)" == "Darwin" ]] || fail "MACOS_REQUIRED"
 [[ "$(uname -m)" == "arm64" ]] || fail "APPLE_SILICON_REQUIRED"
-for name in git cargo python3 claude shasum tar; do
+for name in git cargo python3 claude npm shasum tar; do
   command -v "$name" >/dev/null 2>&1 || fail "COMMAND_MISSING:$name"
 done
 [[ -z "$(git status --porcelain)" ]] || fail "WORKTREE_NOT_CLEAN"
+
+# shellcheck source=provider-pins.sh
+source "$root/scripts/release/provider-pins.sh"
+bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+claude_executable=$(command -v claude)
+claude_version_output=$(claude --version 2>&1 | head -1) || fail "CLAUDE_VERSION"
+claude_version=$(python3 - "$claude_version_output" <<'PY'
+import re, sys
+match = re.search(r"([0-9]+\.[0-9]+\.[0-9]+)", sys.argv[1])
+if match is None:
+    raise SystemExit(1)
+print(match.group(1))
+PY
+) || fail "CLAUDE_VERSION_PARSE"
+[[ "$claude_version" == "$CLAUDE_VERSION" ]] || fail "CLAUDE_NOT_CURRENT_STABLE"
+claude_provider_sha=$(shasum -a 256 "$claude_executable" | awk '{print $1}')
+[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CLAUDE_PROVIDER_SHA256"
 
 version=$(python3 - <<'PY'
 import tomllib
@@ -131,10 +148,6 @@ for raw in paths:
 print(h.hexdigest())
 PY
 }
-
-claude_executable=$(command -v claude)
-claude_provider_sha=$(shasum -a 256 "$claude_executable" | awk '{print $1}')
-[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CLAUDE_PROVIDER_SHA256"
 
 before=$(fingerprint)
 "$clroom" --output json info claude "plugin:$plugin_id" >"$tmp/info.json" 2>"$tmp/info.err"   || fail "PLUGIN_INFO"
@@ -257,13 +270,18 @@ if [[ "$phase" == "pretag" ]]; then
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_INTERACTIVE"
 fi
 
+[[ "$(claude --version 2>&1 | head -1)" == "$claude_version_output" ]] || fail "CLAUDE_PROVIDER_VERSION_CHANGED"
+[[ "$(shasum -a 256 "$(command -v claude)" | awk '{print $1}')" == "$claude_provider_sha" ]] || fail "CLAUDE_PROVIDER_BYTES_CHANGED"
+
 evidence_dir="$root/target/release-evidence"
 mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/${phase}-v${version}-${short}.json"
-python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha"   "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$(claude --version 2>&1 | head -1)" "$claude_provider_sha" <<'PY'
+python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
+  "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$claude_version_output" \
+  "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,claude_version,claude_provider_sha=sys.argv[1:]
+output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
   "schema_version":"clroom.plugin-release-smoke.v1",
   "result":"PASS",
@@ -272,7 +290,8 @@ record={
   "source_head":source,
   "artifact_sha256":artifact_sha,
   "platform":"macos-aarch64",
-  "claude_version_output":claude_version,
+  "claude_version_output":claude_version_output,
+  "claude_version":claude_version,
   "claude_provider_sha256":claude_provider_sha,
   "plugin_id":plugin_id,
   "clean_system_init":True,
