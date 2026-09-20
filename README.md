@@ -122,7 +122,7 @@ summary of the active filesystem restrictions:
 - developer instructions and notifications are cleared by default.
 
 ```text
-╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.0 ─────────╮
+╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.1 ─────────╮
 ║░░░░░║⠒│                               │
 ║░░░░░║⠒│     Global AGENTS.md  off     │
 ║░░░░░║⠒│     Global skills    3 on     │
@@ -218,6 +218,26 @@ clroom codex --help
 clroom codex --version
 ```
 
+The v0.4.1 source can also admit exactly one already-installed whole Codex
+plugin for one interactive launch:
+
+```sh
+codex plugin list --json
+clroom codex --with=plugin:plugin-name@marketplace-name
+```
+
+CLROOM preserves the provider-native plugin ID, revalidates the exact installed
+bundle, projects only that bundle into its private shadow `CODEX_HOME`
+`PluginStore`, makes the projection non-writable, and enables only that plugin
+for the process. Sibling plugins remain absent and the next ordinary clean launch
+removes only the verified CLROOM-owned projection. CLROOM does not install,
+update, remove, or refresh Codex plugins or marketplaces.
+
+While this selection is active, raw Codex config/plugin controls such as
+`-c`, `--config`, `--profile`, `--enable`, `--disable`, and
+`--plugin` are refused before provider birth. The exact v0.4.1 qualification
+target for this path is Codex CLI `0.155.1` on macOS Apple Silicon.
+
 ### Claude Code
 
 Start Claude Code with the same clean launch:
@@ -234,7 +254,7 @@ global skills for this launch with the same skill choice:
 clroom claude --skill-set=my-skill,@my-skill-set
 ```
 
-The v0.4.0 source can also admit exactly one already-installed whole Claude
+The v0.4.1 source can also admit exactly one already-installed whole Claude
 plugin for one launch:
 
 ```sh
@@ -251,21 +271,22 @@ launch, and asks Claude to load it for this session. Raw Claude
 resource selection.
 
 This whole-plugin path is currently an exact macOS Apple Silicon qualification
-for Claude Code `2.1.273`. v0.4.0 deliberately qualifies a narrower subset of
-Claude's plugin format: the installed provider-native ID must have a matching
+target for Claude Code `2.1.278`. v0.4.x deliberately qualifies a narrower
+subset of Claude's plugin format: the installed provider-native ID must have a matching
 `.claude-plugin/plugin.json` identity, and the observed effective components
 must come only from the default one-level `skills/<name>/SKILL.md` layout.
 Manifestless plugins, root `SKILL.md` single-skill plugins, custom skill paths,
 slash commands, hooks, MCP servers, agents, LSP servers, background monitors,
 plugin executables, or plugin settings may be observed by inventory but are not
-activation-qualified in v0.4.0. They fail closed instead of receiving a broader
+activation-qualified in v0.4.x. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-Baseline clean-launch exact qualification remains Claude Code `2.1.272`; the
-whole-plugin activation path is separately qualified on Claude Code `2.1.273`.
-v0.4.0 does not add Codex plugin selection, standalone MCP selection,
-`--with=all`, or component-level plugin surgery.
+v0.4.1 targets Claude Code `2.1.278` for both ordinary clean launch and the
+whole-plugin activation path. Codex whole-plugin activation is separately
+qualified through its own shadow-PluginStore mechanism. Standalone MCP
+selection, `--with=all`, multi-plugin selection, and component-level plugin
+surgery remain outside this release.
 
 ## How it works
 
@@ -369,10 +390,11 @@ The qualified macOS provider paths for this source tree are:
 
 | Coding agent and launch path | Platform | Status |
 |---|---|---|
-| Codex CLI 0.154.0 — interactive `clroom codex` | macOS / Apple Silicon | Exact qualification target |
-| Codex CLI 0.154.0 — `clroom codex exec` | macOS / Apple Silicon | Exact qualification target |
-| Claude Code CLI 2.1.272 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Claude Code CLI 2.1.273 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
+| Codex CLI 0.155.1 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.155.1 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.155.1 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
+| Claude Code CLI 2.1.278 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Claude Code CLI 2.1.278 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
 | Claude Code CLI `-p` response-output semantics | macOS / Apple Silicon | Not independently qualified |
 
 Linux and Windows are `NOT_QUALIFIED`. Intel macOS, Homebrew, crates.io,
@@ -473,15 +495,15 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.4.0` on macOS Apple Silicon. See the
+This source tree is prepared for `v0.4.1` on macOS Apple Silicon. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
 for publication status and downloadable artifacts. Real-provider qualification
 is bound to the exact behavior-specific provider versions above. The macOS
 archive is unsigned and unnotarized.
 
-It supports the documented Codex interactive and exec paths, the ordinary
-interactive Claude Code clean launch, and the bounded v0.4.0 Claude skill-only
-whole-plugin activation path. Qualification is limited to the documented macOS
+It supports the documented Codex interactive and exec clean paths, the bounded
+v0.4.1 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
+and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
 Apple Silicon paths.
 
 External launchers can use `clroom-codex` or `clroom-claude` as their provider
