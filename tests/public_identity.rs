@@ -111,6 +111,7 @@ fn clroom_is_the_only_public_identity_and_preserves_the_native_codex_process() {
         "-c\0features.apps=false\0",
         "-c\0features.hooks=false\0",
         "-c\0features.plugins=false\0",
+        "-c\0features.remote_plugin=false\0",
         "-c\0developer_instructions=\"\"\0",
         "-c\0notify=[]\0",
         "-c\0shell_environment_policy.inherit=\"none\"\0",
