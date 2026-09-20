@@ -112,6 +112,29 @@ For Codex whole-plugin activation this means:
 A provider version change invalidates this lifecycle evidence and requires fresh
 qualification against the new exact provider tuple.
 
+## Provider instruction-surface qualification
+
+Exact provider version qualification includes the provider's ambient instruction
+surface, not only process startup, version bytes, plugins, and provider-owned
+state. A provider upgrade that adds or changes an instruction source invalidates
+the previous instruction-surface evidence.
+
+For Claude Code 2.1.278, the built-in `agents-md` capability can load
+`AGENTS.md` when a project has no `CLAUDE.md`. CLROOM therefore requires:
+
+- personal/global `AGENTS.md` and `.claude/AGENTS.md` on the ancestor chain
+  above the repository root to remain unreadable in the Claude launch sandbox;
+- repository-root and project-local instruction files to remain readable;
+- the exact candidate artifact to pass a synthetic sandbox probe for both sides
+  of that boundary;
+- Claude pre-tag evidence schema v2 to record the synthetic boundary result,
+  automated real-provider log-scope check, and interactive confirmation that no
+  ambient `AGENTS.md` was reported as loaded.
+
+A provider pin change requires fresh review of documented/built-in instruction,
+settings, skill, plugin/hook, MCP, memory, and comparable ambient input surfaces
+before the new tuple can satisfy release qualification.
+
 ## Exact-tag pre-publish reconciliation
 
 A successful Release workflow is not by itself a publish verdict. Before an
