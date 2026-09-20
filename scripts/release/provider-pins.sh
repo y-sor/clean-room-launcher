@@ -1,0 +1,8 @@
+# Canonical exact provider pins for release qualification.
+# Version changes require fresh latest/stable resolution plus exact SHA-512 review.
+CODEX_VERSION=0.155.1
+CLAUDE_VERSION=2.1.278
+CODEX_SHA512='FV/x1OHXYv/ifjf3mXj9ThTTAWcUZN6cGIRQRhRxkKNOPuImu1WW0c8ev1vUkE9XGH90dEnYG1tBjIkxRikg0w=='
+CODEX_PLATFORM_SHA512='HP/vJCH/t2hB9Kg6hotN9UglClJ6/z584fal5lEP14C9gNAgAQS4/kTQC7l5V+BA3TqwDPwINSjul28cX8AYXg=='
+CLAUDE_SHA512='sOwHBM69H8Zka3/D3rc2VNNemPYNlgfYTdhsoqPoXZdK5KcKQlzoue4asJ2RVc+tGb/Pz1qxjVV9nVJQ87W7Ng=='
+CLAUDE_PLATFORM_SHA512='l3CI1gPSCGkWNbAnX66SbDF4uFBecCCLu9FLN43JSbMMds5cb6tjOTBMSTr1ydZRZALW9AC/PYabtQOgXIbK5Q=='
