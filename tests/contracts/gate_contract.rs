@@ -203,6 +203,22 @@ fn codex_pretag_smoke_closes_state_after_interactive_provider_writes() {
 }
 
 #[test]
+fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
+    let verifier = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+
+    assert!(verifier.contains(r#"head_sha="$expected""#));
+    assert!(verifier.contains(r#"run.get("head_branch") == tag"#));
+    assert!(verifier.contains(r#"run.get("head_sha") == expected"#));
+    assert!(verifier.contains(r#"run.get("event") == "push""#));
+    assert!(verifier.contains(r#"for required in {"CI", "Release"}"#));
+    assert!(verifier.contains(r#"run.get("status") != "completed" or run.get("conclusion") != "success""#));
+    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v2"));
+    assert!(verifier.contains(r#""provider_state_lifecycle_closed": True"#));
+    assert!(verifier.contains(r#"xp.get("post_interactive_clean_confirmed") is not True"#));
+    assert!(verifier.contains("DRAFT_RELEASE_VERIFY_PASS"));
+}
+
+#[test]
 fn local_tag_helper_parses_annotated_tagger_timestamp_with_digit_regex() {
     let source = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
     assert!(

@@ -87,6 +87,44 @@ For whole-plugin activation:
    the exact Draft Release archive is downloaded and its checksums/attestations
    plus the provider-specific automated capability probes are re-run.
 
+## Stateful provider lifecycle closure
+
+A first successful provider startup is not sufficient evidence for a supported
+stateful integration. When the provider can write durable state under a
+CLROOM-managed or projected provider home, qualification must reuse the same
+state root and prove the next supported launch still succeeds.
+
+For Codex whole-plugin activation this means:
+
+- exact-provider CI qualification executes two real-provider startups against
+  the same synthetic home;
+- accepted-main pre-tag qualification executes
+  clean → selected → clean → selected interactive TUI → clean on the same
+  CLROOM shadow generation;
+- the final post-interactive clean launch must succeed before evidence is
+  accepted or a protected tag can be created;
+- legitimate provider-owned state must not be deleted merely to make
+  qualification pass;
+- any newly admitted provider-state path requires exact pinned-provider
+  evidence plus a negative test proving unknown or pre-existing unowned state
+  still fails closed.
+
+A provider version change invalidates this lifecycle evidence and requires fresh
+qualification against the new exact provider tuple.
+
+## Exact-tag pre-publish reconciliation
+
+A successful Release workflow is not by itself a publish verdict. Before an
+Owner publish gate, the canonical local verifier
+`scripts/release/verify-draft-release.sh` must reconcile the exact tag and
+source SHA, Draft identity and exact asset set, checksums and release-visible
+attestations, current provider pins, accepted pre-tag and Draft provider
+evidence, and every tag-triggered GitHub Actions run for that exact tag/SHA.
+Any incomplete or non-success tag-triggered run blocks publication.
+
+This verifier is read-only with respect to public release state. It does not
+publish, edit, or replace release assets.
+
 Use:
 
 ```sh
