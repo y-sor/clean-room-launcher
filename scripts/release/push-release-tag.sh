@@ -226,6 +226,11 @@ if ! python3 scripts/release/check-release-contract.py --report >/dev/null; then
   echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
   exit 77
 fi
+if ! bash scripts/release/check-provider-pins.sh; then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:PROVIDER_PINS_ACTION_TIME" >&2
+  exit 79
+fi
 
 evidence_claude_version=$(python3 - "$evidence" <<'PY'
 import json
