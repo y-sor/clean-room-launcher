@@ -160,7 +160,7 @@ path, version, expected, expected_codex_version = sys.argv[1:]
 with open(path, encoding="utf-8") as handle:
     record = json.load(handle)
 required = {
-    "schema_version": "clroom.codex-plugin-release-smoke.v1",
+    "schema_version": "clroom.codex-plugin-release-smoke.v2",
     "result": "PASS",
     "phase": "pretag",
     "release_version": version,
@@ -173,6 +173,8 @@ required = {
     "plugin_source_unchanged": True,
     "interactive_selected_tui_confirmed": True,
     "interactive_no_model_prompt_confirmed": True,
+    "provider_state_lifecycle_closed": True,
+    "post_interactive_clean_confirmed": True,
 }
 for key, value in required.items():
     if record.get(key) != value:
