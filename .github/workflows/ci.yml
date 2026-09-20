@@ -105,6 +105,8 @@ jobs:
           grep -Fq 'baseurl: "/clean-room-launcher"' docs/_config.yml
           grep -Fq 'parse_block_html: true' docs/_config.yml
           ! grep -Eq '^[[:space:]]*-[[:space:]]+jekyll-sitemap[[:space:]]*$' docs/_config.yml
+      - name: Validate sitemap parser and negative cases
+        run: python3 scripts/probe/check-sitemap.py --source-root "$PWD"
 
   qualified-target-lanes:
     name: Build qualified target lane

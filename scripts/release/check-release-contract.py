@@ -95,7 +95,7 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CONTRACT_SCHEMA")
 
     if args.self_test:
-        sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml","scripts/release/readiness.sh","README.md","tests/cli/info.rs"]
+        sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
         classified, unknown=classify(sample,contract)
         if unknown or any(not classified[p] for p in sample):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL")
