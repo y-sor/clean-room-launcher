@@ -351,15 +351,14 @@ mod tests {
         let workspace_hidden_agents = workspace.join(".claude/AGENTS.md");
         let project_agents = project.join("AGENTS.md");
         let project_hidden_agents = project.join(".claude/AGENTS.md");
-        for path in [
-            &home_agents,
-            &workspace_agents,
-            &workspace_hidden_agents,
-            &project_agents,
-            &project_hidden_agents,
-        ] {
-            fs::write(path, "instruction\n").unwrap();
-        }
+        let symlink_target = fixture.root.join("ambient-agents-target.md");
+
+        fs::write(&home_agents, "instruction\n").unwrap();
+        fs::write(&symlink_target, "symlinked ambient instruction\n").unwrap();
+        symlink(&symlink_target, &workspace_agents).unwrap();
+        fs::write(&workspace_hidden_agents, "instruction\n").unwrap();
+        fs::write(&project_agents, "instruction\n").unwrap();
+        fs::write(&project_hidden_agents, "instruction\n").unwrap();
 
         let selected = fs::canonicalize(&fixture.selected).unwrap();
         let plan = plan(
