@@ -163,6 +163,31 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
 }
 
 #[test]
+fn claude_release_contract_blocks_ambient_agents_md_but_preserves_project_instructions() {
+    let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
+    let probe =
+        std::fs::read_to_string("scripts/probe/check-claude-instruction-isolation.sh").unwrap();
+    let smoke =
+        std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let draft = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+
+    assert!(readiness.contains("CLAUDE_INSTRUCTION_ISOLATION"));
+    assert!(probe.contains("CLAUDE_INSTRUCTION_ISOLATION_PASS"));
+    assert!(probe.contains("$HOME/workspace/AGENTS.md"));
+    assert!(probe.contains("$HOME/workspace/.claude/AGENTS.md"));
+    assert!(probe.contains("$PWD/../AGENTS.md"));
+    assert!(probe.contains("$PWD/../.claude/AGENTS.md"));
+    assert!(smoke.contains("clroom.plugin-release-smoke.v2"));
+    assert!(smoke.contains("\"ambient_agents_md_isolation\":True"));
+    assert!(smoke.contains("\"ambient_agents_md_log_scope_checked\":True"));
+    assert!(smoke.contains("\"interactive_no_ambient_agents_md_confirmed\": interactive==\"true\""));
+    assert!(tag.contains("\"ambient_agents_md_isolation\": True"));
+    assert!(tag.contains("\"interactive_no_ambient_agents_md_confirmed\": True"));
+    assert!(draft.contains("claude-pretag:ambient-agents"));
+}
+
+#[test]
 fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
     let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
     let verifier = std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
