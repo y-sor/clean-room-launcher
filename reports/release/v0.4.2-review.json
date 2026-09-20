@@ -2,13 +2,13 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "548fcf1bd5ea8d64130979d1f406ba3b70dd0376",
+  "reviewed_through_commit": "ab215d407011c2a22d7732af786fd6f0097be275",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed.",
-        "Pinned Claude Code 2.1.278 includes the built-in agents-md ancestor walk introduced in Claude Code 2.1.277 for AGENTS.md and .claude/AGENTS.md. CLROOM now denies those exact files only above the selected current-project boundary while preserving the same instruction names at and below the project boundary."
+        "Pinned Claude Code 2.1.278 includes the built-in agents-md ancestor walk introduced in Claude Code 2.1.277 for AGENTS.md and .claude/AGENTS.md. CLROOM now denies those exact files only above the nearest real Git worktree boundary (or the launch directory outside Git), preserving repo-root and nested project instructions when Claude starts from a subdirectory."
       ]
     },
     "tests": {
@@ -16,8 +16,9 @@
       "evidence": [
         "Regression coverage proves initialized .tmp provider state survives a later CLROOM launch, preexisting unowned .tmp still fails closed, real Codex qualification executes twice against one synthetic home, pre-tag whole-plugin evidence cannot be written until a post-interactive clean relaunch succeeds, and canonical readiness owns the exact-tag Draft verifier.",
         "Release-domain classification explicitly maps scripts/probe/** to the tests domain, and the release-contract self-test includes the sitemap probe path so future probe scripts cannot silently become unclassified release delta.",
-        "macOS Seatbelt isolation coverage models a project nested beneath HOME/workspace and proves external ancestor AGENTS.md and .claude/AGENTS.md are unreadable while project AGENTS.md variants remain readable.",
-        "Claude ancestor-instruction isolation also denies a symlinked external ancestor AGENTS.md while retaining project-local AGENTS.md and .claude/AGENTS.md, covering path-alias bypass of the file-read boundary."
+        "macOS Seatbelt isolation coverage models a nested working directory inside a Git worktree and proves AGENTS.md and .claude/AGENTS.md above the worktree are unreadable while both repo-root and nested project variants remain readable.",
+        "Claude ancestor-instruction isolation also denies a symlinked external ancestor AGENTS.md while retaining repo-root and nested AGENTS.md/.claude/AGENTS.md, covering path-alias bypass without collapsing the project context boundary to the current directory.",
+        "The exact-artifact Claude AGENTS boundary probe launches from a nested directory beneath a synthetic .git worktree, fails if HOME/workspace ancestor AGENTS are readable, and independently fails if repo-root or nested project AGENTS become unreadable."
       ]
     },
     "dependencies": {
@@ -39,7 +40,7 @@
         "The pre-tag helper accepts only lifecycle-aware Codex v2 evidence with a successful clean relaunch after the interactive selected-plugin TUI. A new canonical verify-draft-release.sh reconciles exact tag/SHA identity, Draft assets, checksums, attestations, current provider pins, local pre-tag/Draft evidence, and every exact-tag push Action before any publish gate; canonical readiness verifies this verifier is executable and shell-valid.",
         "Claude pre-tag evidence advances to clroom.plugin-release-smoke.v2 and protected-tag validation requires external_ancestor_agents_absent_confirmed=true, so a real selected-plugin TUI that reports an external ancestor AGENTS.md cannot authorize a tag.",
         "The release checker now binds reviewed_through_commit to the exact candidate history: it must be an ancestor of HEAD and every tracked change after that commit must be confined to the release-review snapshot, so substantive post-review changes cannot be legalized by a digest-only reseal.",
-        "The synthetic Claude AGENTS artifact probe now proves the launched provider body executed: version preflight alone cannot satisfy evidence, the provider writes an execution marker only after external-deny/project-positive assertions, and absence of that marker fails closed."
+        "The synthetic Claude AGENTS artifact probe now proves the launched provider body executed from a nested Git working directory: version preflight alone cannot satisfy evidence, external ancestors must be denied, repo-root and nested AGENTS must remain readable, and the provider writes an execution marker only after those assertions."
       ]
     },
     "public_claims": {
@@ -157,7 +158,7 @@
       "id": "claude-provider-pin-added-ambient-agents-instruction-surface",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Pinned Claude Code 2.1.278 includes the built-in agents-md ancestor walk introduced in 2.1.277. The existing clean-launch model and pre-tag smoke covered CLAUDE.md/settings/skills but allowed an external ancestor AGENTS.md to enter the real selected-plugin TUI.",
-      "durable_control": "Claude isolation now denies AGENTS.md and .claude/AGENTS.md above the selected current-project boundary while preserving project-local files; regression coverage proves both directions, the plaque exposes the boundary, and pre-tag evidence v2 plus the tag helper require real-TUI confirmation that no external ancestor AGENTS.md was loaded."
+      "durable_control": "Claude isolation now denies AGENTS.md and .claude/AGENTS.md above the nearest real Git worktree boundary (or cwd outside Git), preserves repo-root and nested project instructions, and carries negative/positive sandbox, launched-provider, exact-artifact and real-TUI evidence into pre-tag schema v2 and the protected tag gate."
     },
     {
       "id": "release-review-boundary-field-was-not-history-enforced",
@@ -170,6 +171,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The first synthetic artifact boundary probe invoked clroom claude --version while its fake provider exited successfully on the version path before testing AGENTS reads, so evidence could report PASS without executing the launched-provider isolation assertions.",
       "durable_control": "The probe now launches the normal Claude provider path, writes a task-owned execution marker only after external-ancestor deny and project-local positive assertions execute, fails if that marker is absent, and the provider-canary contract requires the execution-marker guard."
+    },
+    {
+      "id": "claude-agents-cwd-boundary-would-drop-repo-root-context",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The first AGENTS isolation repair treated the launch working directory itself as the project boundary. A user starting Claude from repo/subdir would therefore lose the legitimate repo-root AGENTS.md that Claude's project instruction walk is expected to retain.",
+      "durable_control": "For Git projects the boundary is now the nearest real non-symlink .git file/directory; outside Git it falls back to the launch directory. Unit, launched-provider and exact-artifact regression probes all start from a nested cwd and require external ancestors to stay denied while repo-root plus nested AGENTS.md/.claude/AGENTS.md remain readable."
     }
   ],
   "artifact_capability_gates": [
@@ -186,7 +193,7 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRE_TAG",
-      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.278 using exact accepted-main v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, project AGENTS retention, external ancestor AGENTS exclusion, and a normal selected-plugin interactive TUI without a model prompt. Accepted v2 evidence must confirm no external ancestor AGENTS.md was reported as loaded."
+      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.278 using exact accepted-main v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, external-above-worktree AGENTS exclusion, repo-root and nested project AGENTS retention from a nested cwd, and a normal selected-plugin interactive TUI without a model prompt. Accepted v2 evidence must confirm no external ancestor AGENTS.md was reported as loaded."
     },
     {
       "id": "claude-skill-only-plugin-activation",
@@ -194,10 +201,10 @@
       "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.2 bytes after checksum and attestation verification, bound to Claude Code 2.1.278, then include its evidence in canonical exact-tag pre-publish reconciliation."
     }
   ],
-  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness. The same candidate also hardens public discovery by verifying the deployed canonical sitemap before IndexNow notification. The candidate also closes Claude 2.1.278 built-in agents-md ambient-instruction drift so external ancestor AGENTS instructions cannot cross the selected current-project boundary.",
+  "product_outcome": "Ship v0.4.2 as the bounded exact Codex whole-plugin selective-restore slice from the published v0.4.0 baseline, while repairing provider-written state lifecycle compatibility and promoting fail-closed pre-tag and pre-publish reconciliation so a successful first launch or one successful workflow cannot be mistaken for release readiness. The same candidate hardens public discovery by verifying the deployed canonical sitemap before IndexNow notification and closes Claude 2.1.278 built-in agents-md ambient-instruction drift without suppressing legitimate repo-root project instructions when launched from a nested directory.",
   "contract_evolution_review": {
     "decision": "EXPAND",
-    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance. The candidate also closes a public-discovery verification gap by promoting the sitemap from source-only checks to a same-SHA deployed canary before IndexNow notification. A second pre-tag near miss showed that a provider pin can add a new ambient instruction surface without a CLROOM code change: Claude 2.1.278 loaded an external ancestor AGENTS.md through built-in agents-md, so provider-version qualification now includes ambient-input-surface revalidation. Review also found that the first synthetic AGENTS artifact probe could pass on provider version preflight without executing its isolation assertions; v0.4.2 therefore requires an explicit launched-provider execution marker before that evidence can pass.",
+    "rationale": "The unpublished v0.4.1 Draft exposed two missing lifecycle boundaries and one review-reconciliation gap: legitimate pinned-provider state could make the next launch fail, interactive pre-tag state was not followed by a clean relaunch, and a reviewer could inspect the Release workflow while missing a separate failed exact-tag CI run. Because these are release near-misses, v0.4.2 promotes durable runtime, evidence, tag-gate, CI lifecycle, and exact-tag pre-publish reconciliation controls rather than deleting state or relying on manual vigilance. The candidate also closes a public-discovery verification gap by promoting the sitemap from source-only checks to a same-SHA deployed canary before IndexNow notification. A second pre-tag near miss showed that a provider pin can add a new ambient instruction surface without a CLROOM code change: Claude 2.1.278 loaded an external ancestor AGENTS.md through built-in agents-md, so provider-version qualification now includes ambient-input-surface revalidation. Review also found that the first synthetic AGENTS artifact probe could pass on provider version preflight without executing its isolation assertions; v0.4.2 therefore requires an explicit launched-provider execution marker before that evidence can pass. Review of the first Claude AGENTS repair found a second correctness risk: using cwd as the boundary would block legitimate repo-root AGENTS on nested launches. The promoted control therefore binds the clean boundary to the nearest real Git worktree root, with nested-cwd negative and positive evidence at unit, launched-provider and exact-artifact layers.",
     "promoted_controls": [
       "initialized-only Codex .tmp provider-state admission with preexisting-unowned-state negative coverage",
       "two-start real Codex qualification against one synthetic HOME with v2 machine-verified lifecycle evidence",
@@ -208,11 +215,11 @@
       "evidence naming that distinguishes unchanged ambient config/plugin inputs from intentionally evolving CLROOM shadow provider state",
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta",
       "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification",
-      "Claude 2.1.278 external-ancestor AGENTS.md/.claude/AGENTS.md deny with positive project-local retention tests and truthful Global AGENTS.md launch status",
+      "Claude 2.1.278 AGENTS.md/.claude/AGENTS.md isolation above the nearest real Git worktree boundary (cwd outside Git), with repo-root+nested positive retention tests, exact-artifact nested-cwd probe and truthful Global AGENTS.md launch status",
       "Claude pre-tag smoke/evidence v2 and protected-tag gate requiring confirmation that the real selected-plugin TUI loaded no external ancestor AGENTS.md",
       "commit-bound semantic release review: reviewed_through_commit must be an ancestor of exact HEAD and only the release-review snapshot may change afterward",
       "executed-provider proof for the Claude AGENTS synthetic artifact probe: normal launch path plus post-assertion execution marker, with version-preflight-only success explicitly insufficient"
     ]
   },
-  "reviewed_content_digest": "d88450360cc0d70dbbd4ecb8316eb19a6331b9b823324d63f8fd868632f7741a"
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
 }
