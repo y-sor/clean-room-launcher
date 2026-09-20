@@ -273,7 +273,7 @@ fn launch_isolated_codex(
     } else {
         if invocation != launch_contract::CodexInvocation::Interactive {
             return Err(
-                "CLROOM_RESOURCE_NOT_SELECTABLE: v0.4.1 Codex whole-plugin activation is qualified only for interactive launch; continue locally"
+                "CLROOM_RESOURCE_NOT_SELECTABLE: v0.4.2 Codex whole-plugin activation is qualified only for interactive launch; continue locally"
                     .to_owned(),
             );
         }
@@ -606,16 +606,16 @@ fn claude_isolation_error_message(_: ClaudeIsolationError) -> String {
 fn codex_activation_error_message(error: CodexActivationError) -> String {
     match error {
         CodexActivationError::ProviderTupleNotQualified => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.1 plugin activation; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.2 plugin activation; continue locally".to_owned()
         }
         CodexActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.1 admits one exact Codex plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.2 admits one exact Codex plugin per launch".to_owned()
         }
         CodexActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
         }
         CodexActivationError::UnsupportedRequest => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.1; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.2; continue locally".to_owned()
         }
         CodexActivationError::InvalidSource => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: selected Codex plugin source is invalid; continue locally".to_owned()
