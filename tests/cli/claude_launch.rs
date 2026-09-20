@@ -156,7 +156,15 @@ fn fixture() -> (Scratch, PathBuf, PathBuf, PathBuf, PathBuf) {
          [ \"$CLAUDE_CODE_DISABLE_AUTO_MEMORY\" = 1 ] || exit 82\n\
          [ \"$CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN\" = 1 ] || exit 87\n\
          [ \"$CLAUDE_CODE_SUBPROCESS_ENV_SCRUB\" = 1 ] || exit 96\n\
-         [ -r \"$PWD/CLAUDE.md\" ] || exit 71\n\
+         if [ -f \"$HOME/.clroom-probe-agents-boundary\" ]; then\n\
+           for path in \"$HOME/AGENTS.md\" \"$HOME/workspace/AGENTS.md\" \"$HOME/workspace/.claude/AGENTS.md\"; do\n\
+             /bin/cat \"$path\" >/dev/null 2>&1 && exit 100\n\
+           done\n\
+           /bin/cat \"$PWD/AGENTS.md\" >/dev/null 2>&1 || exit 101\n\
+           /bin/cat \"$PWD/.claude/AGENTS.md\" >/dev/null 2>&1 || exit 102\n\
+         else\n\
+           [ -r \"$PWD/CLAUDE.md\" ] || exit 71\n\
+         fi\n\
          [ -r \"$PWD/.claude/skills/project-only/SKILL.md\" ] || exit 72\n\
          [ ! -r \"$HOME/.claude/CLAUDE.md\" ] || exit 83\n\
          [ ! -r \"$HOME/.claude/settings.json\" ] || exit 84\n\
@@ -763,6 +771,54 @@ fn managed_policy_probe_reports_presence_without_reading_policy_contents() {
 
     let invalid = PathBuf::from(OsString::from_vec(b"invalid\0path".to_vec()));
     assert_eq!(probe_paths(&[invalid]), Presence::Unknown);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn launched_claude_denies_external_ancestor_agents_and_keeps_project_agents() {
+    let (_root, _existing_project, home, bin, _capture) = fixture();
+    let workspace = home.join("workspace");
+    let project = workspace.join("project");
+    fs::create_dir_all(workspace.join(".claude")).unwrap();
+    fs::create_dir_all(project.join(".claude/skills/project-only")).unwrap();
+
+    fs::write(home.join("AGENTS.md"), b"ambient home instructions\n").unwrap();
+    fs::write(workspace.join("AGENTS.md"), b"ambient workspace instructions\n").unwrap();
+    fs::write(
+        workspace.join(".claude/AGENTS.md"),
+        b"ambient hidden workspace instructions\n",
+    )
+    .unwrap();
+    fs::write(project.join("AGENTS.md"), b"project instructions\n").unwrap();
+    fs::write(
+        project.join(".claude/AGENTS.md"),
+        b"project hidden instructions\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join(".claude/skills/project-only/SKILL.md"),
+        b"project skill\n",
+    )
+    .unwrap();
+    fs::write(home.join(".clroom-probe-agents-boundary"), b"synthetic\n").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_clroom"))
+        .current_dir(&project)
+        .env("PATH", &bin)
+        .env("HOME", &home)
+        .args([
+            "claude",
+            "--skill-set=arrow,superpowers:systematic-debugging",
+        ])
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(42),
+        "launched Claude must deny external ancestor AGENTS while retaining project AGENTS:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]
