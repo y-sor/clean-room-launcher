@@ -77,7 +77,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .any(|target| matches!(target, SelectionTarget::All))
     {
         return Err(
-            "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4: --with=all/--without=all is unavailable in v0.4.0"
+            "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4: --with=all/--without=all is unavailable in v0.4.x"
                 .to_owned(),
         );
     }
