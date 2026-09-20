@@ -136,6 +136,9 @@ bash scripts/release/local-plugin-activation-smoke.sh draft \
   --tag vX.Y.Z --plugin-id <qualified-claude-id>
 bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
   --tag vX.Y.Z --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
+
+# After both Draft smokes PASS, reconcile the complete exact-tag verdict:
+bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
 ```
 
 These smokes never install, update, enable persistently, remove, or downgrade a
