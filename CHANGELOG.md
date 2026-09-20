@@ -7,6 +7,41 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-20
+
+### Added
+
+- Added `clroom codex --with=plugin:<provider-native-id>` for one exact
+  already-installed Codex whole plugin per interactive launch. The selected
+  bundle is projected into CLROOM's private shadow `PluginStore`, siblings stay
+  absent, and activation is session-only.
+
+### Changed
+
+- Advanced exact macOS Apple Silicon release qualification to current stable
+  Codex `0.155.1` and Claude Code `2.1.278`.
+- Release provider pins now fail closed against live npm `latest` and registry
+  integrity before canary provisioning and again at the protected tag boundary.
+
+### Compatibility
+
+- Codex whole-plugin activation is limited to one provider-native plugin ID and
+  the interactive CLROOM Codex path. Existing clean Codex and Claude launch
+  behavior remains the default when no resource selection is requested.
+- Standalone MCP restore, `--with=all`, multi-plugin selection, component-level
+  plugin surgery, Linux, Windows, and Intel macOS remain outside this release.
+- No runtime dependency was added or replaced.
+
+### Security
+
+- Codex activation revalidates provider/source identity around launch, projects
+  exact captured bundle bytes only, rejects symlink/path/drift/sibling states,
+  makes the projected bundle non-writable, and refuses overlapping raw Codex
+  plugin/config activation controls.
+- Release qualification requires clean → selected → clean Codex evidence,
+  unchanged ambient provider/plugin state, current-stable provider bytes, and
+  action-time provider revalidation before tag push.
+
 ## [0.4.0] - 2026-09-19
 
 ### Added
