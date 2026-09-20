@@ -7,6 +7,8 @@ qualifier="$root/scripts/release/qualify-real-provider.sh"
 pins="$root/scripts/release/provider-pins.sh"
 pin_checker="$root/scripts/release/check-provider-pins.sh"
 codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
+claude_smoke="$root/scripts/release/local-plugin-activation-smoke.sh"
+claude_instruction_probe="$root/scripts/probe/check-claude-instruction-isolation.sh"
 tag_helper="$root/scripts/release/push-release-tag.sh"
 release_candidate="$root/.github/workflows/release-candidate.yml"
 release="$root/.github/workflows/release.yml"
@@ -16,7 +18,7 @@ fail() {
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$tag_helper" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$claude_smoke" "$claude_instruction_probe" "$tag_helper" "$release_candidate" "$release"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
@@ -73,6 +75,22 @@ for needle in \
 done
 
 for needle in \
+  'check-claude-instruction-isolation.sh' \
+  '"schema_version":"clroom.plugin-release-smoke.v2"' \
+  '"ambient_agents_md_isolation":True' \
+  '"ambient_agents_md_log_scope_checked":True' \
+  '"interactive_no_ambient_agents_md_confirmed": interactive=="true"'; do
+  grep -Fq "$needle" "$claude_smoke" || fail "CLAUDE_INSTRUCTION_SMOKE_CONTRACT_MISSING"
+done
+
+for needle in \
+  'CLAUDE_INSTRUCTION_ISOLATION_PASS' \
+  'workspace/.claude/AGENTS.md' \
+  '$PWD/../AGENTS.md'; do
+  grep -Fq "$needle" "$claude_instruction_probe" || fail "CLAUDE_INSTRUCTION_PROBE_CONTRACT_MISSING"
+done
+
+for needle in \
   'scope="real-provider-repeat-interactive-startup-no-model"' \
   'launch_path="clroom codex --no-alt-screen (PTY) x2 same HOME"' \
   'lifecycle_runs=2' \
@@ -110,6 +128,8 @@ bash -n "$provisioner" || fail "PROVISIONER_SYNTAX"
 bash -n "$pin_checker" || fail "PIN_CHECKER_SYNTAX"
 bash -n "$pins" || fail "PINS_SYNTAX"
 bash -n "$codex_smoke" || fail "CODEX_SMOKE_SYNTAX"
+bash -n "$claude_smoke" || fail "CLAUDE_SMOKE_SYNTAX"
+bash -n "$claude_instruction_probe" || fail "CLAUDE_INSTRUCTION_PROBE_SYNTAX"
 bash -n "$tag_helper" || fail "TAG_HELPER_SYNTAX"
 bash -n "$qualifier" || fail "QUALIFIER_SYNTAX"
 
