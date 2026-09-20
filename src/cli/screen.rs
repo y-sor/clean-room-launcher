@@ -443,7 +443,7 @@ pub fn render_claude_preview_for(
     };
     let rows = vec![
         (String::new(), String::new()),
-        status_row("Global CLAUDE.md", "off"),
+        status_row("Global instructions", "off"),
         status_row("Global skills", &skill_state),
         status_row("User settings", "off"),
         status_row("Auto memory", "off"),
