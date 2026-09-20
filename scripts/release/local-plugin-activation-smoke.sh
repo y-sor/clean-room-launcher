@@ -254,19 +254,26 @@ print("AUTOMATED_PLUGIN_E2E=PASS")
 PY
 
 interactive=false
+external_ancestor_agents_absent=false
 if [[ "$phase" == "pretag" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
   echo
   echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
   echo "Confirm the normal Claude TUI opens and the selected plugin skill is visible in autocomplete."
+  echo "Also confirm no AGENTS.md outside the current project is reported as loaded."
+  echo "If agents-md reports an external ancestor path, reject this smoke."
   echo "Exit normally with /exit."
   echo
   "$clroom" claude --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
   printf 'TUI opened normally and selected plugin skill was visible [y/N]: '
   read -r answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
+  printf 'No AGENTS.md outside the current project was reported as loaded [y/N]: '
+  read -r agents_answer
+  [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
   interactive=true
+  external_ancestor_agents_absent=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_INTERACTIVE"
 fi
 
@@ -278,12 +285,12 @@ mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
-  "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$claude_version_output" \
-  "$claude_version" "$claude_provider_sha" <<'PY'
+  "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
+  "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
+output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
-  "schema_version":"clroom.plugin-release-smoke.v1",
+  "schema_version":"clroom.plugin-release-smoke.v2",
   "result":"PASS",
   "phase":phase,
   "release_version":version,
@@ -304,6 +311,7 @@ record={
   "interactive_selected_tui_confirmed": interactive=="true",
   "automated_probe_prompt_supplied":True,
   "interactive_no_model_prompt_confirmed": interactive=="true",
+  "external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true",
   "clean_provider_rc":int(clean_rc),
   "selected_provider_rc":int(selected_rc),
   "observed_at_utc":datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z"),

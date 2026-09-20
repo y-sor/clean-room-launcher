@@ -118,7 +118,7 @@ path, version, expected, expected_claude_version = sys.argv[1:]
 with open(path, encoding="utf-8") as handle:
     record = json.load(handle)
 required = {
-    "schema_version": "clroom.plugin-release-smoke.v1",
+    "schema_version": "clroom.plugin-release-smoke.v2",
     "result": "PASS",
     "phase": "pretag",
     "release_version": version,
@@ -134,6 +134,7 @@ required = {
     "interactive_selected_tui_confirmed": True,
     "automated_probe_prompt_supplied": True,
     "interactive_no_model_prompt_confirmed": True,
+    "external_ancestor_agents_absent_confirmed": True,
 }
 for key, value in required.items():
     if record.get(key) != value:

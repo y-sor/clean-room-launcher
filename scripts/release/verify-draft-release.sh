@@ -167,7 +167,7 @@ cp, cd, xp, xd = map(load, [
 ])
 
 for record, phase in [(cp, "pretag"), (cd, "draft")]:
-    if record.get("schema_version") != "clroom.plugin-release-smoke.v1":
+    if record.get("schema_version") != "clroom.plugin-release-smoke.v2":
         raise SystemExit("claude-schema")
     required = {
         "result": "PASS",
@@ -194,6 +194,8 @@ if cp.get("interactive_selected_tui_confirmed") is not True:
     raise SystemExit("claude-pretag:interactive")
 if cp.get("interactive_no_model_prompt_confirmed") is not True:
     raise SystemExit("claude-pretag:no-model")
+if cp.get("external_ancestor_agents_absent_confirmed") is not True:
+    raise SystemExit("claude-pretag:external-ancestor-agents")
 if cp.get("plugin_id") != cd.get("plugin_id"):
     raise SystemExit("claude-plugin-drift")
 if cp.get("claude_provider_sha256") != cd.get("claude_provider_sha256"):
