@@ -54,6 +54,7 @@ pub fn plan(
         .iter()
         .map(|path| safe_allowed_path(path, &project))
         .collect::<Result<Vec<_>, _>>()?;
+    let denied_instruction_files = ambient_instruction_files(&project, &home);
 
     let denied_read_roots = vec![
         home.join(".claude"),
@@ -77,17 +78,21 @@ pub fn plan(
         home.join(".config/gcloud"),
         home.join(".azure"),
     ];
-    let denied_write_files = [
+    let mut denied_write_files = vec![
         home.join(".claude/CLAUDE.md"),
         home.join(".claude/settings.json"),
         home.join(".claude/settings.local.json"),
     ];
+    denied_write_files.extend(denied_instruction_files.iter().cloned());
     denied_write_roots.extend(allowed_source_paths.iter().cloned());
 
     let mut profile = String::from("(version 1)\n(allow default)\n");
     profile.push_str("(deny file-read*");
     for path in &denied_read_roots {
         push_subpath(&mut profile, path)?;
+    }
+    for path in &denied_instruction_files {
+        push_literal(&mut profile, path)?;
     }
     for path in denied_source_paths {
         push_literal(&mut profile, path)?;
@@ -136,6 +141,39 @@ pub fn plan(
     profile.push_str(")\n");
 
     Ok(IsolationPlan { profile, project })
+}
+
+fn project_instruction_root(project: &Path) -> PathBuf {
+    for ancestor in project.ancestors() {
+        let marker = ancestor.join(".git");
+        if fs::symlink_metadata(&marker).ok().is_some_and(|metadata| {
+            !metadata.file_type().is_symlink() && (metadata.is_dir() || metadata.is_file())
+        }) {
+            return ancestor.to_path_buf();
+        }
+    }
+    project.to_path_buf()
+}
+
+fn ambient_instruction_files(project: &Path, home: &Path) -> Vec<PathBuf> {
+    let project_root = project_instruction_root(project);
+    if !project_root.starts_with(home) || project_root == home {
+        return Vec::new();
+    }
+    let mut files = Vec::new();
+    let mut current = project_root.parent();
+    while let Some(directory) = current {
+        if !directory.starts_with(home) {
+            break;
+        }
+        files.push(directory.join("AGENTS.md"));
+        files.push(directory.join(".claude/AGENTS.md"));
+        if directory == home {
+            break;
+        }
+        current = directory.parent();
+    }
+    files
 }
 
 fn safe_allowed_directory(path: &Path, project: &Path) -> Option<PathBuf> {
@@ -314,6 +352,53 @@ mod tests {
             &[selected],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn ambient_agents_md_above_repo_root_is_denied_but_repo_instructions_remain_readable() {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-claude-agents-isolation-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let home = root.join("home");
+        let workspace = home.join("workspace");
+        let repo = workspace.join("repo");
+        let project = repo.join("subdir");
+        let projection_root = root.join("projections");
+        let projection_view = projection_root.join("active/session-test/view");
+        for directory in [
+            &home, &workspace, &repo, &project, &projection_view,
+            &workspace.join(".claude"), &repo.join(".claude"),
+        ] {
+            fs::create_dir_all(directory).unwrap();
+        }
+        fs::create_dir_all(repo.join(".git")).unwrap();
+        let home_agents = home.join("AGENTS.md");
+        let workspace_agents = workspace.join("AGENTS.md");
+        let workspace_claude_agents = workspace.join(".claude/AGENTS.md");
+        let repo_agents = repo.join("AGENTS.md");
+        let repo_claude_agents = repo.join(".claude/AGENTS.md");
+        let project_agents = project.join("AGENTS.md");
+        for path in [
+            &home_agents, &workspace_agents, &workspace_claude_agents,
+            &repo_agents, &repo_claude_agents, &project_agents,
+        ] {
+            fs::write(path, "instruction\n").unwrap();
+        }
+        let plan = plan(
+            &project, Path::new("/bin/cat"), &home, &projection_root,
+            &projection_view, &[], &[],
+        )
+        .unwrap();
+        for denied in [&home_agents, &workspace_agents, &workspace_claude_agents] {
+            assert!(!sandbox_status(&plan.profile, "/bin/cat", denied).success());
+        }
+        for allowed in [&repo_agents, &repo_claude_agents, &project_agents] {
+            assert!(sandbox_status(&plan.profile, "/bin/cat", allowed).success());
+        }
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
