@@ -7,6 +7,7 @@ qualifier="$root/scripts/release/qualify-real-provider.sh"
 pins="$root/scripts/release/provider-pins.sh"
 pin_checker="$root/scripts/release/check-provider-pins.sh"
 codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
+codex_mcp_fixture="$root/scripts/release/codex-mcp-fixture.py"
 claude_smoke="$root/scripts/release/local-plugin-activation-smoke.sh"
 tag_helper="$root/scripts/release/push-release-tag.sh"
 release_candidate="$root/.github/workflows/release-candidate.yml"
@@ -17,7 +18,7 @@ fail() {
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$claude_smoke" "$tag_helper" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$codex_mcp_fixture" "$claude_smoke" "$tag_helper" "$release_candidate" "$release"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
@@ -60,21 +61,25 @@ done
 
 for needle in \
   'bash "$root/scripts/release/check-provider-pins.sh"' \
-  '[[ "$codex_version" == "$CODEX_VERSION" ]]' \
+  '--fixture-standalone-mcp' \
+  'plugin_id=standalone-mcp@clroom-fixture' \
+  'expected_mcp=clroom_fixture' \
   '"$clroom" codex mcp list --json' \
   '"$clroom" codex --with="plugin:$plugin_id" mcp list --json' \
-  '"schema_version": "clroom.codex-plugin-release-smoke.v2"' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v3"' \
   '"clean_before_expected_mcp": False' \
   '"selected_expected_mcp": True' \
   '"selected_mcp_plugin_paths_rebased": True' \
   'SELECTED_MCP_PLUGIN_PATH_REBASE=PASS' \
   '"clean_after_expected_mcp": False' \
   '"ambient_config_and_plugin_tree_unchanged": True' \
-  '"selected_mcp_plugin_paths_rebased": True' \
+  '"provider_mcp_initialize_observed": provider_mcp_initialize == "true"' \
+  '"provider_mcp_tools_list_observed": provider_mcp_tools_list == "true"' \
+  '"fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true"' \
   '"provider_state_lifecycle_closed": True' \
-  '"interactive_expected_mcp_healthy_confirmed": interactive_mcp_healthy == "true"' \
-  'healthy %s with tools [y/N]' \
-  '"post_interactive_clean_confirmed": post_interactive_clean == "true"'; do
+  '"post_interactive_clean_confirmed": post_interactive_clean == "true"' \
+  'codex-mcp-fixture.py" probe-provider' \
+  'codex-mcp-fixture.py" probe-server'; do
   grep -Fq "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
 done
 
@@ -95,10 +100,13 @@ for needle in \
 done
 
 for needle in \
-  'scope="real-provider-repeat-interactive-startup-no-model"' \
-  'launch_path="clroom codex --no-alt-screen (PTY) x2 same HOME"' \
+  'scope="real-provider-repeat-interactive-mcp-discovery-no-model"' \
+  'launch_path="clroom codex --with=plugin:standalone-mcp@clroom-fixture --no-alt-screen (PTY) x2 same HOME"' \
   'lifecycle_runs=2' \
   'for lifecycle_run in 1 2; do' \
+  'codex-mcp-fixture.py" probe-provider' \
+  'codex-mcp-fixture.py" probe-server' \
+  'interactive-provider-repeat-mcp-qualified' \
   '"schema_version":"clroom.real-provider-qualification.v2"' \
   '"repeat_provider_executed":repeat_observed == "true"'; do
   grep -Fq "$needle" "$qualifier" || fail "CODEX_REPEAT_LIFECYCLE_CONTRACT_MISSING"
@@ -115,11 +123,15 @@ done
 
 for needle in \
   'codex-pretag-v${version}-${expected:0:12}.json' \
-  '"schema_version": "clroom.codex-plugin-release-smoke.v2"' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v3"' \
   '"ambient_config_and_plugin_tree_unchanged": True' \
+  '"provider_mcp_initialize_observed": True' \
+  '"provider_mcp_tools_list_observed": True' \
+  '"fixture_mcp_tool_call_passed": True' \
   '"provider_state_lifecycle_closed": True' \
   '"interactive_expected_mcp_healthy_confirmed": True' \
   '"post_interactive_clean_confirmed": True' \
+  'TAG_GATE_BLOCKED:CODEX_PRETAG_FIXTURE_IDENTITY' \
   'PRETAG_CODEX_EVIDENCE_PASS' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
@@ -145,6 +157,7 @@ bash -n "$codex_smoke" || fail "CODEX_SMOKE_SYNTAX"
 bash -n "$claude_smoke" || fail "CLAUDE_SMOKE_SYNTAX"
 bash -n "$tag_helper" || fail "TAG_HELPER_SYNTAX"
 bash -n "$qualifier" || fail "QUALIFIER_SYNTAX"
+python3 "$codex_mcp_fixture" --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-provider-contract.XXXXXX")
