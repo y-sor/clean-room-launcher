@@ -76,10 +76,11 @@ the push.
 Tracked changelog dates are stable candidate declarations, not action-time
 clock values. `scripts/release/check-changelog-release.py` requires exactly one
 dated release section for the candidate version, validates the ISO date and
-requires that declaration to be no later than the annotated tagger date. It does
-not require exact equality: time passing after candidate acceptance must not
-manufacture tracked-content drift or force a bookkeeping PR. The annotated tag
-retains the authoritative action-time timestamp.
+requires that declaration to be no later than the UTC calendar date derived
+from the annotated tagger epoch. It does not require exact equality: time
+passing after candidate acceptance must not manufacture tracked-content drift
+or force a bookkeeping PR. The annotated tag retains the authoritative
+action-time timestamp; creator-local timezone is not release identity.
 
 Because stable `v*` tags are protected against update/deletion, provider
 capabilities with release-specific behavior are exercised on exact candidate
