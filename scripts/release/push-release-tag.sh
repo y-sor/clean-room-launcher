@@ -253,37 +253,6 @@ if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --
   exit 69
 fi
 
-# Mutable remote release state is refreshed immediately before the irreversible push.
-git fetch --quiet origin main || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:REMOTE_MAIN_REFRESH_ACTION_TIME" >&2
-  exit 76
-}
-actual_main_now=$(git rev-parse FETCH_HEAD)
-[[ $actual_main_now == "$expected" ]] || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:MAIN_DRIFT_ACTION_TIME expected=$expected actual=$actual_main_now" >&2
-  exit 76
-}
-[[ $(git rev-parse HEAD) == "$expected" ]] || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:LOCAL_HEAD_DRIFT_ACTION_TIME" >&2
-  exit 76
-}
-if ! ensure_remote_tag_absent ACTION_TIME; then
-  cleanup_local_tag
-  exit 76
-fi
-if ! verify_tag_ruleset; then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:TAG_RULESET_ACTION_TIME" >&2
-  exit 76
-fi
-if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null; then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
-  exit 77
-fi
 if ! bash scripts/release/check-provider-pins.sh; then
   cleanup_local_tag
   echo "TAG_GATE_BLOCKED:PROVIDER_PINS_ACTION_TIME" >&2
@@ -374,6 +343,39 @@ fi
   echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME" >&2
   exit 81
 }
+
+# Final mutable remote release state guard immediately before the irreversible push.
+# No provider/network qualification runs after this block; the remaining action is the single push.
+git fetch --quiet origin main || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:REMOTE_MAIN_REFRESH_ACTION_TIME" >&2
+  exit 76
+}
+actual_main_now=$(git rev-parse FETCH_HEAD)
+[[ $actual_main_now == "$expected" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:MAIN_DRIFT_ACTION_TIME expected=$expected actual=$actual_main_now" >&2
+  exit 76
+}
+[[ $(git rev-parse HEAD) == "$expected" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:LOCAL_HEAD_DRIFT_ACTION_TIME" >&2
+  exit 76
+}
+if ! ensure_remote_tag_absent ACTION_TIME; then
+  cleanup_local_tag
+  exit 76
+fi
+if ! verify_tag_ruleset; then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:TAG_RULESET_ACTION_TIME" >&2
+  exit 76
+fi
+if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null; then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
+  exit 77
+fi
 
 set +e
 git push origin "refs/tags/$tag"
