@@ -327,6 +327,7 @@ fn normalize_in_root_absolute_path(
         .strip_prefix(canonical_root)
         .map_err(|_| ActivationError::InvalidSource)?;
     let rewritten = match replacement_root {
+        Some(root) if relative.as_os_str().is_empty() => root.display().to_string(),
         Some(root) => root.join(relative).display().to_string(),
         None if relative.as_os_str().is_empty() => DIGEST_PLUGIN_ROOT.to_owned(),
         None => format!("{DIGEST_PLUGIN_ROOT}/{}", relative.display()),
