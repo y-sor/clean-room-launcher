@@ -203,6 +203,10 @@ print("PRETAG_CODEX_EVIDENCE_PASS")
 PY
 
 title="$tag — Clean Room Launcher"
+[[ ${GIT_COMMITTER_DATE+x} != x ]] || {
+  echo "TAG_GATE_BLOCKED:GIT_COMMITTER_DATE_OVERRIDE" >&2
+  exit 82
+}
 git tag -a "$tag" "$expected" -m "$title"
 
 cleanup_local_tag() {
