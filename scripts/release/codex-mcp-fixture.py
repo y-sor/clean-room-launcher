@@ -226,6 +226,45 @@ def observed_methods(path):
         methods = set()
     return "initialize" in methods and "tools/list" in methods
 
+def seed_synthetic_project_trust(candidate, mode, project, home, env):
+    project = pathlib.Path(project).resolve()
+    init_argv = [candidate]
+    if mode == "clroom":
+        init_argv.append("codex")
+    init_argv.extend(["mcp", "list", "--json"])
+    result = subprocess.run(
+        init_argv,
+        cwd=project,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=30,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("failed to initialize CLROOM-owned Codex shadow")
+    shadow_home = pathlib.Path(home).resolve() / ".codex" / ".clroom-clean-state-v2" / "home"
+    marker = shadow_home / ".clroom-state-v2"
+    if marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
+        raise RuntimeError("CLROOM Codex shadow ownership marker missing")
+    config = shadow_home / "config.toml"
+    if config.exists() and config.is_symlink():
+        raise RuntimeError("synthetic Codex shadow config must not be a symlink")
+    existing = config.read_text(encoding="utf-8") if config.exists() else ""
+    project_key = json.dumps(str(project), ensure_ascii=False)
+    table = f'[projects.{project_key}]\ntrust_level = "trusted"\n'
+    header = f"[projects.{project_key}]"
+    if header in existing:
+        if 'trust_level = "trusted"' not in existing[existing.index(header):]:
+            raise RuntimeError("synthetic Codex project trust already has conflicting state")
+        return
+    body = existing.rstrip()
+    if body:
+        body += "\n\n"
+    config.write_text(body + table, encoding="utf-8")
+    if header not in config.read_text(encoding="utf-8"):
+        raise RuntimeError("synthetic Codex project trust seed failed")
+
 def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path):
     log = pathlib.Path(log_path)
     try:
@@ -236,16 +275,17 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     tmpdir.mkdir(parents=True, exist_ok=True)
     tmpdir.chmod(0o700)
     provider_dir = str(pathlib.Path(provider).resolve().parent)
+    env = {
+        "PATH": provider_dir + ":/usr/bin:/bin",
+        "HOME": str(pathlib.Path(home).resolve()),
+        "CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve()),
+        "TMPDIR": str(tmpdir.resolve()),
+        "TERM": "xterm-256color",
+    }
+    seed_synthetic_project_trust(candidate, mode, project, home, env)
     pid, fd = pty.fork()
     if pid == 0:
         fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
-        env = {
-            "PATH": provider_dir + ":/usr/bin:/bin",
-            "HOME": str(pathlib.Path(home).resolve()),
-            "CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve()),
-            "TMPDIR": str(tmpdir.resolve()),
-            "TERM": "xterm-256color",
-        }
         os.chdir(project)
         argv = [candidate]
         if mode == "clroom":
@@ -255,7 +295,6 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     os.set_blocking(fd, False)
     provider_seen = False
     methods_seen = False
-    trust_answered = False
     reaped = False
     wait_status = None
     pty_tail = bytearray()
@@ -275,21 +314,8 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             if len(pty_tail) > 8192:
                 del pty_tail[:-8192]
 
-    def accept_synthetic_project_trust():
-        nonlocal trust_answered
-        if trust_answered:
-            return
-        normalized = bytes(
-            byte for byte in pty_tail.lower()
-            if 48 <= byte <= 57 or 97 <= byte <= 122
-        )
-        if b"doyoutrustthecontentsofthisdirectory" not in normalized:
-            return
-        os.write(fd, b"1\n")
-        trust_answered = True
     while time.monotonic() < deadline:
         drain_pty()
-        accept_synthetic_project_trust()
         try:
             waited, status = os.waitpid(pid, os.WNOHANG)
         except ChildProcessError:
@@ -311,8 +337,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     if not reaped:
         for _ in range(40):
             drain_pty()
-            accept_synthetic_project_trust()
-            try:
+                try:
                 waited, status = os.waitpid(pid, os.WNOHANG)
             except ChildProcessError:
                 reaped = True
