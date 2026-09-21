@@ -95,10 +95,13 @@ Raw Codex configuration/plugin controls such as `-c`, `--config`,
 CLROOM plugin selection is active, so there is only one activation authority.
 
 The exact v0.4.2 qualification target is Codex CLI `0.155.1` on macOS Apple
-Silicon. Release qualification additionally requires clean → selected → clean, then
-a selected interactive TUI followed by one more clean launch on the same
-persistent CLROOM shadow. The evidence is bound to the exact candidate bytes
-and current stable provider bytes. The ordinary parser/runtime minimum remains
+Silicon. Release qualification uses a task-owned standalone MCP plugin fixture
+with the real provider and requires provider startup, MCP `initialize`,
+`tools/list` with at least one tool, and a real fixture tool call; `mcp list`
+alone is not runtime evidence. A plugin exposing the app-owned `codex_app` MCP
+surface is classified `HOST_REQUIRED` and fails closed in standalone CLROOM
+rather than emulating the Codex Desktop host. Evidence remains bound to exact
+candidate and provider bytes. The ordinary parser/runtime minimum remains
 `0.147.0+`.
 
 This slice does not add multi-plugin selection, standalone MCP restore,
