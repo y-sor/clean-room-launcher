@@ -274,6 +274,8 @@ fn release_date_contract_is_stable_across_later_tag_days() {
         "CHANGELOG_VERSION_HEADING_MALFORMED",
         "CHANGELOG_DATE_AFTER_TAG",
         "release_date > tag_date",
+        "tagger_utc_date_from_text",
+        "dt.timezone.utc",
         r#"TAGGER_RE = re.compile(r" (\d+) ([+-])(\d{2})(\d{2})$")"#,
     ] {
         assert!(
@@ -286,6 +288,7 @@ fn release_date_contract_is_stable_across_later_tag_days() {
         r#"python3 scripts/release/check-release-date.py --version "$version" --tag-ref "$tag""#;
     assert!(tag_helper.contains(invocation));
     assert!(workflow.contains(invocation));
+    assert!(tag_helper.contains("TAG_GATE_BLOCKED:GIT_COMMITTER_DATE_OVERRIDE"));
     assert!(readiness.contains("check-release-date.py --self-test"));
     assert!(readiness.contains(r#"check-release-date.py --version "$version" --candidate-only"#));
     assert!(
