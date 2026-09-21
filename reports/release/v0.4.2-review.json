@@ -286,5 +286,5 @@
       "canonical release chronology ownership: check-release-contract.py requires ACTIVE_CANDIDATE against the live latest published stable tag and enforces published_baseline_date <= declared_changelog_date <= real tagger date, so readiness and tag paths cannot diverge"
     ]
   },
-  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  "reviewed_content_digest": "93602520bf400e2597bc60154e5924425c42812f00581ee50895f120bb474b65"
 }
