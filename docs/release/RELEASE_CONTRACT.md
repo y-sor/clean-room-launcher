@@ -12,6 +12,8 @@ known near-misses, and decide whether the release contract itself must expand.
 `scripts/release/check-release-contract.py` fails closed when:
 
 - the declared baseline is not the current latest published stable release;
+- the candidate version is not strictly newer than that published baseline;
+- the candidate changelog date is earlier than the published baseline date;
 - a changed path is not classified by the release contract;
 - a changed domain lacks an evidence-backed disposition;
 - a known near-miss lacks a disposition;
@@ -31,11 +33,13 @@ and action-time evidence are still refreshed separately.
 Tracked candidate metadata must not predict a future action-time value merely to
 make an irreversible gate pass. The changelog date is a candidate-declared
 release date; the annotated tagger timestamp is the authoritative action-time
-timestamp. The tag gate requires exactly one canonical ISO changelog date for the
-version and enforces only the monotonic relation `declared_date <= tagger_date`.
-Exact-day equality is forbidden because crossing midnight would otherwise force a
-bookkeeping-only candidate mutation. Future-dated changelog entries still fail
-closed, and the actual tagger timestamp is never rewritten or backdated.
+timestamp. The canonical contract requires the candidate version to be strictly
+newer than the latest published stable baseline and the declared changelog date
+to be on or after that baseline publication date. At tag time it enforces only
+the monotonic upper relation `declared_date <= tagger_date`. Exact-day equality
+is forbidden because crossing midnight would otherwise force a bookkeeping-only
+candidate mutation. Future-dated changelog entries still fail closed, and the
+actual tagger timestamp is never rewritten or backdated.
 
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
