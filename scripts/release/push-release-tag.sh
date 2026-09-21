@@ -175,14 +175,14 @@ required = {
     "clean_after_expected_mcp": False,
     "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
-    "interactive_selected_tui_confirmed": True,
-    "interactive_expected_mcp_healthy_confirmed": True,
-    "interactive_no_model_prompt_confirmed": True,
+    "real_provider_runtime_confirmed": True,
+    "expected_mcp_runtime_healthy_confirmed": True,
+    "model_prompt_sent": False,
     "provider_mcp_initialize_observed": True,
     "provider_mcp_tools_list_observed": True,
     "fixture_mcp_tool_call_passed": True,
     "provider_state_lifecycle_closed": True,
-    "post_interactive_clean_confirmed": True,
+    "post_runtime_clean_confirmed": True,
 }
 for key, value in required.items():
     if record.get(key) != value:
