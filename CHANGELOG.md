@@ -32,7 +32,7 @@ Semantic Versioning after the first public release.
 - Codex release qualification now proves provider-state lifecycle continuity:
   the generic real-provider canary starts Codex twice against the same synthetic
   home, and accepted-main pre-tag qualification performs a final clean launch
-  after the selected interactive TUI on the same persistent CLROOM shadow.
+  after a real-provider MCP runtime probe on the same persistent CLROOM shadow.
 - Pre-publish verification now reconciles the exact tag/SHA, Draft identity and
   asset set, checksums and attestations, provider pins, local pre-tag/Draft
   evidence, and every exact-tag GitHub Actions run before a publish gate.
@@ -49,9 +49,9 @@ Semantic Versioning after the first public release.
   including `plugin-share-local-paths-v1.json` and
   `rollout-maintenance.lock`, after the CLROOM shadow is initialized while
   preserving fail-closed rejection of preexisting or unknown shadow state.
-- Close the release-gate gap that allowed provider-written state created after
-  the pre-tag interactive confirmation to escape revalidation until the Draft
-  artifact smoke.
+- Close the release-gate gap that allowed provider-written state created during
+  the pre-tag Codex runtime probe to escape revalidation until the Draft artifact
+  smoke.
 - Block Claude Code 2.1.278 built-in `agents-md` from importing `AGENTS.md`
   or `.claude/AGENTS.md` above the nearest Git worktree boundary (or launch
   directory outside Git) while retaining repo-root and nested project AGENTS
@@ -73,8 +73,8 @@ Semantic Versioning after the first public release.
   makes the projected bundle non-writable, and refuses overlapping raw Codex
   plugin/config activation controls.
 - Protected tag creation requires lifecycle-aware Codex pre-tag evidence,
-  including the post-interactive clean relaunch. Deleting provider-written
-  state merely to make qualification pass is not accepted evidence.
+  including the post-runtime clean relaunch. Deleting provider-written state
+  merely to make qualification pass is not accepted evidence.
 - Claude pre-tag evidence now requires a real pinned-provider TUI confirmation
   that no external ancestor `AGENTS.md` was loaded; provider pin changes
   require fresh ambient-instruction-surface qualification.
