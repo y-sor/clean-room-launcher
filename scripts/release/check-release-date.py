@@ -60,10 +60,18 @@ def changelog_release_date(changelog: Path, version: str) -> dt.date:
     return parse_iso_date(expected.group("date"), "CHANGELOG_DATE")
 
 
-def validate(changelog: Path, version: str, tag_date: dt.date) -> dt.date:
+def validate_version(version: str) -> None:
     if VERSION_RE.fullmatch(version) is None:
         raise ReleaseDateError(f"RELEASE_DATE_BLOCKED:VERSION_INVALID:{version}")
-    release_date = changelog_release_date(changelog, version)
+
+
+def validate_candidate(changelog: Path, version: str) -> dt.date:
+    validate_version(version)
+    return changelog_release_date(changelog, version)
+
+
+def validate(changelog: Path, version: str, tag_date: dt.date) -> dt.date:
+    release_date = validate_candidate(changelog, version)
     if release_date > tag_date:
         raise ReleaseDateError(
             "RELEASE_DATE_BLOCKED:CHANGELOG_DATE_AFTER_TAG:"
@@ -123,6 +131,7 @@ def main() -> None:
     parser.add_argument("--tag-ref")
     parser.add_argument("--tag-date")
     parser.add_argument("--changelog", default="CHANGELOG.md")
+    parser.add_argument("--candidate-only", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -131,10 +140,18 @@ def main() -> None:
         return
     if not args.version:
         parser.error("--version is required")
-    if bool(args.tag_ref) == bool(args.tag_date):
-        parser.error("provide exactly one of --tag-ref or --tag-date")
+    modes = int(args.candidate_only) + int(bool(args.tag_ref)) + int(bool(args.tag_date))
+    if modes != 1:
+        parser.error("provide exactly one of --candidate-only, --tag-ref or --tag-date")
 
     try:
+        if args.candidate_only:
+            release_date = validate_candidate(Path(args.changelog), args.version)
+            print(
+                "RELEASE_DATE_CANDIDATE_PASS "
+                f"version={args.version} changelog_date={release_date.isoformat()}"
+            )
+            return
         tag_date = tagger_date(args.tag_ref) if args.tag_ref else parse_iso_date(args.tag_date, "TAG_DATE")
         release_date = validate(Path(args.changelog), args.version, tag_date)
     except (OSError, subprocess.SubprocessError, ReleaseDateError) as error:
