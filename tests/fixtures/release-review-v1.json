@@ -1,0 +1,8 @@
+{
+  "schema_version": "clroom.release-review.v1",
+  "release": "v9.9.9",
+  "baseline_release": "v9.9.8",
+  "reviewed_through_commit": "1111111111111111111111111111111111111111",
+  "product_outcome": "N-1 migration fixture",
+  "reviewed_content_digest": "2222222222222222222222222222222222222222222222222222222222222222"
+}
