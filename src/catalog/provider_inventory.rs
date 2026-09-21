@@ -196,6 +196,7 @@ pub fn inspect_plugin_with_home(
     }
 
     let host_required_component = provider == Provider::Codex
+        && plugin_id == "codex-app-tools@openai-bundled"
         && effective_components.iter().any(|component| {
             component.kind == ResourceKind::McpServer && component.id == "codex_app"
         });
@@ -665,11 +666,11 @@ mod tests {
         let home = root.join("home");
         let codex_home = home.join(".codex");
 
-        let hosted = codex_home.join("plugins/cache/fixture/hosted/local");
+        let hosted = codex_home.join("plugins/cache/openai-bundled/codex-app-tools/local");
         fs::create_dir_all(hosted.join(".codex-plugin")).unwrap();
         fs::write(
             hosted.join(".codex-plugin/plugin.json"),
-            r#"{"name":"hosted","version":"1.0.0"}"#,
+            r#"{"name":"codex-app-tools","version":"1.0.0"}"#,
         )
         .unwrap();
         fs::write(
@@ -682,7 +683,7 @@ mod tests {
             Provider::Codex,
             &home,
             Some(&codex_home),
-            "hosted@fixture",
+            "codex-app-tools@openai-bundled",
             true,
         );
         assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
