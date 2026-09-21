@@ -275,5 +275,5 @@
       "action-time-safe changelog date contract: one canonical tracked release declaration may predate the UTC date derived from the annotated tagger epoch but may never be future-dated; exact wall-clock equality and creator-local timezone coupling are forbidden, both local tag and exact-tag automation share the checker, and readiness owns positive/negative self-tests"
     ]
   },
-  "reviewed_content_digest": "b011c07e68bac60a8ba8418a9758861a72da71e04cb289c1e631ff20eac49e23"
+  "reviewed_content_digest": "2d8556a18ddfa45943129e3104e9a10275ce8a8fe2c76daa1b163089bc270c24"
 }
