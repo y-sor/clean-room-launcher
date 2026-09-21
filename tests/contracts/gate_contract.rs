@@ -276,6 +276,29 @@ fn local_tag_helper_parses_annotated_tagger_timestamp_with_digit_regex() {
 
 
 #[test]
+fn tag_date_binding_is_monotonic_not_exact_day_equality() {
+    let checker = std::fs::read_to_string("scripts/release/check-release-contract.py").unwrap();
+    let helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let contract = std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+
+    assert!(contract.contains(r#""changelog_action_time_relation": "declared_on_or_before_tag""#));
+    assert!(checker.contains("validate_changelog_tag_date"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
+    assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
+    assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
+    assert!(
+        !helper.contains(r#"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"#),
+        "tag helper must not require candidate bytes to predict the future tagger day"
+    );
+    assert!(
+        !workflow.contains(r#"heading = f"## [{version}] - {tag_date}""#),
+        "tag workflow must share the monotonic release-contract relation"
+    );
+}
+
+#[test]
 fn release_candidate_models_post_publish_and_active_candidate_lifecycle() {
     let workflow = std::fs::read_to_string(".github/workflows/release-candidate.yml").unwrap();
     let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
