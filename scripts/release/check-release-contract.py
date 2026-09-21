@@ -207,6 +207,18 @@ def main():
             pass
         else:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE")
+        try:
+            changelog_release_date(["## [9.9.9] - 2026/09/20"], "9.9.9")
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_MALFORMED_HEADING")
+        try:
+            changelog_release_date(["## [9.9.9] - 2026-02-30"], "9.9.9")
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_INVALID_DATE")
         if validate_changelog_baseline_date(datetime.date(2026, 9, 20), "2026-09-20T23:59:59Z").isoformat() != "2026-09-20":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BASELINE_SAME_DAY")
         try:

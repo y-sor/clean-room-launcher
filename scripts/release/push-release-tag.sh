@@ -382,18 +382,33 @@ git push origin "refs/tags/$tag"
 push_rc=$?
 set -e
 
-remote_peeled=$(git ls-remote --tags origin "refs/tags/$tag^{}" | awk '{print $1}')
+set +e
+remote_refs=$(git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}")
+reconcile_rc=$?
+set -e
+if [[ $reconcile_rc -ne 0 ]]; then
+  echo "TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED tag=$tag push_rc=$push_rc" >&2
+  exit 82
+fi
+
+remote_direct=$(printf '%s\n' "$remote_refs" | awk -v ref="refs/tags/$tag" '$2 == ref {print $1}')
+remote_peeled=$(printf '%s\n' "$remote_refs" | awk -v ref="refs/tags/$tag^{}" '$2 == ref {print $1}')
 if [[ $remote_peeled == "$expected" ]]; then
   echo "TAG_PUSH_PASS tag=$tag target=$expected"
   exit 0
 fi
 
+if [[ -n "$remote_direct" || -n "$remote_peeled" ]]; then
+  cleanup_local_tag
+  echo "TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH tag=$tag direct=${remote_direct:-none} peeled=${remote_peeled:-none} expected=$expected" >&2
+  exit 83
+fi
+
 if [[ $push_rc -ne 0 ]]; then
   cleanup_local_tag
-  echo "TAG_PUSH_OUTCOME_RECONCILED_NOT_PRESENT tag=$tag" >&2
+  echo "TAG_PUSH_OUTCOME_RECONCILED_ABSENT tag=$tag" >&2
   exit "$push_rc"
 fi
 
-cleanup_local_tag
-echo "TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED" >&2
+echo "TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED tag=$tag" >&2
 exit 73

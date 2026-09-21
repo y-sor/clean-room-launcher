@@ -290,6 +290,8 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_MALFORMED_HEADING"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_INVALID_DATE"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BEFORE_BASELINE"));
     assert!(checker.contains("RELEASE_CONTRACT_BLOCKED:CANDIDATE_NOT_ADVANCED"));
     assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
@@ -379,7 +381,7 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         .find("git push origin \"refs/tags/$tag\"")
         .expect("tag helper must push the protected tag");
     let reconciliation = source
-        .find("TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED")
+        .find("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED")
         .expect("tag push must reconcile the remote result");
 
     assert_eq!(
@@ -388,10 +390,14 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         "tag helper must perform exactly one irreversible tag push"
     );
     assert_eq!(
-        source.matches("TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED").count(),
+        source.matches("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED").count(),
         1,
-        "tag push reconciliation must exist only after the actual push"
+        "tag push unresolved-outcome handling must exist only after the actual push"
     );
+    assert!(source.contains(r#"git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}""#));
+    assert!(source.contains("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED"));
+    assert!(source.contains("TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH"));
+    assert!(source.contains("TAG_PUSH_OUTCOME_RECONCILED_ABSENT"));
     assert!(
         provider_evidence < provider_version
             && provider_version < provider_bytes
