@@ -39,6 +39,7 @@ Semantic Versioning after the first public release.
 
 ### Fixed
 
+- Make changelog/tag date validation monotonic: the candidate-declared release date may precede the real annotated tagger day, while future-dated entries still fail closed. This removes cross-midnight bookkeeping PRs without backdating the tag or weakening action-time checks.
 - Classify the app-owned `codex_app` MCP surface as host-required for
   standalone CLROOM instead of treating a visible server with zero tools as a
   qualified whole-plugin runtime.
