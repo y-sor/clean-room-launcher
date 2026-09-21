@@ -17,23 +17,23 @@ known near-misses, and decide whether the release contract itself must expand.
 - a known near-miss lacks a disposition;
 - contract expansion is declared without a durable promoted control;
 - semantic product outcome is missing;
-- `reviewed_through_commit` is not an ancestor of the exact candidate HEAD;
-- any tracked path other than the release-review snapshot changes after
-  `reviewed_through_commit`;
+- the active review is not `clroom.release-review.v2` or still carries the
+  legacy ancestry-bound `reviewed_through_commit` field;
 - any tracked byte, executable mode, symlink, or semantic review declaration
-  changes after the semantic review seal.
+  differs from the content-addressed review seal.
 
-The semantic review boundary is also commit-bound. `reviewed_through_commit`
-must be an ancestor of the exact candidate HEAD, and every tracked change after
-that commit must be confined to the release-review snapshot itself. Runtime,
-tests, docs, workflows, scripts, packaging or any other tracked change after the
-declared review boundary fails closed instead of being silently covered by a
-later digest-only reseal.
+Release review is content-addressed, not commit-ancestry-addressed. Commit SHA
+remains provenance, while acceptance binds to exact tracked content. Equivalent
+reviewed content can therefore survive a squash after candidate-tree ==
+accepted-tree verification, without a bookkeeping-only reseal PR. Mutable state
+and action-time evidence are still refreshed separately.
 
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
 JSON semantics with only its self-referential `reviewed_content_digest` field
-removed. Changing source, docs, workflows, packaging, tests, scripts, file
+removed. The checker also carries an explicit v1 N−1 migration fixture proving
+that v2 removes ancestry binding without silently changing the stored content
+digest field. Changing source, docs, workflows, packaging, tests, scripts, file
 modes, symlinks, dispositions, near-misses, product outcome, contract-evolution
 decision, or capability gates therefore requires a fresh review seal.
 
@@ -186,9 +186,12 @@ bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
 
 These smokes never install, update, enable persistently, remove, or downgrade a
 provider/plugin. Claude's automated probe uses its established startup evidence
-path. Codex uses `mcp list --json` only as a no-model capability probe; the
-selected MCP must be absent before selection, present only in the selected
-launch, and absent again on the following clean launch.
+path. Codex configuration visibility is not runtime proof. Release qualification
+uses a task-owned standalone MCP fixture with the real pinned provider and
+requires provider startup, MCP `initialize`, `tools/list` with at least one
+tool, and a real fixture tool call. `mcp list --json` remains a configuration
+check only. The app-owned `codex_app` surface is classified
+`PLUGIN_HOST_REQUIRED` in standalone CLROOM and cannot satisfy this gate.
 
 ## Local audit
 
