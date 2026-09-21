@@ -277,5 +277,5 @@
       "monotonic tag-date contract: exactly one canonical candidate-declared changelog date, real annotated tagger timestamp retained as action-time truth, shared local/CI validation of declared_date <= tagger_date, and regression rejection of exact-day equality/backdating"
     ]
   },
-  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  "reviewed_content_digest": "86744d56a869795f21652122ef0b8b69a31a946ff6223cf57976a75faf14f6a4"
 }
