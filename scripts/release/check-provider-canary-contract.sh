@@ -29,7 +29,7 @@ for needle in \
   'CODEX_PLATFORM_SHA512=' \
   'CLAUDE_SHA512=' \
   'CLAUDE_PLATFORM_SHA512='; do
-  grep -Fq "$needle" "$pins" || fail "PIN_MISSING"
+  grep -Fq -- "$needle" "$pins" || fail "PIN_MISSING"
 done
 
 for needle in \
@@ -40,7 +40,7 @@ for needle in \
   'verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION"' \
   'verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION"' \
   'PROVIDER_PIN_CHECK_PASS'; do
-  grep -Fq "$needle" "$pin_checker" || fail "LATEST_OR_INTEGRITY_GATE_MISSING"
+  grep -Fq -- "$needle" "$pin_checker" || fail "LATEST_OR_INTEGRITY_GATE_MISSING"
 done
 
 for needle in \
@@ -55,7 +55,7 @@ for needle in \
   'CLROOM_PROVIDER_CLAUDE=%s\n' \
   'CLROOM_PROVIDER_CODEX_VERSION=%s\n' \
   'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n'; do
-  grep -Fq "$needle" "$provisioner" || fail "PIN_OR_LAYOUT_MISSING"
+  grep -Fq -- "$needle" "$provisioner" || fail "PIN_OR_LAYOUT_MISSING"
 done
 
 
@@ -80,7 +80,7 @@ for needle in \
   '"post_interactive_clean_confirmed": post_interactive_clean == "true"' \
   'codex-mcp-fixture.py" probe-provider' \
   'codex-mcp-fixture.py" probe-server'; do
-  grep -Fq "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
+  grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
 done
 
 for needle in \
@@ -96,7 +96,7 @@ for needle in \
   'AGENTS_BOUNDARY_PROVIDER_NOT_EXECUTED' \
   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS' \
   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'; do
-  grep -Fq "$needle" "$claude_smoke" || fail "CLAUDE_INSTRUCTION_BOUNDARY_SMOKE_MISSING"
+  grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_INSTRUCTION_BOUNDARY_SMOKE_MISSING"
 done
 
 for needle in \
@@ -109,7 +109,7 @@ for needle in \
   'interactive-provider-repeat-mcp-qualified' \
   '"schema_version":"clroom.real-provider-qualification.v2"' \
   '"repeat_provider_executed":repeat_observed == "true"'; do
-  grep -Fq "$needle" "$qualifier" || fail "CODEX_REPEAT_LIFECYCLE_CONTRACT_MISSING"
+  grep -Fq -- "$needle" "$qualifier" || fail "CODEX_REPEAT_LIFECYCLE_CONTRACT_MISSING"
 done
 
 for needle in \
@@ -118,7 +118,7 @@ for needle in \
   '"project_agents_retained_confirmed": True' \
   '"external_ancestor_agents_sandbox_probe_passed": True' \
   'PRETAG_CLAUDE_EVIDENCE_PASS'; do
-  grep -Fq "$needle" "$tag_helper" || fail "CLAUDE_TAG_GATE_MISSING"
+  grep -Fq -- "$needle" "$tag_helper" || fail "CLAUDE_TAG_GATE_MISSING"
 done
 
 for needle in \
@@ -135,7 +135,7 @@ for needle in \
   'PRETAG_CODEX_EVIDENCE_PASS' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
-  grep -Fq "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
+  grep -Fq -- "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
 done
 
 for workflow in "$release_candidate" "$release"; do
