@@ -269,18 +269,21 @@ fn tag_date_contract_is_action_time_safe_and_fail_closed() {
     let checker = std::fs::read_to_string("scripts/release/check-changelog-release.py").unwrap();
 
     assert!(
-        tag_helper.contains(r#"match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)"#),
-        "tag helper must parse the real annotated-tagger timestamp format"
+        checker.contains(r#"match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)"#),
+        "shared checker must parse the real annotated-tagger timestamp format"
     );
     assert!(
-        !tag_helper.contains(r#"match = re.search(r" (\\d+) ([+-])(\\d{2})(\\d{2})$", line)"#),
+        !checker.contains(r#"match = re.search(r" (\\d+) ([+-])(\\d{2})(\\d{2})$", line)"#),
         "double-escaped digit classes would match literal backslashes and break the tag gate"
     );
     assert!(tag_helper.contains("scripts/release/check-changelog-release.py"));
+    assert!(tag_helper.contains("--tag-ref \"$tag\""));
     assert!(workflow.contains("scripts/release/check-changelog-release.py"));
+    assert!(workflow.contains("--tag-ref \"$tag\""));
     assert!(readiness.contains("CHANGELOG_RELEASE_CONTRACT_SELF_TEST"));
     assert!(checker.contains("declared_date > tag_date"));
     assert!(checker.contains("CHANGELOG_DATE_IN_FUTURE"));
+    assert!(checker.contains("datetime.timezone.utc"));
     assert!(
         !tag_helper.contains(r#"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"#),
         "tagging must not require tracked changelog bytes to equal a future wall-clock day"
