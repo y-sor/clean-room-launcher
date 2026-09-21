@@ -207,7 +207,7 @@ if cd.get("artifact_sha256") != artifact_sha:
     raise SystemExit("claude-draft-artifact")
 
 for record, phase in [(xp, "pretag"), (xd, "draft")]:
-    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v2":
+    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v3":
         raise SystemExit("codex-schema")
     required = {
         "result": "PASS",
@@ -222,13 +222,16 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
         "clean_after_expected_mcp": False,
         "ambient_config_and_plugin_tree_unchanged": True,
         "plugin_source_unchanged": True,
+        "provider_mcp_initialize_observed": True,
+        "provider_mcp_tools_list_observed": True,
+        "fixture_mcp_tool_call_passed": True,
         "provider_state_lifecycle_closed": True,
     }
     for key, value in required.items():
         if record.get(key) != value:
             raise SystemExit(f"codex-{phase}:{key}")
-    if not record.get("plugin_id") or not record.get("expected_mcp"):
-        raise SystemExit(f"codex-{phase}:identity")
+    if record.get("plugin_id") != "standalone-mcp@clroom-fixture" or record.get("expected_mcp") != "clroom_fixture":
+        raise SystemExit(f"codex-{phase}:fixture-identity")
     for key in ("codex_provider_sha256", "plugin_source_sha256"):
         if not re.fullmatch(r"[0-9a-f]{64}", str(record.get(key, ""))):
             raise SystemExit(f"codex-{phase}:{key}")
