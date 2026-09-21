@@ -277,5 +277,5 @@
       "stable-vs-action-time release date contract: readiness validates one canonical candidate declaration heading before merge, while one shared tag-time validator allows declaration date <= annotated tagger date and fails closed on future, duplicate or malformed headings"
     ]
   },
-  "reviewed_content_digest": "2c41afc22ef16c0ee64dcb3367d51fdd8a3586d268b35d2559443fe72980e0db"
+  "reviewed_content_digest": "1fc07599b7f4bfb10cbec0e869431724c64dd8168970415c4591dceece82b0c6"
 }
