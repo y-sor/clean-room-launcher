@@ -274,7 +274,7 @@ fn release_date_contract_is_stable_across_later_tag_days() {
         "CHANGELOG_VERSION_HEADING_MALFORMED",
         "CHANGELOG_DATE_AFTER_TAG",
         "release_date > tag_date",
-        r#"TAGGER_RE = re.compile(r" (\\d+) ([+-])(\\d{2})(\\d{2})$")"#,
+        r#"TAGGER_RE = re.compile(r" (\d+) ([+-])(\d{2})(\d{2})$")"#,
     ] {
         assert!(
             checker.contains(required),
