@@ -225,31 +225,9 @@ cleanup_local_tag() {
   exit 72
 }
 
-tag_date=$(python3 - "$tag" <<'PY'
-import datetime
-import re
-import subprocess
-import sys
-
-tag = sys.argv[1]
-raw = subprocess.check_output(["git", "cat-file", "-p", f"refs/tags/{tag}"], text=True)
-line = next((line for line in raw.splitlines() if line.startswith("tagger ")), None)
-if line is None:
-    raise SystemExit("tagger line missing")
-match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)
-if match is None:
-    raise SystemExit("tagger timestamp malformed")
-epoch = int(match.group(1))
-minutes = int(match.group(3)) * 60 + int(match.group(4))
-if match.group(2) == "-":
-    minutes = -minutes
-tz = datetime.timezone(datetime.timedelta(minutes=minutes))
-print(datetime.datetime.fromtimestamp(epoch, tz=tz).date().isoformat())
-PY
-)
-grep -Fxq "## [$version] - $tag_date" CHANGELOG.md || {
+python3 scripts/release/check-release-date.py --version "$version" --tag-ref "$tag" || {
   cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CHANGELOG_DATE expected=$tag_date" >&2
+  echo "TAG_GATE_BLOCKED:RELEASE_DATE_CONTRACT" >&2
   exit 69
 }
 
