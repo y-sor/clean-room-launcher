@@ -224,7 +224,7 @@
       "id": "action-time-changelog-date-equality-created-midnight-reseal-loop",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The protected tag helper required the tracked v0.4.2 changelog date to equal the future annotated-tagger calendar date exactly. A safe delay across midnight therefore turned elapsed wall-clock time into candidate drift and forced another tracked correction before tagging.",
-      "durable_control": "Tracked changelog date is stable candidate metadata. One shared checker reads the annotated tag, derives the UTC calendar date from its absolute tagger epoch, requires one canonical dated release section, and rejects only declarations later than that UTC date; both the local tag helper and exact-tag Release workflow use the same contract, and readiness runs positive same-day/earlier plus future-date and duplicate-section negative fixtures."
+      "durable_control": "Tracked changelog date is stable candidate metadata. One shared checker reads the annotated tag, derives the UTC calendar date from its absolute tagger epoch, requires one canonical dated release section, and rejects only declarations later than that UTC date; both the local tag helper and exact-tag Release workflow use the same contract, and readiness runs positive same-day/earlier plus future-date plus duplicate/ambiguous-section negative fixtures."
     }
   ],
   "artifact_capability_gates": [
@@ -272,7 +272,7 @@
       "Codex projection digest-transition cleanup compatibility: an exact legacy-v1 marker digest may authorize removal of its unchanged CLROOM-owned projection, while selected execution remains bound to the current semantic digest and post-marker mutation still fails closed",
       "CI event efficiency: pull_request validation for branches, push only on main, concurrency cancellation for superseded PR/ref runs, and automatic canonical release readiness on accepted main",
       "Codex synthetic-project trust fixture: initialize the CLROOM-owned shadow through a non-model MCP listing, verify the v2 ownership marker, then set trust_level=trusted only for the exact synthetic project before the PTY runtime probe; interactive trust-screen automation is forbidden",
-      "action-time-safe changelog date contract: one canonical tracked release declaration may predate the UTC date derived from the annotated tagger epoch but may never be future-dated; exact wall-clock equality and creator-local timezone coupling are forbidden, both local tag and exact-tag automation share the checker, and readiness owns positive/negative self-tests"
+      "action-time-safe changelog date contract: one canonical tracked release declaration may predate the UTC date derived from the annotated tagger epoch but may never be future-dated; exact wall-clock equality and creator-local timezone coupling are forbidden, both local tag and exact-tag automation share the checker, and readiness owns same-day/earlier positive and future-date/ambiguous-section negative self-tests"
     ]
   },
   "reviewed_content_digest": "2d8556a18ddfa45943129e3104e9a10275ce8a8fe2c76daa1b163089bc270c24"
