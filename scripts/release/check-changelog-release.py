@@ -46,10 +46,14 @@ def validate_release(path: Path, version: str, tag_date: datetime.date) -> tuple
         raise ChangelogError(f"VERSION_INVALID:{version}")
     lines = path.read_text(encoding="utf-8").splitlines()
     heading = re.compile(rf"^## \[{re.escape(version)}\] - (?P<date>\d{{4}}-\d{{2}}-\d{{2}})$")
-    matches = [(index, match) for index, line in enumerate(lines) if (match := heading.fullmatch(line))]
-    if len(matches) != 1:
-        raise ChangelogError(f"RELEASE_SECTION_COUNT:{len(matches)}")
-    start, match = matches[0]
+    prefix = f"## [{version}]"
+    candidates = [(index, line) for index, line in enumerate(lines) if line.startswith(prefix)]
+    if len(candidates) != 1:
+        raise ChangelogError(f"RELEASE_SECTION_COUNT:{len(candidates)}")
+    start, line = candidates[0]
+    match = heading.fullmatch(line)
+    if match is None:
+        raise ChangelogError(f"RELEASE_SECTION_FORMAT:{line}")
     declared_date = parse_iso_date(match.group("date"), "CHANGELOG_DATE")
     if declared_date > tag_date:
         raise ChangelogError(
@@ -96,6 +100,17 @@ def self_test() -> None:
                 raise
         else:
             raise SystemExit("CHANGELOG_RELEASE_SELF_TEST_FAIL:duplicate")
+        path.write_text(
+            "# Changelog\n\n## [9.9.9] - 2026-09-20\n\n- canonical\n\n## [9.9.9] - 2026-09-20 extra\n\n- malformed duplicate\n",
+            encoding="utf-8",
+        )
+        try:
+            validate_release(path, "9.9.9", parse_iso_date("2026-09-21", "TAG_DATE"))
+        except ChangelogError as error:
+            if not str(error).startswith("RELEASE_SECTION_COUNT:"):
+                raise
+        else:
+            raise SystemExit("CHANGELOG_RELEASE_SELF_TEST_FAIL:malformed-duplicate")
     print("CHANGELOG_RELEASE_SELF_TEST_PASS")
 
 
