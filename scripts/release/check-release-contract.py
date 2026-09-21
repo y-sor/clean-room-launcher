@@ -68,6 +68,14 @@ def ensure_review_boundary(reviewed, head, review_path):
             print(f"CHANGE_AFTER_REVIEW_BOUNDARY:{path}", file=sys.stderr)
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGES_AFTER_REVIEW_BOUNDARY")
 
+def migrate_review_v1(review):
+    if review.get("schema_version") != "clroom.release-review.v1":
+        raise ValueError("not release-review v1")
+    migrated = dict(review)
+    migrated["schema_version"] = "clroom.release-review.v2"
+    migrated.pop("reviewed_through_commit", None)
+    return migrated
+
 def review_semantic_sha(review):
     semantic = dict(review)
     semantic.pop("reviewed_content_digest", None)
@@ -139,14 +147,24 @@ def main():
         changed["product_outcome"] = "B"
         if review_semantic_sha(changed) == semantic:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_REVIEW_SEMANTICS")
+        fixture = load_json(ROOT / "tests/fixtures/release-review-v1.json")
+        migrated = migrate_review_v1(fixture)
+        if migrated.get("schema_version") != "clroom.release-review.v2":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_SCHEMA")
+        if "reviewed_through_commit" in migrated:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_ANCESTRY_FIELD")
+        if migrated.get("reviewed_content_digest") != fixture.get("reviewed_content_digest"):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_DIGEST")
         print("RELEASE_CONTRACT_SELF_TEST_PASS")
         return
 
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     review_path = Path(args.review or ROOT/f"reports/release/v{version}-review.json")
     review=load_json(review_path)
-    if review.get("schema_version")!="clroom.release-review.v1":
+    if review.get("schema_version")!="clroom.release-review.v2":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:REVIEW_SCHEMA")
+    if "reviewed_through_commit" in review:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:LEGACY_REVIEW_ANCESTRY_FIELD")
     if review.get("release") != f"v{version}":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:REVIEW_VERSION")
 
@@ -156,13 +174,8 @@ def main():
     ensure_ref(latest_tag)
     base_commit=run("git","rev-list","-n","1",latest_tag)
 
-    reviewed=review.get("reviewed_through_commit","")
-    if not isinstance(reviewed, str) or len(reviewed) != 40 or any(ch not in "0123456789abcdef" for ch in reviewed):
-        raise SystemExit("RELEASE_CONTRACT_BLOCKED:REVIEWED_COMMIT_ID")
-
     head = run("git","rev-parse","HEAD")
     review_relative = str(review_path.resolve().relative_to(ROOT))
-    ensure_review_boundary(reviewed, head, review_relative)
     expected_digest = review.get("reviewed_content_digest")
     if not isinstance(expected_digest, str) or len(expected_digest) != 64:
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:REVIEW_CONTENT_DIGEST_MISSING")
@@ -218,7 +231,7 @@ def main():
         print(f"PUBLISHED_BASELINE={latest_tag}")
         print(f"PUBLISHED_AT={published_at}")
         print(f"BASE_COMMIT={base_commit}")
-        print(f"REVIEWED_THROUGH={reviewed}")
+        print("REVIEW_BINDING=content-addressed")
         print(f"HEAD={head}")
         print("CHANGED_DOMAINS="+",".join(changed_domains))
         print(f"CHANGED_FILES={len(changed)}")
@@ -232,7 +245,7 @@ def main():
         print("=== ARTIFACT CAPABILITY GATES ===")
         for gate in review.get("artifact_capability_gates",[]):
             print(f"{gate['phase']}\t{gate['id']}\t{gate['requirement']}")
-    print(f"RELEASE_CONTRACT_PASS release={review['release']} baseline={latest_tag} reviewed_through={reviewed}")
+    print(f"RELEASE_CONTRACT_PASS release={review['release']} baseline={latest_tag} binding=content-addressed")
 
 if __name__=="__main__":
     main()
