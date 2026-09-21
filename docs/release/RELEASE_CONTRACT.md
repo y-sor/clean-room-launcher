@@ -73,6 +73,14 @@ absent, revalidates the active no-bypass `v*` tag ruleset, and reruns the
 whole-release contract against the current published baseline. Any drift blocks
 the push.
 
+Tracked changelog dates are stable candidate declarations, not action-time
+clock values. `scripts/release/check-changelog-release.py` requires exactly one
+dated release section for the candidate version, validates the ISO date and
+requires that declaration to be no later than the annotated tagger date. It does
+not require exact equality: time passing after candidate acceptance must not
+manufacture tracked-content drift or force a bookkeeping PR. The annotated tag
+retains the authoritative action-time timestamp.
+
 Because stable `v*` tags are protected against update/deletion, provider
 capabilities with release-specific behavior are exercised on exact candidate
 bytes before the irreversible tag/publish boundaries.
