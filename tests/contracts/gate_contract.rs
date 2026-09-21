@@ -262,15 +262,38 @@ fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
 }
 
 #[test]
-fn local_tag_helper_parses_annotated_tagger_timestamp_with_digit_regex() {
-    let source = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+fn release_date_contract_is_stable_across_later_tag_days() {
+    let checker = std::fs::read_to_string("scripts/release/check-release-date.py").unwrap();
+    let tag_helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
+
+    for required in [
+        "RELEASE_DATE_SELF_TEST_PASS",
+        "CHANGELOG_VERSION_HEADING_COUNT",
+        "CHANGELOG_VERSION_HEADING_MALFORMED",
+        "CHANGELOG_DATE_AFTER_TAG",
+        "release_date > tag_date",
+        r#"TAGGER_RE = re.compile(r" (\\d+) ([+-])(\\d{2})(\\d{2})$")"#,
+    ] {
+        assert!(
+            checker.contains(required),
+            "canonical release-date validator must own {required}"
+        );
+    }
+
+    let invocation =
+        r#"python3 scripts/release/check-release-date.py --version "$version" --tag-ref "$tag""#;
+    assert!(tag_helper.contains(invocation));
+    assert!(workflow.contains(invocation));
+    assert!(readiness.contains("check-release-date.py --self-test"));
     assert!(
-        source.contains(r#"match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)"#),
-        "tag helper must parse the real annotated-tagger timestamp format"
+        !tag_helper.contains(r#"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"#),
+        "tag gate must not require tracked changelog bytes to equal action-time wall-clock date"
     );
     assert!(
-        !source.contains(r#"match = re.search(r" (\\d+) ([+-])(\\d{2})(\\d{2})$", line)"#),
-        "double-escaped digit classes would match literal backslashes and break the tag gate"
+        !workflow.contains(r#"heading = f"## [{version}] - {tag_date}""#),
+        "tag workflow must use the same stable release-date invariant as the local tag gate"
     );
 }
 
