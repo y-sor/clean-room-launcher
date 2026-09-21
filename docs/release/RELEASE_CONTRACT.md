@@ -90,7 +90,10 @@ For whole-plugin activation:
    selected current-project boundary. Codex proves clean → selected → clean MCP
    visibility through a task-owned standalone fixture, sibling absence through
    the runtime contract, unchanged ambient provider/plugin state, and a real
-   provider PTY startup that reaches MCP initialize + tools/list. The harness
+   provider PTY startup that reaches MCP initialize + tools/list. Before that
+   PTY probe, the harness initializes a CLROOM-owned synthetic shadow, verifies
+   its ownership marker, and records `trusted` only for the exact synthetic
+   project so qualification never depends on scraping the trust UI. The harness
    sends no model prompt.
 2. **Action-time tag guard:** the helper rechecks live stable provider pins and
    revalidates both local provider executable version/bytes against the accepted
