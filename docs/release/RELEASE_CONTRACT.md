@@ -60,6 +60,22 @@ This is intentionally separate from ordinary CI. CI answers whether the current
 candidate passes existing controls. Contract evolution asks whether the delta
 made any existing control insufficient.
 
+## Stable release metadata vs action-time state
+
+Tracked candidate bytes must not depend on the wall-clock time at which an
+irreversible release action happens. The changelog release heading is stable
+content metadata and may be declared before the protected tag is actually
+created. The annotated tagger timestamp remains the authoritative action-time
+timestamp.
+
+For a release version, the canonical release-date validator requires exactly one
+well-formed ISO-date changelog heading and proves that the changelog date is not
+later than the annotated tagger date. Equality is intentionally not required:
+an operational delay across midnight must not force a bookkeeping-only content
+change, a new candidate SHA, or fresh runtime qualification. Duplicate,
+malformed, or future-relative-to-tag changelog dates fail closed. Both the local
+protected-tag helper and the exact-tag Release workflow use the same validator.
+
 ## Artifact integrity
 
 The release workflow qualifies the provider launchers extracted from the exact
