@@ -32,8 +32,8 @@ The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
 JSON semantics with only its self-referential `reviewed_content_digest` field
 removed. The checker also carries an explicit v1 N−1 migration fixture proving
-that v2 removes ancestry binding without silently changing the stored content
-digest field. Changing source, docs, workflows, packaging, tests, scripts, file
+that v2 removes ancestry binding and requires a fresh content-addressed reseal;
+the old ancestry-bound digest is rejected rather than silently reused. Changing source, docs, workflows, packaging, tests, scripts, file
 modes, symlinks, dispositions, near-misses, product outcome, contract-evolution
 decision, or capability gates therefore requires a fresh review seal.
 
