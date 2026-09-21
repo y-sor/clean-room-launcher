@@ -203,6 +203,17 @@ pub fn bundle_digest(root: &Path) -> Result<String, ActivationError> {
     digest_records(root, &records)
 }
 
+pub fn projection_marker_digest_matches(
+    root: &Path,
+    expected_digest: &str,
+) -> Result<bool, ActivationError> {
+    let records = bundle_records(root)?;
+    if digest_records(root, &records)? == expected_digest {
+        return Ok(true);
+    }
+    Ok(digest_records_legacy_v1(root, &records)? == expected_digest)
+}
+
 fn bundle_records(root: &Path) -> Result<Vec<SourceRecord>, ActivationError> {
     inventory(&[AdmittedRoot::new(root, LOGICAL_PREFIX)])
         .map_err(|_| ActivationError::InvalidSource)
@@ -227,6 +238,34 @@ fn digest_records(root: &Path, records: &[SourceRecord]) -> Result<String, Activ
         bytes.extend_from_slice(content_sha.as_bytes());
         bytes.push(0);
         bytes.extend_from_slice(content_len.as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(format!("{executable:o}").as_bytes());
+        bytes.push(b'\n');
+    }
+    Ok(sha256_hex(&bytes))
+}
+
+fn digest_records_legacy_v1(
+    root: &Path,
+    records: &[SourceRecord],
+) -> Result<String, ActivationError> {
+    let mut bytes = Vec::new();
+    for record in records {
+        let relative = record
+            .logical_path
+            .strip_prefix("plugin/")
+            .ok_or(ActivationError::InvalidSource)?;
+        let metadata = fs::symlink_metadata(root.join(relative))
+            .map_err(|_| ActivationError::InvalidSource)?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err(ActivationError::InvalidSource);
+        }
+        let executable = metadata.mode() & 0o111;
+        bytes.extend_from_slice(record.logical_path.as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(record.sha256.as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(record.byte_len.to_string().as_bytes());
         bytes.push(0);
         bytes.extend_from_slice(format!("{executable:o}").as_bytes());
         bytes.push(b'\n');
@@ -570,7 +609,10 @@ fn make_tree_read_only(root: &Path) -> Result<(), ActivationError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{bundle_digest, plan, toml_basic_string, ActivationError, PluginActivationPlan};
+    use super::{
+        bundle_digest, bundle_records, digest_records_legacy_v1, plan,
+        projection_marker_digest_matches, toml_basic_string, ActivationError, PluginActivationPlan,
+    };
     use crate::{
         adapters::identity::ProviderIdentity,
         catalog::{provider_inventory::CODEX_PLUGIN_ACTIVATION_EXACT, selection::SelectionRequest},
@@ -880,6 +922,41 @@ mod tests {
         let source_mcp = fs::read_to_string(plugin.join(".mcp.json")).unwrap();
         assert!(source_mcp.contains(canonical_plugin.to_str().unwrap()));
         assert!(!source_mcp.contains(projected_root.to_str().unwrap()));
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn legacy_projection_marker_digest_is_cleanup_compatible_but_tamper_still_refuses() {
+        let (home, _codex_home, plugin) = fixture();
+        let launcher = plugin.join("scripts/launch_codex_app_tools_mcp");
+        fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+        fs::write(&launcher, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::write(plugin.join("server.mjs"), "export {};\n").unwrap();
+        let canonical_plugin = fs::canonicalize(&plugin).unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            format!(
+                "{{\n  \"mcpServers\": {{\n    \"codex_app\": {{\n      \"command\": {:?},\n      \"cwd\": {:?},\n      \"args\": [\"./server.mjs\"]\n    }}\n  }}\n}}\n",
+                launcher.display().to_string(),
+                canonical_plugin.display().to_string(),
+            ),
+        )
+        .unwrap();
+
+        let records = bundle_records(&plugin).unwrap();
+        let legacy_digest = digest_records_legacy_v1(&plugin, &records).unwrap();
+        assert_ne!(legacy_digest, bundle_digest(&plugin).unwrap());
+        assert_eq!(
+            projection_marker_digest_matches(&plugin, &legacy_digest),
+            Ok(true)
+        );
+
+        fs::write(plugin.join("skills/review/SKILL.md"), "tampered\n").unwrap();
+        assert_eq!(
+            projection_marker_digest_matches(&plugin, &legacy_digest),
+            Ok(false)
+        );
 
         let _ = fs::remove_dir_all(home.parent().unwrap());
     }
