@@ -962,18 +962,18 @@ mod tests {
         let home = scratch.0.join("plugin-home");
         let ambient_codex_home = home.join(".codex");
         let plugin = ambient_codex_home.join(
-            "plugins/cache/openai-bundled/codex-app-tools/0.1.4",
+            "plugins/cache/clroom-fixture/standalone-mcp/1.0.0",
         );
         fs::create_dir_all(plugin.join(".codex-plugin")).unwrap();
         fs::create_dir_all(plugin.join("skills/review")).unwrap();
         fs::write(ambient_codex_home.join("auth.json"), b"synthetic auth state").unwrap();
         fs::write(
             plugin.join(".codex-plugin/plugin.json"),
-            r#"{"name":"codex-app-tools","skills":["./skills"]}"#,
+            r#"{"name":"standalone-mcp","skills":["./skills"]}"#,
         )
         .unwrap();
         fs::write(plugin.join("skills/review/SKILL.md"), b"fixture\n").unwrap();
-        let launcher = plugin.join("scripts/launch_codex_app_tools_mcp");
+        let launcher = plugin.join("scripts/launch_fixture_mcp");
         fs::create_dir_all(launcher.parent().unwrap()).unwrap();
         fs::write(&launcher, b"#!/bin/sh\nexit 0\n").unwrap();
         fs::set_permissions(&launcher, fs::Permissions::from_mode(0o755)).unwrap();
@@ -983,7 +983,7 @@ mod tests {
             plugin.join(".mcp.json"),
             serde_json::to_vec(&serde_json::json!({
                 "mcpServers": {
-                    "codex_app": {
+                    "fixture_mcp": {
                         "command": launcher,
                         "cwd": canonical_plugin,
                         "args": ["./server.mjs"]
@@ -996,7 +996,7 @@ mod tests {
 
         let mut request = SelectionRequest::default();
         request
-            .include_value("plugin:codex-app-tools@openai-bundled")
+            .include_value("plugin:standalone-mcp@clroom-fixture")
             .unwrap();
         let identity = ProviderIdentity {
             provider_id: "codex".to_owned(),
@@ -1086,11 +1086,11 @@ mod tests {
         let projected_mcp: serde_json::Value =
             serde_json::from_slice(&fs::read(projected.join(".mcp.json")).unwrap()).unwrap();
         assert_eq!(
-            projected_mcp["mcpServers"]["codex_app"]["command"].as_str(),
-            Some(projected_root.join("scripts/launch_codex_app_tools_mcp").to_str().unwrap())
+            projected_mcp["mcpServers"]["fixture_mcp"]["command"].as_str(),
+            Some(projected_root.join("scripts/launch_fixture_mcp").to_str().unwrap())
         );
         assert_eq!(
-            projected_mcp["mcpServers"]["codex_app"]["cwd"].as_str(),
+            projected_mcp["mcpServers"]["fixture_mcp"]["cwd"].as_str(),
             Some(projected_root.to_str().unwrap())
         );
         assert!(!fs::read_to_string(projected.join(".mcp.json"))
@@ -1133,10 +1133,10 @@ mod tests {
         fs::set_permissions(&mcp_path, fs::Permissions::from_mode(0o600)).unwrap();
         let mut mcp: serde_json::Value =
             serde_json::from_slice(&fs::read(&mcp_path).unwrap()).unwrap();
-        mcp["mcpServers"]["codex_app"]["command"] = serde_json::Value::String(
+        mcp["mcpServers"]["fixture_mcp"]["command"] = serde_json::Value::String(
             activation
                 .root()
-                .join("scripts/launch_codex_app_tools_mcp")
+                .join("scripts/launch_fixture_mcp")
                 .display()
                 .to_string(),
         );
