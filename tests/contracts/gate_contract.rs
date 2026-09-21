@@ -234,7 +234,6 @@ fn codex_pretag_smoke_closes_state_after_runtime_probe() {
 }
 
 #[test]
-#[test]
 fn ci_keeps_exact_tag_push_validation_while_deduping_branch_pushes() {
     let workflow = std::fs::read_to_string(".github/workflows/ci.yml").unwrap();
     assert!(workflow.contains("branches:\n      - main"));
@@ -243,6 +242,7 @@ fn ci_keeps_exact_tag_push_validation_while_deduping_branch_pushes() {
     assert!(workflow.contains("cancel-in-progress: true"));
 }
 
+#[test]
 fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
     let verifier = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
 
