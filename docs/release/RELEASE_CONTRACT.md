@@ -70,10 +70,13 @@ timestamp.
 For a release version, readiness validates exactly one well-formed ISO-date
 changelog heading before merge. At tag time, the same canonical release-date
 validator additionally proves that the declaration date is not later than the
-annotated tagger date. Equality is intentionally not required:
-an operational delay across midnight must not force a bookkeeping-only content
-change, a new candidate SHA, or fresh runtime qualification. Duplicate,
-malformed, or future-relative-to-tag changelog dates fail closed. Both the local
+annotated tagger UTC date derived from the tag object's absolute epoch.
+Equality is intentionally not required: an operational delay across midnight
+must not force a bookkeeping-only content change, a new candidate SHA, or fresh
+runtime qualification. Duplicate, malformed, or future-relative-to-tag
+changelog dates fail closed. The protected-tag helper rejects
+`GIT_COMMITTER_DATE` overrides before creating the annotated tag so action-time
+provenance cannot be replaced by ambient release-shell state. Both the local
 protected-tag helper and the exact-tag Release workflow use the same validator.
 
 ## Artifact integrity
