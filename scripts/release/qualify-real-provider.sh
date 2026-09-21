@@ -25,7 +25,11 @@ candidate_digest=$(shasum -a 256 "$candidate" | awk '{print $1}')
 provider_digest=$(shasum -a 256 "$executable" | awk '{print $1}')
 target=$(rustc -vV | sed -n 's/^host: //p')
 root=$(mktemp -d "${TMPDIR:-/tmp}/clroom-provider-qualification.XXXXXX")
-trap 'rm -rf "$root"' EXIT
+cleanup() {
+  chmod -R u+w "$root" 2>/dev/null || true
+  rm -rf "$root"
+}
+trap cleanup EXIT
 user_home="$root/user-home"
 mkdir -p "$user_home/.codex" "$user_home/.claude" "$root/project"
 printf '%s\n' 'not valid provider configuration' > "$user_home/.codex/config.toml"
