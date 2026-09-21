@@ -247,11 +247,11 @@ tz = datetime.timezone(datetime.timedelta(minutes=minutes))
 print(datetime.datetime.fromtimestamp(epoch, tz=tz).date().isoformat())
 PY
 )
-grep -Fxq "## [$version] - $tag_date" CHANGELOG.md || {
+if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null; then
   cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CHANGELOG_DATE expected=$tag_date" >&2
+  echo "TAG_GATE_BLOCKED:CHANGELOG_DATE_RELATION tag_date=$tag_date" >&2
   exit 69
-}
+fi
 
 # Mutable remote release state is refreshed immediately before the irreversible push.
 git fetch --quiet origin main || {
@@ -279,7 +279,7 @@ if ! verify_tag_ruleset; then
   echo "TAG_GATE_BLOCKED:TAG_RULESET_ACTION_TIME" >&2
   exit 76
 fi
-if ! python3 scripts/release/check-release-contract.py --report >/dev/null; then
+if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null; then
   cleanup_local_tag
   echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
   exit 77
