@@ -48,26 +48,6 @@ def ensure_ref(ref):
     except subprocess.CalledProcessError:
         raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:MISSING_GIT_REF:{ref}")
 
-def ensure_review_boundary(reviewed, head, review_path):
-    ensure_ref(reviewed)
-    ancestor = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", reviewed, head],
-        cwd=ROOT,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    if ancestor.returncode != 0:
-        raise SystemExit("RELEASE_CONTRACT_BLOCKED:REVIEWED_COMMIT_NOT_ANCESTOR")
-
-    changed_after_review = run(
-        "git", "diff", "--no-renames", "--name-only", f"{reviewed}..{head}"
-    ).splitlines()
-    unexpected = [path for path in changed_after_review if path != review_path]
-    if unexpected:
-        for path in unexpected:
-            print(f"CHANGE_AFTER_REVIEW_BOUNDARY:{path}", file=sys.stderr)
-        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGES_AFTER_REVIEW_BOUNDARY")
-
 def migrate_review_v1(review, reviewed_content_digest):
     if review.get("schema_version") != "clroom.release-review.v1":
         raise ValueError("not release-review v1")
