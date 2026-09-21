@@ -353,9 +353,9 @@ print("SELECTED_MCP_PLUGIN_PATH_REBASE=PASS")
 print("AUTOMATED_CODEX_PLUGIN_E2E=PASS")
 PY
 
-interactive=false
-interactive_mcp_healthy=false
-post_interactive_clean=false
+runtime_confirmed=false
+runtime_mcp_healthy=false
+post_runtime_clean=false
 provider_mcp_initialize=false
 provider_mcp_tools_list=false
 fixture_mcp_tool_call=false
@@ -368,9 +368,9 @@ python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
   --provider "$codex_executable" \
   --plugin-id "$plugin_id" \
   --log "$fixture_log" \
-  || fail "SELECTED_TUI_MCP_RUNTIME"
-interactive=true
-interactive_mcp_healthy=true
+  || fail "SELECTED_MCP_RUNTIME"
+runtime_confirmed=true
+runtime_mcp_healthy=true
 provider_mcp_initialize=true
 provider_mcp_tools_list=true
 
@@ -380,11 +380,11 @@ python3 "$root/scripts/release/codex-mcp-fixture.py" probe-server \
 fixture_mcp_tool_call=true
 
 if ! "$clroom" codex mcp list --json \
-  >"$tmp/post-interactive-clean.json" 2>"$tmp/post-interactive-clean.err"; then
-  fail_from_stderr "POST_INTERACTIVE_CLEAN_MCP_LIST" "$tmp/post-interactive-clean.err"
+  >"$tmp/post-runtime-clean.json" 2>"$tmp/post-runtime-clean.err"; then
+  fail_from_stderr "POST_RUNTIME_CLEAN_MCP_LIST" "$tmp/post-runtime-clean.err"
 fi
-python3 - "$expected_mcp" "$tmp/post-interactive-clean.json" <<'PY' \
-  || fail "POST_INTERACTIVE_CLEAN_EXPECTED_MCP"
+python3 - "$expected_mcp" "$tmp/post-runtime-clean.json" <<'PY' \
+  || fail "POST_RUNTIME_CLEAN_EXPECTED_MCP"
 import json, sys
 expected_mcp, path = sys.argv[1:]
 data = json.load(open(path, encoding="utf-8"))
@@ -393,7 +393,7 @@ if not isinstance(data, list):
 if any(isinstance(item, dict) and item.get("name") == expected_mcp for item in data):
     raise SystemExit("expected-mcp-present-after-interactive")
 PY
-post_interactive_clean=true
+post_runtime_clean=true
 [[ "$ambient_before" == "$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")" ]] \
   || fail "PERSISTENT_PROVIDER_STATE_CHANGED_INTERACTIVE"
 [[ "$source_before" == "$(fingerprint_tree "$plugin_source")" ]] \
@@ -404,13 +404,13 @@ mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
-  "$plugin_id" "$expected_mcp" "$interactive" "$interactive_mcp_healthy" "$post_interactive_clean" "$codex_version_output" \
+  "$plugin_id" "$expected_mcp" "$runtime_confirmed" "$runtime_mcp_healthy" "$post_runtime_clean" "$codex_version_output" \
   "$codex_version" "$codex_provider_sha" "$source_before" "$provider_mcp_initialize" \
   "$provider_mcp_tools_list" "$fixture_mcp_tool_call" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
-    interactive, interactive_mcp_healthy, post_interactive_clean, codex_version_output, codex_version,
+    runtime_confirmed, runtime_mcp_healthy, post_runtime_clean, codex_version_output, codex_version,
     codex_provider_sha, plugin_source_sha, provider_mcp_initialize,
     provider_mcp_tools_list, fixture_mcp_tool_call,
 ) = sys.argv[1:]
@@ -434,14 +434,14 @@ record = {
     "clean_after_expected_mcp": False,
     "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
-    "interactive_selected_tui_confirmed": interactive == "true",
-    "interactive_expected_mcp_healthy_confirmed": interactive_mcp_healthy == "true",
-    "interactive_no_model_prompt_confirmed": interactive == "true",
+    "real_provider_runtime_confirmed": runtime_confirmed == "true",
+    "expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true",
+    "model_prompt_sent": False,
     "provider_mcp_initialize_observed": provider_mcp_initialize == "true",
     "provider_mcp_tools_list_observed": provider_mcp_tools_list == "true",
     "fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true",
     "provider_state_lifecycle_closed": True,
-    "post_interactive_clean_confirmed": post_interactive_clean == "true",
+    "post_runtime_clean_confirmed": post_runtime_clean == "true",
     "observed_at_utc": datetime.datetime.now(
         datetime.timezone.utc
     ).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
@@ -460,9 +460,11 @@ echo "EXPECTED_MCP=$expected_mcp"
 echo "SELECTED_MCP_PLUGIN_PATH_REBASE=YES"
 echo "AMBIENT_CONFIG_AND_PLUGIN_TREE_UNCHANGED=YES"
 echo "PROVIDER_STATE_LIFECYCLE_CLOSED=YES"
-echo "INTERACTIVE_EXPECTED_MCP_HEALTHY_CONFIRMED=$interactive_mcp_healthy"
+echo "REAL_PROVIDER_RUNTIME_CONFIRMED=$runtime_confirmed"
+echo "EXPECTED_MCP_RUNTIME_HEALTHY_CONFIRMED=$runtime_mcp_healthy"
+echo "MODEL_PROMPT_SENT=NO"
 echo "PROVIDER_MCP_INITIALIZE_OBSERVED=$provider_mcp_initialize"
 echo "PROVIDER_MCP_TOOLS_LIST_OBSERVED=$provider_mcp_tools_list"
 echo "FIXTURE_MCP_TOOL_CALL_PASSED=$fixture_mcp_tool_call"
-echo "POST_INTERACTIVE_CLEAN_CONFIRMED=$post_interactive_clean"
+echo "POST_RUNTIME_CLEAN_CONFIRMED=$post_runtime_clean"
 echo "EVIDENCE_FILE=${evidence#$root/}"
