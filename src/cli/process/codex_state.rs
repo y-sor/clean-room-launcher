@@ -300,7 +300,9 @@ fn remove_exact_projection(
     expected_digest: &str,
 ) -> Result<(), String> {
     let projected = cache_root.join(relative);
-    if activation::bundle_digest(&projected).map_err(plugin_projection_error)? != expected_digest {
+    if !activation::projection_marker_digest_matches(&projected, expected_digest)
+        .map_err(plugin_projection_error)?
+    {
         return Err("CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED".to_owned());
     }
     make_tree_owner_writable(&projected)?;
