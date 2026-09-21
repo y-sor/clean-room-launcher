@@ -68,12 +68,19 @@ def ensure_review_boundary(reviewed, head, review_path):
             print(f"CHANGE_AFTER_REVIEW_BOUNDARY:{path}", file=sys.stderr)
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGES_AFTER_REVIEW_BOUNDARY")
 
-def migrate_review_v1(review):
+def migrate_review_v1(review, reviewed_content_digest):
     if review.get("schema_version") != "clroom.release-review.v1":
         raise ValueError("not release-review v1")
+    if (
+        not isinstance(reviewed_content_digest, str)
+        or len(reviewed_content_digest) != 64
+        or any(ch not in "0123456789abcdef" for ch in reviewed_content_digest)
+    ):
+        raise ValueError("migration requires a fresh reviewed content digest")
     migrated = dict(review)
     migrated["schema_version"] = "clroom.release-review.v2"
     migrated.pop("reviewed_through_commit", None)
+    migrated["reviewed_content_digest"] = reviewed_content_digest
     return migrated
 
 def review_semantic_sha(review):
@@ -148,13 +155,17 @@ def main():
         if review_semantic_sha(changed) == semantic:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_REVIEW_SEMANTICS")
         fixture = load_json(ROOT / "tests/fixtures/release-review-v1.json")
-        migrated = migrate_review_v1(fixture)
+        migrated = migrate_review_v1(fixture, "3" * 64)
         if migrated.get("schema_version") != "clroom.release-review.v2":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_SCHEMA")
         if "reviewed_through_commit" in migrated:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_ANCESTRY_FIELD")
-        if migrated.get("reviewed_content_digest") != fixture.get("reviewed_content_digest"):
-            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_DIGEST")
+        if migrated.get("reviewed_content_digest") != "3" * 64:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_RESEAL")
+        if migrated.get("reviewed_content_digest") == fixture.get("reviewed_content_digest"):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_STALE_DIGEST_REUSED")
+        if review_semantic_sha(migrated) == review_semantic_sha(fixture):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_N_MINUS_1_SEMANTICS_UNCHANGED")
         print("RELEASE_CONTRACT_SELF_TEST_PASS")
         return
 
