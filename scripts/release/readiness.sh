@@ -59,6 +59,7 @@ python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_C
 python3 scripts/release/check-release-date.py --self-test || fail "RELEASE_DATE_SELF_TEST"
 python3 scripts/release/codex-mcp-fixture.py --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
+  python3 scripts/release/check-release-date.py --version "$version" --candidate-only || fail "RELEASE_DATE_CANDIDATE"
   python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
 else
   printf 'RELEASE_CONTRACT_SKIPPED lifecycle=POST_PUBLISH baseline=%s version=%s\n' "$baseline" "$version"
