@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import re
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -22,10 +23,27 @@ def parse_iso_date(value: str, label: str) -> datetime.date:
     return parsed
 
 
-def validate_release(path: Path, version: str, tag_date_text: str) -> tuple[datetime.date, str]:
+def tag_utc_date(tag: str) -> datetime.date:
+    try:
+        raw = subprocess.check_output(
+            ["git", "cat-file", "-p", f"refs/tags/{tag}"],
+            text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        raise ChangelogError(f"TAG_READ:{tag}") from error
+    line = next((line for line in raw.splitlines() if line.startswith("tagger ")), None)
+    if line is None:
+        raise ChangelogError("TAGGER_LINE_MISSING")
+    match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)
+    if match is None:
+        raise ChangelogError("TAGGER_TIMESTAMP_MALFORMED")
+    epoch = int(match.group(1))
+    return datetime.datetime.fromtimestamp(epoch, tz=datetime.timezone.utc).date()
+
+
+def validate_release(path: Path, version: str, tag_date: datetime.date) -> tuple[datetime.date, str]:
     if not VERSION_RE.fullmatch(version):
         raise ChangelogError(f"VERSION_INVALID:{version}")
-    tag_date = parse_iso_date(tag_date_text, "TAG_DATE")
     lines = path.read_text(encoding="utf-8").splitlines()
     heading = re.compile(rf"^## \[{re.escape(version)}\] - (?P<date>\d{{4}}-\d{{2}}-\d{{2}})$")
     matches = [(index, match) for index, line in enumerate(lines) if (match := heading.fullmatch(line))]
@@ -61,7 +79,7 @@ def self_test() -> None:
                 encoding="utf-8",
             )
             try:
-                validate_release(path, "9.9.9", tag_date)
+                validate_release(path, "9.9.9", parse_iso_date(tag_date, "TAG_DATE"))
                 passed = True
             except ChangelogError:
                 passed = False
@@ -72,7 +90,7 @@ def self_test() -> None:
             encoding="utf-8",
         )
         try:
-            validate_release(path, "9.9.9", "2026-09-21")
+            validate_release(path, "9.9.9", parse_iso_date("2026-09-21", "TAG_DATE"))
         except ChangelogError as error:
             if not str(error).startswith("RELEASE_SECTION_COUNT:"):
                 raise
@@ -85,22 +103,23 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--changelog", default="CHANGELOG.md")
     parser.add_argument("--version")
-    parser.add_argument("--tag-date")
+    parser.add_argument("--tag-ref")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
         self_test()
         return
-    if not args.version or not args.tag_date:
-        parser.error("--version and --tag-date are required unless --self-test is used")
+    if not args.version or not args.tag_ref:
+        parser.error("--version and --tag-ref are required unless --self-test is used")
     try:
-        declared, _body = validate_release(Path(args.changelog), args.version, args.tag_date)
+        tag_date = tag_utc_date(args.tag_ref)
+        declared, _body = validate_release(Path(args.changelog), args.version, tag_date)
     except (OSError, ChangelogError) as error:
         raise SystemExit(f"CHANGELOG_RELEASE_BLOCKED:{error}") from error
     print(
         f"CHANGELOG_RELEASE_PASS version={args.version} declared_date={declared.isoformat()} "
-        f"tag_date={args.tag_date}"
+        f"tag_utc_date={tag_date.isoformat()}"
     )
 
 
