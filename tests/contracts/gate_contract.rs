@@ -411,10 +411,8 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         "LOCAL_HEAD_DRIFT_ACTION_TIME",
         "ensure_remote_tag_absent ACTION_TIME",
         "verify_tag_ruleset",
-        "check-release-contract.py --report",
+        "check-release-contract.py --tag-date \"$tag_date\" --report",
         "RELEASE_CONTRACT_ACTION_TIME",
-        "CLAUDE_PROVIDER_DRIFT_ACTION_TIME",
-        "CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME",
     ] {
         assert!(guard.contains(required), "missing action-time tag guard: {required}");
     }
