@@ -75,11 +75,15 @@ def review_semantic_sha(review):
     return hashlib.sha256(canonical).hexdigest()
 
 def changelog_release_date(lines, version):
+    prefix = f"## [{version}]"
+    headings = [line for line in lines if line.startswith(prefix)]
+    if len(headings) != 1:
+        raise ValueError(f"expected exactly one changelog heading for {version}")
     pattern = re.compile(rf"^## \[{re.escape(version)}\] - (\d{{4}}-\d{{2}}-\d{{2}})$")
-    matches = [match.group(1) for line in lines if (match := pattern.fullmatch(line))]
-    if len(matches) != 1:
-        raise ValueError(f"expected exactly one dated changelog heading for {version}")
-    raw = matches[0]
+    match = pattern.fullmatch(headings[0])
+    if match is None:
+        raise ValueError(f"changelog heading for {version} must use YYYY-MM-DD")
+    raw = match.group(1)
     try:
         parsed = datetime.date.fromisoformat(raw)
     except ValueError as error:
@@ -170,6 +174,12 @@ def main():
             pass
         else:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION")
+        try:
+            changelog_release_date(sample_changelog + ["## [9.9.9] - invalid"], "9.9.9")
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE")
         declaration = {
             "release": "v9.9.9",
             "product_outcome": "A",
