@@ -5,9 +5,13 @@ All notable changes to Clean Room Launcher will be documented in this file.
 The format is based on Keep a Changelog, and this project intends to use
 Semantic Versioning after the first public release.
 
+Version-heading dates are tracked release declaration dates. The annotated Git
+tagger timestamp and GitHub Release metadata remain authoritative for the
+actual tag and publication times.
+
 ## [Unreleased]
 
-## [0.4.2] - 2026-09-20
+## [0.4.2] - 2026-09-21
 
 ### Added
 
