@@ -22,7 +22,7 @@
         "Regression coverage proves a legacy-v1 projection marker is cleanup-compatible across the semantic `.mcp.json` digest transition while any post-marker content mutation still fails closed.",
         "The v1→v2 release-review migration fixture proves removal of ancestry-bound reviewed_through_commit and requires an explicit fresh content-addressed reseal; the stale v1 digest is rejected, while v2 self-tests separately prove review-semantic changes alter the seal.",
         "Codex standalone MCP qualification uses a task-owned fixture and the real pinned provider: provider startup must reach MCP initialize plus tools/list, while the fixture protocol probe separately proves a non-empty tool catalog and successful tools/call semantics.",
-        "Release-date contract self-tests and gate-contract coverage prove a candidate remains valid when tagging crosses midnight, while future-relative, duplicate and malformed changelog headings are rejected."
+        "Release-date contract self-tests and gate-contract coverage prove candidate-only structure validation before merge, later-day tag success, and fail-closed future-relative, duplicate and malformed changelog headings."
       ]
     },
     "dependencies": {
@@ -48,7 +48,7 @@
         "The synthetic Claude AGENTS artifact probe now proves the launched provider body executed from a nested Git working directory: version preflight alone cannot satisfy evidence, external ancestors must be denied, repo-root and nested AGENTS must remain readable, and the provider writes an execution marker only after those assertions.",
         "The accepted-main Claude AGENTS artifact probe now makes its synthetic TMPDIR private (0700) before launch and fails closed if that mode is not retained. This matches the existing session-only projection security invariant instead of causing the probe fixture itself to fail before provider execution.",
         "Standalone Codex release qualification no longer treats codex_app visibility as runtime proof. The app-owned codex_app MCP is fail-closed as PLUGIN_HOST_REQUIRED outside a proven host context; accepted release evidence uses standalone-mcp@clroom-fixture and requires real-provider MCP initialize/tools-list evidence plus fixture tools/call verification.",
-        "The protected tag helper and exact-tag Release workflow now share one release-date validator: tracked changelog metadata may predate the irreversible tag action, while duplicate, malformed, or changelog dates later than the annotated tagger date fail closed without forcing a wall-clock bookkeeping PR."
+        "Readiness validates the exact candidate's unique canonical release declaration heading before merge. The protected tag helper and exact-tag Release workflow then share one release-date validator that allows tracked declaration metadata to predate the irreversible tag action while rejecting duplicate, malformed, or declaration dates later than the annotated tagger date."
       ]
     },
     "public_claims": {
@@ -226,7 +226,7 @@
       "id": "tracked-release-date-equality-created-mutable-day-tag-loop",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The protected tag gate required the tracked CHANGELOG release date to equal the annotated tagger's action-time calendar date. A safe delay across midnight therefore invalidated otherwise identical accepted content and would have forced a bookkeeping-only correction PR, new SHA and repeated pre-tag qualification.",
-      "durable_control": "A canonical release-date validator separates stable changelog metadata from action-time tag provenance. It requires exactly one canonical ISO-date heading whose date is not later than the annotated tagger date, but intentionally allows an earlier declaration date. The local tag helper and exact-tag Release workflow share this validator, and self-tests cover later-day success plus future, duplicate and malformed failures."
+      "durable_control": "A canonical release-date validator separates stable changelog release-declaration metadata from action-time tag provenance. Readiness validates the exact candidate heading before merge; tag-time validation requires exactly one canonical ISO-date heading whose declaration date is not later than the annotated tagger date, but intentionally allows an earlier declaration date. The local tag helper and exact-tag Release workflow share this validator, and self-tests cover later-day success plus future, duplicate and malformed failures."
     }
   ],
   "artifact_capability_gates": [
@@ -274,7 +274,7 @@
       "Codex projection digest-transition cleanup compatibility: an exact legacy-v1 marker digest may authorize removal of its unchanged CLROOM-owned projection, while selected execution remains bound to the current semantic digest and post-marker mutation still fails closed",
       "CI event efficiency: pull_request validation for branches, push only on main, concurrency cancellation for superseded PR/ref runs, and automatic canonical release readiness on accepted main",
       "Codex synthetic-project trust fixture: initialize the CLROOM-owned shadow through a non-model MCP listing, verify the v2 ownership marker, then set trust_level=trusted only for the exact synthetic project before the PTY runtime probe; interactive trust-screen automation is forbidden",
-      "stable-vs-action-time release date contract: one canonical validator shared by local tag push and exact-tag workflow, allowing changelog declaration date <= annotated tagger date while failing closed on future, duplicate or malformed headings"
+      "stable-vs-action-time release date contract: readiness validates one canonical candidate declaration heading before merge, while one shared tag-time validator allows declaration date <= annotated tagger date and fails closed on future, duplicate or malformed headings"
     ]
   },
   "reviewed_content_digest": "2c41afc22ef16c0ee64dcb3367d51fdd8a3586d268b35d2559443fe72980e0db"
