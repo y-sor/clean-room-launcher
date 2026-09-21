@@ -106,6 +106,21 @@ def validate_changelog_tag_date(lines, version, tag_date):
         )
     return declared
 
+def published_release_date(published_at):
+    try:
+        parsed = datetime.datetime.fromisoformat(published_at.replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as error:
+        raise ValueError(f"invalid published baseline timestamp: {published_at}") from error
+    return parsed.date()
+
+def validate_changelog_baseline_date(declared, published_at):
+    baseline = published_release_date(published_at)
+    if declared < baseline:
+        raise ValueError(
+            f"changelog date {declared.isoformat()} is before published baseline date {baseline.isoformat()}"
+        )
+    return baseline
+
 def reviewed_content_digest(ref, review_path):
     raw = subprocess.check_output(["git", "ls-tree", "-r", "-z", ref], cwd=ROOT)
     records = []
@@ -143,6 +158,10 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CONTRACT_SCHEMA")
     if contract.get("policy", {}).get("changelog_action_time_relation") != "declared_on_or_before_tag":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_ACTION_TIME_POLICY")
+    if contract.get("policy", {}).get("candidate_version_relation") != "strictly_after_published_baseline":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_VERSION_POLICY")
+    if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE_FLOOR_POLICY")
 
     if args.self_test:
         sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
@@ -157,6 +176,10 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_EVOLUTION_DECISIONS")
         if contract.get("policy", {}).get("changelog_action_time_relation") != "declared_on_or_before_tag":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_ACTION_TIME_POLICY")
+        if contract.get("policy", {}).get("candidate_version_relation") != "strictly_after_published_baseline":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CANDIDATE_VERSION_POLICY")
+        if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DATE_FLOOR_POLICY")
         sample_changelog = [
             "## [9.9.9] - 2026-09-20",
             "",
@@ -180,6 +203,14 @@ def main():
             pass
         else:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE")
+        if validate_changelog_baseline_date(datetime.date(2026, 9, 20), "2026-09-20T23:59:59Z").isoformat() != "2026-09-20":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BASELINE_SAME_DAY")
+        try:
+            validate_changelog_baseline_date(datetime.date(2026, 9, 19), "2026-09-20T00:00:00Z")
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BEFORE_BASELINE")
         declaration = {
             "release": "v9.9.9",
             "product_outcome": "A",
@@ -229,6 +260,23 @@ def main():
     latest_tag, published_at = latest_published_release(args.repository)
     if review.get("baseline_release") != latest_tag:
         raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:BASELINE_DRIFT:{latest_tag}")
+    try:
+        lifecycle = run(
+            "python3",
+            "scripts/release/resolve-release-lifecycle.py",
+            "--candidate-version",
+            version,
+            "--published-tag",
+            latest_tag,
+        )
+    except subprocess.CalledProcessError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_NOT_ADVANCED") from error
+    if lifecycle != "ACTIVE_CANDIDATE":
+        raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_LIFECYCLE:{lifecycle}")
+    try:
+        baseline_release_date = validate_changelog_baseline_date(declared_release_date, published_at)
+    except ValueError as error:
+        raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CHANGELOG_BASELINE_DATE:{error}") from error
     ensure_ref(latest_tag)
     base_commit=run("git","rev-list","-n","1",latest_tag)
 
@@ -288,6 +336,8 @@ def main():
         print(f"RELEASE={review['release']}")
         print(f"PUBLISHED_BASELINE={latest_tag}")
         print(f"PUBLISHED_AT={published_at}")
+        print(f"PUBLISHED_BASELINE_DATE={baseline_release_date.isoformat()}")
+        print(f"CANDIDATE_LIFECYCLE={lifecycle}")
         print(f"BASE_COMMIT={base_commit}")
         print("REVIEW_BINDING=content-addressed")
         print(f"HEAD={head}")
