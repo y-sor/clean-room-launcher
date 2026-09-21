@@ -2,8 +2,8 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: scripts/release/local-codex-plugin-activation-smoke.sh pretag --plugin-id ID --expected-mcp NAME" >&2
-  echo "       scripts/release/local-codex-plugin-activation-smoke.sh draft --tag vX.Y.Z --plugin-id ID --expected-mcp NAME" >&2
+  echo "usage: scripts/release/local-codex-plugin-activation-smoke.sh pretag --fixture-standalone-mcp" >&2
+  echo "       scripts/release/local-codex-plugin-activation-smoke.sh draft --tag vX.Y.Z --fixture-standalone-mcp" >&2
   exit 64
 }
 
@@ -30,16 +30,23 @@ shift || true
 tag=
 plugin_id=
 expected_mcp=
+fixture_standalone_mcp=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tag) tag=${2:-}; shift 2 ;;
     --plugin-id) plugin_id=${2:-}; shift 2 ;;
     --expected-mcp) expected_mcp=${2:-}; shift 2 ;;
+    --fixture-standalone-mcp) fixture_standalone_mcp=true; shift ;;
     *) usage ;;
   esac
 done
-[[ -n "$plugin_id" ]] || fail "PLUGIN_ID_REQUIRED"
-[[ "$expected_mcp" =~ ^[A-Za-z0-9._-]+$ ]] || fail "EXPECTED_MCP_INVALID"
+if [[ "$fixture_standalone_mcp" == true ]]; then
+  [[ -z "$plugin_id" && -z "$expected_mcp" ]] || usage
+  plugin_id=standalone-mcp@clroom-fixture
+  expected_mcp=clroom_fixture
+else
+  fail "STANDALONE_FIXTURE_REQUIRED"
+fi
 if [[ "$phase" == "draft" ]]; then
   [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
 else
@@ -153,7 +160,17 @@ clroom="$archive_root/bin/clroom"
 grep -Fqx "version=$version" "$archive_root/VERSION" || fail "ARCHIVE_VERSION"
 grep -Fqx "source_commit=$source_head" "$archive_root/VERSION" || fail "ARCHIVE_SOURCE"
 
-ambient_codex_home="${CODEX_HOME:-$HOME/.codex}"
+fixture_home="$tmp/fixture-home"
+mkdir -p "$fixture_home"
+chmod 0700 "$fixture_home"
+ambient_codex_home="$fixture_home/.codex"
+fixture_log="$tmp/codex-mcp.log"
+fixture_plugin=$(python3 "$root/scripts/release/codex-mcp-fixture.py" install \
+  --codex-home "$ambient_codex_home" --log "$fixture_log") \
+  || fail "STANDALONE_FIXTURE_INSTALL"
+export HOME="$fixture_home"
+export CODEX_HOME="$ambient_codex_home"
+
 plugin_source=$(python3 - "$ambient_codex_home" "$plugin_id" <<'PY'
 import os, pathlib, re, sys
 home = pathlib.Path(sys.argv[1]).expanduser()
@@ -339,26 +356,35 @@ PY
 interactive=false
 interactive_mcp_healthy=false
 post_interactive_clean=false
-if [[ "$phase" == "pretag" ]]; then
-  [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
-  echo
-  echo "=== INTERACTIVE CODEX SELECTED-PLUGIN TUI ==="
-  echo "Do not send a model prompt."
-  echo "Confirm the normal Codex TUI opens and /mcp shows $expected_mcp healthy/ready with one or more tools."
-  echo "A failed server or 0 tools is a release blocker. Exit normally."
-  echo
-  "$clroom" codex --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
-  printf 'TUI opened normally and /mcp showed healthy %s with tools [y/N]: ' "$expected_mcp"
-  read -r answer
-  [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
-  interactive=true
-  interactive_mcp_healthy=true
-  if ! "$clroom" codex mcp list --json \
-    >"$tmp/post-interactive-clean.json" 2>"$tmp/post-interactive-clean.err"; then
-    fail_from_stderr "POST_INTERACTIVE_CLEAN_MCP_LIST" "$tmp/post-interactive-clean.err"
-  fi
-  python3 - "$expected_mcp" "$tmp/post-interactive-clean.json" <<'PY' \
-    || fail "POST_INTERACTIVE_CLEAN_EXPECTED_MCP"
+provider_mcp_initialize=false
+provider_mcp_tools_list=false
+fixture_mcp_tool_call=false
+
+python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
+  --candidate "$clroom" \
+  --mode clroom \
+  --project "$root" \
+  --home "$fixture_home" \
+  --provider "$codex_executable" \
+  --plugin-id "$plugin_id" \
+  --log "$fixture_log" \
+  || fail "SELECTED_TUI_MCP_RUNTIME"
+interactive=true
+interactive_mcp_healthy=true
+provider_mcp_initialize=true
+provider_mcp_tools_list=true
+
+python3 "$root/scripts/release/codex-mcp-fixture.py" probe-server \
+  --server "$fixture_plugin/server.py" \
+  || fail "FIXTURE_MCP_TOOL_CALL"
+fixture_mcp_tool_call=true
+
+if ! "$clroom" codex mcp list --json \
+  >"$tmp/post-interactive-clean.json" 2>"$tmp/post-interactive-clean.err"; then
+  fail_from_stderr "POST_INTERACTIVE_CLEAN_MCP_LIST" "$tmp/post-interactive-clean.err"
+fi
+python3 - "$expected_mcp" "$tmp/post-interactive-clean.json" <<'PY' \
+  || fail "POST_INTERACTIVE_CLEAN_EXPECTED_MCP"
 import json, sys
 expected_mcp, path = sys.argv[1:]
 data = json.load(open(path, encoding="utf-8"))
@@ -367,12 +393,11 @@ if not isinstance(data, list):
 if any(isinstance(item, dict) and item.get("name") == expected_mcp for item in data):
     raise SystemExit("expected-mcp-present-after-interactive")
 PY
-  post_interactive_clean=true
-  [[ "$ambient_before" == "$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")" ]] \
-    || fail "PERSISTENT_PROVIDER_STATE_CHANGED_INTERACTIVE"
-  [[ "$source_before" == "$(fingerprint_tree "$plugin_source")" ]] \
-    || fail "PLUGIN_SOURCE_CHANGED_INTERACTIVE"
-fi
+post_interactive_clean=true
+[[ "$ambient_before" == "$(fingerprint_tree "$ambient_codex_home/config.toml" "$ambient_codex_home/plugins")" ]] \
+  || fail "PERSISTENT_PROVIDER_STATE_CHANGED_INTERACTIVE"
+[[ "$source_before" == "$(fingerprint_tree "$plugin_source")" ]] \
+  || fail "PLUGIN_SOURCE_CHANGED_INTERACTIVE"
 
 evidence_dir="$root/target/release-evidence"
 mkdir -p "$evidence_dir"
@@ -380,15 +405,17 @@ short=${source_head:0:12}
 evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
   "$plugin_id" "$expected_mcp" "$interactive" "$interactive_mcp_healthy" "$post_interactive_clean" "$codex_version_output" \
-  "$codex_version" "$codex_provider_sha" "$source_before" <<'PY'
+  "$codex_version" "$codex_provider_sha" "$source_before" "$provider_mcp_initialize" \
+  "$provider_mcp_tools_list" "$fixture_mcp_tool_call" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
     interactive, interactive_mcp_healthy, post_interactive_clean, codex_version_output, codex_version,
-    codex_provider_sha, plugin_source_sha,
+    codex_provider_sha, plugin_source_sha, provider_mcp_initialize,
+    provider_mcp_tools_list, fixture_mcp_tool_call,
 ) = sys.argv[1:]
 record = {
-    "schema_version": "clroom.codex-plugin-release-smoke.v2",
+    "schema_version": "clroom.codex-plugin-release-smoke.v3",
     "result": "PASS",
     "phase": phase,
     "release_version": version,
@@ -410,6 +437,9 @@ record = {
     "interactive_selected_tui_confirmed": interactive == "true",
     "interactive_expected_mcp_healthy_confirmed": interactive_mcp_healthy == "true",
     "interactive_no_model_prompt_confirmed": interactive == "true",
+    "provider_mcp_initialize_observed": provider_mcp_initialize == "true",
+    "provider_mcp_tools_list_observed": provider_mcp_tools_list == "true",
+    "fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true",
     "provider_state_lifecycle_closed": True,
     "post_interactive_clean_confirmed": post_interactive_clean == "true",
     "observed_at_utc": datetime.datetime.now(
@@ -431,5 +461,8 @@ echo "SELECTED_MCP_PLUGIN_PATH_REBASE=YES"
 echo "AMBIENT_CONFIG_AND_PLUGIN_TREE_UNCHANGED=YES"
 echo "PROVIDER_STATE_LIFECYCLE_CLOSED=YES"
 echo "INTERACTIVE_EXPECTED_MCP_HEALTHY_CONFIRMED=$interactive_mcp_healthy"
+echo "PROVIDER_MCP_INITIALIZE_OBSERVED=$provider_mcp_initialize"
+echo "PROVIDER_MCP_TOOLS_LIST_OBSERVED=$provider_mcp_tools_list"
+echo "FIXTURE_MCP_TOOL_CALL_PASSED=$fixture_mcp_tool_call"
 echo "POST_INTERACTIVE_CLEAN_CONFIRMED=$post_interactive_clean"
 echo "EVIDENCE_FILE=${evidence#$root/}"
