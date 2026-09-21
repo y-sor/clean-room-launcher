@@ -163,6 +163,21 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
 }
 
 #[test]
+fn codex_runtime_fixture_seeds_only_owned_synthetic_project_trust() {
+    let fixture = std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
+    assert!(fixture.contains("def seed_synthetic_project_trust("));
+    assert!(fixture.contains(r#"init_argv.extend(["mcp", "list", "--json"])"#));
+    assert!(fixture.contains(r#".clroom-clean-state-v2"#));
+    assert!(fixture.contains(r#".clroom-state-v2"#));
+    assert!(fixture.contains(r#"trust_level = "trusted""#));
+    assert!(fixture.contains("CLROOM Codex shadow ownership marker missing"));
+    assert!(
+        !fixture.contains("doyoutrustthecontentsofthisdirectory"),
+        "release harness must not scrape or answer the interactive trust UI"
+    );
+}
+
+#[test]
 fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
     let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
     let verifier = std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
