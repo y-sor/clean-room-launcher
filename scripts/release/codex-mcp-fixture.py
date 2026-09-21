@@ -240,7 +240,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             "HOME": str(pathlib.Path(home).resolve()),
             "CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve()),
             "TMPDIR": str(tmpdir.resolve()),
-            "TERM": "dumb",
+            "TERM": "xterm-256color",
         }
         os.chdir(project)
         argv = [candidate]
