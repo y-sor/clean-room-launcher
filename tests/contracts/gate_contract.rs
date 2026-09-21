@@ -167,7 +167,7 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
     let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
     let verifier = std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
 
-    assert!(qualifier.contains("real-provider-repeat-interactive-startup-no-model"));
+    assert!(qualifier.contains("real-provider-repeat-interactive-mcp-discovery-no-model"));
     assert!(qualifier.contains("for lifecycle_run in 1 2; do"));
     assert!(qualifier.contains("provider-observed-$lifecycle_run"));
     assert!(qualifier.contains("clroom.real-provider-qualification.v2"));
@@ -182,22 +182,28 @@ fn codex_pretag_smoke_closes_state_after_interactive_provider_writes() {
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
     let tag_helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
 
-    let tui = smoke
-        .find("=== INTERACTIVE CODEX SELECTED-PLUGIN TUI ===")
-        .expect("Codex pretag smoke must exercise the selected TUI");
+    let runtime = smoke
+        .find("codex-mcp-fixture.py\" probe-provider")
+        .expect("Codex pretag smoke must exercise the selected plugin through the real provider");
     let post_interactive = smoke
         .find("POST_INTERACTIVE_CLEAN_MCP_LIST")
-        .expect("Codex pretag smoke must launch clean again after the TUI");
+        .expect("Codex pretag smoke must launch clean again after real-provider runtime discovery");
     let evidence = smoke
-        .find("clroom.codex-plugin-release-smoke.v2")
-        .expect("Codex pretag evidence must use the lifecycle-aware schema");
+        .find("clroom.codex-plugin-release-smoke.v3")
+        .expect("Codex pretag evidence must use the MCP-runtime-aware schema");
     assert!(
-        tui < post_interactive && post_interactive < evidence,
-        "post-interactive clean closure must happen before accepted evidence is written"
+        runtime < post_interactive && post_interactive < evidence,
+        "post-runtime clean closure must happen before accepted evidence is written"
     );
+    assert!(smoke.contains(r#""provider_mcp_initialize_observed": provider_mcp_initialize == "true""#));
+    assert!(smoke.contains(r#""provider_mcp_tools_list_observed": provider_mcp_tools_list == "true""#));
+    assert!(smoke.contains(r#""fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true""#));
     assert!(smoke.contains(r#""provider_state_lifecycle_closed": True"#));
     assert!(smoke.contains(r#""post_interactive_clean_confirmed": post_interactive_clean == "true""#));
-    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v2""#));
+    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v3""#));
+    assert!(tag_helper.contains(r#""provider_mcp_initialize_observed": True"#));
+    assert!(tag_helper.contains(r#""provider_mcp_tools_list_observed": True"#));
+    assert!(tag_helper.contains(r#""fixture_mcp_tool_call_passed": True"#));
     assert!(tag_helper.contains(r#""provider_state_lifecycle_closed": True"#));
     assert!(tag_helper.contains(r#""post_interactive_clean_confirmed": True"#));
 }
@@ -212,7 +218,7 @@ fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
     assert!(verifier.contains(r#"run.get("event") == "push""#));
     assert!(verifier.contains(r#"for required in {"CI", "Release"}"#));
     assert!(verifier.contains(r#"run.get("status") != "completed" or run.get("conclusion") != "success""#));
-    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v2"));
+    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v3"));
     assert!(verifier.contains(r#""provider_state_lifecycle_closed": True"#));
     assert!(verifier.contains(r#"xp.get("post_interactive_clean_confirmed") is not True"#));
     assert!(verifier.contains("DRAFT_RELEASE_VERIFY_PASS"));
@@ -346,26 +352,32 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
 }
 
 #[test]
-fn release_review_boundary_is_commit_bound_before_seal_acceptance() {
+fn release_review_boundary_is_content_addressed_and_squash_stable() {
     let checker =
         std::fs::read_to_string("scripts/release/check-release-contract.py").unwrap();
     let contract =
         std::fs::read_to_string("docs/release/RELEASE_CONTRACT.md").unwrap();
 
     for required in [
-        "git", "merge-base", "--is-ancestor",
-        "REVIEWED_COMMIT_NOT_ANCESTOR",
-        "CHANGES_AFTER_REVIEW_BOUNDARY",
-        "CHANGE_AFTER_REVIEW_BOUNDARY:",
+        "clroom.release-review.v2",
+        "LEGACY_REVIEW_ANCESTRY_FIELD",
+        "reviewed_content_digest",
+        "REVIEW_CONTENT_DRIFT",
+        "REVIEW_BINDING=content-addressed",
     ] {
         assert!(
             checker.contains(required),
-            "release checker must fail closed on review-boundary drift: {required}"
+            "release checker must fail closed on content-addressed review drift: {required}"
         );
     }
     assert!(
-        contract.contains("every tracked change after"),
-        "release contract must document the commit-bound review invariant"
+        !checker.contains("merge-base\", \"--is-ancestor"),
+        "active v2 review acceptance must not retain commit-ancestry enforcement"
+    );
+    assert!(
+        contract.contains("content-addressed, not commit-ancestry-addressed")
+            && contract.contains("candidate-tree == accepted merge tree"),
+        "release contract must document squash-stable content-addressed acceptance"
     );
 }
 
