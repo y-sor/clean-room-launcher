@@ -17,23 +17,23 @@ known near-misses, and decide whether the release contract itself must expand.
 - a known near-miss lacks a disposition;
 - contract expansion is declared without a durable promoted control;
 - semantic product outcome is missing;
-- `reviewed_through_commit` is not an ancestor of the exact candidate HEAD;
-- any tracked path other than the release-review snapshot changes after
-  `reviewed_through_commit`;
+- the active review is not `clroom.release-review.v2` or still carries the
+  legacy ancestry-bound `reviewed_through_commit` field;
 - any tracked byte, executable mode, symlink, or semantic review declaration
-  changes after the semantic review seal.
+  differs from the content-addressed review seal.
 
-The semantic review boundary is also commit-bound. `reviewed_through_commit`
-must be an ancestor of the exact candidate HEAD, and every tracked change after
-that commit must be confined to the release-review snapshot itself. Runtime,
-tests, docs, workflows, scripts, packaging or any other tracked change after the
-declared review boundary fails closed instead of being silently covered by a
-later digest-only reseal.
+Release review is content-addressed, not commit-ancestry-addressed. Commit SHA
+remains provenance, while acceptance binds to exact tracked content. Equivalent
+reviewed content can therefore survive a squash after candidate-tree ==
+accepted-tree verification, without a bookkeeping-only reseal PR. Mutable state
+and action-time evidence are still refreshed separately.
 
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
 JSON semantics with only its self-referential `reviewed_content_digest` field
-removed. Changing source, docs, workflows, packaging, tests, scripts, file
+removed. The checker also carries an explicit v1 N−1 migration fixture proving
+that v2 removes ancestry binding and requires a fresh content-addressed reseal;
+the old ancestry-bound digest is rejected rather than silently reused. Changing source, docs, workflows, packaging, tests, scripts, file
 modes, symlinks, dispositions, near-misses, product outcome, contract-evolution
 decision, or capability gates therefore requires a fresh review seal.
 
@@ -87,11 +87,14 @@ For whole-plugin activation:
 1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
    proves clean/selected plugin separation, its selected-plugin TUI, and that
    the pinned provider did not load AGENTS.md from an ancestor outside the
-   selected current-project boundary. Codex
-   proves clean → selected → clean MCP visibility through one exact installed
-   plugin, sibling absence through the runtime contract, unchanged ambient
-   provider/plugin state, and its selected-plugin TUI. No model prompt is sent
-   during the interactive confirmation.
+   selected current-project boundary. Codex proves clean → selected → clean MCP
+   visibility through a task-owned standalone fixture, sibling absence through
+   the runtime contract, unchanged ambient provider/plugin state, and a real
+   provider PTY startup that reaches MCP initialize + tools/list. Before that
+   PTY probe, the harness initializes a CLROOM-owned synthetic shadow, verifies
+   its ownership marker, and records `trusted` only for the exact synthetic
+   project so qualification never depends on scraping the trust UI. The harness
+   sends no model prompt.
 2. **Action-time tag guard:** the helper rechecks live stable provider pins and
    revalidates both local provider executable version/bytes against the accepted
    pre-tag evidence immediately before the protected tag push.
@@ -111,9 +114,9 @@ For Codex whole-plugin activation this means:
 - exact-provider CI qualification executes two real-provider startups against
   the same synthetic home;
 - accepted-main pre-tag qualification executes
-  clean → selected → clean → selected interactive TUI → clean on the same
+  clean → selected → clean → real-provider MCP runtime probe → clean on the same
   CLROOM shadow generation;
-- the final post-interactive clean launch must succeed before evidence is
+- the final post-runtime clean launch must succeed before evidence is
   accepted or a protected tag can be created;
 - legitimate provider-owned state must not be deleted merely to make
   qualification pass;
@@ -186,9 +189,12 @@ bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
 
 These smokes never install, update, enable persistently, remove, or downgrade a
 provider/plugin. Claude's automated probe uses its established startup evidence
-path. Codex uses `mcp list --json` only as a no-model capability probe; the
-selected MCP must be absent before selection, present only in the selected
-launch, and absent again on the following clean launch.
+path. Codex configuration visibility is not runtime proof. Release qualification
+uses a task-owned standalone MCP fixture with the real pinned provider and
+requires provider startup, MCP `initialize`, `tools/list` with at least one
+tool, and a real fixture tool call. `mcp list --json` remains a configuration
+check only. The app-owned `codex_app` surface is classified
+`PLUGIN_HOST_REQUIRED` in standalone CLROOM and cannot satisfy this gate.
 
 ## Local audit
 

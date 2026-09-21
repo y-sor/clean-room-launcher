@@ -236,7 +236,10 @@ update, remove, or refresh Codex plugins or marketplaces.
 While this selection is active, raw Codex config/plugin controls such as
 `-c`, `--config`, `--profile`, `--enable`, `--disable`, and
 `--plugin` are refused before provider birth. The exact v0.4.2 qualification
-target for this path is Codex CLI `0.155.1` on macOS Apple Silicon.
+target for this path is Codex CLI `0.155.1` on macOS Apple Silicon. A plugin
+whose effective MCP surface includes the app-owned `codex_app` server is
+host-required and fails closed for standalone CLROOM activation; configuration
+visibility is not treated as proof that app-hosted tools exist.
 
 ### Claude Code
 

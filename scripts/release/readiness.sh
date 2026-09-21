@@ -56,6 +56,7 @@ fi
 [[ -x scripts/release/local-plugin-activation-smoke.sh ]] || fail "PLUGIN_SMOKE_EXECUTABLE"
 [[ -x scripts/release/verify-draft-release.sh ]] || fail "DRAFT_RELEASE_VERIFY_EXECUTABLE"
 python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
+python3 scripts/release/codex-mcp-fixture.py --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
   python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
 else

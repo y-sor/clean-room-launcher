@@ -207,7 +207,7 @@ if cd.get("artifact_sha256") != artifact_sha:
     raise SystemExit("claude-draft-artifact")
 
 for record, phase in [(xp, "pretag"), (xd, "draft")]:
-    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v2":
+    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v3":
         raise SystemExit("codex-schema")
     required = {
         "result": "PASS",
@@ -222,25 +222,28 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
         "clean_after_expected_mcp": False,
         "ambient_config_and_plugin_tree_unchanged": True,
         "plugin_source_unchanged": True,
+        "provider_mcp_initialize_observed": True,
+        "provider_mcp_tools_list_observed": True,
+        "fixture_mcp_tool_call_passed": True,
         "provider_state_lifecycle_closed": True,
     }
     for key, value in required.items():
         if record.get(key) != value:
             raise SystemExit(f"codex-{phase}:{key}")
-    if not record.get("plugin_id") or not record.get("expected_mcp"):
-        raise SystemExit(f"codex-{phase}:identity")
+    if record.get("plugin_id") != "standalone-mcp@clroom-fixture" or record.get("expected_mcp") != "clroom_fixture":
+        raise SystemExit(f"codex-{phase}:fixture-identity")
     for key in ("codex_provider_sha256", "plugin_source_sha256"):
         if not re.fullmatch(r"[0-9a-f]{64}", str(record.get(key, ""))):
             raise SystemExit(f"codex-{phase}:{key}")
 
-if xp.get("interactive_selected_tui_confirmed") is not True:
-    raise SystemExit("codex-pretag:interactive")
-if xp.get("interactive_expected_mcp_healthy_confirmed") is not True:
+if xp.get("real_provider_runtime_confirmed") is not True:
+    raise SystemExit("codex-pretag:runtime")
+if xp.get("expected_mcp_runtime_healthy_confirmed") is not True:
     raise SystemExit("codex-pretag:mcp-health")
-if xp.get("interactive_no_model_prompt_confirmed") is not True:
-    raise SystemExit("codex-pretag:no-model")
-if xp.get("post_interactive_clean_confirmed") is not True:
-    raise SystemExit("codex-pretag:post-interactive-clean")
+if xp.get("model_prompt_sent") is not False:
+    raise SystemExit("codex-pretag:model-prompt")
+if xp.get("post_runtime_clean_confirmed") is not True:
+    raise SystemExit("codex-pretag:post-runtime-clean")
 for key in ("plugin_id", "expected_mcp", "codex_provider_sha256", "plugin_source_sha256"):
     if xp.get(key) != xd.get(key):
         raise SystemExit(f"codex-drift:{key}")

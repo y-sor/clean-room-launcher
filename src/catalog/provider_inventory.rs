@@ -195,6 +195,19 @@ pub fn inspect_plugin_with_home(
         conflicts.push(blocker.to_owned());
     }
 
+    let host_required_component = provider == Provider::Codex
+        && effective_components.iter().any(|component| {
+            component.kind == ResourceKind::McpServer && component.id == "codex_app"
+        });
+    if installation_state == InstallationState::Installed
+        && root.is_some()
+        && conflicts.is_empty()
+        && host_required_component
+    {
+        reason_code = "PLUGIN_HOST_REQUIRED";
+        conflicts.push(reason_code.to_owned());
+    }
+
     let activation_surface_qualified = match provider {
         Provider::Claude => {
             activation_surface_eligible
@@ -203,7 +216,7 @@ pub fn inspect_plugin_with_home(
                     .iter()
                     .all(|component| component.kind == ResourceKind::Skill)
         }
-        Provider::Codex => !effective_components.is_empty(),
+        Provider::Codex => !effective_components.is_empty() && !host_required_component,
     };
     let activation_qualified = activation_tuple_qualified
         && activation_identity_qualified
@@ -641,4 +654,100 @@ mod tests {
 
         let _ = fs::remove_dir_all(root);
     }
+    #[test]
+    fn codex_host_required_mcp_is_not_standalone_selectable() {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-provider-codex-host-required-{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let home = root.join("home");
+        let codex_home = home.join(".codex");
+
+        let hosted = codex_home.join("plugins/cache/openai-bundled/codex-app-tools/local");
+        fs::create_dir_all(hosted.join(".codex-plugin")).unwrap();
+        fs::write(
+            hosted.join(".codex-plugin/plugin.json"),
+            r#"{"name":"codex-app-tools","version":"1.0.0"}"#,
+        )
+        .unwrap();
+        fs::write(
+            hosted.join(".mcp.json"),
+            r#"{"mcpServers":{"codex_app":{"command":"/usr/bin/true"}}}"#,
+        )
+        .unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Codex,
+            &home,
+            Some(&codex_home),
+            "codex-app-tools@openai-bundled",
+            true,
+        );
+        assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+        assert_eq!(
+            inventory.entry.reason_code.as_deref(),
+            Some("PLUGIN_HOST_REQUIRED")
+        );
+        assert!(inventory
+            .conflicts
+            .iter()
+            .any(|reason| reason == "PLUGIN_HOST_REQUIRED"));
+
+        let renamed = codex_home.join("plugins/cache/fixture/host-backed/local");
+        fs::create_dir_all(renamed.join(".codex-plugin")).unwrap();
+        fs::write(
+            renamed.join(".codex-plugin/plugin.json"),
+            r#"{"name":"host-backed","version":"1.0.0"}"#,
+        )
+        .unwrap();
+        fs::write(
+            renamed.join(".mcp.json"),
+            r#"{"mcpServers":{"codex_app":{"command":"/usr/bin/true"}}}"#,
+        )
+        .unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Codex,
+            &home,
+            Some(&codex_home),
+            "host-backed@fixture",
+            true,
+        );
+        assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+        assert_eq!(
+            inventory.entry.reason_code.as_deref(),
+            Some("PLUGIN_HOST_REQUIRED")
+        );
+
+        let standalone = codex_home.join("plugins/cache/fixture/standalone/local");
+        fs::create_dir_all(standalone.join(".codex-plugin")).unwrap();
+        fs::write(
+            standalone.join(".codex-plugin/plugin.json"),
+            r#"{"name":"standalone","version":"1.0.0"}"#,
+        )
+        .unwrap();
+        fs::write(
+            standalone.join(".mcp.json"),
+            r#"{"mcpServers":{"fixture_mcp":{"command":"/usr/bin/true"}}}"#,
+        )
+        .unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Codex,
+            &home,
+            Some(&codex_home),
+            "standalone@fixture",
+            true,
+        );
+        assert_eq!(inventory.entry.selection, SelectionState::Selectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Qualified);
+        assert!(inventory.conflicts.is_empty());
+
+        let _ = fs::remove_dir_all(root);
+    }
+
 }

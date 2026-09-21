@@ -163,7 +163,7 @@ path, version, expected, expected_codex_version = sys.argv[1:]
 with open(path, encoding="utf-8") as handle:
     record = json.load(handle)
 required = {
-    "schema_version": "clroom.codex-plugin-release-smoke.v2",
+    "schema_version": "clroom.codex-plugin-release-smoke.v3",
     "result": "PASS",
     "phase": "pretag",
     "release_version": version,
@@ -175,16 +175,21 @@ required = {
     "clean_after_expected_mcp": False,
     "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
-    "interactive_selected_tui_confirmed": True,
-    "interactive_expected_mcp_healthy_confirmed": True,
-    "interactive_no_model_prompt_confirmed": True,
+    "real_provider_runtime_confirmed": True,
+    "expected_mcp_runtime_healthy_confirmed": True,
+    "model_prompt_sent": False,
+    "provider_mcp_initialize_observed": True,
+    "provider_mcp_tools_list_observed": True,
+    "fixture_mcp_tool_call_passed": True,
     "provider_state_lifecycle_closed": True,
-    "post_interactive_clean_confirmed": True,
+    "post_runtime_clean_confirmed": True,
 }
 for key, value in required.items():
     if record.get(key) != value:
         raise SystemExit(f"TAG_GATE_BLOCKED:CODEX_PRETAG_EVIDENCE:{key}")
-if not record.get("artifact_sha256") or not record.get("plugin_id") or not record.get("expected_mcp"):
+if record.get("plugin_id") != "standalone-mcp@clroom-fixture" or record.get("expected_mcp") != "clroom_fixture":
+    raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_FIXTURE_IDENTITY")
+if not record.get("artifact_sha256"):
     raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_EVIDENCE_INCOMPLETE")
 if record.get("codex_version") != expected_codex_version:
     raise SystemExit("TAG_GATE_BLOCKED:CODEX_PRETAG_NOT_CURRENT_STABLE")

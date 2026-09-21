@@ -849,7 +849,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         let (home, codex_home, plugin) = fixture();
-        let launcher = plugin.join("scripts/launch_codex_app_tools_mcp");
+        let launcher = plugin.join("scripts/launch_fixture_mcp");
         fs::create_dir_all(launcher.parent().unwrap()).unwrap();
         fs::write(&launcher, "#!/bin/sh\nexit 0\n").unwrap();
         fs::set_permissions(&launcher, fs::Permissions::from_mode(0o755)).unwrap();
@@ -859,7 +859,7 @@ mod tests {
             plugin.join(".mcp.json"),
             serde_json::to_vec(&serde_json::json!({
                 "mcpServers": {
-                    "codex_app": {
+                    "fixture_mcp": {
                         "command": launcher,
                         "cwd": canonical_plugin,
                         "args": ["./server.mjs"]
@@ -893,13 +893,13 @@ mod tests {
         let projected_root = fs::canonicalize(&projected).unwrap();
         let projected_mcp: serde_json::Value =
             serde_json::from_slice(&fs::read(projected.join(".mcp.json")).unwrap()).unwrap();
-        let codex_app = &projected_mcp["mcpServers"]["codex_app"];
+        let fixture_mcp = &projected_mcp["mcpServers"]["fixture_mcp"];
         assert_eq!(
-            codex_app["command"].as_str(),
-            Some(projected_root.join("scripts/launch_codex_app_tools_mcp").to_str().unwrap())
+            fixture_mcp["command"].as_str(),
+            Some(projected_root.join("scripts/launch_fixture_mcp").to_str().unwrap())
         );
         assert_eq!(
-            codex_app["cwd"].as_str(),
+            fixture_mcp["cwd"].as_str(),
             Some(projected_root.to_str().unwrap())
         );
         assert_eq!(
@@ -911,7 +911,7 @@ mod tests {
             bundle_digest(&projected).unwrap()
         );
         assert_eq!(
-            fs::metadata(projected.join("scripts/launch_codex_app_tools_mcp"))
+            fs::metadata(projected.join("scripts/launch_fixture_mcp"))
                 .unwrap()
                 .permissions()
                 .mode()

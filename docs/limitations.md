@@ -16,7 +16,9 @@ permalink: /limitations.html
   provider-native plugin per launch. Codex `0.155.1` uses an exact private
   shadow-PluginStore projection for the interactive path; Claude Code `2.1.278`
   uses its separately qualified session-only plugin-directory path. Other
-  provider tuples fail closed for activation.
+  provider tuples fail closed for activation. Codex plugins whose effective MCP
+  surface includes the app-owned `codex_app` server are `HOST_REQUIRED` and
+  are not standalone-qualified; CLROOM does not emulate the Codex Desktop host.
 - The initial v0.4 whole-plugin qualification is narrower than Claude's full
   plugin discovery semantics. Activation requires a matching
   `.claude-plugin/plugin.json` identity and only default one-level
