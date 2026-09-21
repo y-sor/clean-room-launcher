@@ -103,6 +103,15 @@ for needle in \
 done
 
 for needle in \
+  'def seed_synthetic_project_trust(' \
+  'init_argv.extend(["mcp", "list", "--json"])' \
+  '".clroom-state-v2"' \
+  'trust_level = "trusted"' \
+  'CLROOM Codex shadow ownership marker missing'; do
+  grep -Fq -- "$needle" "$codex_mcp_fixture" || fail "CODEX_SYNTHETIC_TRUST_CONTRACT_MISSING"
+done
+
+for needle in \
   'scope="real-provider-repeat-interactive-mcp-discovery-no-model"' \
   'launch_path="clroom codex --with=plugin:standalone-mcp@clroom-fixture --no-alt-screen (PTY) x2 same HOME"' \
   'lifecycle_runs=2' \
