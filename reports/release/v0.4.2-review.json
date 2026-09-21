@@ -277,5 +277,5 @@
       "stable-vs-action-time release date contract: readiness validates one canonical candidate declaration heading before merge; the protected tag helper rejects GIT_COMMITTER_DATE overrides; one shared tag-time validator compares declaration date <= tagger UTC date from the absolute epoch and fails closed on future, duplicate or malformed headings"
     ]
   },
-  "reviewed_content_digest": "19a522eb3daf4f68c8c863db32ae86becd755591a16f3229ec4d4f378a127795"
+  "reviewed_content_digest": "d0c9a5d74a9c0f9e92e04366d74e07a8a5c930849122a101340f311f10f14d20"
 }
