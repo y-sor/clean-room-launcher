@@ -337,20 +337,22 @@ print("AUTOMATED_CODEX_PLUGIN_E2E=PASS")
 PY
 
 interactive=false
+interactive_mcp_healthy=false
 post_interactive_clean=false
 if [[ "$phase" == "pretag" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
   echo
   echo "=== INTERACTIVE CODEX SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
-  echo "Confirm the normal Codex TUI opens and /mcp shows: $expected_mcp"
-  echo "Exit normally."
+  echo "Confirm the normal Codex TUI opens and /mcp shows $expected_mcp healthy/ready with one or more tools."
+  echo "A failed server or 0 tools is a release blocker. Exit normally."
   echo
   "$clroom" codex --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
-  printf 'TUI opened normally and /mcp showed %s [y/N]: ' "$expected_mcp"
+  printf 'TUI opened normally and /mcp showed healthy %s with tools [y/N]: ' "$expected_mcp"
   read -r answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
   interactive=true
+  interactive_mcp_healthy=true
   if ! "$clroom" codex mcp list --json \
     >"$tmp/post-interactive-clean.json" 2>"$tmp/post-interactive-clean.err"; then
     fail_from_stderr "POST_INTERACTIVE_CLEAN_MCP_LIST" "$tmp/post-interactive-clean.err"
@@ -377,12 +379,12 @@ mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
-  "$plugin_id" "$expected_mcp" "$interactive" "$post_interactive_clean" "$codex_version_output" \
+  "$plugin_id" "$expected_mcp" "$interactive" "$interactive_mcp_healthy" "$post_interactive_clean" "$codex_version_output" \
   "$codex_version" "$codex_provider_sha" "$source_before" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
-    interactive, post_interactive_clean, codex_version_output, codex_version,
+    interactive, interactive_mcp_healthy, post_interactive_clean, codex_version_output, codex_version,
     codex_provider_sha, plugin_source_sha,
 ) = sys.argv[1:]
 record = {
@@ -406,6 +408,7 @@ record = {
     "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
     "interactive_selected_tui_confirmed": interactive == "true",
+    "interactive_expected_mcp_healthy_confirmed": interactive_mcp_healthy == "true",
     "interactive_no_model_prompt_confirmed": interactive == "true",
     "provider_state_lifecycle_closed": True,
     "post_interactive_clean_confirmed": post_interactive_clean == "true",
@@ -427,5 +430,6 @@ echo "EXPECTED_MCP=$expected_mcp"
 echo "SELECTED_MCP_PLUGIN_PATH_REBASE=YES"
 echo "AMBIENT_CONFIG_AND_PLUGIN_TREE_UNCHANGED=YES"
 echo "PROVIDER_STATE_LIFECYCLE_CLOSED=YES"
+echo "INTERACTIVE_EXPECTED_MCP_HEALTHY_CONFIRMED=$interactive_mcp_healthy"
 echo "POST_INTERACTIVE_CLEAN_CONFIRMED=$post_interactive_clean"
 echo "EVIDENCE_FILE=${evidence#$root/}"

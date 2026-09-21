@@ -176,6 +176,7 @@ required = {
     "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
     "interactive_selected_tui_confirmed": True,
+    "interactive_expected_mcp_healthy_confirmed": True,
     "interactive_no_model_prompt_confirmed": True,
     "provider_state_lifecycle_closed": True,
     "post_interactive_clean_confirmed": True,
