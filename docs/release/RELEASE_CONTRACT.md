@@ -80,11 +80,15 @@ release archive, not sibling build outputs. The archive, installer, SBOM,
 checksums, provenance attestation bundle, and SBOM attestation bundle are
 verified before a guarded Draft Release is created.
 
-Publishing remains a separate action. Immediately before a protected tag
-push, the tag helper refreshes the remote `main` tip, confirms the tag is still
-absent, revalidates the active no-bypass `v*` tag ruleset, and reruns the
-whole-release contract against the current published baseline. Any drift blocks
-the push.
+Publishing remains a separate action. The tag helper first revalidates provider
+pins and the local provider bytes bound by accepted pre-tag evidence. Only after
+those provider checks finish does the final remote guard refresh `main`, confirm
+the tag is still absent, revalidate the active no-bypass `v*` tag ruleset, and
+rerun the whole-release contract against the current published baseline. No
+provider/network qualification runs after that final remote guard before the
+single tag push. GitHub does not provide an atomic predicate tying a new tag to
+an unchanged branch/release state, so this ordering minimizes the residual TOCTOU
+window; any observed drift blocks the push.
 
 Because stable `v*` tags are protected against update/deletion, provider
 capabilities with release-specific behavior are exercised on exact candidate
