@@ -285,6 +285,7 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(contract.contains(r#""changelog_action_time_relation": "declared_on_or_before_tag""#));
     assert!(contract.contains(r#""candidate_version_relation": "strictly_after_published_baseline""#));
     assert!(contract.contains(r#""changelog_date_floor": "published_baseline_date""#));
+    assert!(contract.contains(r#""tag_remote_refresh_order": "after_provider_checks_before_push""#));
     assert!(checker.contains("validate_changelog_tag_date"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
@@ -362,9 +363,6 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
     assert!(source.contains("REMOTE_TAG_QUERY_$phase"));
     assert!(source.contains("REMOTE_TAG_PRESENT_$phase"));
 
-    let action_time = source
-        .find("# Mutable remote release state is refreshed immediately before the irreversible push.")
-        .expect("tag helper must have an explicit action-time refresh boundary");
     let provider_evidence = source
         .find("evidence_claude_version=$(python3 - \"$evidence\"")
         .expect("action-time provider evidence must be loaded");
@@ -372,8 +370,11 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         .find("CLAUDE_PROVIDER_DRIFT_ACTION_TIME")
         .expect("provider version must be revalidated");
     let provider_bytes = source
-        .find("CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME")
+        .find("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME")
         .expect("provider bytes must be revalidated");
+    let final_remote = source
+        .find("# Final mutable remote release state guard immediately before the irreversible push.")
+        .expect("tag helper must refresh remote state after provider checks");
     let push = source
         .find("git push origin \"refs/tags/$tag\"")
         .expect("tag helper must push the protected tag");
@@ -392,15 +393,18 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         "tag push reconciliation must exist only after the actual push"
     );
     assert!(
-        action_time < provider_evidence
-            && provider_evidence < provider_version
+        provider_evidence < provider_version
             && provider_version < provider_bytes
-            && provider_bytes < push
+            && provider_bytes < final_remote
+            && final_remote < push
             && push < reconciliation,
-        "all action-time provider checks must finish before the single push; reconciliation must follow it"
+        "provider checks must finish before the final remote guard; the single push follows immediately"
     );
 
-    let guard = &source[action_time..push];
+    let guard = &source[final_remote..push];
+    assert!(!guard.contains("check-provider-pins.sh"));
+    assert!(!guard.contains("command -v claude"));
+    assert!(!guard.contains("command -v codex"));
     for required in [
         "git fetch --quiet origin main",
         "MAIN_DRIFT_ACTION_TIME",
