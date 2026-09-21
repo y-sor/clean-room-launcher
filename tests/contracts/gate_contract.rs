@@ -295,11 +295,11 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
     assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
     assert!(
-        !helper.contains(r#"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"#),
+        !helper.contains(r##"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"##),
         "tag helper must not require candidate bytes to predict the future tagger day"
     );
     assert!(
-        !workflow.contains(r#"heading = f"## [{version}] - {tag_date}""#),
+        !workflow.contains(r##"heading = f"## [{version}] - {tag_date}""##),
         "tag workflow must share the monotonic release-contract relation"
     );
 }
