@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 usage() { echo "usage: $0 --provider NAME --executable PATH --expected-provider-version VERSION --candidate PATH --source-head SHA --version VERSION --output PATH" >&2; exit 2; }
 provider= executable= expected_provider_version= candidate= source_head= release_version= output=
 while [[ $# -gt 0 ]]; do
@@ -39,117 +40,37 @@ observed=false
 repeat_observed=false
 lifecycle_runs=1
 if [[ $provider == codex ]]; then
-  scope="real-provider-repeat-interactive-startup-no-model"
-  launch_path="clroom codex --no-alt-screen (PTY) x2 same HOME"
+  scope="real-provider-repeat-interactive-mcp-discovery-no-model"
+  launch_path="clroom codex --with=plugin:standalone-mcp@clroom-fixture --no-alt-screen (PTY) x2 same HOME"
   lifecycle_runs=2
+  fixture_log="$root/codex-mcp.log"
+  fixture_plugin=$(python3 "$repo_root/scripts/release/codex-mcp-fixture.py" install \
+    --codex-home "$user_home/.codex" --log "$fixture_log")
+  status=$?
   observed_count=0
-  for lifecycle_run in 1 2; do
-    observation="$root/provider-observed-$lifecycle_run"
-    python3 - "$candidate" "$root/project" "$user_home" "$(dirname "$executable")" "$executable" "$observation" <<'PY'
-import ctypes, os, pty, signal, subprocess, sys, time
-candidate, project, home, provider_dir, provider, observation_file = sys.argv[1:]
-provider = os.path.realpath(provider)
-def process_path(pid):
-    if sys.platform != "darwin":
-        return None
-    library = ctypes.CDLL("/usr/lib/libproc.dylib")
-    buffer = ctypes.create_string_buffer(4096)
-    library.proc_pidpath.restype = ctypes.c_int
-    if library.proc_pidpath(int(pid), buffer, len(buffer)) <= 0:
-        return None
-    return os.path.realpath(os.fsdecode(buffer.value))
-def provider_in_tree(root_pid):
-    try:
-        rows = subprocess.check_output(["/bin/ps", "-axo", "pid=,ppid=,pgid="], text=True)
-    except (OSError, subprocess.SubprocessError):
-        return False
-    processes = {}
-    for row in rows.splitlines():
-        fields = row.split()
-        if len(fields) != 3:
-            continue
-        try:
-            processes[int(fields[0])] = (int(fields[1]), int(fields[2]))
-        except ValueError:
-            continue
-    descendants = {root_pid}
-    changed = True
-    while changed:
-        changed = False
-        for child, (parent, _group) in processes.items():
-            if parent in descendants and child not in descendants:
-                descendants.add(child)
-                changed = True
-    group = processes.get(root_pid, (None, root_pid))[1]
-    if group is not None:
-        descendants.update(
-            pid for pid, (_parent, process_group) in processes.items()
-            if process_group == group
-        )
-    return any(process_path(pid) == provider for pid in descendants)
-pid, fd = pty.fork()
-if pid == 0:
-    env = {
-        "PATH": provider_dir + ":/usr/bin:/bin",
-        "HOME": home,
-        "TMPDIR": os.environ.get("TMPDIR", "/tmp"),
-        "TERM": "dumb",
-        "CODEX_HOME": home + "/.codex",
-    }
-    os.chdir(project)
-    os.execve(candidate, [candidate, "--no-alt-screen"], env)
-provider_observed = False
-def finish():
-    with open(observation_file, "w", encoding="ascii") as handle:
-        handle.write("YES\n" if provider_observed else "NO\n")
-    raise SystemExit(0 if provider_observed else 1)
-deadline = time.monotonic() + 10.0
-reaped = False
-while time.monotonic() < deadline:
-    try:
-        waited, _ = os.waitpid(pid, os.WNOHANG)
-    except ChildProcessError:
-        reaped = True
+  if [[ $status -eq 0 ]]; then
+    for lifecycle_run in 1 2; do
+      python3 "$repo_root/scripts/release/codex-mcp-fixture.py" probe-provider \
+        --candidate "$candidate" \
+        --mode dropin \
+        --project "$root/project" \
+        --home "$user_home" \
+        --provider "$executable" \
+        --plugin-id standalone-mcp@clroom-fixture \
+        --log "$fixture_log"
+      run_status=$?
+      if [[ $run_status -ne 0 ]]; then
+        status=$run_status
         break
-    if waited:
-        reaped = True
-        break
-    provider_observed = provider_observed or provider_in_tree(pid)
-    time.sleep(0.05)
-if reaped:
-    finish()
-try:
-    os.killpg(pid, signal.SIGINT)
-except (ProcessLookupError, PermissionError):
-    pass
-for _ in range(40):
-    try:
-        waited, _ = os.waitpid(pid, os.WNOHANG)
-    except ChildProcessError:
-        finish()
-    if waited:
-        finish()
-    provider_observed = provider_observed or provider_in_tree(pid)
-    time.sleep(0.05)
-try:
-    os.killpg(pid, signal.SIGKILL)
-except (ProcessLookupError, PermissionError):
-    pass
-try:
-    os.waitpid(pid, 0)
-except ChildProcessError:
-    pass
-finish()
-PY
-    run_status=$?
-    if [[ -f "$observation" && $(sed -n '1p' "$observation") == YES ]]; then
+      fi
       observed_count=$((observed_count + 1))
-    fi
-    if [[ $run_status -ne 0 ]]; then
-      status=$run_status
-      break
-    fi
-  done
+    done
+  fi
+  if [[ $status -eq 0 && $observed_count -eq 2 ]]; then
+    python3 "$repo_root/scripts/release/codex-mcp-fixture.py" probe-server \
+      --server "$fixture_plugin/server.py"
+    status=$?
+  fi
   if [[ $observed_count -eq 2 && $status -eq 0 ]]; then
     observed=true
     repeat_observed=true
@@ -179,7 +100,7 @@ if [[ $status -eq 0 && $provider_version == "$expected_provider_version" && $obs
 fi
 exit_class=nonzero
 [[ $status -eq 0 ]] && exit_class=success
-[[ $provider == codex && $repeat_observed == true && $status -eq 0 ]] && exit_class=interactive-provider-repeat-observed
+[[ $provider == codex && $repeat_observed == true && $status -eq 0 ]] && exit_class=interactive-provider-repeat-mcp-qualified
 python3 - "$output" "$provider" "$provider_version" "$provider_digest" "$candidate_digest" "$source_head" "$release_version" "$target" "$status" "$pass" "$scope" "$launch_path" "$observed" "$repeat_observed" "$lifecycle_runs" "$exit_class" <<'PY'
 import json, sys
 (
