@@ -286,6 +286,7 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(checker.contains("validate_changelog_tag_date"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE"));
     assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
     assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
     assert!(
