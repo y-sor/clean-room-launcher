@@ -181,7 +181,7 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
 }
 
 #[test]
-fn codex_pretag_smoke_closes_state_after_interactive_provider_writes() {
+fn codex_pretag_smoke_closes_state_after_runtime_probe() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
     let tag_helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
@@ -190,7 +190,7 @@ fn codex_pretag_smoke_closes_state_after_interactive_provider_writes() {
         .find("codex-mcp-fixture.py\" probe-provider")
         .expect("Codex pretag smoke must exercise the selected plugin through the real provider");
     let post_interactive = smoke
-        .find("POST_INTERACTIVE_CLEAN_MCP_LIST")
+        .find("POST_RUNTIME_CLEAN_MCP_LIST")
         .expect("Codex pretag smoke must launch clean again after real-provider runtime discovery");
     let evidence = smoke
         .find("clroom.codex-plugin-release-smoke.v3")
@@ -203,16 +203,31 @@ fn codex_pretag_smoke_closes_state_after_interactive_provider_writes() {
     assert!(smoke.contains(r#""provider_mcp_tools_list_observed": provider_mcp_tools_list == "true""#));
     assert!(smoke.contains(r#""fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true""#));
     assert!(smoke.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(smoke.contains(r#""post_interactive_clean_confirmed": post_interactive_clean == "true""#));
+    assert!(smoke.contains(r#""real_provider_runtime_confirmed": runtime_confirmed == "true""#));
+    assert!(smoke.contains(r#""expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true""#));
+    assert!(smoke.contains(r#""model_prompt_sent": False"#));
+    assert!(smoke.contains(r#""post_runtime_clean_confirmed": post_runtime_clean == "true""#));
     assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v3""#));
     assert!(tag_helper.contains(r#""provider_mcp_initialize_observed": True"#));
     assert!(tag_helper.contains(r#""provider_mcp_tools_list_observed": True"#));
     assert!(tag_helper.contains(r#""fixture_mcp_tool_call_passed": True"#));
     assert!(tag_helper.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(tag_helper.contains(r#""post_interactive_clean_confirmed": True"#));
+    assert!(tag_helper.contains(r#""real_provider_runtime_confirmed": True"#));
+    assert!(tag_helper.contains(r#""expected_mcp_runtime_healthy_confirmed": True"#));
+    assert!(tag_helper.contains(r#""model_prompt_sent": False"#));
+    assert!(tag_helper.contains(r#""post_runtime_clean_confirmed": True"#));
 }
 
 #[test]
+#[test]
+fn ci_keeps_exact_tag_push_validation_while_deduping_branch_pushes() {
+    let workflow = std::fs::read_to_string(".github/workflows/ci.yml").unwrap();
+    assert!(workflow.contains("branches:\n      - main"));
+    assert!(workflow.contains("tags:\n      - \"v*\""));
+    assert!(workflow.contains("pull_request:"));
+    assert!(workflow.contains("cancel-in-progress: true"));
+}
+
 fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
     let verifier = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
 
@@ -224,7 +239,10 @@ fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
     assert!(verifier.contains(r#"run.get("status") != "completed" or run.get("conclusion") != "success""#));
     assert!(verifier.contains("clroom.codex-plugin-release-smoke.v3"));
     assert!(verifier.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(verifier.contains(r#"xp.get("post_interactive_clean_confirmed") is not True"#));
+    assert!(verifier.contains(r#"xp.get("real_provider_runtime_confirmed") is not True"#));
+    assert!(verifier.contains(r#"xp.get("expected_mcp_runtime_healthy_confirmed") is not True"#));
+    assert!(verifier.contains(r#"xp.get("model_prompt_sent") is not False"#));
+    assert!(verifier.contains(r#"xp.get("post_runtime_clean_confirmed") is not True"#));
     assert!(verifier.contains("DRAFT_RELEASE_VERIFY_PASS"));
 }
 
