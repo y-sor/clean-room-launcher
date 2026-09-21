@@ -252,6 +252,8 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     provider_seen = False
     methods_seen = False
     reaped = False
+    wait_status = None
+    pty_tail = bytearray()
     deadline = time.monotonic() + 45.0
 
     def drain_pty():
@@ -264,14 +266,18 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
                 return
             if not chunk:
                 return
+            pty_tail.extend(chunk)
+            if len(pty_tail) > 8192:
+                del pty_tail[:-8192]
     while time.monotonic() < deadline:
         drain_pty()
         try:
-            waited, _ = os.waitpid(pid, os.WNOHANG)
+            waited, status = os.waitpid(pid, os.WNOHANG)
         except ChildProcessError:
             reaped = True
             break
         if waited:
+            wait_status = status
             reaped = True
             break
         provider_seen = provider_seen or provider_in_tree(pid, provider)
@@ -287,11 +293,12 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
         for _ in range(40):
             drain_pty()
             try:
-                waited, _ = os.waitpid(pid, os.WNOHANG)
+                waited, status = os.waitpid(pid, os.WNOHANG)
             except ChildProcessError:
                 reaped = True
                 break
             if waited:
+                wait_status = status
                 reaped = True
                 break
             provider_seen = provider_seen or provider_in_tree(pid, provider)
@@ -303,7 +310,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
         except (ProcessLookupError, PermissionError):
             pass
         try:
-            os.waitpid(pid, 0)
+            _, wait_status = os.waitpid(pid, 0)
         except ChildProcessError:
             pass
     drain_pty()
@@ -314,9 +321,33 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     if not provider_seen:
         raise RuntimeError("real Codex provider was not observed")
     if not methods_seen:
+        diagnostic = pty_tail.decode("utf-8", errors="replace")
+        diagnostic = __import__("re").sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", diagnostic)
+        for value, replacement in [
+            (str(pathlib.Path(home).resolve()), "<HOME>"),
+            (str(pathlib.Path(project).resolve()), "<PROJECT>"),
+            (str(pathlib.Path(provider).resolve()), "<PROVIDER>"),
+            (str(pathlib.Path(candidate).resolve()), "<CANDIDATE>"),
+        ]:
+            diagnostic = diagnostic.replace(value, replacement)
+        diagnostic = "".join(
+            character if character in "\n\r\t" or ord(character) >= 32 else "?"
+            for character in diagnostic
+        ).strip()
+        if len(diagnostic) > 4096:
+            diagnostic = diagnostic[-4096:]
+        if wait_status is None:
+            exit_detail = "running-or-status-unavailable"
+        elif os.WIFEXITED(wait_status):
+            exit_detail = f"exit={os.WEXITSTATUS(wait_status)}"
+        elif os.WIFSIGNALED(wait_status):
+            exit_detail = f"signal={os.WTERMSIG(wait_status)}"
+        else:
+            exit_detail = f"wait_status={wait_status}"
         raise RuntimeError(
             f"Codex did not reach MCP initialize + tools/list "
-            f"(provider_seen={provider_seen}, process_reaped={reaped})"
+            f"(provider_seen={provider_seen}, process_reaped={reaped}, {exit_detail}, "
+            f"pty_tail={diagnostic!r})"
         )
     print("CODEX_MCP_PROVIDER_PROBE_PASS")
 
