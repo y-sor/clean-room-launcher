@@ -218,6 +218,7 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
         "codex_version": codex_version,
         "clean_before_expected_mcp": False,
         "selected_expected_mcp": True,
+        "selected_mcp_plugin_paths_rebased": True,
         "clean_after_expected_mcp": False,
         "ambient_config_and_plugin_tree_unchanged": True,
         "plugin_source_unchanged": True,
@@ -234,6 +235,8 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
 
 if xp.get("interactive_selected_tui_confirmed") is not True:
     raise SystemExit("codex-pretag:interactive")
+if xp.get("interactive_expected_mcp_healthy_confirmed") is not True:
+    raise SystemExit("codex-pretag:mcp-health")
 if xp.get("interactive_no_model_prompt_confirmed") is not True:
     raise SystemExit("codex-pretag:no-model")
 if xp.get("post_interactive_clean_confirmed") is not True:

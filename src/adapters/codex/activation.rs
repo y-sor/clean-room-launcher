@@ -7,6 +7,7 @@ use crate::{
     },
     core::inventory::{inventory, sha256_hex, AdmittedRoot, SourceRecord},
 };
+use serde_json::Value as JsonValue;
 use std::{
     fs,
     io::Write,
@@ -15,6 +16,8 @@ use std::{
 };
 
 const LOGICAL_PREFIX: &str = "plugin";
+const LEGACY_MCP_CONFIG: &str = ".mcp.json";
+const DIGEST_PLUGIN_ROOT: &str = "${PLUGIN_ROOT}";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PluginActivationPlan {
@@ -119,6 +122,7 @@ impl PluginActivationPlan {
                 return Err(ActivationError::StateChanged);
             }
             write_records(&destination, &self.root, &records)?;
+            rebase_legacy_mcp_paths(&self.root, &destination)?;
             if bundle_digest(&self.root)? != self.source_digest
                 || bundle_digest(&destination)? != self.source_digest
             {
@@ -217,16 +221,149 @@ fn digest_records(root: &Path, records: &[SourceRecord]) -> Result<String, Activ
             return Err(ActivationError::InvalidSource);
         }
         let executable = metadata.mode() & 0o111;
+        let (content_sha, content_len) = digest_record_metadata(root, relative, record)?;
         bytes.extend_from_slice(record.logical_path.as_bytes());
         bytes.push(0);
-        bytes.extend_from_slice(record.sha256.as_bytes());
+        bytes.extend_from_slice(content_sha.as_bytes());
         bytes.push(0);
-        bytes.extend_from_slice(record.byte_len.to_string().as_bytes());
+        bytes.extend_from_slice(content_len.as_bytes());
         bytes.push(0);
         bytes.extend_from_slice(format!("{executable:o}").as_bytes());
         bytes.push(b'\n');
     }
     Ok(sha256_hex(&bytes))
+}
+
+fn digest_record_metadata(
+    root: &Path,
+    relative: &str,
+    record: &SourceRecord,
+) -> Result<(String, String), ActivationError> {
+    if relative != LEGACY_MCP_CONFIG {
+        return Ok((record.sha256.clone(), record.byte_len.to_string()));
+    }
+    let Some(mut document) = parse_legacy_mcp_document(record.content()) else {
+        return Ok((record.sha256.clone(), record.byte_len.to_string()));
+    };
+    normalize_legacy_mcp_paths(root, None, &mut document)?;
+    let content = serde_json::to_vec(&document).map_err(|_| ActivationError::InvalidSource)?;
+    Ok((sha256_hex(&content), content.len().to_string()))
+}
+
+fn parse_legacy_mcp_document(bytes: &[u8]) -> Option<JsonValue> {
+    match serde_json::from_slice::<JsonValue>(bytes).ok()? {
+        value @ JsonValue::Object(_) => Some(value),
+        _ => None,
+    }
+}
+
+fn legacy_mcp_servers_mut(
+    document: &mut JsonValue,
+) -> Option<&mut serde_json::Map<String, JsonValue>> {
+    if document.get("mcpServers").is_some() {
+        document.get_mut("mcpServers")?.as_object_mut()
+    } else {
+        document.as_object_mut()
+    }
+}
+
+fn normalize_legacy_mcp_paths(
+    root: &Path,
+    replacement_root: Option<&Path>,
+    document: &mut JsonValue,
+) -> Result<bool, ActivationError> {
+    let canonical_root = fs::canonicalize(root).map_err(|_| ActivationError::InvalidSource)?;
+    let replacement_root = replacement_root
+        .map(fs::canonicalize)
+        .transpose()
+        .map_err(|_| ActivationError::ProjectionFailed)?;
+    let Some(servers) = legacy_mcp_servers_mut(document) else {
+        return Ok(false);
+    };
+    let mut changed = false;
+    for server in servers.values_mut() {
+        let Some(server) = server.as_object_mut() else {
+            continue;
+        };
+        for field in ["command", "cwd"] {
+            let Some(raw) = server.get_mut(field).and_then(|value| value.as_str()).map(str::to_owned)
+            else {
+                continue;
+            };
+            let Some(rewritten) = normalize_in_root_absolute_path(
+                &canonical_root,
+                replacement_root.as_deref(),
+                &raw,
+            )? else {
+                continue;
+            };
+            server.insert(field.to_owned(), JsonValue::String(rewritten));
+            changed = true;
+        }
+    }
+    Ok(changed)
+}
+
+fn normalize_in_root_absolute_path(
+    canonical_root: &Path,
+    replacement_root: Option<&Path>,
+    raw: &str,
+) -> Result<Option<String>, ActivationError> {
+    let candidate = Path::new(raw);
+    if !candidate.is_absolute() {
+        return Ok(None);
+    }
+    let canonical = match fs::canonicalize(candidate) {
+        Ok(path) => path,
+        Err(_) if candidate.starts_with(canonical_root) => {
+            return Err(ActivationError::InvalidSource);
+        }
+        Err(_) => return Ok(None),
+    };
+    if !canonical.starts_with(canonical_root) {
+        return Ok(None);
+    }
+    let relative = canonical
+        .strip_prefix(canonical_root)
+        .map_err(|_| ActivationError::InvalidSource)?;
+    let rewritten = match replacement_root {
+        Some(root) if relative.as_os_str().is_empty() => root.display().to_string(),
+        Some(root) => root.join(relative).display().to_string(),
+        None if relative.as_os_str().is_empty() => DIGEST_PLUGIN_ROOT.to_owned(),
+        None => format!("{DIGEST_PLUGIN_ROOT}/{}", relative.display()),
+    };
+    Ok(Some(rewritten))
+}
+
+fn rebase_legacy_mcp_paths(
+    source_root: &Path,
+    destination_root: &Path,
+) -> Result<(), ActivationError> {
+    let path = destination_root.join(LEGACY_MCP_CONFIG);
+    let metadata = match fs::symlink_metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(_) => return Err(ActivationError::ProjectionFailed),
+    };
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(ActivationError::InvalidSource);
+    }
+    let bytes = fs::read(&path).map_err(|_| ActivationError::ProjectionFailed)?;
+    let Some(mut document) = parse_legacy_mcp_document(&bytes) else {
+        return Ok(());
+    };
+    if !normalize_legacy_mcp_paths(source_root, Some(destination_root), &mut document)? {
+        return Ok(());
+    }
+    let content = serde_json::to_vec(&document).map_err(|_| ActivationError::ProjectionFailed)?;
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(&path)
+        .map_err(|_| ActivationError::ProjectionFailed)?;
+    file.write_all(&content)
+        .and_then(|_| file.sync_all())
+        .map_err(|_| ActivationError::ProjectionFailed)
 }
 
 fn exact_plugin_ids(request: &SelectionRequest) -> Result<Vec<String>, ActivationError> {
@@ -661,6 +798,88 @@ mod tests {
             activation.source_digest(),
             bundle_digest(&projected).unwrap()
         );
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn projection_rebases_in_root_legacy_mcp_paths_and_preserves_semantic_digest() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let (home, codex_home, plugin) = fixture();
+        let launcher = plugin.join("scripts/launch_codex_app_tools_mcp");
+        fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+        fs::write(&launcher, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&launcher, fs::Permissions::from_mode(0o755)).unwrap();
+        fs::write(plugin.join("server.mjs"), "export {};\n").unwrap();
+        let canonical_plugin = fs::canonicalize(&plugin).unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "mcpServers": {
+                    "codex_app": {
+                        "command": launcher,
+                        "cwd": canonical_plugin,
+                        "args": ["./server.mjs"]
+                    },
+                    "system": {
+                        "command": "/usr/bin/env",
+                        "args": []
+                    }
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        let activation = plan(
+            &home,
+            &codex_home,
+            &request,
+            &identity(CODEX_PLUGIN_ACTIVATION_EXACT),
+        )
+        .unwrap()
+        .unwrap();
+
+        let shadow = home.join("shadow");
+        fs::create_dir_all(&shadow).unwrap();
+        let projected = activation.project_into(&shadow).unwrap();
+        let projected_root = fs::canonicalize(&projected).unwrap();
+        let projected_mcp: serde_json::Value =
+            serde_json::from_slice(&fs::read(projected.join(".mcp.json")).unwrap()).unwrap();
+        let codex_app = &projected_mcp["mcpServers"]["codex_app"];
+        assert_eq!(
+            codex_app["command"].as_str(),
+            Some(projected_root.join("scripts/launch_codex_app_tools_mcp").to_str().unwrap())
+        );
+        assert_eq!(
+            codex_app["cwd"].as_str(),
+            Some(projected_root.to_str().unwrap())
+        );
+        assert_eq!(
+            projected_mcp["mcpServers"]["system"]["command"].as_str(),
+            Some("/usr/bin/env")
+        );
+        assert_eq!(
+            activation.source_digest(),
+            bundle_digest(&projected).unwrap()
+        );
+        assert_eq!(
+            fs::metadata(projected.join("scripts/launch_codex_app_tools_mcp"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o111,
+            0o111
+        );
+
+        let source_mcp = fs::read_to_string(plugin.join(".mcp.json")).unwrap();
+        assert!(source_mcp.contains(canonical_plugin.to_str().unwrap()));
+        assert!(!source_mcp.contains(projected_root.to_str().unwrap()));
 
         let _ = fs::remove_dir_all(home.parent().unwrap());
     }

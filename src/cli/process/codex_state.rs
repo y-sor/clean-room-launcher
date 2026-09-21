@@ -971,6 +971,26 @@ mod tests {
         )
         .unwrap();
         fs::write(plugin.join("skills/review/SKILL.md"), b"fixture\n").unwrap();
+        let launcher = plugin.join("scripts/launch_codex_app_tools_mcp");
+        fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+        fs::write(&launcher, b"#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&launcher, fs::Permissions::from_mode(0o755)).unwrap();
+        fs::write(plugin.join("server.mjs"), b"export {};\n").unwrap();
+        let canonical_plugin = fs::canonicalize(&plugin).unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "mcpServers": {
+                    "codex_app": {
+                        "command": launcher,
+                        "cwd": canonical_plugin,
+                        "args": ["./server.mjs"]
+                    }
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
 
         let mut request = SelectionRequest::default();
         request
@@ -1060,6 +1080,20 @@ mod tests {
             activation::bundle_digest(&projected).unwrap(),
             activation.source_digest()
         );
+        let projected_root = fs::canonicalize(&projected).unwrap();
+        let projected_mcp: serde_json::Value =
+            serde_json::from_slice(&fs::read(projected.join(".mcp.json")).unwrap()).unwrap();
+        assert_eq!(
+            projected_mcp["mcpServers"]["codex_app"]["command"].as_str(),
+            Some(projected_root.join("scripts/launch_codex_app_tools_mcp").to_str().unwrap())
+        );
+        assert_eq!(
+            projected_mcp["mcpServers"]["codex_app"]["cwd"].as_str(),
+            Some(projected_root.to_str().unwrap())
+        );
+        assert!(!fs::read_to_string(projected.join(".mcp.json"))
+            .unwrap()
+            .contains(activation.root().to_str().unwrap()));
         assert_eq!(
             fs::metadata(&projected).unwrap().permissions().mode() & 0o222,
             0
@@ -1076,6 +1110,43 @@ mod tests {
                     .next()
                     .is_none()
         );
+    }
+
+    #[test]
+    fn selected_plugin_refuses_reintroduced_ambient_mcp_path_and_preserves_projection() {
+        let scratch = Scratch::new();
+        let (home, ambient_codex_home, activation) = plugin_activation_fixture(&scratch);
+        let state = prepare(
+            &home,
+            &ambient_codex_home,
+            &[],
+            Some(&activation),
+        )
+        .unwrap();
+        let projected = state
+            .shadow_home
+            .join("plugins/cache")
+            .join(activation.relative_store_path());
+        let mcp_path = projected.join(".mcp.json");
+        fs::set_permissions(&mcp_path, fs::Permissions::from_mode(0o600)).unwrap();
+        let mut mcp: serde_json::Value =
+            serde_json::from_slice(&fs::read(&mcp_path).unwrap()).unwrap();
+        mcp["mcpServers"]["codex_app"]["command"] = serde_json::Value::String(
+            activation
+                .root()
+                .join("scripts/launch_codex_app_tools_mcp")
+                .display()
+                .to_string(),
+        );
+        fs::write(&mcp_path, serde_json::to_vec(&mcp).unwrap()).unwrap();
+
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
+
+        assert_eq!(error, "CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED");
+        assert!(projected.exists());
+        assert!(fs::read_to_string(mcp_path)
+            .unwrap()
+            .contains(activation.root().to_str().unwrap()));
     }
 
     #[test]

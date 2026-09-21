@@ -243,10 +243,14 @@ source_after=$(fingerprint_tree "$plugin_source")
 [[ "$source_before" == "$source_after" ]] || fail "PLUGIN_SOURCE_CHANGED"
 
 python3 - "$plugin_id" "$expected_mcp" "$tmp/info.json" \
-  "$tmp/clean-before.json" "$tmp/selected.json" "$tmp/clean-after.json" <<'PY' \
+  "$tmp/clean-before.json" "$tmp/selected.json" "$tmp/clean-after.json" \
+  "$plugin_source" "$ambient_codex_home" <<'PY' \
   || fail "AUTOMATED_CODEX_PLUGIN_E2E"
-import json, sys
-plugin_id, expected_mcp, info_path, clean_before_path, selected_path, clean_after_path = sys.argv[1:]
+import json, os, sys
+(
+    plugin_id, expected_mcp, info_path, clean_before_path, selected_path, clean_after_path,
+    plugin_source, ambient_codex_home,
+) = sys.argv[1:]
 
 info = json.load(open(info_path, encoding="utf-8"))
 entries = info.get("native_entries") or []
@@ -284,24 +288,71 @@ if expected_mcp not in selected:
     raise SystemExit("expected-mcp-absent-in-selected")
 if expected_mcp in clean_after:
     raise SystemExit("expected-mcp-present-after-clean")
+
+selected_data = json.load(open(selected_path, encoding="utf-8"))
+selected_entry = next(
+    (item for item in selected_data if isinstance(item, dict) and item.get("name") == expected_mcp),
+    None,
+)
+if selected_entry is None:
+    raise SystemExit("selected-entry-missing")
+transport = selected_entry.get("transport") or {}
+source_root = os.path.realpath(plugin_source)
+cache_root = os.path.realpath(os.path.join(ambient_codex_home, "plugins", "cache"))
+relative = os.path.relpath(source_root, cache_root)
+if relative.startswith(".." + os.sep) or relative == "..":
+    raise SystemExit("plugin-source-outside-cache")
+shadow_root = os.path.realpath(os.path.join(
+    ambient_codex_home, ".clroom-clean-state-v2", "home", "plugins", "cache", relative
+))
+legacy_path = os.path.join(source_root, ".mcp.json")
+if not os.path.isfile(legacy_path):
+    raise SystemExit("legacy-mcp-config-missing")
+legacy = json.load(open(legacy_path, encoding="utf-8"))
+servers = legacy.get("mcpServers", legacy)
+original = servers.get(expected_mcp) if isinstance(servers, dict) else None
+if not isinstance(original, dict):
+    raise SystemExit("expected-mcp-source-missing")
+rebased = 0
+for field in ("command", "cwd"):
+    raw = original.get(field)
+    if not isinstance(raw, str) or not os.path.isabs(raw):
+        continue
+    resolved = os.path.realpath(raw)
+    try:
+        in_root = os.path.commonpath([source_root, resolved]) == source_root
+    except ValueError:
+        in_root = False
+    if not in_root:
+        continue
+    expected = os.path.join(shadow_root, os.path.relpath(resolved, source_root))
+    actual = transport.get(field)
+    if not isinstance(actual, str) or os.path.realpath(actual) != os.path.realpath(expected):
+        raise SystemExit(f"selected-{field}-not-shadow-rebased")
+    rebased += 1
+if rebased == 0:
+    raise SystemExit("selected-mcp-rebase-target-missing")
+print("SELECTED_MCP_PLUGIN_PATH_REBASE=PASS")
 print("AUTOMATED_CODEX_PLUGIN_E2E=PASS")
 PY
 
 interactive=false
+interactive_mcp_healthy=false
 post_interactive_clean=false
 if [[ "$phase" == "pretag" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
   echo
   echo "=== INTERACTIVE CODEX SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
-  echo "Confirm the normal Codex TUI opens and /mcp shows: $expected_mcp"
-  echo "Exit normally."
+  echo "Confirm the normal Codex TUI opens and /mcp shows $expected_mcp healthy/ready with one or more tools."
+  echo "A failed server or 0 tools is a release blocker. Exit normally."
   echo
   "$clroom" codex --with="plugin:$plugin_id" || fail "SELECTED_TUI_EXIT"
-  printf 'TUI opened normally and /mcp showed %s [y/N]: ' "$expected_mcp"
+  printf 'TUI opened normally and /mcp showed healthy %s with tools [y/N]: ' "$expected_mcp"
   read -r answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
   interactive=true
+  interactive_mcp_healthy=true
   if ! "$clroom" codex mcp list --json \
     >"$tmp/post-interactive-clean.json" 2>"$tmp/post-interactive-clean.err"; then
     fail_from_stderr "POST_INTERACTIVE_CLEAN_MCP_LIST" "$tmp/post-interactive-clean.err"
@@ -328,12 +379,12 @@ mkdir -p "$evidence_dir"
 short=${source_head:0:12}
 evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
-  "$plugin_id" "$expected_mcp" "$interactive" "$post_interactive_clean" "$codex_version_output" \
+  "$plugin_id" "$expected_mcp" "$interactive" "$interactive_mcp_healthy" "$post_interactive_clean" "$codex_version_output" \
   "$codex_version" "$codex_provider_sha" "$source_before" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
-    interactive, post_interactive_clean, codex_version_output, codex_version,
+    interactive, interactive_mcp_healthy, post_interactive_clean, codex_version_output, codex_version,
     codex_provider_sha, plugin_source_sha,
 ) = sys.argv[1:]
 record = {
@@ -352,10 +403,12 @@ record = {
     "plugin_source_sha256": plugin_source_sha,
     "clean_before_expected_mcp": False,
     "selected_expected_mcp": True,
+    "selected_mcp_plugin_paths_rebased": True,
     "clean_after_expected_mcp": False,
     "ambient_config_and_plugin_tree_unchanged": True,
     "plugin_source_unchanged": True,
     "interactive_selected_tui_confirmed": interactive == "true",
+    "interactive_expected_mcp_healthy_confirmed": interactive_mcp_healthy == "true",
     "interactive_no_model_prompt_confirmed": interactive == "true",
     "provider_state_lifecycle_closed": True,
     "post_interactive_clean_confirmed": post_interactive_clean == "true",
@@ -374,7 +427,9 @@ echo "SOURCE_HEAD=$source_head"
 echo "ARTIFACT_SHA256=$artifact_sha"
 echo "PLUGIN_ID=$plugin_id"
 echo "EXPECTED_MCP=$expected_mcp"
+echo "SELECTED_MCP_PLUGIN_PATH_REBASE=YES"
 echo "AMBIENT_CONFIG_AND_PLUGIN_TREE_UNCHANGED=YES"
 echo "PROVIDER_STATE_LIFECYCLE_CLOSED=YES"
+echo "INTERACTIVE_EXPECTED_MCP_HEALTHY_CONFIRMED=$interactive_mcp_healthy"
 echo "POST_INTERACTIVE_CLEAN_CONFIRMED=$post_interactive_clean"
 echo "EVIDENCE_FILE=${evidence#$root/}"

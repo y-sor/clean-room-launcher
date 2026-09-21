@@ -66,9 +66,14 @@ for needle in \
   '"schema_version": "clroom.codex-plugin-release-smoke.v2"' \
   '"clean_before_expected_mcp": False' \
   '"selected_expected_mcp": True' \
+  '"selected_mcp_plugin_paths_rebased": True' \
+  'SELECTED_MCP_PLUGIN_PATH_REBASE=PASS' \
   '"clean_after_expected_mcp": False' \
   '"ambient_config_and_plugin_tree_unchanged": True' \
+  '"selected_mcp_plugin_paths_rebased": True' \
   '"provider_state_lifecycle_closed": True' \
+  '"interactive_expected_mcp_healthy_confirmed": interactive_mcp_healthy == "true"' \
+  'healthy %s with tools [y/N]' \
   '"post_interactive_clean_confirmed": post_interactive_clean == "true"'; do
   grep -Fq "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
 done
@@ -113,6 +118,7 @@ for needle in \
   '"schema_version": "clroom.codex-plugin-release-smoke.v2"' \
   '"ambient_config_and_plugin_tree_unchanged": True' \
   '"provider_state_lifecycle_closed": True' \
+  '"interactive_expected_mcp_healthy_confirmed": True' \
   '"post_interactive_clean_confirmed": True' \
   'PRETAG_CODEX_EVIDENCE_PASS' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
