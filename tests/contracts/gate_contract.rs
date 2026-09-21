@@ -292,11 +292,11 @@ fn release_date_contract_is_stable_across_later_tag_days() {
     assert!(readiness.contains("check-release-date.py --self-test"));
     assert!(readiness.contains(r#"check-release-date.py --version "$version" --candidate-only"#));
     assert!(
-        !tag_helper.contains(r#"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"#),
+        !tag_helper.contains(r##"grep -Fxq "## [$version] - $tag_date" CHANGELOG.md"##),
         "tag gate must not require tracked changelog bytes to equal action-time wall-clock date"
     );
     assert!(
-        !workflow.contains(r#"heading = f"## [{version}] - {tag_date}""#),
+        !workflow.contains(r##"heading = f"## [{version}] - {tag_date}""##),
         "tag workflow must use the same stable release-date invariant as the local tag gate"
     );
 }
