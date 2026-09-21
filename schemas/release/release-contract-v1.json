@@ -5,7 +5,8 @@
     "unclassified_delta": "fail",
     "changed_domain_without_disposition": "fail",
     "near_miss_without_disposition": "fail",
-    "reviewed_content_drift": "fail"
+    "reviewed_content_drift": "fail",
+    "changelog_action_time_relation": "declared_on_or_before_tag"
   },
   "domains": [
     {
