@@ -8,7 +8,8 @@
     "reviewed_content_drift": "fail",
     "changelog_action_time_relation": "declared_on_or_before_tag",
     "candidate_version_relation": "strictly_after_published_baseline",
-    "changelog_date_floor": "published_baseline_date"
+    "changelog_date_floor": "published_baseline_date",
+    "tag_remote_refresh_order": "after_provider_checks_before_push"
   },
   "domains": [
     {
