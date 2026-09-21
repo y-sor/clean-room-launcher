@@ -28,6 +28,15 @@ reviewed content can therefore survive a squash after candidate-tree ==
 accepted-tree verification, without a bookkeeping-only reseal PR. Mutable state
 and action-time evidence are still refreshed separately.
 
+Tracked candidate metadata must not predict a future action-time value merely to
+make an irreversible gate pass. The changelog date is a candidate-declared
+release date; the annotated tagger timestamp is the authoritative action-time
+timestamp. The tag gate requires exactly one canonical ISO changelog date for the
+version and enforces only the monotonic relation `declared_date <= tagger_date`.
+Exact-day equality is forbidden because crossing midnight would otherwise force a
+bookkeeping-only candidate mutation. Future-dated changelog entries still fail
+closed, and the actual tagger timestamp is never rewritten or backdated.
+
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
 JSON semantics with only its self-referential `reviewed_content_digest` field
