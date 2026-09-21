@@ -87,11 +87,11 @@ For whole-plugin activation:
 1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
    proves clean/selected plugin separation, its selected-plugin TUI, and that
    the pinned provider did not load AGENTS.md from an ancestor outside the
-   selected current-project boundary. Codex
-   proves clean → selected → clean MCP visibility through one exact installed
-   plugin, sibling absence through the runtime contract, unchanged ambient
-   provider/plugin state, and its selected-plugin TUI. No model prompt is sent
-   during the interactive confirmation.
+   selected current-project boundary. Codex proves clean → selected → clean MCP
+   visibility through a task-owned standalone fixture, sibling absence through
+   the runtime contract, unchanged ambient provider/plugin state, and a real
+   provider PTY startup that reaches MCP initialize + tools/list. The harness
+   sends no model prompt.
 2. **Action-time tag guard:** the helper rechecks live stable provider pins and
    revalidates both local provider executable version/bytes against the accepted
    pre-tag evidence immediately before the protected tag push.
@@ -111,9 +111,9 @@ For Codex whole-plugin activation this means:
 - exact-provider CI qualification executes two real-provider startups against
   the same synthetic home;
 - accepted-main pre-tag qualification executes
-  clean → selected → clean → selected interactive TUI → clean on the same
+  clean → selected → clean → real-provider MCP runtime probe → clean on the same
   CLROOM shadow generation;
-- the final post-interactive clean launch must succeed before evidence is
+- the final post-runtime clean launch must succeed before evidence is
   accepted or a protected tag can be created;
 - legitimate provider-owned state must not be deleted merely to make
   qualification pass;
