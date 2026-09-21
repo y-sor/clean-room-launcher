@@ -169,7 +169,8 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
 
     assert!(qualifier.contains("real-provider-repeat-interactive-mcp-discovery-no-model"));
     assert!(qualifier.contains("for lifecycle_run in 1 2; do"));
-    assert!(qualifier.contains("provider-observed-$lifecycle_run"));
+    assert!(qualifier.contains("codex-mcp-fixture.py\" probe-provider"));
+    assert!(qualifier.contains("observed_count=$((observed_count + 1))"));
     assert!(qualifier.contains("clroom.real-provider-qualification.v2"));
     assert!(qualifier.contains("repeat_provider_executed"));
     assert!(verifier.contains(r#"record["lifecycle_runs"] != 2"#));
@@ -376,7 +377,8 @@ fn release_review_boundary_is_content_addressed_and_squash_stable() {
     );
     assert!(
         contract.contains("content-addressed, not commit-ancestry-addressed")
-            && contract.contains("candidate-tree == accepted merge tree"),
+            && contract.contains("candidate-tree ==")
+            && contract.contains("accepted-tree verification"),
         "release contract must document squash-stable content-addressed acceptance"
     );
 }
