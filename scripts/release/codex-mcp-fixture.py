@@ -337,7 +337,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     if not reaped:
         for _ in range(40):
             drain_pty()
-                try:
+            try:
                 waited, status = os.waitpid(pid, os.WNOHANG)
             except ChildProcessError:
                 reaped = True
