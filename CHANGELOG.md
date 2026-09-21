@@ -18,6 +18,13 @@ Semantic Versioning after the first public release.
 
 ### Changed
 
+- Development/release stabilization now binds semantic release review to exact
+  tracked content instead of commit ancestry, deduplicates branch CI against PR
+  CI, cancels superseded runs, and runs release readiness automatically on
+  accepted `main` pushes.
+- Codex real-provider qualification now distinguishes configuration visibility
+  from runtime capability and requires a standalone MCP `initialize` +
+  `tools/list` boundary with a real fixture tool call.
 - Advanced exact macOS Apple Silicon release qualification to current stable
   Codex `0.155.1` and Claude Code `2.1.278`.
 - Release provider pins fail closed against live npm `latest` and registry
@@ -32,6 +39,12 @@ Semantic Versioning after the first public release.
 
 ### Fixed
 
+- Classify the app-owned `codex_app` MCP surface as host-required for
+  standalone CLROOM instead of treating a visible server with zero tools as a
+  qualified whole-plugin runtime.
+- Remove ancestry-bound release-review resealing that created bookkeeping-only
+  correction PRs after squash; release-review v2 carries explicit N−1 migration
+  coverage and remains content-addressed across equivalent trees.
 - Accept Codex `0.155.1` provider-owned `$CODEX_HOME/.tmp` lifecycle state,
   including `plugin-share-local-paths-v1.json` and
   `rollout-maintenance.lock`, after the CLROOM shadow is initialized while
