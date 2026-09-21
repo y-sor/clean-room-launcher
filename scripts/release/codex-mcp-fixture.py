@@ -255,6 +255,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     os.set_blocking(fd, False)
     provider_seen = False
     methods_seen = False
+    trust_answered = False
     reaped = False
     wait_status = None
     pty_tail = bytearray()
@@ -273,8 +274,22 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             pty_tail.extend(chunk)
             if len(pty_tail) > 8192:
                 del pty_tail[:-8192]
+
+    def accept_synthetic_project_trust():
+        nonlocal trust_answered
+        if trust_answered:
+            return
+        normalized = bytes(
+            byte for byte in pty_tail.lower()
+            if 48 <= byte <= 57 or 97 <= byte <= 122
+        )
+        if b"doyoutrustthecontentsofthisdirectory" not in normalized:
+            return
+        os.write(fd, b"1\n")
+        trust_answered = True
     while time.monotonic() < deadline:
         drain_pty()
+        accept_synthetic_project_trust()
         try:
             waited, status = os.waitpid(pid, os.WNOHANG)
         except ChildProcessError:
@@ -296,6 +311,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     if not reaped:
         for _ in range(40):
             drain_pty()
+            accept_synthetic_project_trust()
             try:
                 waited, status = os.waitpid(pid, os.WNOHANG)
             except ChildProcessError:
