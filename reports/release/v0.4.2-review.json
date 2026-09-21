@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "3eba7ee32abeba5460a629d946bfe8607b8e50de",
+  "reviewed_through_commit": "3300924f6ebf3c1af426fb1dcd1cdfa554647b1d",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -251,5 +251,5 @@
       "Codex projection digest-transition cleanup compatibility: an exact legacy-v1 marker digest may authorize removal of its unchanged CLROOM-owned projection, while selected execution remains bound to the current semantic digest and post-marker mutation still fails closed"
     ]
   },
-  "reviewed_content_digest": "bd88b315f76b16c3727a2954d47dac467412af79cd2a6ff83142eb4725304f9a"
+  "reviewed_content_digest": "ca227858b686ded1d4523cf0f3cb32ecaf097f2a8666dbfe265e7b18cfd20cf5"
 }
