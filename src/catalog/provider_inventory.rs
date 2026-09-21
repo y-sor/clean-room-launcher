@@ -196,7 +196,6 @@ pub fn inspect_plugin_with_home(
     }
 
     let host_required_component = provider == Provider::Codex
-        && plugin_id == "codex-app-tools@openai-bundled"
         && effective_components.iter().any(|component| {
             component.kind == ResourceKind::McpServer && component.id == "codex_app"
         });
@@ -696,6 +695,33 @@ mod tests {
             .conflicts
             .iter()
             .any(|reason| reason == "PLUGIN_HOST_REQUIRED"));
+
+        let renamed = codex_home.join("plugins/cache/fixture/host-backed/local");
+        fs::create_dir_all(renamed.join(".codex-plugin")).unwrap();
+        fs::write(
+            renamed.join(".codex-plugin/plugin.json"),
+            r#"{"name":"host-backed","version":"1.0.0"}"#,
+        )
+        .unwrap();
+        fs::write(
+            renamed.join(".mcp.json"),
+            r#"{"mcpServers":{"codex_app":{"command":"/usr/bin/true"}}}"#,
+        )
+        .unwrap();
+
+        let inventory = inspect_plugin(
+            Provider::Codex,
+            &home,
+            Some(&codex_home),
+            "host-backed@fixture",
+            true,
+        );
+        assert_eq!(inventory.entry.selection, SelectionState::NotSelectable);
+        assert_eq!(inventory.entry.qualification, QualificationState::Unqualified);
+        assert_eq!(
+            inventory.entry.reason_code.as_deref(),
+            Some("PLUGIN_HOST_REQUIRED")
+        );
 
         let standalone = codex_home.join("plugins/cache/fixture/standalone/local");
         fs::create_dir_all(standalone.join(".codex-plugin")).unwrap();
