@@ -20,7 +20,7 @@
         "Claude ancestor-instruction isolation also denies a symlinked external ancestor AGENTS.md while retaining repo-root and nested AGENTS.md/.claude/AGENTS.md, covering path-alias bypass without collapsing the project context boundary to the current directory.",
         "The exact-artifact Claude AGENTS boundary probe launches from a nested directory beneath a synthetic .git worktree, fails if HOME/workspace ancestor AGENTS are readable, and independently fails if repo-root or nested project AGENTS become unreadable.",
         "Regression coverage proves a legacy-v1 projection marker is cleanup-compatible across the semantic `.mcp.json` digest transition while any post-marker content mutation still fails closed.",
-        "The v1→v2 release-review migration fixture proves removal of ancestry-bound reviewed_through_commit while retaining the prior digest field for explicit migration handling; v2 self-tests separately prove review-semantic changes alter the content-addressed seal.",
+        "The v1→v2 release-review migration fixture proves removal of ancestry-bound reviewed_through_commit and requires an explicit fresh content-addressed reseal; the stale v1 digest is rejected, while v2 self-tests separately prove review-semantic changes alter the seal.",
         "Codex standalone MCP qualification uses a task-owned fixture and the real pinned provider: provider startup must reach MCP initialize plus tools/list, while the fixture protocol probe separately proves a non-empty tool catalog and successful tools/call semantics."
       ]
     },
@@ -43,7 +43,7 @@
       "evidence": [
         "The pre-tag helper accepts only lifecycle-aware Codex v2 evidence with a successful clean relaunch after the interactive selected-plugin TUI. A new canonical verify-draft-release.sh reconciles exact tag/SHA identity, Draft assets, checksums, attestations, current provider pins, local pre-tag/Draft evidence, and every exact-tag push Action before any publish gate; canonical readiness verifies this verifier is executable and shell-valid.",
         "Claude pre-tag evidence advances to clroom.plugin-release-smoke.v2 and protected-tag validation requires both project_agents_retained_confirmed=true and external_ancestor_agents_absent_confirmed=true. The real pinned-provider selected-plugin TUI runs in a task-owned synthetic nested Git project, so a provider walk that drops legitimate project AGENTS or admits an external ancestor cannot authorize a tag.",
-        "Release acceptance is content-addressed: check-release-contract.py binds the exact tracked tree plus canonical review semantics through reviewed_content_digest, rejects the legacy reviewed_through_commit field, and carries an explicit v1 N−1 migration fixture. Equivalent candidate and accepted trees can therefore survive squash without a bookkeeping-only reseal.",
+        "Release acceptance is content-addressed: check-release-contract.py binds the exact tracked tree plus canonical review semantics through reviewed_content_digest, rejects the legacy reviewed_through_commit field, and carries an explicit v1 N−1 migration fixture that requires a fresh v2 reseal. Equivalent candidate and accepted trees can therefore survive squash without a bookkeeping-only reseal.",
         "The synthetic Claude AGENTS artifact probe now proves the launched provider body executed from a nested Git working directory: version preflight alone cannot satisfy evidence, external ancestors must be denied, repo-root and nested AGENTS must remain readable, and the provider writes an execution marker only after those assertions.",
         "The accepted-main Claude AGENTS artifact probe now makes its synthetic TMPDIR private (0700) before launch and fails closed if that mode is not retained. This matches the existing session-only projection security invariant instead of causing the probe fixture itself to fail before provider execution.",
         "Standalone Codex release qualification no longer treats codex_app visibility as runtime proof. The app-owned codex_app MCP is fail-closed as PLUGIN_HOST_REQUIRED outside a proven host context; accepted release evidence uses standalone-mcp@clroom-fixture and requires real-provider MCP initialize/tools-list evidence plus fixture tools/call verification."
@@ -259,7 +259,7 @@
       "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification",
       "Claude 2.1.278 AGENTS.md/.claude/AGENTS.md isolation above the nearest real Git worktree boundary (cwd outside Git), with repo-root+nested positive retention tests, exact-artifact nested-cwd probe and truthful Global AGENTS.md launch status",
       "Claude pre-tag smoke/evidence v2 and protected-tag/pre-publish gates requiring two-sided real-provider proof in a synthetic nested Git project: legitimate repo/nested AGENTS are retained while external ancestor AGENTS.md/.claude/AGENTS.md remain absent",
-      "content-addressed semantic release review v2: exact tracked tree plus canonical review semantics, no reviewed_through_commit ancestry field, squash portability only after candidate-tree == accepted-tree verification, with explicit v1 N−1 migration fixture",
+      "content-addressed semantic release review v2: exact tracked tree plus canonical review semantics, no reviewed_through_commit ancestry field, squash portability only after candidate-tree == accepted-tree verification, with explicit v1 N−1 migration fixture requiring a fresh v2 reseal and rejecting stale v1 digest reuse",
       "executed-provider proof for the Claude AGENTS synthetic artifact probe: normal launch path plus post-assertion execution marker, with version-preflight-only success explicitly insufficient",
       "Claude AGENTS accepted-main artifact probe private-TMPDIR invariant: synthetic TMPDIR is forced to mode 0700 and verified before launch, with provider-canary contract coverage for the setup and fail-closed marker",
       "Codex host/runtime distinction: in-bundle MCP path rebasing remains protected, codex_app is PLUGIN_HOST_REQUIRED for standalone CLROOM, and release acceptance uses standalone-mcp@clroom-fixture with real-provider initialize/tools-list evidence plus fixture tools/call",
@@ -267,5 +267,5 @@
       "CI event efficiency: pull_request validation for branches, push only on main, concurrency cancellation for superseded PR/ref runs, and automatic canonical release readiness on accepted main"
     ]
   },
-  "reviewed_content_digest": "1db808298823444dd7e327cb02f604f7eb47dfc03fcae7c1dcb676705d5859eb"
+  "reviewed_content_digest": "768b8c47f55f42078852d27c7709cdbfb9226ed3e2caf72c7104f236e4343e01"
 }
