@@ -218,6 +218,7 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
         "codex_version": codex_version,
         "clean_before_expected_mcp": False,
         "selected_expected_mcp": True,
+        "selected_mcp_plugin_paths_rebased": True,
         "clean_after_expected_mcp": False,
         "ambient_config_and_plugin_tree_unchanged": True,
         "plugin_source_unchanged": True,
