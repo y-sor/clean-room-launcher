@@ -294,5 +294,5 @@
       "final tag-push remote guard ordering: provider pin/local-byte checks complete first, then remote main/tag/ruleset/release-contract state is refreshed immediately before the single push, with regression coverage preventing provider qualification from reopening that window"
     ]
   },
-  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  "reviewed_content_digest": "531a92272f37bc7817f878cda51d9661f8797ff8d134b129a7dd16d9cdeffa47"
 }
