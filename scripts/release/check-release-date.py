@@ -23,23 +23,27 @@ def parse_iso_date(raw: str, label: str) -> dt.date:
     return value
 
 
-def tagger_date(tag_ref: str) -> dt.date:
-    raw = subprocess.check_output(
-        ["git", "cat-file", "-p", f"refs/tags/{tag_ref}"],
-        text=True,
-    )
+def tagger_utc_date_from_text(raw: str) -> dt.date:
     line = next((line for line in raw.splitlines() if line.startswith("tagger ")), None)
     if line is None:
         raise ReleaseDateError("RELEASE_DATE_BLOCKED:TAGGER_LINE_MISSING")
     match = TAGGER_RE.search(line)
     if match is None:
         raise ReleaseDateError("RELEASE_DATE_BLOCKED:TAGGER_TIMESTAMP_MALFORMED")
+    offset_hours = int(match.group(3))
+    offset_minutes = int(match.group(4))
+    if offset_hours > 23 or offset_minutes > 59:
+        raise ReleaseDateError("RELEASE_DATE_BLOCKED:TAGGER_OFFSET_MALFORMED")
     epoch = int(match.group(1))
-    minutes = int(match.group(3)) * 60 + int(match.group(4))
-    if match.group(2) == "-":
-        minutes = -minutes
-    timezone = dt.timezone(dt.timedelta(minutes=minutes))
-    return dt.datetime.fromtimestamp(epoch, tz=timezone).date()
+    return dt.datetime.fromtimestamp(epoch, tz=dt.timezone.utc).date()
+
+
+def tagger_date(tag_ref: str) -> dt.date:
+    raw = subprocess.check_output(
+        ["git", "cat-file", "-p", f"refs/tags/{tag_ref}"],
+        text=True,
+    )
+    return tagger_utc_date_from_text(raw)
 
 
 def changelog_release_date(changelog: Path, version: str) -> dt.date:
@@ -92,6 +96,12 @@ def self_test() -> None:
         )
         assert validate(changelog, "1.2.3", dt.date(2026, 9, 20)) == dt.date(2026, 9, 20)
         assert validate(changelog, "1.2.3", dt.date(2026, 9, 21)) == dt.date(2026, 9, 20)
+        epoch = int(dt.datetime(2026, 9, 21, 0, 30, tzinfo=dt.timezone.utc).timestamp())
+        plus = f"tagger Test <test@example.com> {epoch} +1400\n"
+        minus = f"tagger Test <test@example.com> {epoch} -1200\n"
+        assert tagger_utc_date_from_text(plus) == dt.date(2026, 9, 21)
+        assert tagger_utc_date_from_text(minus) == dt.date(2026, 9, 21)
+
 
         try:
             validate(changelog, "1.2.3", dt.date(2026, 9, 19))
