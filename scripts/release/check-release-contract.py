@@ -162,6 +162,8 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_VERSION_POLICY")
     if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE_FLOOR_POLICY")
+    if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:TAG_REMOTE_REFRESH_POLICY")
 
     if args.self_test:
         sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
@@ -180,6 +182,8 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CANDIDATE_VERSION_POLICY")
         if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DATE_FLOOR_POLICY")
+        if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_TAG_REMOTE_REFRESH_POLICY")
         sample_changelog = [
             "## [9.9.9] - 2026-09-20",
             "",
