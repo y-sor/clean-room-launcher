@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 import argparse
 import ctypes
+import fcntl
 import json
 import os
 import pathlib
 import pty
 import selectors
 import signal
+import struct
 import subprocess
 import sys
 import tempfile
+import termios
 import time
 
 PLUGIN_ID = "standalone-mcp@clroom-fixture"
@@ -235,6 +238,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     provider_dir = str(pathlib.Path(provider).resolve().parent)
     pid, fd = pty.fork()
     if pid == 0:
+        fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
         env = {
             "PATH": provider_dir + ":/usr/bin:/bin",
             "HOME": str(pathlib.Path(home).resolve()),

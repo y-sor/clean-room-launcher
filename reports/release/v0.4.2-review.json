@@ -267,5 +267,5 @@
       "CI event efficiency: pull_request validation for branches, push only on main, concurrency cancellation for superseded PR/ref runs, and automatic canonical release readiness on accepted main"
     ]
   },
-  "reviewed_content_digest": "2644bc42ef66221924575dc1a205998b7cbc5152ce85e1e22f3c5a7d42a1771a"
+  "reviewed_content_digest": "d71110454702ce882dccad4a5edbed6a1a1cb6620a87734e06bc5ca8031b0b55"
 }
