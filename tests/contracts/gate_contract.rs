@@ -276,6 +276,37 @@ fn local_tag_helper_parses_annotated_tagger_timestamp_with_digit_regex() {
 
 
 #[test]
+fn tag_date_binding_is_monotonic_not_exact_day_equality() {
+    let checker = std::fs::read_to_string("scripts/release/check-release-contract.py").unwrap();
+    let helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let workflow = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let contract = std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+
+    assert!(contract.contains(r#""changelog_action_time_relation": "declared_on_or_before_tag""#));
+    assert!(contract.contains(r#""candidate_version_relation": "strictly_after_published_baseline""#));
+    assert!(contract.contains(r#""changelog_date_floor": "published_baseline_date""#));
+    assert!(contract.contains(r#""tag_remote_refresh_order": "after_provider_checks_before_push""#));
+    assert!(checker.contains("validate_changelog_tag_date"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_MALFORMED_HEADING"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_INVALID_DATE"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BEFORE_BASELINE"));
+    assert!(checker.contains("RELEASE_CONTRACT_BLOCKED:CANDIDATE_NOT_ADVANCED"));
+    assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
+    assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
+    assert!(
+        !helper.contains("grep -Fxq \"## [$version] - $tag_date\" CHANGELOG.md"),
+        "tag helper must not require candidate bytes to predict the future tagger day"
+    );
+    assert!(
+        !workflow.contains("heading = f\"## [{version}] - {tag_date}\""),
+        "tag workflow must share the monotonic release-contract relation"
+    );
+}
+
+#[test]
 fn release_candidate_models_post_publish_and_active_candidate_lifecycle() {
     let workflow = std::fs::read_to_string(".github/workflows/release-candidate.yml").unwrap();
     let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
@@ -334,9 +365,6 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
     assert!(source.contains("REMOTE_TAG_QUERY_$phase"));
     assert!(source.contains("REMOTE_TAG_PRESENT_$phase"));
 
-    let action_time = source
-        .find("# Mutable remote release state is refreshed immediately before the irreversible push.")
-        .expect("tag helper must have an explicit action-time refresh boundary");
     let provider_evidence = source
         .find("evidence_claude_version=$(python3 - \"$evidence\"")
         .expect("action-time provider evidence must be loaded");
@@ -344,13 +372,16 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         .find("CLAUDE_PROVIDER_DRIFT_ACTION_TIME")
         .expect("provider version must be revalidated");
     let provider_bytes = source
-        .find("CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME")
+        .find("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME")
         .expect("provider bytes must be revalidated");
+    let final_remote = source
+        .find("# Final mutable remote release state guard immediately before the irreversible push.")
+        .expect("tag helper must refresh remote state after provider checks");
     let push = source
         .find("git push origin \"refs/tags/$tag\"")
         .expect("tag helper must push the protected tag");
     let reconciliation = source
-        .find("TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED")
+        .find("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED")
         .expect("tag push must reconcile the remote result");
 
     assert_eq!(
@@ -359,30 +390,35 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         "tag helper must perform exactly one irreversible tag push"
     );
     assert_eq!(
-        source.matches("TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED").count(),
+        source.matches("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED").count(),
         1,
-        "tag push reconciliation must exist only after the actual push"
+        "tag push unresolved-outcome handling must exist only after the actual push"
     );
+    assert!(source.contains(r#"git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}""#));
+    assert!(source.contains("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED"));
+    assert!(source.contains("TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH"));
+    assert!(source.contains("TAG_PUSH_OUTCOME_RECONCILED_ABSENT"));
     assert!(
-        action_time < provider_evidence
-            && provider_evidence < provider_version
+        provider_evidence < provider_version
             && provider_version < provider_bytes
-            && provider_bytes < push
+            && provider_bytes < final_remote
+            && final_remote < push
             && push < reconciliation,
-        "all action-time provider checks must finish before the single push; reconciliation must follow it"
+        "provider checks must finish before the final remote guard; the single push follows immediately"
     );
 
-    let guard = &source[action_time..push];
+    let guard = &source[final_remote..push];
+    assert!(!guard.contains("check-provider-pins.sh"));
+    assert!(!guard.contains("command -v claude"));
+    assert!(!guard.contains("command -v codex"));
     for required in [
         "git fetch --quiet origin main",
         "MAIN_DRIFT_ACTION_TIME",
         "LOCAL_HEAD_DRIFT_ACTION_TIME",
         "ensure_remote_tag_absent ACTION_TIME",
         "verify_tag_ruleset",
-        "check-release-contract.py --report",
+        "check-release-contract.py --tag-date \"$tag_date\" --report",
         "RELEASE_CONTRACT_ACTION_TIME",
-        "CLAUDE_PROVIDER_DRIFT_ACTION_TIME",
-        "CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME",
     ] {
         assert!(guard.contains(required), "missing action-time tag guard: {required}");
     }

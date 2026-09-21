@@ -32,6 +32,8 @@ jobs:
         run: python3 scripts/release/check-release-contract.py --report
       - name: Bind tag, version, changelog, and action-time default branch
         id: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -73,19 +75,16 @@ jobs:
           PY
           )"
           test -n "$tag_date" || { echo "annotated tagger date missing" >&2; exit 1; }
-          python3 - "$tag" "$version" "$tag_date" <<'PY'
+          python3 - "$tag" "$version" <<'PY'
           import re, sys
-          from pathlib import Path
 
-          tag, version, tag_date = sys.argv[1:]
+          tag, version = sys.argv[1:]
           if tag != "v" + version:
               raise SystemExit("release tag must start with v")
           if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", version):
               raise SystemExit("release tag must be vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-rc.N")
-          heading = f"## [{version}] - {tag_date}"
-          if heading not in Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines():
-              raise SystemExit(f"CHANGELOG.md must bind {version} to annotated tagger date {tag_date}")
           PY
+          python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null
           manifest_version=$(python3 - <<'PY'
           import tomllib
           with open("Cargo.toml", "rb") as handle:

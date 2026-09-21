@@ -247,43 +247,12 @@ tz = datetime.timezone(datetime.timedelta(minutes=minutes))
 print(datetime.datetime.fromtimestamp(epoch, tz=tz).date().isoformat())
 PY
 )
-grep -Fxq "## [$version] - $tag_date" CHANGELOG.md || {
+if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null; then
   cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CHANGELOG_DATE expected=$tag_date" >&2
+  echo "TAG_GATE_BLOCKED:CHANGELOG_DATE_RELATION tag_date=$tag_date" >&2
   exit 69
-}
+fi
 
-# Mutable remote release state is refreshed immediately before the irreversible push.
-git fetch --quiet origin main || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:REMOTE_MAIN_REFRESH_ACTION_TIME" >&2
-  exit 76
-}
-actual_main_now=$(git rev-parse FETCH_HEAD)
-[[ $actual_main_now == "$expected" ]] || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:MAIN_DRIFT_ACTION_TIME expected=$expected actual=$actual_main_now" >&2
-  exit 76
-}
-[[ $(git rev-parse HEAD) == "$expected" ]] || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:LOCAL_HEAD_DRIFT_ACTION_TIME" >&2
-  exit 76
-}
-if ! ensure_remote_tag_absent ACTION_TIME; then
-  cleanup_local_tag
-  exit 76
-fi
-if ! verify_tag_ruleset; then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:TAG_RULESET_ACTION_TIME" >&2
-  exit 76
-fi
-if ! python3 scripts/release/check-release-contract.py --report >/dev/null; then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
-  exit 77
-fi
 if ! bash scripts/release/check-provider-pins.sh; then
   cleanup_local_tag
   echo "TAG_GATE_BLOCKED:PROVIDER_PINS_ACTION_TIME" >&2
@@ -375,23 +344,71 @@ fi
   exit 81
 }
 
+# Final mutable remote release state guard immediately before the irreversible push.
+# No provider/network qualification runs after this block; the remaining action is the single push.
+git fetch --quiet origin main || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:REMOTE_MAIN_REFRESH_ACTION_TIME" >&2
+  exit 76
+}
+actual_main_now=$(git rev-parse FETCH_HEAD)
+[[ $actual_main_now == "$expected" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:MAIN_DRIFT_ACTION_TIME expected=$expected actual=$actual_main_now" >&2
+  exit 76
+}
+[[ $(git rev-parse HEAD) == "$expected" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:LOCAL_HEAD_DRIFT_ACTION_TIME" >&2
+  exit 76
+}
+if ! ensure_remote_tag_absent ACTION_TIME; then
+  cleanup_local_tag
+  exit 76
+fi
+if ! verify_tag_ruleset; then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:TAG_RULESET_ACTION_TIME" >&2
+  exit 76
+fi
+if ! python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null; then
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
+  exit 77
+fi
+
 set +e
 git push origin "refs/tags/$tag"
 push_rc=$?
 set -e
 
-remote_peeled=$(git ls-remote --tags origin "refs/tags/$tag^{}" | awk '{print $1}')
+set +e
+remote_refs=$(git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}")
+reconcile_rc=$?
+set -e
+if [[ $reconcile_rc -ne 0 ]]; then
+  echo "TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED tag=$tag push_rc=$push_rc" >&2
+  exit 82
+fi
+
+remote_direct=$(printf '%s\n' "$remote_refs" | awk -v ref="refs/tags/$tag" '$2 == ref {print $1}')
+remote_peeled=$(printf '%s\n' "$remote_refs" | awk -v ref="refs/tags/$tag^{}" '$2 == ref {print $1}')
 if [[ $remote_peeled == "$expected" ]]; then
   echo "TAG_PUSH_PASS tag=$tag target=$expected"
   exit 0
 fi
 
+if [[ -n "$remote_direct" || -n "$remote_peeled" ]]; then
+  cleanup_local_tag
+  echo "TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH tag=$tag direct=${remote_direct:-none} peeled=${remote_peeled:-none} expected=$expected" >&2
+  exit 83
+fi
+
 if [[ $push_rc -ne 0 ]]; then
   cleanup_local_tag
-  echo "TAG_PUSH_OUTCOME_RECONCILED_NOT_PRESENT tag=$tag" >&2
+  echo "TAG_PUSH_OUTCOME_RECONCILED_ABSENT tag=$tag" >&2
   exit "$push_rc"
 fi
 
-cleanup_local_tag
-echo "TAG_PUSH_BLOCKED:REMOTE_TARGET_NOT_RECONCILED" >&2
+echo "TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED tag=$tag" >&2
 exit 73

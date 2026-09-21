@@ -12,6 +12,8 @@ known near-misses, and decide whether the release contract itself must expand.
 `scripts/release/check-release-contract.py` fails closed when:
 
 - the declared baseline is not the current latest published stable release;
+- the candidate version is not strictly newer than that published baseline;
+- the candidate changelog date is earlier than the published baseline date;
 - a changed path is not classified by the release contract;
 - a changed domain lacks an evidence-backed disposition;
 - a known near-miss lacks a disposition;
@@ -27,6 +29,17 @@ remains provenance, while acceptance binds to exact tracked content. Equivalent
 reviewed content can therefore survive a squash after candidate-tree ==
 accepted-tree verification, without a bookkeeping-only reseal PR. Mutable state
 and action-time evidence are still refreshed separately.
+
+Tracked candidate metadata must not predict a future action-time value merely to
+make an irreversible gate pass. The changelog date is a candidate-declared
+release date; the annotated tagger timestamp is the authoritative action-time
+timestamp. The canonical contract requires the candidate version to be strictly
+newer than the latest published stable baseline and the declared changelog date
+to be on or after that baseline publication date. At tag time it enforces only
+the monotonic upper relation `declared_date <= tagger_date`. Exact-day equality
+is forbidden because crossing midnight would otherwise force a bookkeeping-only
+candidate mutation. Future-dated changelog entries still fail closed, and the
+actual tagger timestamp is never rewritten or backdated.
 
 The semantic review seal is a SHA-256 digest over the tracked Git tree
 (mode/type/blob/path). The release review JSON participates through canonical
@@ -67,11 +80,15 @@ release archive, not sibling build outputs. The archive, installer, SBOM,
 checksums, provenance attestation bundle, and SBOM attestation bundle are
 verified before a guarded Draft Release is created.
 
-Publishing remains a separate action. Immediately before a protected tag
-push, the tag helper refreshes the remote `main` tip, confirms the tag is still
-absent, revalidates the active no-bypass `v*` tag ruleset, and reruns the
-whole-release contract against the current published baseline. Any drift blocks
-the push.
+Publishing remains a separate action. The tag helper first revalidates provider
+pins and the local provider bytes bound by accepted pre-tag evidence. Only after
+those provider checks finish does the final remote guard refresh `main`, confirm
+the tag is still absent, revalidate the active no-bypass `v*` tag ruleset, and
+rerun the whole-release contract against the current published baseline. No
+provider/network qualification runs after that final remote guard before the
+single tag push. GitHub does not provide an atomic predicate tying a new tag to
+an unchanged branch/release state, so this ordering minimizes the residual TOCTOU
+window; any observed drift blocks the push.
 
 Because stable `v*` tags are protected against update/deletion, provider
 capabilities with release-specific behavior are exercised on exact candidate
