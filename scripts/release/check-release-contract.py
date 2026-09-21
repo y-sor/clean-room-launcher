@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, fnmatch, hashlib, json, os, subprocess, sys, urllib.request
+import argparse, datetime, fnmatch, hashlib, json, os, re, subprocess, sys, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -74,6 +74,34 @@ def review_semantic_sha(review):
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
+def changelog_release_date(lines, version):
+    pattern = re.compile(rf"^## \\[{re.escape(version)}\\] - (\\d{{4}}-\\d{{2}}-\\d{{2}})$")
+    matches = [match.group(1) for line in lines if (match := pattern.fullmatch(line))]
+    if len(matches) != 1:
+        raise ValueError(f"expected exactly one dated changelog heading for {version}")
+    raw = matches[0]
+    try:
+        parsed = datetime.date.fromisoformat(raw)
+    except ValueError as error:
+        raise ValueError(f"invalid changelog date for {version}: {raw}") from error
+    if parsed.isoformat() != raw:
+        raise ValueError(f"non-canonical changelog date for {version}: {raw}")
+    return parsed
+
+def validate_changelog_tag_date(lines, version, tag_date):
+    declared = changelog_release_date(lines, version)
+    try:
+        action = datetime.date.fromisoformat(tag_date)
+    except ValueError as error:
+        raise ValueError(f"invalid tag date: {tag_date}") from error
+    if action.isoformat() != tag_date:
+        raise ValueError(f"non-canonical tag date: {tag_date}")
+    if declared > action:
+        raise ValueError(
+            f"changelog date {declared.isoformat()} is after tag date {action.isoformat()}"
+        )
+    return declared
+
 def reviewed_content_digest(ref, review_path):
     raw = subprocess.check_output(["git", "ls-tree", "-r", "-z", ref], cwd=ROOT)
     records = []
@@ -103,11 +131,14 @@ def main():
     parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY","y-sor/clean-room-launcher"))
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--tag-date", default=None)
     args=parser.parse_args()
 
     contract=load_json(CONTRACT)
     if contract.get("schema_version")!="clroom.release-contract.v1":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CONTRACT_SCHEMA")
+    if contract.get("policy", {}).get("changelog_action_time_relation") != "declared_on_or_before_tag":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_ACTION_TIME_POLICY")
 
     if args.self_test:
         sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
@@ -120,6 +151,25 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_REVIEW_SEAL")
         if set(contract.get("contract_evolution_decisions", [])) != {"EXPAND", "NO_CHANGE"}:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_EVOLUTION_DECISIONS")
+        if contract.get("policy", {}).get("changelog_action_time_relation") != "declared_on_or_before_tag":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_ACTION_TIME_POLICY")
+        sample_changelog = [
+            "## [9.9.9] - 2026-09-20",
+            "",
+            "### Fixed",
+            "",
+            "- fixture",
+        ]
+        if validate_changelog_tag_date(sample_changelog, "9.9.9", "2026-09-20").isoformat() != "2026-09-20":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_SAME_DAY")
+        if validate_changelog_tag_date(sample_changelog, "9.9.9", "2026-09-21").isoformat() != "2026-09-20":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG")
+        try:
+            validate_changelog_tag_date(sample_changelog, "9.9.9", "2026-09-19")
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION")
         declaration = {
             "release": "v9.9.9",
             "product_outcome": "A",
@@ -150,6 +200,13 @@ def main():
         return
 
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
+    changelog_lines = (ROOT/"CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+    try:
+        declared_release_date = changelog_release_date(changelog_lines, version)
+        if args.tag_date is not None:
+            validate_changelog_tag_date(changelog_lines, version, args.tag_date)
+    except ValueError as error:
+        raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE:{error}") from error
     review_path = Path(args.review or ROOT/f"reports/release/v{version}-review.json")
     review=load_json(review_path)
     if review.get("schema_version")!="clroom.release-review.v2":
@@ -232,6 +289,9 @@ def main():
         for p in changed:
             print(f"{p}\t{','.join(classified[p])}")
         print(f"REVIEWED_CONTENT_DIGEST={actual_digest}")
+        print(f"CHANGELOG_DECLARED_DATE={declared_release_date.isoformat()}")
+        if args.tag_date is not None:
+            print(f"TAG_ACTION_DATE={args.tag_date}")
         print(f"CONTRACT_EVOLUTION={evolution['decision']}")
         print("=== ARTIFACT CAPABILITY GATES ===")
         for gate in review.get("artifact_capability_gates",[]):
