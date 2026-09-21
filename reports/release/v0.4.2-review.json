@@ -268,5 +268,5 @@
       "Codex synthetic-project trust fixture: initialize the CLROOM-owned shadow through a non-model MCP listing, verify the v2 ownership marker, then set trust_level=trusted only for the exact synthetic project before the PTY runtime probe; interactive trust-screen automation is forbidden"
     ]
   },
-  "reviewed_content_digest": "ff47b4bebfb555350e3a2dd7a86ad2c89edefd9cfa06a0b3b7986f501e898398"
+  "reviewed_content_digest": "336bd417a45816093c806ab58cadd591fee6b7c96f02d903583af4f57e6821b4"
 }
