@@ -233,7 +233,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     tmpdir.mkdir(parents=True, exist_ok=True)
     tmpdir.chmod(0o700)
     provider_dir = str(pathlib.Path(provider).resolve().parent)
-    pid, _fd = pty.fork()
+    pid, fd = pty.fork()
     if pid == 0:
         env = {
             "PATH": provider_dir + ":/usr/bin:/bin",
@@ -248,11 +248,24 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             argv.append("codex")
         argv.extend([f"--with=plugin:{plugin_id}", "--no-alt-screen"])
         os.execve(candidate, argv, env)
+    os.set_blocking(fd, False)
     provider_seen = False
     methods_seen = False
     reaped = False
-    deadline = time.monotonic() + 15.0
+    deadline = time.monotonic() + 45.0
+
+    def drain_pty():
+        while True:
+            try:
+                chunk = os.read(fd, 4096)
+            except BlockingIOError:
+                return
+            except OSError:
+                return
+            if not chunk:
+                return
     while time.monotonic() < deadline:
+        drain_pty()
         try:
             waited, _ = os.waitpid(pid, os.WNOHANG)
         except ChildProcessError:
@@ -272,6 +285,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
         pass
     if not reaped:
         for _ in range(40):
+            drain_pty()
             try:
                 waited, _ = os.waitpid(pid, os.WNOHANG)
             except ChildProcessError:
@@ -292,10 +306,18 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             os.waitpid(pid, 0)
         except ChildProcessError:
             pass
+    drain_pty()
+    try:
+        os.close(fd)
+    except OSError:
+        pass
     if not provider_seen:
         raise RuntimeError("real Codex provider was not observed")
     if not methods_seen:
-        raise RuntimeError("Codex did not reach MCP initialize + tools/list")
+        raise RuntimeError(
+            f"Codex did not reach MCP initialize + tools/list "
+            f"(provider_seen={provider_seen}, process_reaped={reaped})"
+        )
     print("CODEX_MCP_PROVIDER_PROBE_PASS")
 
 def self_test():
