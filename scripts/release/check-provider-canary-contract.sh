@@ -77,7 +77,10 @@ for needle in \
   '"provider_mcp_tools_list_observed": provider_mcp_tools_list == "true"' \
   '"fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true"' \
   '"provider_state_lifecycle_closed": True' \
-  '"post_interactive_clean_confirmed": post_interactive_clean == "true"' \
+  '"real_provider_runtime_confirmed": runtime_confirmed == "true"' \
+  '"expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true"' \
+  '"model_prompt_sent": False' \
+  '"post_runtime_clean_confirmed": post_runtime_clean == "true"' \
   'codex-mcp-fixture.py" probe-provider' \
   'codex-mcp-fixture.py" probe-server'; do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
@@ -129,8 +132,10 @@ for needle in \
   '"provider_mcp_tools_list_observed": True' \
   '"fixture_mcp_tool_call_passed": True' \
   '"provider_state_lifecycle_closed": True' \
-  '"interactive_expected_mcp_healthy_confirmed": True' \
-  '"post_interactive_clean_confirmed": True' \
+  '"real_provider_runtime_confirmed": True' \
+  '"expected_mcp_runtime_healthy_confirmed": True' \
+  '"model_prompt_sent": False' \
+  '"post_runtime_clean_confirmed": True' \
   'TAG_GATE_BLOCKED:CODEX_PRETAG_FIXTURE_IDENTITY' \
   'PRETAG_CODEX_EVIDENCE_PASS' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
