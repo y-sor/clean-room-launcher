@@ -283,10 +283,14 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     let contract = std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
 
     assert!(contract.contains(r#""changelog_action_time_relation": "declared_on_or_before_tag""#));
+    assert!(contract.contains(r#""candidate_version_relation": "strictly_after_published_baseline""#));
+    assert!(contract.contains(r#""changelog_date_floor": "published_baseline_date""#));
     assert!(checker.contains("validate_changelog_tag_date"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DUPLICATE"));
+    assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BEFORE_BASELINE"));
+    assert!(checker.contains("RELEASE_CONTRACT_BLOCKED:CANDIDATE_NOT_ADVANCED"));
     assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
     assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
     assert!(
