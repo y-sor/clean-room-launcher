@@ -324,26 +324,30 @@ def main():
     provider_p.add_argument("--log", required=True)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
-    if args.self_test:
-        self_test()
-        return
-    if args.command == "install":
-        print(install(pathlib.Path(args.codex_home), pathlib.Path(args.log)))
-    elif args.command == "probe-server":
-        probe_server(pathlib.Path(args.server))
-        print("MCP_FIXTURE_TOOL_CALL_PASS")
-    elif args.command == "probe-provider":
-        probe_provider(
-            os.path.realpath(args.candidate),
-            args.mode,
-            os.path.realpath(args.project),
-            os.path.realpath(args.home),
-            os.path.realpath(args.provider),
-            args.plugin_id,
-            os.path.realpath(args.log),
-        )
-    else:
-        parser.error("command required")
+    try:
+        if args.self_test:
+            self_test()
+            return
+        if args.command == "install":
+            print(install(pathlib.Path(args.codex_home), pathlib.Path(args.log)))
+        elif args.command == "probe-server":
+            probe_server(pathlib.Path(args.server))
+            print("MCP_FIXTURE_TOOL_CALL_PASS")
+        elif args.command == "probe-provider":
+            probe_provider(
+                os.path.realpath(args.candidate),
+                args.mode,
+                os.path.realpath(args.project),
+                os.path.realpath(args.home),
+                os.path.realpath(args.provider),
+                args.plugin_id,
+                os.path.realpath(args.log),
+            )
+        else:
+            parser.error("command required")
+    except (OSError, RuntimeError, ValueError) as error:
+        print(f"CODEX_MCP_FIXTURE_BLOCKED:{error}", file=sys.stderr)
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
