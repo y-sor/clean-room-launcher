@@ -2,7 +2,7 @@
   "schema_version": "clroom.release-review.v1",
   "release": "v0.4.2",
   "baseline_release": "v0.4.0",
-  "reviewed_through_commit": "a24f0534c71a767defa323aca52d8482fb5a599e",
+  "reviewed_through_commit": "0ec9ae5ad40ae818ee197351327f019febaffc47",
   "domain_dispositions": {
     "runtime": {
       "decision": "CONTRACT_EXPAND",
@@ -242,5 +242,5 @@
       "Codex selected-plugin legacy MCP path binding: in-bundle absolute command/cwd paths are rebased to the exact shadow projection without allowing ambient PluginStore access; semantic digest and tamper tests protect the projection, automated smoke proves selected_mcp_plugin_paths_rebased=true, and pre-tag evidence requires codex_app healthy/ready with tools in the real TUI"
     ]
   },
-  "reviewed_content_digest": "4b0022369eee49edcd1771e3c42148884a95632f27d570c8a6a4f7dec6d62c95"
+  "reviewed_content_digest": "fb85ba8112ab67df555724a6eae3a7fd0c41fa64c905734004bc75b2a2448c8e"
 }
