@@ -166,10 +166,12 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
 fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
     let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
     let verifier = std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();
+    let fixture = std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
 
     assert!(qualifier.contains("real-provider-repeat-interactive-mcp-discovery-no-model"));
     assert!(qualifier.contains("for lifecycle_run in 1 2; do"));
     assert!(qualifier.contains("codex-mcp-fixture.py\" probe-provider"));
+    assert!(fixture.contains(r#""TERM": "xterm-256color""#));
     assert!(qualifier.contains("observed_count=$((observed_count + 1))"));
     assert!(qualifier.contains("clroom.real-provider-qualification.v2"));
     assert!(qualifier.contains(r#"{"OPENAI_API_KEY":"clroom-provider-qualification","tokens":null,"last_refresh":null}"#));
