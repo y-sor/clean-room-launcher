@@ -396,5 +396,5 @@
       "Claude plugin qualification preflight before automated provider prompts, with sanitized rejection diagnostics and regression coverage enforcing preflight-before-prompt ordering"
     ]
   },
-  "reviewed_content_digest": "f8fcc007182eb9348662cb123aad8d2f12d24f6b4aaa9f073bed67880dfbcb5f"
+  "reviewed_content_digest": "a5c52efa81a853f826a34f03c3bc19cbcf3dc427f469b2c823f88bc15b79c38c"
 }
