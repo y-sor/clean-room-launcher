@@ -8,6 +8,7 @@ import pathlib
 import pty
 import re
 import selectors
+import shlex
 import signal
 import struct
 import subprocess
@@ -245,6 +246,38 @@ def provider_in_tree(root_pid, provider):
     provider = os.path.realpath(provider)
     return any(process_path(pid) == provider for pid in descendants)
 
+def create_provider_launch_observer(home, provider):
+    provider = os.path.realpath(provider)
+    observer_root = pathlib.Path(home).resolve() / "provider-observer"
+    observer_bin = observer_root / "bin"
+    observer_bin.mkdir(parents=True, mode=0o700, exist_ok=False)
+    observer_root.chmod(0o700)
+    observer_bin.chmod(0o700)
+    marker = observer_root / "provider-launched"
+    wrapper = observer_bin / "codex"
+    script = (
+        "#!/bin/sh\n"
+        "set -eu\n"
+        "umask 077\n"
+        f"printf '%s\\n' clroom-provider-launched-v1 > {shlex.quote(str(marker))}\n"
+        f"exec {shlex.quote(provider)} \"$@\"\n"
+    )
+    fd = os.open(wrapper, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o700)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(script)
+    return wrapper, marker
+
+
+def provider_launch_observed(marker):
+    try:
+        metadata = marker.lstat()
+    except FileNotFoundError:
+        return False
+    if marker.is_symlink() or not marker.is_file() or metadata.st_mode & 0o077:
+        raise RuntimeError("provider launch observer marker invalid")
+    return marker.read_text(encoding="utf-8") == "clroom-provider-launched-v1\n"
+
+
 def observed_methods(path):
     try:
         methods = set(pathlib.Path(path).read_text(encoding="utf-8").splitlines())
@@ -321,15 +354,21 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
     tmpdir = pathlib.Path(home) / "tmp"
     tmpdir.mkdir(parents=True, exist_ok=True)
     tmpdir.chmod(0o700)
-    provider_dir = str(pathlib.Path(provider).resolve().parent)
-    env = {
-        "PATH": provider_dir + ":/usr/bin:/bin",
+    provider = os.path.realpath(provider)
+    provider_dir = str(pathlib.Path(provider).parent)
+    base_env = {
         "HOME": str(pathlib.Path(home).resolve()),
         "CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve()),
         "TMPDIR": str(tmpdir.resolve()),
         "TERM": "xterm-256color",
     }
-    seed_synthetic_project_trust(candidate, mode, project, home, env)
+    seed_env = dict(base_env)
+    seed_env["PATH"] = provider_dir + ":/usr/bin:/bin"
+    seed_synthetic_project_trust(candidate, mode, project, home, seed_env)
+
+    observer, provider_marker = create_provider_launch_observer(home, provider)
+    env = dict(base_env)
+    env["PATH"] = str(observer.parent) + ":/usr/bin:/bin"
     pid, fd = pty.fork()
     if pid == 0:
         fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
@@ -372,7 +411,11 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             wait_status = status
             reaped = True
             break
-        provider_seen = provider_seen or provider_in_tree(pid, provider)
+        provider_seen = (
+            provider_seen
+            or provider_launch_observed(provider_marker)
+            or provider_in_tree(pid, provider)
+        )
         methods_seen = methods_seen or observed_methods(log)
         if provider_seen and methods_seen:
             break
@@ -393,7 +436,11 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
                 wait_status = status
                 reaped = True
                 break
-            provider_seen = provider_seen or provider_in_tree(pid, provider)
+            provider_seen = (
+            provider_seen
+            or provider_launch_observed(provider_marker)
+            or provider_in_tree(pid, provider)
+        )
             methods_seen = methods_seen or observed_methods(log)
             time.sleep(0.05)
     if not reaped:
@@ -500,6 +547,33 @@ def self_test():
                 raise
         else:
             raise RuntimeError("missing shadow marker did not require bootstrap")
+
+        observer_home = root / "observer-home"
+        observer_home.mkdir()
+        observed_output = root / "provider-output"
+        fake_provider = root / "fake provider"
+        fake_provider.write_text(
+            "#!/bin/sh\n"
+            f"printf '%s\\n' \"$1\" > {shlex.quote(str(observed_output))}\n",
+            encoding="utf-8",
+        )
+        fake_provider.chmod(0o700)
+        observer, provider_marker = create_provider_launch_observer(
+            observer_home, str(fake_provider)
+        )
+        if provider_launch_observed(provider_marker):
+            raise RuntimeError("provider launch observer marker existed before launch")
+        subprocess.run(
+            [str(observer), "runtime-observed"],
+            env={"PATH": "/usr/bin:/bin"},
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if not provider_launch_observed(provider_marker):
+            raise RuntimeError("provider launch observer missed exact provider execution")
+        if observed_output.read_text(encoding="utf-8") != "runtime-observed\n":
+            raise RuntimeError("provider launch observer did not exec exact provider")
     print("CODEX_MCP_FIXTURE_SELF_TEST_PASS")
 
 def main():
