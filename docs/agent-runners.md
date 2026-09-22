@@ -8,6 +8,8 @@ nav_title: Agent runners
 
 Clean Room Launcher (CLROOM) can sit between a tool that starts coding-agent processes and the installed Codex or Claude Code CLI.
 
+Here, **runner** is a generic category for software that launches agent processes; this guide makes no compatibility claim for any named third-party launcher product.
+
 ```text
 runner / script / CI
         ↓
