@@ -181,7 +181,7 @@ A successful Release workflow is not by itself a publish verdict. Before an
 Owner publish gate, the canonical local verifier
 `scripts/release/verify-draft-release.sh` must reconcile the exact tag and
 source SHA, Draft identity and exact asset set, checksums and release-visible
-attestations, current provider pins, accepted pre-tag and Draft provider
+attestations, current provider pins, pre-merge rehearsal and Draft provider
 evidence, and every tag-triggered GitHub Actions run for that exact tag/SHA.
 Any incomplete or non-success tag-triggered run blocks publication.
 
@@ -191,9 +191,11 @@ publish, edit, or replace release assets.
 Use:
 
 ```sh
-bash scripts/release/local-plugin-activation-smoke.sh pretag --plugin-id <qualified-claude-id>
-bash scripts/release/local-codex-plugin-activation-smoke.sh pretag \
-  --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
+# Before merge, on the exact PR candidate HEAD:
+bash scripts/release/local-plugin-activation-smoke.sh rehearse \
+  --expected-head <exact-pr-head> --plugin-id <qualified-claude-id>
+bash scripts/release/local-codex-plugin-activation-smoke.sh rehearse \
+  --expected-head <exact-pr-head> --fixture-standalone-mcp
 
 bash scripts/release/local-plugin-activation-smoke.sh draft \
   --tag vX.Y.Z --plugin-id <qualified-claude-id>
@@ -203,6 +205,14 @@ bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
 # After both Draft smokes PASS, reconcile the complete exact-tag verdict:
 bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
 ```
+
+Rehearsal evidence is content-addressed by the reviewed release digest plus the
+exact Git tree and provider bytes. It may survive a squash only after
+candidate-tree == accepted-tree verification; commit SHA remains provenance.
+Dynamic evidence is stored outside the tracked tree in the repository Git common
+directory by default, so normal task-worktree cleanup does not destroy release
+evidence. The tag helper refreshes mutable/provider/action-time state instead of
+rerunning the content proof solely because squash changed the commit SHA.
 
 These smokes never install, update, enable persistently, remove, or downgrade a
 provider/plugin. Claude's automated probe uses its established startup evidence
