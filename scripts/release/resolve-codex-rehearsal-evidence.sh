@@ -86,9 +86,16 @@ gh run download "$selected_run" -R "$repository" -n "$artifact_name" -D "$tmp/do
 
 evidence_key=${reviewed_content_digest:0:12}
 expected_file="codex-rehearse-v${version}-${evidence_key}.json"
-mapfile -t matches < <(find "$tmp/download" -type f -name "$expected_file" -print)
-[[ ${#matches[@]} -eq 1 ]] || fail "EVIDENCE_FILE_COUNT"
-source_path=${matches[0]}
+source_path=$(python3 - "$tmp/download" "$expected_file" <<'PY'
+import pathlib, sys
+root = pathlib.Path(sys.argv[1])
+name = sys.argv[2]
+matches = [path for path in root.rglob(name) if path.is_file()]
+if len(matches) != 1:
+    raise SystemExit(1)
+print(matches[0])
+PY
+) || fail "EVIDENCE_FILE_COUNT"
 
 python3 - "$source_path" "$version" "$current_tree" "$reviewed_content_digest" "$selected_head" <<'PY'
 import json, re, sys
