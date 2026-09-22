@@ -241,6 +241,20 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
 }
 
 #[test]
+fn codex_runtime_probe_observes_exact_provider_through_private_launcher() {
+    let fixture =
+        std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
+    assert!(fixture.contains("def create_provider_launch_observer("));
+    assert!(fixture.contains("provider-observer"));
+    assert!(fixture.contains("clroom-provider-launched-v1"));
+    assert!(fixture.contains("exec {shlex.quote(provider)}"));
+    assert!(fixture.contains("provider_launch_observed(provider_marker)"));
+    assert!(fixture.contains("provider launch observer marker invalid"));
+    assert!(fixture.contains("provider launch observer missed exact provider execution"));
+    assert!(fixture.contains("provider launch observer did not exec exact provider"));
+}
+
+#[test]
 fn codex_runtime_probe_preserves_fixture_root_blocker() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
