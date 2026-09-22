@@ -140,6 +140,9 @@ for needle in \
   'provider argv identity accepted unrelated executable' \
   'CODEX_MCP_PROVIDER_PROBE_PASS provider_process_observer=' \
   'Codex did not reach MCP initialize + tools/list' \
+  'home_path = pathlib.Path(home)' \
+  '"HOME": str(home_path)' \
+  '"CODEX_HOME": str(home_path / ".codex")' \
   'CLROOM Codex shadow ownership marker missing' \
   'CLROOM Codex shadow ownership marker invalid'; do
   grep -Fq -- "$needle" "$codex_mcp_fixture" || fail "CODEX_SYNTHETIC_TRUST_CONTRACT_MISSING"
