@@ -159,7 +159,7 @@ surfaces without changing CLROOM itself. Startup/version/byte checks alone are
 therefore insufficient for a clean-launch claim.
 
 For every newly pinned provider tuple, release qualification must re-prove the
-ambient input classes CLROOM claims to suppress. For Claude Code 2.1.278 the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.280 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
 through ancestor directories. For Git projects, CLROOM uses the nearest real
 (non-symlink) `.git` file or directory as the project instruction boundary;
