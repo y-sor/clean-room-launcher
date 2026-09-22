@@ -87,6 +87,9 @@ for needle in \
   'HEAD_NOT_EXPECTED_CANDIDATE' \
   'clroom-release-evidence' \
   'codex-mcp-fixture.py" probe-provider' \
+  'CODEX_MCP_FIXTURE_BLOCKED:' \
+  'selected-runtime.err' \
+  'fail_from_stderr "SELECTED_MCP_RUNTIME"' \
   'codex-mcp-fixture.py" probe-server'; do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
 done
