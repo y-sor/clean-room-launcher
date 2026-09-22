@@ -174,7 +174,7 @@ printf '%s\n' 'nested hidden instructions' >"$probe_project/.claude/AGENTS.md"
 cat >"$probe_bin/claude" <<'SH'
 #!/bin/sh
 if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then
-  printf '2.1.278\n'
+  printf '2.1.280\n'
   exit 0
 fi
 for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.claude/AGENTS.md"; do
