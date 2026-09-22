@@ -7,7 +7,7 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed.",
-        "Pinned Claude Code 2.1.278 includes the built-in agents-md ancestor walk introduced in Claude Code 2.1.277 for AGENTS.md and .claude/AGENTS.md. CLROOM now denies those exact files only above the nearest real Git worktree boundary (or the launch directory outside Git), preserving repo-root and nested project instructions when Claude starts from a subdirectory.",
+        "Pinned Claude Code 2.1.280 includes the built-in agents-md ancestor walk introduced in Claude Code 2.1.277 for AGENTS.md and .claude/AGENTS.md. CLROOM now denies those exact files only above the nearest real Git worktree boundary (or the launch directory outside Git), preserving repo-root and nested project instructions when Claude starts from a subdirectory.",
         "Codex projection cleanup now accepts an exact pre-rebase legacy-v1 raw bundle digest only as ownership proof for removing a previously CLROOM-owned projection; selected-plugin verification and execution still require the current semantic digest, so the compatibility path cannot authorize stale projection execution."
       ]
     },
@@ -29,7 +29,8 @@
     "dependencies": {
       "decision": "COVERED",
       "evidence": [
-        "Cargo.toml/Cargo.lock advance only the package version to 0.4.2; no runtime or build dependency is added, removed, or replaced."
+        "Cargo.toml/Cargo.lock advance only the package version to 0.4.2; no runtime or build dependency is added, removed, or replaced.",
+        "Release provider qualification refreshes Claude Code from 2.1.278 to current-stable 2.1.280 with exact npm registry SHA-512 integrity for both @anthropic-ai/claude-code and darwin-arm64; Codex remains pinned at current-stable 0.155.1."
       ]
     },
     "ci": {
@@ -63,7 +64,7 @@
       "evidence": [
         "Current README and Codex/Claude/limitations documentation identify v0.4.2 as the candidate capability version, while CHANGELOG records that v0.4.1 remained an unpublished Draft candidate and that v0.4.2 supersedes it.",
         "The published GitHub Pages sitemap is now checked end to end against the canonical y-sor.github.io/clean-room-launcher URL surface, so malformed XML, foreign-host entries, duplicates, missing canonical home, redirects, and non-XML responses fail the discovery pipeline instead of being inferred from source configuration alone.",
-        "The Claude launch plaque now reports Global AGENTS.md off, and Claude documentation describes the 2.1.278 agents-md boundary instead of implying that CLAUDE.md is the provider's only instruction surface.",
+        "The Claude launch plaque now reports Global AGENTS.md off, and Claude documentation describes the 2.1.280 agents-md boundary instead of implying that CLAUDE.md is the provider's only instruction surface.",
         "CHANGELOG v0.4.2 documents the distinction between candidate-declared release date and actual annotated tagger timestamp without changing release identity or published support claims.",
         "Release chronology is machine-bound to the latest published stable baseline: the candidate version must advance and its declared changelog date cannot predate that baseline publication."
       ]
@@ -336,12 +337,12 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.278 using exact PR-candidate v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, external-above-worktree AGENTS exclusion, repo-root and nested project AGENTS retention from a nested cwd, and a normal selected-plugin interactive TUI without a model prompt. The real TUI must run in a task-owned synthetic nested Git project and rehearsal v3 evidence must confirm both project_agents_retained_confirmed=true and external_ancestor_agents_absent_confirmed=true. Evidence binds to reviewed_content_digest + exact source_tree + provider bytes and is reusable after squash only when candidate-tree == accepted-tree."
+      "requirement": "Requalify the shipped Claude whole-plugin path on pinned current-stable Claude Code 2.1.280 using exact PR-candidate v0.4.2 bytes; prove clean absence, selected presence, no newly admitted sibling, no plugin errors, unchanged persistent provider config, external-above-worktree AGENTS exclusion, repo-root and nested project AGENTS retention from a nested cwd, and a normal selected-plugin interactive TUI without a model prompt. The real TUI must run in a task-owned synthetic nested Git project and rehearsal v3 evidence must confirm both project_agents_retained_confirmed=true and external_ancestor_agents_absent_confirmed=true. Evidence binds to reviewed_content_digest + exact source_tree + provider bytes and is reusable after squash only when candidate-tree == accepted-tree."
     },
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "DRAFT_ARTIFACT_PRE_PUBLISH",
-      "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.2 bytes after checksum and attestation verification, bound to Claude Code 2.1.278, then include its evidence in canonical exact-tag pre-publish reconciliation."
+      "requirement": "Re-run the Claude plugin capability smoke on exact Draft Release v0.4.2 bytes after checksum and attestation verification, bound to Claude Code 2.1.280, then include its evidence in canonical exact-tag pre-publish reconciliation."
     }
   ],
   "product_outcome": "Ship v0.4.2 as a bounded, fail-closed Codex whole-plugin selective-restore release from published v0.4.0: standalone-capable plugins are qualified with real provider MCP runtime evidence, while app-owned codex_app is explicitly PLUGIN_HOST_REQUIRED instead of being misreported as a standalone runtime. The candidate also removes ancestry-driven release-review reseal loops through content-addressed acceptance, moves runtime qualification before merge, deduplicates CI, automates accepted-main readiness, preserves ambient PluginStore denial, and retains the existing provider-state, Claude AGENTS, supply-chain, sitemap, tag and pre-publish hardening. The release harness also removes mutable-day tag coupling so passage of time alone cannot force a bookkeeping candidate mutation. Canonical tag-path validation now also owns version advancement and baseline chronology instead of relying on readiness transport. Protected tag creation now also minimizes the residual GitHub TOCTOU window by placing the final remote guard after provider checks. The release train also moves full provider/UI rehearsal before merge and makes that content evidence squash-portable, so accepted-main/tag phases no longer become the first observable correctness boundary solely because the commit SHA changed.",
@@ -358,7 +359,7 @@
       "evidence naming that distinguishes unchanged ambient config/plugin inputs from intentionally evolving CLROOM shadow provider state",
       "existing exact bundle projection, source/provider revalidation, provider pin freshness/integrity, CycloneDX predicate verification, action-time tag guards, v2 shadow generation isolation and sandbox-generation binding inherited from the v0.4.0→candidate delta",
       "same-SHA published sitemap canary after Pages deployment, with source negative fixtures and live canonical URL/XML validation before IndexNow notification",
-      "Claude 2.1.278 AGENTS.md/.claude/AGENTS.md isolation above the nearest real Git worktree boundary (cwd outside Git), with repo-root+nested positive retention tests, exact-artifact nested-cwd probe and truthful Global AGENTS.md launch status",
+      "Claude 2.1.280 AGENTS.md/.claude/AGENTS.md isolation above the nearest real Git worktree boundary (cwd outside Git), with repo-root+nested positive retention tests, exact-artifact nested-cwd probe and truthful Global AGENTS.md launch status",
       "Claude pre-tag smoke/evidence v2 and protected-tag/pre-publish gates requiring two-sided real-provider proof in a synthetic nested Git project: legitimate repo/nested AGENTS are retained while external ancestor AGENTS.md/.claude/AGENTS.md remain absent",
       "content-addressed semantic release review v2: exact tracked tree plus canonical review semantics, no reviewed_through_commit ancestry field, squash portability only after candidate-tree == accepted-tree verification, with explicit v1 N−1 migration fixture requiring a fresh v2 reseal and rejecting stale v1 digest reuse",
       "executed-provider proof for the Claude AGENTS synthetic artifact probe: normal launch path plus post-assertion execution marker, with version-preflight-only success explicitly insufficient",
