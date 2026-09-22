@@ -378,15 +378,18 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
         log.unlink()
     except FileNotFoundError:
         pass
-    tmpdir = pathlib.Path(home) / "tmp"
+    home_path = pathlib.Path(home)
+    if not home_path.is_absolute():
+        raise RuntimeError("fixture home must be absolute")
+    tmpdir = home_path / "tmp"
     tmpdir.mkdir(parents=True, exist_ok=True)
     tmpdir.chmod(0o700)
     provider_dir = str(pathlib.Path(provider).resolve().parent)
     env = {
         "PATH": provider_dir + ":/usr/bin:/bin",
-        "HOME": str(pathlib.Path(home).resolve()),
-        "CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve()),
-        "TMPDIR": str(tmpdir.resolve()),
+        "HOME": str(home_path),
+        "CODEX_HOME": str(home_path / ".codex"),
+        "TMPDIR": str(tmpdir),
         "TERM": "xterm-256color",
     }
     seed_synthetic_project_trust(candidate, mode, project, home, env)
