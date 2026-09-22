@@ -215,6 +215,9 @@ for needle in \
   '.github/workflows/release-candidate.yml' \
   'event": "pull_request"' \
   'conclusion": "success"' \
+  'git/commits/$artifact_head' \
+  'candidate_tree' \
+  'SUCCESSFUL_PR_RUN_WITH_MATCHING_TREE_NOT_FOUND' \
   'CODEX_REHEARSAL_EVIDENCE_RESOLVED'; do
   grep -Fq -- "$needle" "$codex_rehearsal_resolver" || fail "CODEX_REHEARSAL_RESOLVER_CONTRACT"
 done
