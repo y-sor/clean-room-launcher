@@ -604,6 +604,9 @@ fn codex_release_evidence_uses_actions_not_owner_path() {
         assert!(resolver.contains("gh run download"));
     }
     assert!(rehearsal_resolver.contains(".github/workflows/release-candidate.yml"));
+    assert!(rehearsal_resolver.contains("git/commits/$artifact_head"));
+    assert!(rehearsal_resolver.contains(r#"[[ "$candidate_tree" == "$current_tree" ]] || continue"#));
+    assert!(rehearsal_resolver.contains("SUCCESSFUL_PR_RUN_WITH_MATCHING_TREE_NOT_FOUND"));
     assert!(draft_resolver.contains(".github/workflows/release.yml"));
 
     assert!(contract.contains(
