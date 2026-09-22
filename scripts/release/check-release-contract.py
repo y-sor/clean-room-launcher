@@ -122,7 +122,7 @@ def validate_changelog_baseline_date(declared, published_at):
     return baseline
 
 SEMVER_TOKEN = re.compile(
-    r"(?<![0-9])(?P<prefix>v?)(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)(?P<plus>\\+)?(?![0-9])"
+    r"(?<![0-9])(?P<prefix>v?)(?P<version>[0-9]+\.[0-9]+\.[0-9]+)(?P<plus>\+)?(?![0-9])"
 )
 
 def public_doc_version_policy(contract):
@@ -153,7 +153,7 @@ def provider_versions_from_pins(policy):
     result = {}
     for provider, variable in (("codex", "CODEX_VERSION"), ("claude", "CLAUDE_VERSION")):
         match = re.search(
-            rf"^{variable}=([0-9]+\\.[0-9]+\\.[0-9]+)$",
+            rf"^{variable}=([0-9]+\.[0-9]+\.[0-9]+)$",
             text,
             flags=re.MULTILINE,
         )
