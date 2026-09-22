@@ -445,3 +445,52 @@ jobs:
             gh "${args[@]}"
           fi
           gh release upload "$tag" release-artifacts/* --clobber
+  verify-codex-draft:
+    name: Verify Codex Draft runtime
+    needs: [prepare, draft-release]
+    runs-on: macos-14
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - name: Check out exact tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Provision pinned real provider canaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"
+      - name: Verify Codex plugin runtime against Draft assets
+        id: codex_draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          provider_bin="$RUNNER_TEMP/clroom-codex-draft-bin"
+          evidence_dir="$RUNNER_TEMP/clroom-release-evidence"
+          mkdir -p "$provider_bin" "$evidence_dir"
+          ln -s "$CLROOM_PROVIDER_CODEX" "$provider_bin/codex"
+          PATH="$provider_bin:$PATH" \
+          CLROOM_RELEASE_EVIDENCE_DIR="$evidence_dir" \
+            bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
+              --tag "$GITHUB_REF_NAME" \
+              --fixture-standalone-mcp
+          version="${GITHUB_REF_NAME#v}"
+          short="${GITHUB_SHA:0:12}"
+          evidence="$evidence_dir/codex-draft-v${version}-${short}.json"
+          test -s "$evidence"
+          artifact_name="codex-draft-${GITHUB_REF_NAME}-${GITHUB_SHA}"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+          echo "evidence=$evidence" >> "$GITHUB_OUTPUT"
+      - name: Upload Codex Draft evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.codex_draft.outputs.artifact_name }}
+          path: ${{ steps.codex_draft.outputs.evidence }}
+          if-no-files-found: error
+          retention-days: 30
