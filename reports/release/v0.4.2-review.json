@@ -30,7 +30,8 @@
         "check-release-contract.py --self-test includes negative stale Codex, stale Claude, and stale current-product documentation fixtures plus positive current-provider and historical SECURITY version cases; canonical readiness executes this self-test and the real active-doc inventory.",
         "Independent gate-contract regression coverage requires the public-doc version policy, provider-pin binding, fail-closed PUBLIC_DOC_VERSION_DRIFT marker, docs/providers.md inventory coverage, and the no-auto-rewrite release-contract text to remain present.",
         "Gate-contract audit restored the missing #[test] registration on release_runtime_rehearsal_is_premerge_and_content_addressed and removed the duplicate #[test] on the adjacent Claude preflight test; the structural pre-merge runtime rehearsal contract is therefore executed again by cargo test rather than merely compiled.",
-        "Release-contract self-test explicitly rejects a prefixed external product version such as Runner v0.8.5 in active docs, closing the gap where generic vX.Y.Z tokens outside candidate pages could otherwise pass inventory."
+        "Release-contract self-test explicitly rejects a prefixed external product version such as Runner v0.8.5 in active docs, closing the gap where generic vX.Y.Z tokens outside candidate pages could otherwise pass inventory.",
+        "Public-doc version exception policy is itself fail-closed: every non-current provider or other semantic-version allowlist entry must use a canonical semver key and a non-empty rationale, preventing silent stale-version exemptions."
       ]
     },
     "dependencies": {
