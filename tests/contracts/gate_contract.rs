@@ -229,7 +229,7 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
     assert!(fixture.contains(r#""TERM": "xterm-256color""#));
     assert!(qualifier.contains("observed_count=$((observed_count + 1))"));
     assert!(qualifier.contains("clroom.real-provider-qualification.v2"));
-    assert!(qualifier.contains(r#"{"OPENAI_API_KEY":"clroom-provider-qualification","tokens":null,"last_refresh":null}"#));
+    assert!(fixture.contains(r#""OPENAI_API_KEY": "clroom-provider-qualification""#));
     assert!(qualifier.contains("repeat_provider_executed"));
     assert!(verifier.contains(r#"record["lifecycle_runs"] != 2"#));
     assert!(verifier.contains(r#"record["repeat_provider_executed"] is not True"#));

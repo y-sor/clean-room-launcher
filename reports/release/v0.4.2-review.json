@@ -308,5 +308,5 @@
       "single-source Codex release auth fixture: codex-mcp-fixture.py creates only task-owned mode-0600 no-spend synthetic auth, refuses conflicting auth state, and serves both CI qualifier and accepted-main/Draft plugin smokes before any candidate/provider launch"
     ]
   },
-  "reviewed_content_digest": "169d13228b68ddffe8c9c1b6a178e38d4dc7fccb624e6235594474d96656853f"
+  "reviewed_content_digest": "88ef0c224e3f9d0a61dd41f8d73f3c6f0cfa26da085124788ccc4b3435fc861e"
 }
