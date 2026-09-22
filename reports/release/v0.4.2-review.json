@@ -306,6 +306,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The release smoke created the clean Codex shadow while CODEX_HOME used the shell's lexical macOS /var path, then probe-provider canonicalized the same home with pathlib.resolve() to /private/var. The auth reference contract intentionally compares the symlink target path exactly, so the same underlying auth file appeared to change identity between phases and interactive runtime failed with CLROOM_CODEX_AUTH_REFERENCE_INVALID.",
       "durable_control": "The runtime fixture now preserves the already-established absolute lexical HOME/CODEX_HOME/TMPDIR paths across clean and selected phases instead of canonicalizing macOS firmlink aliases. Contract and meta-contract tests forbid reintroducing CODEX_HOME resolve() at this boundary."
+    },
+    {
+      "id": "codex-auth-reference-compared-lexically",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "GitHub-hosted pre-merge Codex rehearsal used an equivalent ambient auth path spelling with a doubled separator, while the shadow auth reference check compared the symlink target lexically. The same auth file was therefore rejected as CLROOM_CODEX_AUTH_REFERENCE_INVALID.",
+      "durable_control": "Codex shadow auth references compare canonical resolved file identity rather than pathname spelling. Regression coverage accepts an equivalent lexical path and rejects a symlink to any different auth file."
     }
   ],
   "artifact_capability_gates": [
@@ -364,8 +370,9 @@
       "Codex release qualification is machine-transported: exact-PR macOS Actions owns pre-merge rehearsal and content-addressed artifact evidence, the tag Release workflow owns Codex Draft runtime evidence, and tag/Draft consumers provenance-check those successful workflow artifacts instead of relying on Owner relay or ambient local Codex",
       "Codex runtime acceptance is protocol-authoritative: exact selected provider version/SHA are revalidated, CLROOM launches the selected provider, MCP initialize+tools/list and fixture tool-call must pass, and clean-state closure is required; process-table observation is diagnostic-only",
       "Actions Codex rehearsal is authenticated with the workflow-scoped GitHub token, and contract coverage requires that token so release-contract state checks cannot fail from unauthenticated rate limits",
-      "Codex runtime rehearsal preserves lexical HOME/CODEX_HOME identity across clean and selected phases, preventing macOS /var→/private/var canonicalization from invalidating exact auth-reference symlink targets"
+      "Codex runtime rehearsal preserves lexical HOME/CODEX_HOME identity across clean and selected phases, preventing macOS /var→/private/var canonicalization from invalidating exact auth-reference symlink targets",
+      "Codex auth-reference ownership compares canonical resolved file identity rather than pathname spelling, while a different auth target remains fail-closed"
     ]
   },
-  "reviewed_content_digest": "f17f716c425998c9cdd29116d368bd5758252797e5352d675ee5dded55519df7"
+  "reviewed_content_digest": "963d72724afd75b8ba4cec388b14d7718f6414aad5dc69e32fa05cfb6783190b"
 }

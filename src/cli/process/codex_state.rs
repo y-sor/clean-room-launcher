@@ -638,8 +638,8 @@ mod tests {
 
     #[test]
     fn auth_reference_accepts_equivalent_lexical_path_and_rejects_other_file() {
-        let scratch = tempfile::tempdir().unwrap();
-        let home = scratch.path().join("home");
+        let scratch = Scratch::new();
+        let home = scratch.0.join("home");
         let ambient_codex_home = home.join(".codex");
         fs::create_dir_all(&ambient_codex_home).unwrap();
         let auth = ambient_codex_home.join("auth.json");
