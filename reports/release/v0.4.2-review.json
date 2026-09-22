@@ -25,7 +25,8 @@
         "Codex standalone MCP qualification uses a task-owned fixture and the real pinned provider: provider startup must reach MCP initialize plus tools/list, while the fixture protocol probe separately proves a non-empty tool catalog and successful tools/call semantics.",
         "Contract coverage now fails if Claude/Codex release rehearsal is accepted-main-only, if content-addressed binding fields disappear, or if tag/Draft gates stop consuming the shared Git-common-dir rehearsal evidence.",
         "Contract coverage now checks release documentation itself so Actions-owned Codex evidence cannot regress operationally into a local Codex copy-paste acceptance path.",
-        "Provider-inventory regression coverage binds clean launch and plugin activation to the current exact Codex 0.156.0 / Claude 2.1.280 tuples and explicitly rejects the previous provider tuples."
+        "Provider-inventory regression coverage binds clean launch and plugin activation to the current exact Codex 0.156.0 / Claude 2.1.280 tuples and explicitly rejects the previous provider tuples.",
+        "Claude release-smoke contract coverage requires PLUGIN_INFO_PREFLIGHT to run before the automated provider prompt and requires sanitized conflicts/kinds diagnostics on rejection."
       ]
     },
     "dependencies": {
@@ -59,7 +60,8 @@
         "Provider/UI runtime evidence is now rehearsed on the exact PR candidate before merge and bound to reviewed_content_digest + exact source_tree + provider bytes; tag/Draft consumers reuse it across squash only after content identity is re-proven and refresh action-time state.",
         "Tag and Draft verification resolve Codex rehearsal evidence from successful canonical workflow artifacts keyed to exact content/tag identity, while live provider registry pins remain action-time checked.",
         "Canonical release instructions now match machine transport: Claude remains the only local TTY gate; Codex pre-merge and Draft acceptance is resolved from provenance-checked Actions artifacts, with regression coverage forbidding stale local Codex acceptance commands.",
-        "A live npm stable-tag move from Codex 0.155.1 to 0.156.0 was caught pre-merge by the existing provider pin freshness gate. The candidate is resealed and must re-run the full exact-PR macOS Codex rehearsal on 0.156.0 before acceptance; the provider refresh therefore exercises the existing move-left runtime contract rather than adding a new release mechanism."
+        "A live npm stable-tag move from Codex 0.155.1 to 0.156.0 was caught pre-merge by the existing provider pin freshness gate. The candidate is resealed and must re-run the full exact-PR macOS Codex rehearsal on 0.156.0 before acceptance; the provider refresh therefore exercises the existing move-left runtime contract rather than adding a new release mechanism.",
+        "The local Claude rehearsal now fails closed on an unqualified installed Claude plugin before any automated model prompt is sent; only a candidate CLROOM info result that is installed, selectable, qualified, atomic_bundle, conflict-free, and skill-only may proceed to provider probes."
       ]
     },
     "public_claims": {
@@ -324,6 +326,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "After Codex rehearsal and Draft verification moved to provenance-checked GitHub Actions artifacts, the release runbook still listed local Codex smoke commands as release steps. That stale operator path could reintroduce the same Owner/executor relay and ambient-local-provider dependency that the machine transport removed.",
       "durable_control": "The canonical release runbook now lists only Claude as the local human-TTY provider boundary, states that Codex pre-merge/Draft acceptance comes from Actions artifacts, and contract tests fail if local Codex rehearsal/Draft commands reappear in release instructions."
+    },
+    {
+      "id": "claude-release-smoke-probed-before-plugin-qualification",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The local Claude release smoke accepted an arbitrary installed plugin ID and ran automated clean/selected provider prompts before checking whether candidate CLROOM classified that plugin as the v0.4.x qualified skill-only surface. A hook-bearing plugin therefore consumed provider-probe work before the smoke rejected it as unqualified.",
+      "durable_control": "Candidate CLROOM plugin info is now validated immediately after read-only inspection and before any automated model prompt. Rejection emits only sanitized qualification state (installation, selection, qualification, activation policy, conflicts, component kinds), and contract tests enforce preflight-before-prompt ordering."
     }
   ],
   "artifact_capability_gates": [
@@ -384,7 +392,8 @@
       "Actions Codex rehearsal is authenticated with the workflow-scoped GitHub token, and contract coverage requires that token so release-contract state checks cannot fail from unauthenticated rate limits",
       "Codex runtime rehearsal preserves lexical HOME/CODEX_HOME identity across clean and selected phases, preventing macOS /var→/private/var canonicalization from invalidating exact auth-reference symlink targets",
       "Codex auth-reference ownership compares canonical resolved file identity rather than pathname spelling, while a different auth target remains fail-closed",
-      "release runbook/transport consistency: canonical docs expose only Claude as the local human-TTY boundary and forbid local Codex smoke commands as release-acceptance steps once Actions owns Codex evidence transport"
+      "release runbook/transport consistency: canonical docs expose only Claude as the local human-TTY boundary and forbid local Codex smoke commands as release-acceptance steps once Actions owns Codex evidence transport",
+      "Claude plugin qualification preflight before automated provider prompts, with sanitized rejection diagnostics and regression coverage enforcing preflight-before-prompt ordering"
     ]
   },
   "reviewed_content_digest": "f8fcc007182eb9348662cb123aad8d2f12d24f6b4aaa9f073bed67880dfbcb5f"
