@@ -171,6 +171,11 @@ fn codex_runtime_fixture_seeds_only_owned_synthetic_project_trust() {
     assert!(fixture.contains(r#".clroom-state-v2"#));
     assert!(fixture.contains(r#"trust_level = "trusted""#));
     assert!(fixture.contains("CLROOM Codex shadow ownership marker missing"));
+    assert!(fixture.contains("CLROOM Codex shadow ownership marker invalid"));
+    assert!(fixture.contains("if not initialized:"));
+    assert!(fixture.contains("stderr=subprocess.PIPE"));
+    assert!(fixture.contains("existing CLROOM-owned shadow trust seed failed"));
+    assert!(fixture.contains("missing shadow marker did not require bootstrap"));
     assert!(
         !fixture.contains("doyoutrustthecontentsofthisdirectory"),
         "release harness must not scrape or answer the interactive trust UI"
