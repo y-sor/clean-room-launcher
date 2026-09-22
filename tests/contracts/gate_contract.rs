@@ -578,6 +578,30 @@ fn release_review_boundary_is_content_addressed_and_squash_stable() {
 }
 
 #[test]
+#[test]
+fn claude_release_smoke_rejects_unqualified_plugin_before_model_probe() {
+    let source =
+        std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
+
+    let preflight = source
+        .find("PLUGIN_INFO_PREFLIGHT")
+        .expect("Claude release smoke must have a qualification preflight");
+    let model_probe = source
+        .find("Reply exactly UNUSED.")
+        .expect("Claude release smoke automated provider probe must remain explicit");
+
+    assert!(
+        preflight < model_probe,
+        "plugin qualification must fail closed before any automated model prompt"
+    );
+    assert!(
+        source.contains("PLUGIN_INFO_PREFLIGHT_BLOCKED")
+            && source.contains("\"conflicts\"")
+            && source.contains("\"kinds\""),
+        "preflight failure must preserve sanitized qualification diagnostics"
+    );
+}
+
 fn release_runtime_rehearsal_is_premerge_and_content_addressed() {
     let claude =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
