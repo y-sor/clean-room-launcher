@@ -623,6 +623,8 @@ fn codex_release_evidence_uses_actions_not_owner_path() {
         std::fs::read_to_string("scripts/release/resolve-codex-draft-evidence.sh").unwrap();
     let contract =
         std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+    let release_docs =
+        std::fs::read_to_string("docs/release/RELEASE_CONTRACT.md").unwrap();
 
     assert!(candidate.contains("Rehearse Codex runtime on exact PR candidate"));
     let rehearsal_step = candidate
@@ -663,6 +665,15 @@ fn codex_release_evidence_uses_actions_not_owner_path() {
     ));
     assert!(contract.contains(
         r#""ambient_local_codex_release_input": "forbidden""#
+    ));
+    assert!(release_docs.contains(
+        "Canonical Codex pre-merge and Draft evidence comes"
+    ));
+    assert!(!release_docs.contains(
+        "local-codex-plugin-activation-smoke.sh rehearse"
+    ));
+    assert!(!release_docs.contains(
+        "local-codex-plugin-activation-smoke.sh draft"
     ));
 }
 
