@@ -449,15 +449,23 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
     assert!(source.contains("REMOTE_TAG_QUERY_$phase"));
     assert!(source.contains("REMOTE_TAG_PRESENT_$phase"));
 
+    let codex_artifact = source
+        .find("resolve-codex-rehearsal-evidence.sh")
+        .expect("Codex rehearsal must come from the canonical Actions artifact");
+    let provider_pins = source
+        .find("if ! bash scripts/release/check-provider-pins.sh; then")
+        .expect("registry provider pins must be refreshed at action time");
     let provider_evidence = source
         .find("evidence_claude_version=$(python3 - \"$evidence\"")
-        .expect("action-time provider evidence must be loaded");
+        .expect("Claude action-time provider evidence must be loaded");
     let provider_version = source
         .find("CLAUDE_PROVIDER_DRIFT_ACTION_TIME")
-        .expect("provider version must be revalidated");
+        .expect("Claude provider version must be revalidated");
     let provider_bytes = source
-        .find("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME")
-        .expect("provider bytes must be revalidated");
+        .find("CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME")
+        .expect("Claude provider bytes must be revalidated");
+    assert!(!source.contains("CODEX_PROVIDER_DRIFT_ACTION_TIME"));
+    assert!(!source.contains("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME"));
     let final_remote = source
         .find("# Final mutable remote release state guard immediately before the irreversible push.")
         .expect("tag helper must refresh remote state after provider checks");
@@ -483,7 +491,9 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
     assert!(source.contains("TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH"));
     assert!(source.contains("TAG_PUSH_OUTCOME_RECONCILED_ABSENT"));
     assert!(
-        provider_evidence < provider_version
+        codex_artifact < provider_pins
+            && provider_pins < provider_evidence
+            && provider_evidence < provider_version
             && provider_version < provider_bytes
             && provider_bytes < final_remote
             && final_remote < push
