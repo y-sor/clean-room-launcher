@@ -338,5 +338,5 @@
       "Codex runtime observation supports native and interpreter-backed providers: exact selected provider bytes/version are revalidated, then runtime proof requires either executable-file identity or argv-file identity plus MCP initialize/tools-list; unrelated executables fail closed"
     ]
   },
-  "reviewed_content_digest": "38d309b21b78dfaa15e0da722bc0341e61acd7bb3cc62fc97a88208c3554b9ab"
+  "reviewed_content_digest": "e55d597721294dc00639bc03c76f2b7154b254a5cef3af9c2f88f2206a73c96b"
 }
