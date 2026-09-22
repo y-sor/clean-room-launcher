@@ -27,7 +27,9 @@
         "Contract coverage now checks release documentation itself so Actions-owned Codex evidence cannot regress operationally into a local Codex copy-paste acceptance path.",
         "Provider-inventory regression coverage binds clean launch and plugin activation to the current exact Codex 0.156.0 / Claude 2.1.280 tuples and explicitly rejects the previous provider tuples.",
         "Claude release-smoke contract coverage requires PLUGIN_INFO_PREFLIGHT to run before the automated provider prompt and requires sanitized conflicts/kinds diagnostics on rejection.",
-        "check-release-contract.py --self-test includes negative stale Codex, stale Claude, and stale current-product documentation fixtures plus positive current-provider and historical SECURITY version cases; canonical readiness executes this self-test and the real active-doc inventory."
+        "check-release-contract.py --self-test includes negative stale Codex, stale Claude, and stale current-product documentation fixtures plus positive current-provider and historical SECURITY version cases; canonical readiness executes this self-test and the real active-doc inventory.",
+        "Independent gate-contract regression coverage requires the public-doc version policy, provider-pin binding, fail-closed PUBLIC_DOC_VERSION_DRIFT marker, docs/providers.md inventory coverage, and the no-auto-rewrite release-contract text to remain present.",
+        "Gate-contract audit restored the missing #[test] registration on release_runtime_rehearsal_is_premerge_and_content_addressed and removed the duplicate #[test] on the adjacent Claude preflight test; the structural pre-merge runtime rehearsal contract is therefore executed again by cargo test rather than merely compiled."
       ]
     },
     "dependencies": {
@@ -406,5 +408,5 @@
       "public documentation version-coherence gate: inventory every semver mention across active public docs; bind provider claims to canonical provider pins; allow only explicit compatibility/version-floor exceptions; reject stale exact product versions on current-version surfaces; keep CHANGELOG/SECURITY history historical without exempting current provider claims"
     ]
   },
-  "reviewed_content_digest": "cdd721e5361460aa6cd4604f988fb1ac98a14c4130764b6540ce66f67a1eadc4"
+  "reviewed_content_digest": "b435ae171d7b88eb496d6cc35ea4318aba1fa98eaaa48c483fa47139c021800f"
 }
