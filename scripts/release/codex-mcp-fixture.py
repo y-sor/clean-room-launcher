@@ -227,6 +227,54 @@ def same_executable_identity(left, right):
     )
 
 
+def process_argv(pid):
+    if sys.platform != "darwin":
+        return []
+    library = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+    mib = (ctypes.c_int * 3)(1, 49, int(pid))  # CTL_KERN, KERN_PROCARGS2, pid
+    size = ctypes.c_size_t()
+    if library.sysctl(mib, 3, None, ctypes.byref(size), None, 0) != 0 or size.value == 0:
+        return []
+    buffer = ctypes.create_string_buffer(size.value)
+    if library.sysctl(
+        mib, 3, buffer, ctypes.byref(size), None, 0
+    ) != 0:
+        return []
+    data = buffer.raw[: size.value]
+    int_size = ctypes.sizeof(ctypes.c_int)
+    if len(data) < int_size:
+        return []
+    argc = int.from_bytes(data[:int_size], byteorder=sys.byteorder, signed=True)
+    if argc <= 0:
+        return []
+    offset = data.find(b"\0", int_size)
+    if offset < 0:
+        return []
+    offset += 1
+    while offset < len(data) and data[offset] == 0:
+        offset += 1
+    argv = []
+    for _ in range(argc):
+        end = data.find(b"\0", offset)
+        if end < 0:
+            break
+        argv.append(os.fsdecode(data[offset:end]))
+        offset = end + 1
+    return argv
+
+
+def process_uses_provider(pid, provider):
+    path = process_path(pid)
+    if path is not None and same_executable_identity(path, provider):
+        return True
+    return any(
+        argument
+        and os.path.isabs(argument)
+        and same_executable_identity(argument, provider)
+        for argument in process_argv(pid)
+    )
+
+
 def provider_in_tree(root_pid, provider):
     try:
         rows = subprocess.check_output(["/bin/ps", "-axo", "pid=,ppid=,pgid="], text=True)
@@ -255,11 +303,7 @@ def provider_in_tree(root_pid, provider):
         if process_group == group
     )
     provider = os.path.realpath(provider)
-    return any(
-        (path := process_path(pid)) is not None
-        and same_executable_identity(path, provider)
-        for pid in descendants
-    )
+    return any(process_uses_provider(pid, provider) for pid in descendants)
 
 def observed_methods(path):
     try:
@@ -527,6 +571,42 @@ def self_test():
             raise RuntimeError("provider file identity rejected an equivalent path")
         if same_executable_identity(executable, unrelated):
             raise RuntimeError("provider file identity accepted unrelated executable")
+
+        if sys.platform == "darwin":
+            script_provider = root / "script-provider"
+            script_provider.write_text(
+                "#!/bin/sh\nexec /bin/sleep 5\n",
+                encoding="utf-8",
+            )
+            script_provider.chmod(0o700)
+            child = subprocess.Popen(
+                [str(script_provider)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            try:
+                deadline = time.monotonic() + 2.0
+                observed = False
+                while time.monotonic() < deadline and child.poll() is None:
+                    if provider_in_tree(child.pid, str(script_provider)):
+                        observed = True
+                        break
+                    time.sleep(0.01)
+                if not observed:
+                    raise RuntimeError(
+                        "provider argv identity missed an interpreter-backed launcher"
+                    )
+                if provider_in_tree(child.pid, str(unrelated)):
+                    raise RuntimeError(
+                        "provider argv identity accepted unrelated executable"
+                    )
+            finally:
+                child.terminate()
+                try:
+                    child.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait(timeout=1)
     print("CODEX_MCP_FIXTURE_SELF_TEST_PASS")
 
 def main():
