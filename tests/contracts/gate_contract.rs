@@ -245,11 +245,19 @@ fn codex_runtime_probe_matches_provider_by_file_identity_not_path_string() {
     let fixture =
         std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
     assert!(fixture.contains("def same_executable_identity("));
-    assert!(fixture.contains("left_stat.st_dev == right_stat.st_dev"));
-    assert!(fixture.contains("left_stat.st_ino == right_stat.st_ino"));
+    assert!(fixture.contains("def process_argv("));
+    assert!(fixture.contains("KERN_PROCARGS2"));
+    assert!(fixture.contains("def process_uses_provider("));
     assert!(fixture.contains("same_executable_identity(path, provider)"));
+    assert!(fixture.contains("same_executable_identity(argument, provider)"));
     assert!(fixture.contains("provider file identity rejected an equivalent path"));
     assert!(fixture.contains("provider file identity accepted unrelated executable"));
+    assert!(fixture.contains(
+        "provider argv identity missed an interpreter-backed launcher"
+    ));
+    assert!(fixture.contains(
+        "provider argv identity accepted unrelated executable"
+    ));
     assert!(
         !fixture.contains("process_path(pid) == provider"),
         "macOS executable proof must not depend on pathname-string equality"
