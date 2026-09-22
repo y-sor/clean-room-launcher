@@ -317,5 +317,5 @@
       "pre-merge content-addressed runtime rehearsal: exact PR HEAD provider/UI evidence binds to reviewed_content_digest + source_tree + provider bytes, lives outside tracked worktree state, survives squash only after candidate-tree == accepted-tree, and tag/Draft gates refresh mutable/action-time state rather than rerunning content proof for a new commit SHA"
     ]
   },
-  "reviewed_content_digest": "6446c4862f883b02a62afda0d44a7f4b8d24a83d139e66ca6d867d951ce763c8"
+  "reviewed_content_digest": "847c85f4cfe19267625b87164d3e7644208ddf0081f3beb802b742c5a1a14db5"
 }
