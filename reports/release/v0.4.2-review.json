@@ -69,7 +69,8 @@
         "A live npm stable-tag move from Codex 0.155.1 to 0.156.0 was caught pre-merge by the existing provider pin freshness gate. The candidate is resealed and must re-run the full exact-PR macOS Codex rehearsal on 0.156.0 before acceptance; the provider refresh therefore exercises the existing move-left runtime contract rather than adding a new release mechanism.",
         "The local Claude rehearsal now fails closed on an unqualified installed Claude plugin before any automated model prompt is sent; only a candidate CLROOM info result that is installed, selectable, qualified, atomic_bundle, conflict-free, and skill-only may proceed to provider probes.",
         "The canonical release checker now inventories semantic-version mentions across active public documentation and fails closed when provider-version claims drift from scripts/release/provider-pins.sh or when current-version product surfaces retain an older exact candidate version.",
-        "The public-doc version policy intentionally scans the complete declared active documentation surface; an unused candidate_product_paths field was removed so the machine contract exposes no narrower pseudo-scope than the checker actually enforces."
+        "The public-doc version policy intentionally scans the complete declared active documentation surface; an unused candidate_product_paths field was removed so the machine contract exposes no narrower pseudo-scope than the checker actually enforces.",
+        ".github/FUNDING.yml is explicitly classified as a public-claims release surface and release-contract self-test includes it, so sponsorship metadata cannot become an unclassified release delta."
       ]
     },
     "public_claims": {
@@ -81,7 +82,8 @@
         "CHANGELOG v0.4.2 documents the distinction between candidate-declared release date and actual annotated tagger timestamp without changing release identity or published support claims.",
         "Release chronology is machine-bound to the latest published stable baseline: the candidate version must advance and its declared changelog date cannot predate that baseline publication.",
         "Public documentation was swept across README, SECURITY and docs surfaces after the provider bump: current exact qualification claims are Codex 0.156.0 / Claude 2.1.280, the product-specific Runner v0.8.5/RUNNER_* residue is removed while generic agent-runner terminology is retained, install examples no longer hard-code an old release tag, and the orphaned legacy demo GIF is removed.",
-        "Active public docs no longer carry historical prefixed product-version claims outside designated history: the Claude guide now describes the current v0.4.2 selector, and the release checker explicitly rejects a Runner v0.8.5-style external-product residue unless machine-allowlisted."
+        "Active public docs no longer carry historical prefixed product-version claims outside designated history: the Claude guide now describes the current v0.4.2 selector, and the release checker explicitly rejects a Runner v0.8.5-style external-product residue unless machine-allowlisted.",
+        "Sponsorship presentation now exposes Monobank as the only visible support path: Patreon remains commented in README and .github/FUNDING.yml for easy later restoration but is not rendered or advertised to users."
       ]
     }
   },
