@@ -80,9 +80,12 @@ release archive, not sibling build outputs. The archive, installer, SBOM,
 checksums, provenance attestation bundle, and SBOM attestation bundle are
 verified before a guarded Draft Release is created.
 
-Publishing remains a separate action. The tag helper first revalidates provider
-pins and the local provider bytes bound by pre-merge rehearsal evidence. Only after
-those provider checks finish does the final remote guard refresh `main`, confirm
+Publishing remains a separate action. The tag helper first revalidates live
+provider pins, revalidates the local Claude provider bytes bound by pre-merge
+rehearsal evidence, and resolves the Codex pre-merge evidence from the successful
+exact-PR macOS GitHub Actions artifact. Ambient local Codex installation state is
+not a release input. Only after those provider checks finish does the final remote
+guard refresh `main`, confirm
 the tag is still absent, revalidate the active no-bypass `v*` tag ruleset, and
 rerun the whole-release contract against the current published baseline. No
 provider/network qualification runs after that final remote guard before the
@@ -101,23 +104,28 @@ qualification, and evidence are refreshed.
 
 For whole-plugin activation:
 
-1. **Pre-merge rehearsal:** the exact PR candidate builds a candidate archive locally. Claude
-   proves clean/selected plugin separation, its selected-plugin TUI, and that
-   the pinned provider did not load AGENTS.md from an ancestor outside the
-   selected current-project boundary. Codex proves clean → selected → clean MCP
-   visibility through a task-owned standalone fixture, sibling absence through
-   the runtime contract, unchanged ambient provider/plugin state, and a real
-   provider PTY startup that reaches MCP initialize + tools/list. Before that
+1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
+   Claude runs locally because its selected-plugin TUI requires a genuine human
+   terminal confirmation; its evidence stays outside the tracked tree. Codex runs
+   automatically in the macOS Release-candidate workflow using the exact
+   registry-integrity-pinned provider canary, proves clean → selected → clean MCP
+   visibility through a task-owned standalone fixture, unchanged provider/plugin
+   state, and a real provider PTY startup that reaches MCP initialize + tools/list.
+   Successful Codex evidence is uploaded as a content-addressed GitHub Actions
+   artifact and is the canonical Codex rehearsal transport. Before that
    PTY probe, the harness initializes a CLROOM-owned synthetic shadow, verifies
    its ownership marker, and records `trusted` only for the exact synthetic
    project so qualification never depends on scraping the trust UI. The harness
    sends no model prompt.
-2. **Action-time tag guard:** the helper rechecks live stable provider pins and
-   revalidates both local provider executable version/bytes against the accepted
-   pre-tag evidence immediately before the protected tag push.
-3. **Pre-publish:** repository release immutability must still be enabled, then
-   the exact Draft Release archive is downloaded and its checksums/attestations
-   plus the provider-specific automated capability probes are re-run.
+2. **Action-time tag guard:** the helper rechecks live stable provider pins,
+   revalidates local Claude version/bytes, and resolves/validates the successful
+   exact-PR Codex Actions artifact before the protected tag push. It never depends
+   on whichever Codex happens to be installed in the Owner's ambient PATH.
+3. **Pre-publish:** repository release immutability must still be enabled. The
+   exact Draft Release archive is downloaded and its checksums/attestations are
+   revalidated; Codex Draft runtime qualification runs automatically in the tag
+   Release workflow and is consumed as a successful Actions artifact, while the
+   Claude Draft probe remains on the authenticated local provider boundary.
 
 ## Stateful provider lifecycle closure
 
