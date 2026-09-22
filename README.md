@@ -35,7 +35,7 @@
 
 > **Agent runners and orchestrators can start Codex or Claude Code through CLROOM instead of calling the provider directly.**
 
-> **Clean by default, with explicit opt-ins per launch**
+> **Clean launch by default, with explicit opt-ins**
 
 CLROOM starts the installed `codex` or `claude` CLI without rewriting the setup you normally use. Project files, project instructions, and project-local skills stay available. Known unrelated personal-global instructions and global skills you did not select stay out of that launch.
 
