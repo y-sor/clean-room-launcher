@@ -4,17 +4,19 @@
 
 | Version | Status |
 | --- | --- |
-| `0.4.0` | Qualified |
+| `0.4.2` | Current qualified source contract; see GitHub Releases for publication status |
+| `0.4.0` | Prior published stable line |
 | `0.3.1` | Superseded by `0.4.0` |
 | `0.3.0` | Superseded by `0.3.1` |
 | `0.2.1` | Superseded by `0.3.0` |
 | `0.2.0` | Superseded by `0.2.1` |
 | `0.1.0-alpha.4.2` | Prior published prerelease |
 
-The v0.4.0 qualification is limited to macOS on Apple Silicon. Baseline
-clean-launch exact targets remain Codex `0.154.0` and Claude Code `2.1.272`;
-the bounded skill-only Claude whole-plugin activation path is separately
-qualified on Claude Code `2.1.273`. The distributed archive is unsigned and
+The v0.4.2 qualification is limited to macOS on Apple Silicon. Minimum accepted
+provider ranges remain Codex CLI `0.147.0+` and Claude Code CLI `2.1.223+`.
+Exact release qualification targets are Codex `0.156.0` and Claude Code
+`2.1.280`, including the bounded provider-specific whole-plugin paths described
+in the public provider documentation. The distributed archive is unsigned and
 unnotarized at the Apple platform-signing layer.
 
 Qualification here describes the supported source/version contract. Whether a

@@ -10,7 +10,7 @@ This table is deliberately conservative.
 
 | Provider | Input / scope | Current CLROOM direction | Confidence |
 | --- | --- | --- | --- |
-| Claude Code | interactive top-level launch | Isolated; exact qualification target is 2.1.272 | Current-release qualification canary |
+| Claude Code | interactive top-level launch | Isolated; exact qualification target is 2.1.280 | Current-release qualification canary |
 | Claude Code | `-p` non-interactive launch | Launch path exercised; response-output semantics not claimed as qualified | Provider exited 0, but the expected textual canary was not observed |
 | Claude Code | ordinary user settings source | Omitted through `--setting-sources project,local`, with additional controls for known personal-global roots | Confirmed from current CLROOM source |
 | Claude Code | project settings source | Retained | Confirmed from current CLROOM source |
@@ -20,12 +20,14 @@ This table is deliberately conservative.
 | Claude Code | `~/.claude.json` | Not blanket-blocked | Known limitation |
 | Claude Code | managed / organization policy | Must remain authoritative | Product invariant; detailed combinations continue to require tests |
 | Claude Code | selected personal-global skill | Admitted through a private temporary projection | Confirmed from current CLROOM source |
-| Claude Code | v0.4.0 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one already-installed plugin whose observed effective surface is skill-only | Exact real-provider E2E on Claude Code 2.1.273 / macOS Apple Silicon |
-| Claude Code | v0.4.0 selected plugin root | Exact active install root is revalidated and reopened read-only; persistent provider configuration is not rewritten | Focused negative tests plus exact real-provider E2E |
-| Claude Code | v0.4.0 raw plugin activation overlap | `--plugin-dir` and `--plugin-url` are refused while CLROOM resource selection is active | CLI conflict tests |
+| Claude Code | v0.4.2 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one already-installed plugin whose observed effective surface is skill-only | Exact real-provider E2E on Claude Code 2.1.280 / macOS Apple Silicon |
+| Claude Code | v0.4.2 selected plugin root | Exact active install root is revalidated and reopened read-only; persistent provider configuration is not rewritten | Focused negative tests plus exact real-provider E2E |
+| Claude Code | v0.4.2 raw plugin activation overlap | `--plugin-dir` and `--plugin-url` are refused while CLROOM resource selection is active | CLI conflict tests |
 | Codex | global `AGENTS.md` / `AGENTS.override.md` | Known global instruction inputs blocked for the CLROOM launch | Confirmed from current CLROOM source |
-| Codex | interactive top-level launch | Existing isolation path retained | Current-release qualification canary |
-| Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config` | Current-release qualification canary |
+| Codex | interactive top-level launch | Existing isolation path retained; exact qualification target is 0.156.0 | Current-release qualification canary |
+| Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config`; exact qualification target is 0.156.0 | Current-release qualification canary |
+| Codex | v0.4.2 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one installed standalone-capable bundle into a private shadow PluginStore | Exact real-provider E2E on Codex CLI 0.156.0 / macOS Apple Silicon |
+| Codex | v0.4.2 host-required plugin surface | App-owned `codex_app` MCP is classified `PLUGIN_HOST_REQUIRED` instead of being treated as standalone-capable | Negative qualification plus real standalone MCP fixture evidence |
 | Codex | project instruction chain | Retained | Confirmed from current CLROOM source |
 | Codex | unselected personal-global skill contents | Known personal-global skill roots restricted | Confirmed from current CLROOM source |
 | Codex | selected personal-global skills | Admitted for the launch | Confirmed from current CLROOM source |
@@ -49,8 +51,8 @@ Provider-managed synced/remote state is not guessed from filesystem residue.
 Cached package directories without an active install record are stale and
 remain unavailable. Selecting a package skill through `--skill-set=` admits only that skill
 directory and its supporting files; package hooks, MCP, agents, executables,
-settings, and notifications are not activated. By contrast, the v0.4.0
-whole-plugin selector deliberately passes one qualified provider-native plugin
+settings, and notifications are not activated. By contrast, the v0.4.2
+whole-plugin selectors deliberately pass one qualified provider-native plugin
 bundle as an atomic unit; it does not perform component-level surgery. The
 initial activation qualification is narrower than provider inventory: a matching
 plugin manifest identity plus only the default one-level `skills/<name>/SKILL.md`

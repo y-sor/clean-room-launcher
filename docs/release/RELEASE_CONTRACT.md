@@ -102,6 +102,28 @@ fresh-resolves npm `latest` and registry integrity for the exact Codex and
 Claude Code pins. A provider stable-version move blocks the release until pins,
 qualification, and evidence are refreshed.
 
+## Public documentation version coherence
+
+Every active release candidate must inventory semantic-version mentions across
+the active public documentation surface. The canonical release checker compares
+provider-version claims with `scripts/release/provider-pins.sh`, permits only
+explicitly declared compatibility/version-floor exceptions, and fails closed on
+stale or unclassified provider versions. Current-version product surfaces such as
+the README and install/support matrices must not keep an older exact release
+version after the candidate advances.
+
+Historical release records remain historical: `CHANGELOG.md` and the version
+history table in `SECURITY.md` are not rewritten merely because a new candidate
+exists. Provider claims inside `SECURITY.md`, however, are still checked against
+the current provider pins.
+
+The release harness never edits documentation after provider tests. A provider
+pin move must be accompanied by the required qualification evidence and matching
+documentation changes in the same reviewed candidate. Release-candidate and tag
+contract checks block until that coherence is restored. This keeps candidate
+bytes deterministic and makes documentation drift a pre-release failure rather
+than a post-test auto-write.
+
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.

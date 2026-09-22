@@ -35,22 +35,15 @@ Codex or Claude Code and point the executable at `clroom-codex` or
 SDK, daemon, or fork is required. The equivalent direct forms are
 `clroom codex ...` and `clroom claude ...`.
 
-When a Runner template needs its own context, pass only the exact names it
-declares, for example:
+When an external launcher needs its own runtime context, pass only the exact
+environment names it requires, for example:
 
 ```text
---pass-env=RUNNER_CREW_ID
---pass-env=RUNNER_MISSION_ID
---pass-env=RUNNER_HANDLE
---pass-env=RUNNER_EVENT_LOG
---pass-env=MISSION_CWD
+--pass-env=NAME
 ```
 
-Missing names remain missing and unrelated parent variables are not admitted.
-Runner v0.8.5 is the documented compatibility target for the exact Codex
-`0.154.0` and Claude Code `2.1.263` canaries. The broad interactive, mission,
-and native-resume claim remains subject to authenticated manual acceptance;
-other Runner versions are not independently qualified.
+Names that are not explicitly passed remain unavailable, and unrelated parent
+variables are not admitted.
 
 For headless automation, this release qualifies `clroom codex exec`. Claude Code
 `-p` can be passed through the launch path, but this release does not
