@@ -198,10 +198,10 @@ fn codex_release_harness_uses_one_private_synthetic_auth_fixture() {
 
     let smoke_install = smoke
         .find(r#"codex-mcp-fixture.py" install"#)
-        .expect("pre-tag smoke must install the shared Codex fixture");
+        .expect("pre-merge rehearsal must install the shared Codex fixture");
     let smoke_launch = smoke
         .find(r#""$clroom" --output json info codex"#)
-        .expect("pre-tag smoke must exercise the exact candidate");
+        .expect("pre-merge rehearsal must exercise the exact candidate");
     assert!(smoke_install < smoke_launch, "synthetic auth fixture must exist before the first candidate launch");
 
     let qualifier_install = qualifier
@@ -243,13 +243,13 @@ fn codex_pretag_smoke_closes_state_after_runtime_probe() {
 
     let runtime = smoke
         .find("codex-mcp-fixture.py\" probe-provider")
-        .expect("Codex pretag smoke must exercise the selected plugin through the real provider");
+        .expect("Codex rehearsal smoke must exercise the selected plugin through the real provider");
     let post_interactive = smoke
         .find("POST_RUNTIME_CLEAN_MCP_LIST")
-        .expect("Codex pretag smoke must launch clean again after real-provider runtime discovery");
+        .expect("Codex rehearsal smoke must launch clean again after real-provider runtime discovery");
     let evidence = smoke
-        .find("clroom.codex-plugin-release-smoke.v3")
-        .expect("Codex pretag evidence must use the MCP-runtime-aware schema");
+        .find("clroom.codex-plugin-release-smoke.v4")
+        .expect("Codex rehearsal evidence must use the MCP-runtime-aware schema");
     assert!(
         runtime < post_interactive && post_interactive < evidence,
         "post-runtime clean closure must happen before accepted evidence is written"
@@ -262,7 +262,7 @@ fn codex_pretag_smoke_closes_state_after_runtime_probe() {
     assert!(smoke.contains(r#""expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true""#));
     assert!(smoke.contains(r#""model_prompt_sent": False"#));
     assert!(smoke.contains(r#""post_runtime_clean_confirmed": post_runtime_clean == "true""#));
-    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v3""#));
+    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v4""#));
     assert!(tag_helper.contains(r#""provider_mcp_initialize_observed": True"#));
     assert!(tag_helper.contains(r#""provider_mcp_tools_list_observed": True"#));
     assert!(tag_helper.contains(r#""fixture_mcp_tool_call_passed": True"#));
@@ -292,7 +292,7 @@ fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
     assert!(verifier.contains(r#"run.get("event") == "push""#));
     assert!(verifier.contains(r#"for required in {"CI", "Release"}"#));
     assert!(verifier.contains(r#"run.get("status") != "completed" or run.get("conclusion") != "success""#));
-    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v3"));
+    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v4"));
     assert!(verifier.contains(r#""provider_state_lifecycle_closed": True"#));
     assert!(verifier.contains(r#"xp.get("real_provider_runtime_confirmed") is not True"#));
     assert!(verifier.contains(r#"xp.get("expected_mcp_runtime_healthy_confirmed") is not True"#));
@@ -493,6 +493,38 @@ fn release_review_boundary_is_content_addressed_and_squash_stable() {
             && contract.contains("accepted-tree verification"),
         "release contract must document squash-stable content-addressed acceptance"
     );
+}
+
+#[test]
+fn release_runtime_rehearsal_is_premerge_and_content_addressed() {
+    let claude =
+        std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
+    let codex =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let draft = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+    let contract =
+        std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+
+    for smoke in [&claude, &codex] {
+        assert!(smoke.contains(r#""$phase" == "rehearse""#));
+        assert!(smoke.contains("HEAD_NOT_EXPECTED_CANDIDATE"));
+        assert!(smoke.contains("source_tree"));
+        assert!(smoke.contains("reviewed_content_digest"));
+        assert!(smoke.contains("content-addressed-runtime-v1"));
+        assert!(!smoke.contains("HEAD_NOT_ACCEPTED_MAIN"));
+    }
+    for consumer in [&tag, &draft] {
+        assert!(consumer.contains("reviewed_content_digest"));
+        assert!(consumer.contains("current_tree"));
+        assert!(consumer.contains("content-addressed-runtime-v1"));
+        assert!(consumer.contains("clroom-release-evidence"));
+    }
+    assert!(tag.contains("rehearse-v${version}-${evidence_key}.json"));
+    assert!(tag.contains("codex-rehearse-v${version}-${evidence_key}.json"));
+    assert!(contract.contains(r#""runtime_rehearsal_phase": "exact_pr_candidate_before_merge_when_observable""#));
+    assert!(contract.contains(r#""runtime_evidence_binding": "reviewed_content_digest_and_tree_plus_provider_inputs""#));
+    assert!(contract.contains(r#""post_merge_runtime_role": "identity_state_and_action_time_revalidation_only""#));
 }
 
 #[test]
