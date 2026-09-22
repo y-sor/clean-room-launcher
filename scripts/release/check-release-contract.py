@@ -180,6 +180,13 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
             return None
         if version == candidate_version or version in other_allow:
             return None
+        compatibility_owners = [
+            provider
+            for provider, configured in provider_allow.items()
+            if isinstance(configured, dict) and version in configured
+        ]
+        if len(compatibility_owners) == 1:
+            return None
         return f"UNCLASSIFIED_VERSION:{version}"
 
     allowed = {candidate_version}
@@ -323,6 +330,16 @@ def main():
             "0.4.2", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CODEX_DOC_VERSION")
+        if public_doc_version_violation(
+            "docs/codex.md", "ordinary parser/runtime minimum remains", "", "0.147.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_COMPATIBILITY_FLOOR")
+        if public_doc_version_violation(
+            "docs/codex.md", "stale wrapped version", "", "0.154.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_STALE_VERSION")
         validate_public_doc_versions(
             contract,
             __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"],
