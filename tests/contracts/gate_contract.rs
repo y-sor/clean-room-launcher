@@ -241,6 +241,21 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
 }
 
 #[test]
+fn codex_runtime_probe_preserves_fixture_root_blocker() {
+    let smoke =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    assert!(smoke.contains(r#"sed -n 's/^CODEX_MCP_FIXTURE_BLOCKED://p'"#));
+    assert!(smoke.contains(r#"2>"$tmp/selected-runtime.err""#));
+    assert!(smoke.contains(
+        r#"fail_from_stderr "SELECTED_MCP_RUNTIME" "$tmp/selected-runtime.err""#
+    ));
+    assert!(
+        !smoke.contains(r#"|| fail "SELECTED_MCP_RUNTIME""#),
+        "runtime fixture failures must preserve the nested canonical reason"
+    );
+}
+
+#[test]
 fn codex_rehearsal_smoke_closes_state_after_runtime_probe() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
