@@ -124,6 +124,12 @@ for needle in \
   'stderr=subprocess.PIPE' \
   'existing CLROOM-owned shadow trust seed failed' \
   'missing shadow marker did not require bootstrap' \
+  'def create_provider_launch_observer(' \
+  'clroom-provider-launched-v1' \
+  'provider_launch_observed(provider_marker)' \
+  'provider launch observer marker invalid' \
+  'provider launch observer missed exact provider execution' \
+  'provider launch observer did not exec exact provider' \
   'CLROOM Codex shadow ownership marker missing' \
   'CLROOM Codex shadow ownership marker invalid'; do
   grep -Fq -- "$needle" "$codex_mcp_fixture" || fail "CODEX_SYNTHETIC_TRUST_CONTRACT_MISSING"
