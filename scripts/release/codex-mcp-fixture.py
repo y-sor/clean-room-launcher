@@ -575,7 +575,7 @@ def self_test():
         if sys.platform == "darwin":
             script_provider = root / "script-provider"
             script_provider.write_text(
-                "#!/bin/sh\nexec /bin/sleep 5\n",
+                "#!/bin/sh\n/bin/sleep 5\n",
                 encoding="utf-8",
             )
             script_provider.chmod(0o700)
