@@ -241,20 +241,19 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
 }
 
 #[test]
-fn codex_runtime_probe_observes_exact_provider_through_private_launcher() {
+fn codex_runtime_probe_matches_provider_by_file_identity_not_path_string() {
     let fixture =
         std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
-    assert!(fixture.contains("def create_provider_launch_observer("));
-    assert!(fixture.contains("provider-observer"));
-    assert!(fixture.contains("clroom-provider-launched-v1"));
-    assert!(fixture.contains("exec {shlex.quote(provider)}"));
-    assert!(fixture.contains("provider_launch_observed(provider_marker)"));
-    assert!(fixture.contains(
-        r#"str(observer.parent) + ":" + provider_dir + ":/usr/bin:/bin""#
-    ));
-    assert!(fixture.contains("provider launch observer marker invalid"));
-    assert!(fixture.contains("provider launch observer missed exact provider execution"));
-    assert!(fixture.contains("provider launch observer did not exec exact provider"));
+    assert!(fixture.contains("def same_executable_identity("));
+    assert!(fixture.contains("left_stat.st_dev == right_stat.st_dev"));
+    assert!(fixture.contains("left_stat.st_ino == right_stat.st_ino"));
+    assert!(fixture.contains("same_executable_identity(path, provider)"));
+    assert!(fixture.contains("provider file identity rejected an equivalent path"));
+    assert!(fixture.contains("provider file identity accepted unrelated executable"));
+    assert!(
+        !fixture.contains("process_path(pid) == provider"),
+        "macOS executable proof must not depend on pathname-string equality"
+    );
 }
 
 #[test]
