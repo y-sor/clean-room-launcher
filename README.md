@@ -274,7 +274,7 @@ launch, and asks Claude to load it for this session. Raw Claude
 resource selection.
 
 This whole-plugin path is currently an exact macOS Apple Silicon qualification
-target for Claude Code `2.1.278`. v0.4.x deliberately qualifies a narrower
+target for Claude Code `2.1.280`. v0.4.x deliberately qualifies a narrower
 subset of Claude's plugin format: the installed provider-native ID must have a matching
 `.claude-plugin/plugin.json` identity, and the observed effective components
 must come only from the default one-level `skills/<name>/SKILL.md` layout.
@@ -285,7 +285,7 @@ activation-qualified in v0.4.x. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-v0.4.2 targets Claude Code `2.1.278` for both ordinary clean launch and the
+v0.4.2 targets Claude Code `2.1.280` for both ordinary clean launch and the
 whole-plugin activation path. Codex whole-plugin activation is separately
 qualified through its own shadow-PluginStore mechanism. Standalone MCP
 selection, `--with=all`, multi-plugin selection, and component-level plugin
@@ -396,8 +396,8 @@ The qualified macOS provider paths for this source tree are:
 | Codex CLI 0.155.1 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
 | Codex CLI 0.155.1 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
 | Codex CLI 0.155.1 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
-| Claude Code CLI 2.1.278 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Claude Code CLI 2.1.278 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
+| Claude Code CLI 2.1.280 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Claude Code CLI 2.1.280 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
 | Claude Code CLI `-p` response-output semantics | macOS / Apple Silicon | Not independently qualified |
 
 Linux and Windows are `NOT_QUALIFIED`. Intel macOS, Homebrew, crates.io,
