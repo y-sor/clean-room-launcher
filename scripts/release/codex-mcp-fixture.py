@@ -368,7 +368,7 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
 
     observer, provider_marker = create_provider_launch_observer(home, provider)
     env = dict(base_env)
-    env["PATH"] = str(observer.parent) + ":/usr/bin:/bin"
+    env["PATH"] = str(observer.parent) + ":" + provider_dir + ":/usr/bin:/bin"
     pid, fd = pty.fork()
     if pid == 0:
         fcntl.ioctl(0, termios.TIOCSWINSZ, struct.pack("HHHH", 32, 120, 0, 0))
