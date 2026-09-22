@@ -66,7 +66,7 @@ for needle in \
   'expected_mcp=clroom_fixture' \
   '"$clroom" codex mcp list --json' \
   '"$clroom" codex --with="plugin:$plugin_id" mcp list --json' \
-  '"schema_version": "clroom.codex-plugin-release-smoke.v3"' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v4"' \
   '"clean_before_expected_mcp": False' \
   '"selected_expected_mcp": True' \
   '"selected_mcp_plugin_paths_rebased": True' \
@@ -81,16 +81,26 @@ for needle in \
   '"expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true"' \
   '"model_prompt_sent": False' \
   '"post_runtime_clean_confirmed": post_runtime_clean == "true"' \
+  '"source_tree": source_tree' \
+  '"reviewed_content_digest": reviewed_content_digest' \
+  '"evidence_binding": "content-addressed-runtime-v1"' \
+  'HEAD_NOT_EXPECTED_CANDIDATE' \
+  'clroom-release-evidence' \
   'codex-mcp-fixture.py" probe-provider' \
   'codex-mcp-fixture.py" probe-server'; do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_PLUGIN_SMOKE_CONTRACT_MISSING"
 done
 
 for needle in \
-  '"schema_version":"clroom.plugin-release-smoke.v2"' \
+  '"schema_version":"clroom.plugin-release-smoke.v3"' \
   '"external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true"' \
   '"project_agents_retained_confirmed": project_agents_retained=="true"' \
   '"external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true"' \
+  '"source_tree":source_tree' \
+  '"reviewed_content_digest":reviewed_content_digest' \
+  '"evidence_binding":"content-addressed-runtime-v1"' \
+  'HEAD_NOT_EXPECTED_CANDIDATE' \
+  'clroom-release-evidence' \
   'PROJECT_AGENTS_NOT_CONFIRMED' \
   'real-tui-workspace' \
   'chmod 0700 "$probe_tmp"' \
@@ -125,17 +135,21 @@ for needle in \
 done
 
 for needle in \
-  '"schema_version": "clroom.plugin-release-smoke.v2"' \
+  '"schema_version": "clroom.plugin-release-smoke.v3"' \
   '"external_ancestor_agents_absent_confirmed": True' \
   '"project_agents_retained_confirmed": True' \
   '"external_ancestor_agents_sandbox_probe_passed": True' \
-  'PRETAG_CLAUDE_EVIDENCE_PASS'; do
+  '"source_tree": current_tree' \
+  '"reviewed_content_digest": reviewed_content_digest' \
+  '"evidence_binding": "content-addressed-runtime-v1"' \
+  'rehearse-v${version}-${evidence_key}.json' \
+  'REHEARSAL_CLAUDE_EVIDENCE_PASS'; do
   grep -Fq -- "$needle" "$tag_helper" || fail "CLAUDE_TAG_GATE_MISSING"
 done
 
 for needle in \
-  'codex-pretag-v${version}-${expected:0:12}.json' \
-  '"schema_version": "clroom.codex-plugin-release-smoke.v3"' \
+  'codex-rehearse-v${version}-${evidence_key}.json' \
+  '"schema_version": "clroom.codex-plugin-release-smoke.v4"' \
   '"ambient_config_and_plugin_tree_unchanged": True' \
   '"provider_mcp_initialize_observed": True' \
   '"provider_mcp_tools_list_observed": True' \
@@ -145,8 +159,11 @@ for needle in \
   '"expected_mcp_runtime_healthy_confirmed": True' \
   '"model_prompt_sent": False' \
   '"post_runtime_clean_confirmed": True' \
-  'TAG_GATE_BLOCKED:CODEX_PRETAG_FIXTURE_IDENTITY' \
-  'PRETAG_CODEX_EVIDENCE_PASS' \
+  '"source_tree": current_tree' \
+  '"reviewed_content_digest": reviewed_content_digest' \
+  '"evidence_binding": "content-addressed-runtime-v1"' \
+  'TAG_GATE_BLOCKED:CODEX_REHEARSAL_FIXTURE_IDENTITY' \
+  'REHEARSAL_CODEX_EVIDENCE_PASS' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
   'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
   grep -Fq -- "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
