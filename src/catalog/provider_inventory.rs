@@ -10,10 +10,10 @@ use crate::catalog::resource::{
 };
 use std::path::{Path, PathBuf};
 
-pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 155, 1);
-pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 278);
-pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 155, 1);
-pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 278);
+pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 156, 0);
+pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 280);
+pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 156, 0);
+pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 280);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Provider {
@@ -591,7 +591,13 @@ mod tests {
         ));
         assert!(!plugin_activation_exact_tuple(
             Provider::Codex,
-            (0, 155, 0),
+            (0, 155, 1),
+            "macos",
+            "aarch64"
+        ));
+        assert!(!plugin_activation_exact_tuple(
+            Provider::Claude,
+            (2, 1, 278),
             "macos",
             "aarch64"
         ));
