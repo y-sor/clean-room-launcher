@@ -615,6 +615,7 @@ fn release_contract_enforces_public_doc_version_coherence() {
         "provider_versions_from_pins",
         "PUBLIC_DOC_VERSION_DRIFT",
         "RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_DRIFT",
+        "PUBLIC_DOC_VERSION_ALLOWLIST_REASON",
         "docs/providers.md",
     ] {
         assert!(
@@ -626,6 +627,7 @@ fn release_contract_enforces_public_doc_version_coherence() {
         "public_doc_version_inventory",
         "provider_version_source",
         "allowed_noncurrent_provider_versions",
+        "allowed_other_versions",
         "historical_exclusions",
         "stale_or_unclassified_version",
     ] {
