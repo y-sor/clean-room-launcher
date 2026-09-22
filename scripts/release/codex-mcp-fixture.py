@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import pty
+import re
 import selectors
 import signal
 import struct
@@ -253,25 +254,46 @@ def observed_methods(path):
 
 def seed_synthetic_project_trust(candidate, mode, project, home, env):
     project = pathlib.Path(project).resolve()
-    init_argv = [candidate]
-    if mode == "clroom":
-        init_argv.append("codex")
-    init_argv.extend(["mcp", "list", "--json"])
-    result = subprocess.run(
-        init_argv,
-        cwd=project,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=30,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError("failed to initialize CLROOM-owned Codex shadow")
     shadow_home = pathlib.Path(home).resolve() / ".codex" / ".clroom-clean-state-v2" / "home"
     marker = shadow_home / ".clroom-state-v2"
-    if marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
-        raise RuntimeError("CLROOM Codex shadow ownership marker missing")
+    try:
+        metadata = marker.lstat()
+    except FileNotFoundError:
+        initialized = False
+    else:
+        if marker.is_symlink() or not marker.is_file():
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
+        if metadata.st_mode & 0o077 or marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
+        initialized = True
+
+    if not initialized:
+        init_argv = [candidate]
+        if mode == "clroom":
+            init_argv.append("codex")
+        init_argv.extend(["mcp", "list", "--json"])
+        result = subprocess.run(
+            init_argv,
+            cwd=project,
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            markers = re.findall(r"CLROOM_[A-Z0-9_]+", result.stderr or "")
+            detail = f":{markers[-1]}" if markers else ""
+            raise RuntimeError(f"failed to initialize CLROOM-owned Codex shadow{detail}")
+        try:
+            metadata = marker.lstat()
+        except FileNotFoundError:
+            raise RuntimeError("CLROOM Codex shadow ownership marker missing")
+        if marker.is_symlink() or not marker.is_file():
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
+        if metadata.st_mode & 0o077 or marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
     config = shadow_home / "config.toml"
     if config.exists() and config.is_symlink():
         raise RuntimeError("synthetic Codex shadow config must not be a symlink")
@@ -442,6 +464,42 @@ def self_test():
             pass
         else:
             raise RuntimeError("conflicting synthetic Codex auth fixture was accepted")
+
+        shadow_home = codex_home / ".clroom-clean-state-v2" / "home"
+        shadow_home.mkdir(parents=True)
+        marker = shadow_home / ".clroom-state-v2"
+        marker.write_text("clroom-state-v2\n", encoding="utf-8")
+        marker.chmod(0o600)
+        project = root / "project"
+        project.mkdir()
+        failing_candidate = root / "must-not-run"
+        failing_candidate.write_text("#!/bin/sh\nexit 97\n", encoding="utf-8")
+        failing_candidate.chmod(0o755)
+        seed_synthetic_project_trust(
+            str(failing_candidate),
+            "clroom",
+            str(project),
+            str(root),
+            {"PATH": "/usr/bin:/bin", "HOME": str(root), "CODEX_HOME": str(codex_home)},
+        )
+        seeded = (shadow_home / "config.toml").read_text(encoding="utf-8")
+        if 'trust_level = "trusted"' not in seeded:
+            raise RuntimeError("existing CLROOM-owned shadow trust seed failed")
+
+        marker.unlink()
+        try:
+            seed_synthetic_project_trust(
+                str(failing_candidate),
+                "clroom",
+                str(project),
+                str(root),
+                {"PATH": "/usr/bin:/bin", "HOME": str(root), "CODEX_HOME": str(codex_home)},
+            )
+        except RuntimeError as error:
+            if "failed to initialize CLROOM-owned Codex shadow" not in str(error):
+                raise
+        else:
+            raise RuntimeError("missing shadow marker did not require bootstrap")
     print("CODEX_MCP_FIXTURE_SELF_TEST_PASS")
 
 def main():
