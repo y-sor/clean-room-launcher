@@ -135,3 +135,40 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: scripts/release/readiness.sh
+      - name: Rehearse Codex runtime on exact PR candidate
+        if: github.event_name == 'pull_request' && env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        id: codex_rehearsal
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_sha="${{ github.event.pull_request.head.sha }}"
+          test "$candidate_sha" = "$GITHUB_SHA"
+          evidence_dir="$RUNNER_TEMP/clroom-release-evidence"
+          provider_bin="$RUNNER_TEMP/clroom-codex-rehearsal-bin"
+          mkdir -p "$evidence_dir" "$provider_bin"
+          ln -s "$CLROOM_PROVIDER_CODEX" "$provider_bin/codex"
+          PATH="$provider_bin:$PATH" \
+          CLROOM_RELEASE_EVIDENCE_DIR="$evidence_dir" \
+            bash scripts/release/local-codex-plugin-activation-smoke.sh rehearse \
+              --expected-head "$candidate_sha" \
+              --fixture-standalone-mcp
+          digest="$(python3 - <<'PY'
+          import json
+          with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+              print(json.load(handle)["reviewed_content_digest"])
+          PY
+          )"
+          key="${digest:0:12}"
+          evidence="$evidence_dir/codex-rehearse-v${CLROOM_RELEASE_VERSION}-${key}.json"
+          test -s "$evidence"
+          artifact_name="codex-rehearsal-v${CLROOM_RELEASE_VERSION}-${digest}"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+          echo "evidence=$evidence" >> "$GITHUB_OUTPUT"
+      - name: Upload Codex pre-merge rehearsal evidence
+        if: github.event_name == 'pull_request' && steps.codex_rehearsal.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.codex_rehearsal.outputs.artifact_name }}
+          path: ${{ steps.codex_rehearsal.outputs.evidence }}
+          if-no-files-found: error
+          retention-days: 30
