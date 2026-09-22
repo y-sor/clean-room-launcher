@@ -43,13 +43,6 @@
       "historical_product_paths": [
         "SECURITY.md"
       ],
-      "candidate_product_paths": [
-        "README.md",
-        "docs/install.md",
-        "docs/codex.md",
-        "docs/configuration-matrix.md",
-        "docs/limitations.md"
-      ],
       "provider_version_source": "scripts/release/provider-pins.sh",
       "stale_or_unclassified_version": "fail",
       "allowed_noncurrent_provider_versions": {
