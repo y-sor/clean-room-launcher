@@ -137,7 +137,6 @@ def public_doc_version_policy(contract):
         "active_globs",
         "historical_exclusions",
         "historical_product_paths",
-        "candidate_product_paths",
     ):
         if not isinstance(policy.get(field), list):
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_POLICY:{field}")
@@ -163,7 +162,6 @@ def provider_versions_from_pins(policy):
     return result
 
 def public_doc_version_violation(path, line, prefix, version, candidate_version, pins, policy):
-    candidate_paths = policy["candidate_product_paths"]
     historical_product_paths = policy["historical_product_paths"]
     provider_allow = policy["allowed_noncurrent_provider_versions"]
     other_allow = policy["allowed_other_versions"]
