@@ -26,7 +26,7 @@ done
 
 for needle in \
   'CODEX_VERSION=0.155.1' \
-  'CLAUDE_VERSION=2.1.278' \
+  'CLAUDE_VERSION=2.1.280' \
   'CODEX_SHA512=' \
   'CODEX_PLATFORM_SHA512=' \
   'CLAUDE_SHA512=' \
