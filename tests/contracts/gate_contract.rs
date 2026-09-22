@@ -80,7 +80,7 @@ fn tag_release_qualifies_the_exact_archive_before_upload() {
     assert!(provisioner.contains("bash \"$root/scripts/release/check-provider-pins.sh\""));
     for required in [
         "CODEX_VERSION=0.155.1",
-        "CLAUDE_VERSION=2.1.278",
+        "CLAUDE_VERSION=2.1.280",
         "CODEX_SHA512=",
         "CODEX_PLATFORM_SHA512=",
         "CLAUDE_SHA512=",
