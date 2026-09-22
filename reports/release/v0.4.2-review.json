@@ -29,7 +29,8 @@
         "Claude release-smoke contract coverage requires PLUGIN_INFO_PREFLIGHT to run before the automated provider prompt and requires sanitized conflicts/kinds diagnostics on rejection.",
         "check-release-contract.py --self-test includes negative stale Codex, stale Claude, and stale current-product documentation fixtures plus positive current-provider and historical SECURITY version cases; canonical readiness executes this self-test and the real active-doc inventory.",
         "Independent gate-contract regression coverage requires the public-doc version policy, provider-pin binding, fail-closed PUBLIC_DOC_VERSION_DRIFT marker, docs/providers.md inventory coverage, and the no-auto-rewrite release-contract text to remain present.",
-        "Gate-contract audit restored the missing #[test] registration on release_runtime_rehearsal_is_premerge_and_content_addressed and removed the duplicate #[test] on the adjacent Claude preflight test; the structural pre-merge runtime rehearsal contract is therefore executed again by cargo test rather than merely compiled."
+        "Gate-contract audit restored the missing #[test] registration on release_runtime_rehearsal_is_premerge_and_content_addressed and removed the duplicate #[test] on the adjacent Claude preflight test; the structural pre-merge runtime rehearsal contract is therefore executed again by cargo test rather than merely compiled.",
+        "Release-contract self-test explicitly rejects a prefixed external product version such as Runner v0.8.5 in active docs, closing the gap where generic vX.Y.Z tokens outside candidate pages could otherwise pass inventory."
       ]
     },
     "dependencies": {
@@ -76,7 +77,8 @@
         "The Claude launch plaque now reports Global AGENTS.md off, and Claude documentation describes the 2.1.280 agents-md boundary instead of implying that CLAUDE.md is the provider's only instruction surface.",
         "CHANGELOG v0.4.2 documents the distinction between candidate-declared release date and actual annotated tagger timestamp without changing release identity or published support claims.",
         "Release chronology is machine-bound to the latest published stable baseline: the candidate version must advance and its declared changelog date cannot predate that baseline publication.",
-        "Public documentation was swept across README, SECURITY and docs surfaces after the provider bump: current exact qualification claims are Codex 0.156.0 / Claude 2.1.280, the product-specific Runner v0.8.5/RUNNER_* residue is removed while generic agent-runner terminology is retained, install examples no longer hard-code an old release tag, and the orphaned legacy demo GIF is removed."
+        "Public documentation was swept across README, SECURITY and docs surfaces after the provider bump: current exact qualification claims are Codex 0.156.0 / Claude 2.1.280, the product-specific Runner v0.8.5/RUNNER_* residue is removed while generic agent-runner terminology is retained, install examples no longer hard-code an old release tag, and the orphaned legacy demo GIF is removed.",
+        "Active public docs no longer carry historical prefixed product-version claims outside designated history: the Claude guide now describes the current v0.4.2 selector, and the release checker explicitly rejects a Runner v0.8.5-style external-product residue unless machine-allowlisted."
       ]
     }
   },
@@ -408,5 +410,5 @@
       "public documentation version-coherence gate: inventory every semver mention across active public docs; bind provider claims to canonical provider pins; allow only explicit compatibility/version-floor exceptions; reject stale exact product versions on current-version surfaces; keep CHANGELOG/SECURITY history historical without exempting current provider claims"
     ]
   },
-  "reviewed_content_digest": "f543b78c9380a8a11656bc107b201a9a1bdd77535d3be621475bff35eaadad4e"
+  "reviewed_content_digest": "4ebc93930803e66725e994c9f27b6c18ad14c96ec7a6c17ee1e64812909ca606"
 }

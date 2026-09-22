@@ -169,9 +169,11 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
     other_allow = policy["allowed_other_versions"]
 
     if prefix == "v":
-        if any(matches(path, pattern) for pattern in candidate_paths) and version != candidate_version:
-            return f"STALE_PRODUCT_VERSION:expected={candidate_version}:actual={version}"
-        return None
+        if any(matches(path, pattern) for pattern in historical_product_paths):
+            return None
+        if version == candidate_version or version in other_allow:
+            return None
+        return f"STALE_PRODUCT_VERSION:expected={candidate_version}:actual={version}"
 
     lower = line.lower()
     providers = {provider for provider in ("codex", "claude") if provider in lower}
@@ -320,6 +322,11 @@ def main():
             "0.4.2", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_PRODUCT_DOC_VERSION")
+        if public_doc_version_violation(
+            "docs/agent-runners.md", "Runner v0.8.5 compatibility", "v", "0.8.5",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_EXTERNAL_PRODUCT_VERSION_RESIDUE")
         if public_doc_version_violation(
             "SECURITY.md", "| 0.4.0 | prior |", "", "0.4.0",
             "0.4.2", fixture_pins, doc_policy
