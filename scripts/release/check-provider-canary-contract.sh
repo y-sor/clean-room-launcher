@@ -138,10 +138,16 @@ for needle in \
   'provider file identity accepted unrelated executable' \
   'provider argv identity missed an interpreter-backed launcher' \
   'provider argv identity accepted unrelated executable' \
+  'CODEX_MCP_PROVIDER_PROBE_PASS provider_process_observer=' \
+  'Codex did not reach MCP initialize + tools/list' \
   'CLROOM Codex shadow ownership marker missing' \
   'CLROOM Codex shadow ownership marker invalid'; do
   grep -Fq -- "$needle" "$codex_mcp_fixture" || fail "CODEX_SYNTHETIC_TRUST_CONTRACT_MISSING"
 done
+
+if grep -Fq -- 'raise RuntimeError("real Codex provider was not observed")' "$codex_mcp_fixture"; then
+  fail "CODEX_PROCESS_OBSERVER_MUST_NOT_BE_ACCEPTANCE_GATE"
+fi
 
 for needle in \
   'scope="real-provider-repeat-interactive-mcp-discovery-no-model"' \
