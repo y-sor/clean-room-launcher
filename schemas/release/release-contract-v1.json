@@ -108,7 +108,8 @@
         "GOVERNANCE.md",
         "_config.yml",
         "robots.txt",
-        "sitemap.xml"
+        "sitemap.xml",
+        ".github/FUNDING.yml"
       ]
     }
   ],
