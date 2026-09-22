@@ -387,5 +387,5 @@
       "release runbook/transport consistency: canonical docs expose only Claude as the local human-TTY boundary and forbid local Codex smoke commands as release-acceptance steps once Actions owns Codex evidence transport"
     ]
   },
-  "reviewed_content_digest": "bd90ef0861e61eeb8df8a86f41f4e8e6c431f6426aadaa96ab0339f18122324d"
+  "reviewed_content_digest": "71c53536f5a0d086c4034a47c6ca60e7f62494a696862300e7ecbb3f3fc767d6"
 }
