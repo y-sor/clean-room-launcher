@@ -233,6 +233,45 @@ PY
 before=$(fingerprint)
 "$clroom" --output json info claude "plugin:$plugin_id" >"$tmp/info.json" 2>"$tmp/info.err"   || fail "PLUGIN_INFO"
 
+python3 - "$plugin_id" "$tmp/info.json" <<'PY' || fail "PLUGIN_INFO_PREFLIGHT"
+import json, sys
+plugin_id, info_path = sys.argv[1:]
+info = json.load(open(info_path, encoding="utf-8"))
+entries = info.get("native_entries") or []
+if len(entries) != 1:
+    print(f"PLUGIN_INFO_PREFLIGHT_BLOCKED entry_count={len(entries)}", file=sys.stderr)
+    raise SystemExit(1)
+entry = entries[0]
+native = entry.get("native") or {}
+kinds = sorted({
+    item.get("kind")
+    for item in (entry.get("effective_components") or [])
+    if isinstance(item, dict)
+})
+qualified = (
+    native.get("id") == plugin_id
+    and entry.get("installation") == "installed"
+    and entry.get("selection") == "selectable"
+    and entry.get("qualification") == "qualified"
+    and entry.get("activation_policy") == "atomic_bundle"
+    and not (entry.get("conflicts") or [])
+    and kinds == ["skill"]
+)
+if not qualified:
+    details = {
+        "native_id": native.get("id"),
+        "installation": entry.get("installation"),
+        "selection": entry.get("selection"),
+        "qualification": entry.get("qualification"),
+        "activation_policy": entry.get("activation_policy"),
+        "conflicts": entry.get("conflicts") or [],
+        "kinds": kinds,
+    }
+    print("PLUGIN_INFO_PREFLIGHT_BLOCKED " + json.dumps(details, sort_keys=True), file=sys.stderr)
+    raise SystemExit(1)
+print("PLUGIN_INFO_PREFLIGHT=PASS")
+PY
+
 set +e
 "$clroom" claude -p --output-format stream-json --verbose "Reply exactly UNUSED."   >"$tmp/clean.jsonl" 2>"$tmp/clean.err"
 clean_rc=$?
