@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: scripts/release/local-codex-plugin-activation-smoke.sh pretag --fixture-standalone-mcp" >&2
+  echo "usage: scripts/release/local-codex-plugin-activation-smoke.sh rehearse --expected-head SHA --fixture-standalone-mcp" >&2
   echo "       scripts/release/local-codex-plugin-activation-smoke.sh draft --tag vX.Y.Z --fixture-standalone-mcp" >&2
   exit 64
 }
@@ -15,7 +15,12 @@ fail() {
 fail_from_stderr() {
   local label=$1
   local stderr_path=$2
+  local fixture_detail=
   local root_code=
+  fixture_detail=$(sed -n 's/^CODEX_MCP_FIXTURE_BLOCKED://p' "$stderr_path" 2>/dev/null | tail -1 || true)
+  if [[ -n "$fixture_detail" ]]; then
+    fail "$label:$fixture_detail"
+  fi
   root_code=$(grep -Eo 'CLROOM_[A-Z0-9_]+' "$stderr_path" 2>/dev/null | tail -1 || true)
   if [[ -n "$root_code" ]]; then
     fail "$label:$root_code"
@@ -24,16 +29,18 @@ fail_from_stderr() {
 }
 
 phase=${1:-}
-[[ "$phase" == "pretag" || "$phase" == "draft" ]] || usage
+[[ "$phase" == "rehearse" || "$phase" == "draft" ]] || usage
 shift || true
 
 tag=
+expected_head=
 plugin_id=
 expected_mcp=
 fixture_standalone_mcp=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tag) tag=${2:-}; shift 2 ;;
+    --expected-head) expected_head=${2:-}; shift 2 ;;
     --plugin-id) plugin_id=${2:-}; shift 2 ;;
     --expected-mcp) expected_mcp=${2:-}; shift 2 ;;
     --fixture-standalone-mcp) fixture_standalone_mcp=true; shift ;;
@@ -49,7 +56,9 @@ else
 fi
 if [[ "$phase" == "draft" ]]; then
   [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
+  [[ -z "$expected_head" ]] || usage
 else
+  [[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
   [[ -z "$tag" ]] || usage
 fi
 
@@ -92,14 +101,23 @@ trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 
 artifact=
 source_head=
+source_tree=
+reviewed_content_digest=
 assets="$tmp/assets"
 mkdir -p "$assets"
 
-if [[ "$phase" == "pretag" ]]; then
-  git fetch --quiet --no-tags origin main
-  source_head=$(git rev-parse FETCH_HEAD)
-  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_ACCEPTED_MAIN"
+if [[ "$phase" == "rehearse" ]]; then
+  source_head="$head"
+  [[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
+  source_tree=$(git rev-parse "HEAD^{tree}")
   python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
+  reviewed_content_digest=$(python3 - <<'PY'
+import json
+with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+    print(json.load(handle)["reviewed_content_digest"])
+PY
+)
+  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 
   cargo fetch --locked >/dev/null
   CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET='' \
@@ -114,7 +132,15 @@ else
   [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
   git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
   source_head=$(git rev-list -n 1 "$tag")
+  source_tree=$(git rev-parse "$tag^{tree}")
   [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
+  reviewed_content_digest=$(python3 - <<'PY'
+import json
+with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+    print(json.load(handle)["reviewed_content_digest"])
+PY
+)
+  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
   [[ "${tag#v}" == "$version" ]] || fail "TAG_VERSION_MISMATCH"
   [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == "true" ]] \
     || fail "RELEASE_NOT_DRAFT"
@@ -360,7 +386,7 @@ provider_mcp_initialize=false
 provider_mcp_tools_list=false
 fixture_mcp_tool_call=false
 
-python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
+if ! python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
   --candidate "$clroom" \
   --mode clroom \
   --project "$root" \
@@ -368,7 +394,9 @@ python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
   --provider "$codex_executable" \
   --plugin-id "$plugin_id" \
   --log "$fixture_log" \
-  || fail "SELECTED_MCP_RUNTIME"
+  2>"$tmp/selected-runtime.err"; then
+  fail_from_stderr "SELECTED_MCP_RUNTIME" "$tmp/selected-runtime.err"
+fi
 runtime_confirmed=true
 runtime_mcp_healthy=true
 provider_mcp_initialize=true
@@ -399,27 +427,32 @@ post_runtime_clean=true
 [[ "$source_before" == "$(fingerprint_tree "$plugin_source")" ]] \
   || fail "PLUGIN_SOURCE_CHANGED_INTERACTIVE"
 
-evidence_dir="$root/target/release-evidence"
+git_common_dir=$(git rev-parse --git-common-dir)
+if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
+evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
 mkdir -p "$evidence_dir"
-short=${source_head:0:12}
-evidence="$evidence_dir/codex-${phase}-v${version}-${short}.json"
-python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
+if [[ "$phase" == "rehearse" ]]; then evidence_key=${reviewed_content_digest:0:12}; else evidence_key=${source_head:0:12}; fi
+evidence="$evidence_dir/codex-${phase}-v${version}-${evidence_key}.json"
+python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$reviewed_content_digest" "$artifact_sha" \
   "$plugin_id" "$expected_mcp" "$runtime_confirmed" "$runtime_mcp_healthy" "$post_runtime_clean" "$codex_version_output" \
   "$codex_version" "$codex_provider_sha" "$source_before" "$provider_mcp_initialize" \
   "$provider_mcp_tools_list" "$fixture_mcp_tool_call" <<'PY'
 import datetime, json, sys
 (
-    output, phase, version, source, artifact_sha, plugin_id, expected_mcp,
+    output, phase, version, source, source_tree, reviewed_content_digest, artifact_sha, plugin_id, expected_mcp,
     runtime_confirmed, runtime_mcp_healthy, post_runtime_clean, codex_version_output, codex_version,
     codex_provider_sha, plugin_source_sha, provider_mcp_initialize,
     provider_mcp_tools_list, fixture_mcp_tool_call,
 ) = sys.argv[1:]
 record = {
-    "schema_version": "clroom.codex-plugin-release-smoke.v3",
+    "schema_version": "clroom.codex-plugin-release-smoke.v4",
     "result": "PASS",
     "phase": phase,
     "release_version": version,
     "source_head": source,
+    "source_tree": source_tree,
+    "reviewed_content_digest": reviewed_content_digest,
+    "evidence_binding": "content-addressed-runtime-v1",
     "artifact_sha256": artifact_sha,
     "platform": "macos-aarch64",
     "codex_version_output": codex_version_output,
@@ -454,6 +487,8 @@ PY
 echo "CODEX_PLUGIN_RELEASE_SMOKE=PASS"
 echo "PHASE=$phase"
 echo "SOURCE_HEAD=$source_head"
+echo "SOURCE_TREE=$source_tree"
+echo "REVIEWED_CONTENT_DIGEST=$reviewed_content_digest"
 echo "ARTIFACT_SHA256=$artifact_sha"
 echo "PLUGIN_ID=$plugin_id"
 echo "EXPECTED_MCP=$expected_mcp"

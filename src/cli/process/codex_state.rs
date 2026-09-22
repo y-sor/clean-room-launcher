@@ -80,16 +80,20 @@ pub(super) fn prepare(
     reconcile_plugin_projection(&shadow_home, plugin_activation)?;
 
     for (name, ambient_auth) in auth_files {
+        let expected_auth = fs::canonicalize(&ambient_auth)
+            .map_err(|_| "CLROOM_CODEX_AUTH_REFERENCE_INVALID".to_owned())?;
         let auth_link = shadow_home.join(name);
         match fs::symlink_metadata(&auth_link) {
             Ok(metadata) if metadata.file_type().is_symlink() => {
-                if fs::read_link(&auth_link).ok().as_deref() != Some(ambient_auth.as_path()) {
+                let linked_auth = fs::canonicalize(&auth_link)
+                    .map_err(|_| "CLROOM_CODEX_AUTH_REFERENCE_INVALID".to_owned())?;
+                if linked_auth != expected_auth {
                     return Err("CLROOM_CODEX_AUTH_REFERENCE_INVALID".to_owned());
                 }
             }
             Ok(_) => return Err("CLROOM_CODEX_STATE_DIRTY".to_owned()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                symlink(&ambient_auth, &auth_link)
+                symlink(&expected_auth, &auth_link)
                     .map_err(|_| "CLROOM_CODEX_AUTH_REFERENCE_FAILED".to_owned())?;
             }
             Err(_) => return Err("CLROOM_CODEX_AUTH_REFERENCE_INVALID".to_owned()),
@@ -630,6 +634,31 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn auth_reference_accepts_equivalent_lexical_path_and_rejects_other_file() {
+        let scratch = Scratch::new();
+        let home = scratch.0.join("home");
+        let ambient_codex_home = home.join(".codex");
+        fs::create_dir_all(&ambient_codex_home).unwrap();
+        let auth = ambient_codex_home.join("auth.json");
+        fs::write(&auth, b"synthetic auth state").unwrap();
+
+        let first = prepare(&home, &ambient_codex_home, &[], None).unwrap();
+        let auth_link = first.shadow_home.join("auth.json");
+        fs::remove_file(&auth_link).unwrap();
+
+        let lexical_equivalent = ambient_codex_home.join(".").join("auth.json");
+        symlink(&lexical_equivalent, &auth_link).unwrap();
+        prepare(&home, &ambient_codex_home, &[], None).unwrap();
+
+        fs::remove_file(&auth_link).unwrap();
+        let other = ambient_codex_home.join("other-auth.json");
+        fs::write(&other, b"synthetic auth state").unwrap();
+        symlink(&other, &auth_link).unwrap();
+        let error = prepare(&home, &ambient_codex_home, &[], None).unwrap_err();
+        assert_eq!(error, "CLROOM_CODEX_AUTH_REFERENCE_INVALID");
     }
 
     #[test]

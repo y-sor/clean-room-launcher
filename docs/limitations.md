@@ -9,12 +9,12 @@ permalink: /limitations.html
   qualification is limited to the documented macOS Apple Silicon release path.
 - Only macOS on Apple Silicon is supported. The minimum accepted versions are
   Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.2 exact
-  qualification targets are Codex `0.155.1` and Claude Code `2.1.278`.
+  qualification targets are Codex `0.156.0` and Claude Code `2.1.280`.
   Release qualification fails closed if either stable provider version moves
   before tagging.
 - The v0.4.2 whole-plugin selector admits at most one already-installed
-  provider-native plugin per launch. Codex `0.155.1` uses an exact private
-  shadow-PluginStore projection for the interactive path; Claude Code `2.1.278`
+  provider-native plugin per launch. Codex `0.156.0` uses an exact private
+  shadow-PluginStore projection for the interactive path; Claude Code `2.1.280`
   uses its separately qualified session-only plugin-directory path. Other
   provider tuples fail closed for activation. Codex plugins whose effective MCP
   surface includes the app-owned `codex_app` server are `HOST_REQUIRED` and

@@ -80,9 +80,12 @@ release archive, not sibling build outputs. The archive, installer, SBOM,
 checksums, provenance attestation bundle, and SBOM attestation bundle are
 verified before a guarded Draft Release is created.
 
-Publishing remains a separate action. The tag helper first revalidates provider
-pins and the local provider bytes bound by accepted pre-tag evidence. Only after
-those provider checks finish does the final remote guard refresh `main`, confirm
+Publishing remains a separate action. The tag helper first revalidates live
+provider pins, revalidates the local Claude provider bytes bound by pre-merge
+rehearsal evidence, and resolves the Codex pre-merge evidence from the successful
+exact-PR macOS GitHub Actions artifact. Ambient local Codex installation state is
+not a release input. Only after those provider checks finish does the final remote
+guard refresh `main`, confirm
 the tag is still absent, revalidate the active no-bypass `v*` tag ruleset, and
 rerun the whole-release contract against the current published baseline. No
 provider/network qualification runs after that final remote guard before the
@@ -101,23 +104,28 @@ qualification, and evidence are refreshed.
 
 For whole-plugin activation:
 
-1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
-   proves clean/selected plugin separation, its selected-plugin TUI, and that
-   the pinned provider did not load AGENTS.md from an ancestor outside the
-   selected current-project boundary. Codex proves clean → selected → clean MCP
-   visibility through a task-owned standalone fixture, sibling absence through
-   the runtime contract, unchanged ambient provider/plugin state, and a real
-   provider PTY startup that reaches MCP initialize + tools/list. Before that
+1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
+   Claude runs locally because its selected-plugin TUI requires a genuine human
+   terminal confirmation; its evidence stays outside the tracked tree. Codex runs
+   automatically in the macOS Release-candidate workflow using the exact
+   registry-integrity-pinned provider canary, proves clean → selected → clean MCP
+   visibility through a task-owned standalone fixture, unchanged provider/plugin
+   state, and a real provider PTY startup that reaches MCP initialize + tools/list.
+   Successful Codex evidence is uploaded as a content-addressed GitHub Actions
+   artifact and is the canonical Codex rehearsal transport. Before that
    PTY probe, the harness initializes a CLROOM-owned synthetic shadow, verifies
    its ownership marker, and records `trusted` only for the exact synthetic
    project so qualification never depends on scraping the trust UI. The harness
    sends no model prompt.
-2. **Action-time tag guard:** the helper rechecks live stable provider pins and
-   revalidates both local provider executable version/bytes against the accepted
-   pre-tag evidence immediately before the protected tag push.
-3. **Pre-publish:** repository release immutability must still be enabled, then
-   the exact Draft Release archive is downloaded and its checksums/attestations
-   plus the provider-specific automated capability probes are re-run.
+2. **Action-time tag guard:** the helper rechecks live stable provider pins,
+   revalidates local Claude version/bytes, and resolves/validates the successful
+   exact-PR Codex Actions artifact before the protected tag push. It never depends
+   on whichever Codex happens to be installed in the Owner's ambient PATH.
+3. **Pre-publish:** repository release immutability must still be enabled. The
+   exact Draft Release archive is downloaded and its checksums/attestations are
+   revalidated; Codex Draft runtime qualification runs automatically in the tag
+   Release workflow and is consumed as a successful Actions artifact, while the
+   Claude Draft probe remains on the authenticated local provider boundary.
 
 ## Stateful provider lifecycle closure
 
@@ -130,7 +138,7 @@ For Codex whole-plugin activation this means:
 
 - exact-provider CI qualification executes two real-provider startups against
   the same synthetic home;
-- accepted-main pre-tag qualification executes
+- exact-PR rehearsal executes
   clean → selected → clean → real-provider MCP runtime probe → clean on the same
   CLROOM shadow generation;
 - the final post-runtime clean launch must succeed before evidence is
@@ -151,7 +159,7 @@ surfaces without changing CLROOM itself. Startup/version/byte checks alone are
 therefore insufficient for a clean-launch claim.
 
 For every newly pinned provider tuple, release qualification must re-prove the
-ambient input classes CLROOM claims to suppress. For Claude Code 2.1.278 the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.280 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
 through ancestor directories. For Git projects, CLROOM uses the nearest real
 (non-symlink) `.git` file or directory as the project instruction boundary;
@@ -166,7 +174,7 @@ passes a synthetic launched-provider sandbox probe proving external ancestor
 AGENTS.md and .claude/AGENTS.md are unreadable while project-local equivalents
 remain readable. The probe must separately prove that the launched provider
 body executed after version preflight; a provider `--version` success alone
-cannot satisfy this evidence. Accepted pre-tag evidence additionally requires the real pinned-provider
+cannot satisfy this evidence. Pre-merge rehearsal evidence additionally requires the real pinned-provider
 selected-plugin TUI to run inside a task-owned synthetic nested Git project and
 confirm both sides of the boundary: repo/nested project AGENTS.md is reported as
 loaded, while AGENTS.md and .claude/AGENTS.md above that Git project are not.
@@ -181,7 +189,7 @@ A successful Release workflow is not by itself a publish verdict. Before an
 Owner publish gate, the canonical local verifier
 `scripts/release/verify-draft-release.sh` must reconcile the exact tag and
 source SHA, Draft identity and exact asset set, checksums and release-visible
-attestations, current provider pins, accepted pre-tag and Draft provider
+attestations, current provider pins, pre-merge rehearsal and Draft provider
 evidence, and every tag-triggered GitHub Actions run for that exact tag/SHA.
 Any incomplete or non-success tag-triggered run blocks publication.
 
@@ -191,18 +199,34 @@ publish, edit, or replace release assets.
 Use:
 
 ```sh
-bash scripts/release/local-plugin-activation-smoke.sh pretag --plugin-id <qualified-claude-id>
-bash scripts/release/local-codex-plugin-activation-smoke.sh pretag \
-  --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
+# Before merge, on the exact PR candidate HEAD, only Claude remains a local
+# human-TTY boundary:
+bash scripts/release/local-plugin-activation-smoke.sh rehearse \
+  --expected-head <exact-pr-head> --plugin-id <qualified-claude-id>
 
+# Codex pre-merge rehearsal is produced by the successful macOS
+# Release-candidate workflow and consumed from its content-addressed artifact.
+
+# After the protected tag creates the Draft, run the local Claude Draft probe:
 bash scripts/release/local-plugin-activation-smoke.sh draft \
   --tag vX.Y.Z --plugin-id <qualified-claude-id>
-bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
-  --tag vX.Y.Z --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
 
-# After both Draft smokes PASS, reconcile the complete exact-tag verdict:
+# Codex Draft runtime evidence is produced by the tag Release workflow.
+# Reconcile both provider evidence paths plus exact-tag release state:
 bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
 ```
+
+Local Codex smoke commands are diagnostic/development tools only; they are not
+release-acceptance transport. Canonical Codex pre-merge and Draft evidence comes
+from the provenance-checked GitHub Actions artifacts described above.
+
+Rehearsal evidence is content-addressed by the reviewed release digest plus the
+exact Git tree and provider bytes. It may survive a squash only after
+candidate-tree == accepted-tree verification; commit SHA remains provenance.
+Dynamic evidence is stored outside the tracked tree in the repository Git common
+directory by default, so normal task-worktree cleanup does not destroy release
+evidence. The tag helper refreshes mutable/provider/action-time state instead of
+rerunning the content proof solely because squash changed the commit SHA.
 
 These smokes never install, update, enable persistently, remove, or downgrade a
 provider/plugin. Claude's automated probe uses its established startup evidence

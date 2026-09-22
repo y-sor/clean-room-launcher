@@ -66,7 +66,7 @@ fn provider_info_json_is_one_versioned_document_on_stdout() {
     assert_eq!(value["clean_launch"]["qualification"], "unqualified");
     assert_eq!(
         value["clean_launch"]["exact_target"],
-        "2.1.278 / macOS / Apple Silicon"
+        "2.1.280 / macOS / Apple Silicon"
     );
     let capabilities = value["capabilities"].as_array().unwrap();
     assert_eq!(capabilities.len(), 2);

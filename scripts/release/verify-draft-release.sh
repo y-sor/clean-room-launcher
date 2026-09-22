@@ -139,23 +139,43 @@ bash scripts/release/check-provider-pins.sh || fail "PROVIDER_PINS"
 # shellcheck source=provider-pins.sh
 source scripts/release/provider-pins.sh
 
-claude_pretag="target/release-evidence/pretag-v${version}-${short}.json"
-claude_draft="target/release-evidence/draft-v${version}-${short}.json"
-codex_pretag="target/release-evidence/codex-pretag-v${version}-${short}.json"
-codex_draft="target/release-evidence/codex-draft-v${version}-${short}.json"
-for path in "$claude_pretag" "$claude_draft" "$codex_pretag" "$codex_draft"; do
-  [[ -f "$path" ]] || fail "LOCAL_EVIDENCE_MISSING:$path"
+current_tree=$(git rev-parse "HEAD^{tree}")
+reviewed_content_digest=$(python3 - <<'PY'
+import json
+with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+    print(json.load(handle)["reviewed_content_digest"])
+PY
+)
+[[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
+git_common_dir=$(git rev-parse --git-common-dir)
+if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
+evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
+evidence_key=${reviewed_content_digest:0:12}
+claude_rehearsal="$evidence_dir/rehearse-v${version}-${evidence_key}.json"
+claude_draft="$evidence_dir/draft-v${version}-${short}.json"
+codex_rehearsal="$evidence_dir/codex-rehearse-v${version}-${evidence_key}.json"
+codex_draft="$evidence_dir/codex-draft-v${version}-${short}.json"
+
+bash scripts/release/resolve-codex-rehearsal-evidence.sh \
+  "$version" "$current_tree" "$reviewed_content_digest" "$codex_rehearsal" \
+  || fail "CODEX_REHEARSAL_ARTIFACT"
+bash scripts/release/resolve-codex-draft-evidence.sh \
+  "$version" "$expected" "$codex_draft" \
+  || fail "CODEX_DRAFT_ARTIFACT"
+
+for path in "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft"; do
+  [[ -f "$path" ]] || fail "EVIDENCE_MISSING:$path"
 done
 
 artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
 python3 - \
-  "$claude_pretag" "$claude_draft" "$codex_pretag" "$codex_draft" \
-  "$version" "$expected" "$artifact_sha" "$CLAUDE_VERSION" "$CODEX_VERSION" <<'PY' \
+  "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft" \
+  "$version" "$expected" "$current_tree" "$reviewed_content_digest" "$artifact_sha" "$CLAUDE_VERSION" "$CODEX_VERSION" <<'PY' \
   || fail "LOCAL_EVIDENCE_INVALID"
 import json, re, sys
 (
-    claude_pretag_path, claude_draft_path, codex_pretag_path, codex_draft_path,
-    version, expected, artifact_sha, claude_version, codex_version,
+    claude_rehearsal_path, claude_draft_path, codex_rehearsal_path, codex_draft_path,
+    version, expected, current_tree, reviewed_content_digest, artifact_sha, claude_version, codex_version,
 ) = sys.argv[1:]
 
 def load(path):
@@ -163,17 +183,16 @@ def load(path):
         return json.load(handle)
 
 cp, cd, xp, xd = map(load, [
-    claude_pretag_path, claude_draft_path, codex_pretag_path, codex_draft_path,
+    claude_rehearsal_path, claude_draft_path, codex_rehearsal_path, codex_draft_path,
 ])
 
-for record, phase in [(cp, "pretag"), (cd, "draft")]:
-    if record.get("schema_version") != "clroom.plugin-release-smoke.v2":
+for record, phase in [(cp, "rehearse"), (cd, "draft")]:
+    if record.get("schema_version") != "clroom.plugin-release-smoke.v3":
         raise SystemExit("claude-schema")
     required = {
         "result": "PASS",
         "phase": phase,
         "release_version": version,
-        "source_head": expected,
         "platform": "macos-aarch64",
         "claude_version": claude_version,
         "clean_target_plugin": False,
@@ -183,22 +202,32 @@ for record, phase in [(cp, "pretag"), (cd, "draft")]:
         "persistent_config_unchanged": True,
         "external_ancestor_agents_sandbox_probe_passed": True,
     }
+    if phase == "rehearse":
+        required.update({
+            "source_tree": current_tree,
+            "reviewed_content_digest": reviewed_content_digest,
+            "evidence_binding": "content-addressed-runtime-v1",
+        })
+    else:
+        required["source_head"] = expected
     for key, value in required.items():
         if record.get(key) != value:
             raise SystemExit(f"claude-{phase}:{key}")
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(record.get("source_head", ""))):
+        raise SystemExit(f"claude-{phase}:source-head")
     if not record.get("plugin_id"):
         raise SystemExit(f"claude-{phase}:plugin-id")
     if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("claude_provider_sha256", ""))):
         raise SystemExit(f"claude-{phase}:provider-sha")
 
 if cp.get("interactive_selected_tui_confirmed") is not True:
-    raise SystemExit("claude-pretag:interactive")
+    raise SystemExit("claude-rehearsal:interactive")
 if cp.get("interactive_no_model_prompt_confirmed") is not True:
-    raise SystemExit("claude-pretag:no-model")
+    raise SystemExit("claude-rehearsal:no-model")
 if cp.get("external_ancestor_agents_absent_confirmed") is not True:
-    raise SystemExit("claude-pretag:external-ancestor-agents")
+    raise SystemExit("claude-rehearsal:external-ancestor-agents")
 if cp.get("project_agents_retained_confirmed") is not True:
-    raise SystemExit("claude-pretag:project-agents-retention")
+    raise SystemExit("claude-rehearsal:project-agents-retention")
 if cp.get("plugin_id") != cd.get("plugin_id"):
     raise SystemExit("claude-plugin-drift")
 if cp.get("claude_provider_sha256") != cd.get("claude_provider_sha256"):
@@ -206,14 +235,13 @@ if cp.get("claude_provider_sha256") != cd.get("claude_provider_sha256"):
 if cd.get("artifact_sha256") != artifact_sha:
     raise SystemExit("claude-draft-artifact")
 
-for record, phase in [(xp, "pretag"), (xd, "draft")]:
-    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v3":
+for record, phase in [(xp, "rehearse"), (xd, "draft")]:
+    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v4":
         raise SystemExit("codex-schema")
     required = {
         "result": "PASS",
         "phase": phase,
         "release_version": version,
-        "source_head": expected,
         "platform": "macos-aarch64",
         "codex_version": codex_version,
         "clean_before_expected_mcp": False,
@@ -227,9 +255,19 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
         "fixture_mcp_tool_call_passed": True,
         "provider_state_lifecycle_closed": True,
     }
+    if phase == "rehearse":
+        required.update({
+            "source_tree": current_tree,
+            "reviewed_content_digest": reviewed_content_digest,
+            "evidence_binding": "content-addressed-runtime-v1",
+        })
+    else:
+        required["source_head"] = expected
     for key, value in required.items():
         if record.get(key) != value:
             raise SystemExit(f"codex-{phase}:{key}")
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(record.get("source_head", ""))):
+        raise SystemExit(f"codex-{phase}:source-head")
     if record.get("plugin_id") != "standalone-mcp@clroom-fixture" or record.get("expected_mcp") != "clroom_fixture":
         raise SystemExit(f"codex-{phase}:fixture-identity")
     for key in ("codex_provider_sha256", "plugin_source_sha256"):
@@ -237,13 +275,13 @@ for record, phase in [(xp, "pretag"), (xd, "draft")]:
             raise SystemExit(f"codex-{phase}:{key}")
 
 if xp.get("real_provider_runtime_confirmed") is not True:
-    raise SystemExit("codex-pretag:runtime")
+    raise SystemExit("codex-rehearsal:runtime")
 if xp.get("expected_mcp_runtime_healthy_confirmed") is not True:
-    raise SystemExit("codex-pretag:mcp-health")
+    raise SystemExit("codex-rehearsal:mcp-health")
 if xp.get("model_prompt_sent") is not False:
-    raise SystemExit("codex-pretag:model-prompt")
+    raise SystemExit("codex-rehearsal:model-prompt")
 if xp.get("post_runtime_clean_confirmed") is not True:
-    raise SystemExit("codex-pretag:post-runtime-clean")
+    raise SystemExit("codex-rehearsal:post-runtime-clean")
 for key in ("plugin_id", "expected_mcp", "codex_provider_sha256", "plugin_source_sha256"):
     if xp.get(key) != xd.get(key):
         raise SystemExit(f"codex-drift:{key}")

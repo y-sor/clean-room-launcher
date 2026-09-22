@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: scripts/release/local-plugin-activation-smoke.sh pretag --plugin-id ID" >&2
+  echo "usage: scripts/release/local-plugin-activation-smoke.sh rehearse --expected-head SHA --plugin-id ID" >&2
   echo "       scripts/release/local-plugin-activation-smoke.sh draft --tag vX.Y.Z --plugin-id ID" >&2
   exit 64
 }
@@ -13,14 +13,16 @@ fail() {
 }
 
 phase=${1:-}
-[[ "$phase" == "pretag" || "$phase" == "draft" ]] || usage
+[[ "$phase" == "rehearse" || "$phase" == "draft" ]] || usage
 shift || true
 
 tag=
+expected_head=
 plugin_id=
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tag) tag=${2:-}; shift 2 ;;
+    --expected-head) expected_head=${2:-}; shift 2 ;;
     --plugin-id) plugin_id=${2:-}; shift 2 ;;
     *) usage ;;
   esac
@@ -28,7 +30,9 @@ done
 [[ -n "$plugin_id" ]] || fail "PLUGIN_ID_REQUIRED"
 if [[ "$phase" == "draft" ]]; then
   [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
+  [[ -z "$expected_head" ]] || usage
 else
+  [[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
   [[ -z "$tag" ]] || usage
 fi
 
@@ -71,14 +75,23 @@ trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 
 artifact=
 source_head=
+source_tree=
+reviewed_content_digest=
 assets="$tmp/assets"
 mkdir -p "$assets"
 
-if [[ "$phase" == "pretag" ]]; then
-  git fetch --quiet --no-tags origin main
-  source_head=$(git rev-parse FETCH_HEAD)
-  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_ACCEPTED_MAIN"
-  python3 scripts/release/check-release-contract.py --report >/dev/null     || fail "RELEASE_CONTRACT"
+if [[ "$phase" == "rehearse" ]]; then
+  source_head="$head"
+  [[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
+  source_tree=$(git rev-parse "HEAD^{tree}")
+  python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
+  reviewed_content_digest=$(python3 - <<'PY'
+import json
+with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+    print(json.load(handle)["reviewed_content_digest"])
+PY
+)
+  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 
   cargo fetch --locked >/dev/null
   CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET=''     ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
@@ -92,7 +105,15 @@ else
   [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
   git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
   source_head=$(git rev-list -n 1 "$tag")
+  source_tree=$(git rev-parse "$tag^{tree}")
   [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
+  reviewed_content_digest=$(python3 - <<'PY'
+import json
+with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+    print(json.load(handle)["reviewed_content_digest"])
+PY
+)
+  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
   [[ "${tag#v}" == "$version" ]] || fail "TAG_VERSION_MISMATCH"
   [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == "true" ]]     || fail "RELEASE_NOT_DRAFT"
 
@@ -153,7 +174,7 @@ printf '%s\n' 'nested hidden instructions' >"$probe_project/.claude/AGENTS.md"
 cat >"$probe_bin/claude" <<'SH'
 #!/bin/sh
 if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then
-  printf '2.1.278\n'
+  printf '2.1.280\n'
   exit 0
 fi
 for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.claude/AGENTS.md"; do
@@ -211,6 +232,45 @@ PY
 
 before=$(fingerprint)
 "$clroom" --output json info claude "plugin:$plugin_id" >"$tmp/info.json" 2>"$tmp/info.err"   || fail "PLUGIN_INFO"
+
+python3 - "$plugin_id" "$tmp/info.json" <<'PY' || fail "PLUGIN_INFO_PREFLIGHT"
+import json, sys
+plugin_id, info_path = sys.argv[1:]
+info = json.load(open(info_path, encoding="utf-8"))
+entries = info.get("native_entries") or []
+if len(entries) != 1:
+    print(f"PLUGIN_INFO_PREFLIGHT_BLOCKED entry_count={len(entries)}", file=sys.stderr)
+    raise SystemExit(1)
+entry = entries[0]
+native = entry.get("native") or {}
+kinds = sorted({
+    item.get("kind")
+    for item in (entry.get("effective_components") or [])
+    if isinstance(item, dict)
+})
+qualified = (
+    native.get("id") == plugin_id
+    and entry.get("installation") == "installed"
+    and entry.get("selection") == "selectable"
+    and entry.get("qualification") == "qualified"
+    and entry.get("activation_policy") == "atomic_bundle"
+    and not (entry.get("conflicts") or [])
+    and kinds == ["skill"]
+)
+if not qualified:
+    details = {
+        "native_id": native.get("id"),
+        "installation": entry.get("installation"),
+        "selection": entry.get("selection"),
+        "qualification": entry.get("qualification"),
+        "activation_policy": entry.get("activation_policy"),
+        "conflicts": entry.get("conflicts") or [],
+        "kinds": kinds,
+    }
+    print("PLUGIN_INFO_PREFLIGHT_BLOCKED " + json.dumps(details, sort_keys=True), file=sys.stderr)
+    raise SystemExit(1)
+print("PLUGIN_INFO_PREFLIGHT=PASS")
+PY
 
 set +e
 "$clroom" claude -p --output-format stream-json --verbose "Reply exactly UNUSED."   >"$tmp/clean.jsonl" 2>"$tmp/clean.err"
@@ -316,7 +376,7 @@ PY
 interactive=false
 external_ancestor_agents_absent=false
 project_agents_retained=false
-if [[ "$phase" == "pretag" ]]; then
+if [[ "$phase" == "rehearse" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
 
   tui_workspace="$tmp/real-tui-workspace"
@@ -362,22 +422,27 @@ fi
 [[ "$(claude --version 2>&1 | head -1)" == "$claude_version_output" ]] || fail "CLAUDE_PROVIDER_VERSION_CHANGED"
 [[ "$(shasum -a 256 "$(command -v claude)" | awk '{print $1}')" == "$claude_provider_sha" ]] || fail "CLAUDE_PROVIDER_BYTES_CHANGED"
 
-evidence_dir="$root/target/release-evidence"
+git_common_dir=$(git rev-parse --git-common-dir)
+if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
+evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
 mkdir -p "$evidence_dir"
-short=${source_head:0:12}
-evidence="$evidence_dir/${phase}-v${version}-${short}.json"
-python3 - "$evidence" "$phase" "$version" "$source_head" "$artifact_sha" \
+if [[ "$phase" == "rehearse" ]]; then evidence_key=${reviewed_content_digest:0:12}; else evidence_key=${source_head:0:12}; fi
+evidence="$evidence_dir/${phase}-v${version}-${evidence_key}.json"
+python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$reviewed_content_digest" "$artifact_sha" \
   "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
   "$project_agents_retained" "$agents_boundary_probe" "$claude_version_output" \
   "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,project_agents_retained,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
+output,phase,version,source,source_tree,reviewed_content_digest,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,project_agents_retained,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
-  "schema_version":"clroom.plugin-release-smoke.v2",
+  "schema_version":"clroom.plugin-release-smoke.v3",
   "result":"PASS",
   "phase":phase,
   "release_version":version,
   "source_head":source,
+  "source_tree":source_tree,
+  "reviewed_content_digest":reviewed_content_digest,
+  "evidence_binding":"content-addressed-runtime-v1",
   "artifact_sha256":artifact_sha,
   "platform":"macos-aarch64",
   "claude_version_output":claude_version_output,
@@ -409,6 +474,8 @@ PY
 echo "PLUGIN_RELEASE_SMOKE=PASS"
 echo "PHASE=$phase"
 echo "SOURCE_HEAD=$source_head"
+echo "SOURCE_TREE=$source_tree"
+echo "REVIEWED_CONTENT_DIGEST=$reviewed_content_digest"
 echo "ARTIFACT_SHA256=$artifact_sha"
 echo "PLUGIN_ID=$plugin_id"
 echo "CLEAN_PROVIDER_RC=$clean_rc"

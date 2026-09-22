@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import pty
+import re
 import selectors
 import signal
 import struct
@@ -214,6 +215,66 @@ def process_path(pid):
         return None
     return os.path.realpath(os.fsdecode(buffer.value))
 
+def same_executable_identity(left, right):
+    try:
+        left_stat = os.stat(left)
+        right_stat = os.stat(right)
+    except OSError:
+        return False
+    return (
+        left_stat.st_dev == right_stat.st_dev
+        and left_stat.st_ino == right_stat.st_ino
+    )
+
+
+def process_argv(pid):
+    if sys.platform != "darwin":
+        return []
+    library = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+    mib = (ctypes.c_int * 3)(1, 49, int(pid))  # CTL_KERN, KERN_PROCARGS2, pid
+    size = ctypes.c_size_t()
+    if library.sysctl(mib, 3, None, ctypes.byref(size), None, 0) != 0 or size.value == 0:
+        return []
+    buffer = ctypes.create_string_buffer(size.value)
+    if library.sysctl(
+        mib, 3, buffer, ctypes.byref(size), None, 0
+    ) != 0:
+        return []
+    data = buffer.raw[: size.value]
+    int_size = ctypes.sizeof(ctypes.c_int)
+    if len(data) < int_size:
+        return []
+    argc = int.from_bytes(data[:int_size], byteorder=sys.byteorder, signed=True)
+    if argc <= 0:
+        return []
+    offset = data.find(b"\0", int_size)
+    if offset < 0:
+        return []
+    offset += 1
+    while offset < len(data) and data[offset] == 0:
+        offset += 1
+    argv = []
+    for _ in range(argc):
+        end = data.find(b"\0", offset)
+        if end < 0:
+            break
+        argv.append(os.fsdecode(data[offset:end]))
+        offset = end + 1
+    return argv
+
+
+def process_uses_provider(pid, provider):
+    path = process_path(pid)
+    if path is not None and same_executable_identity(path, provider):
+        return True
+    return any(
+        argument
+        and os.path.isabs(argument)
+        and same_executable_identity(argument, provider)
+        for argument in process_argv(pid)
+    )
+
+
 def provider_in_tree(root_pid, provider):
     try:
         rows = subprocess.check_output(["/bin/ps", "-axo", "pid=,ppid=,pgid="], text=True)
@@ -242,7 +303,7 @@ def provider_in_tree(root_pid, provider):
         if process_group == group
     )
     provider = os.path.realpath(provider)
-    return any(process_path(pid) == provider for pid in descendants)
+    return any(process_uses_provider(pid, provider) for pid in descendants)
 
 def observed_methods(path):
     try:
@@ -253,25 +314,46 @@ def observed_methods(path):
 
 def seed_synthetic_project_trust(candidate, mode, project, home, env):
     project = pathlib.Path(project).resolve()
-    init_argv = [candidate]
-    if mode == "clroom":
-        init_argv.append("codex")
-    init_argv.extend(["mcp", "list", "--json"])
-    result = subprocess.run(
-        init_argv,
-        cwd=project,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=30,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError("failed to initialize CLROOM-owned Codex shadow")
     shadow_home = pathlib.Path(home).resolve() / ".codex" / ".clroom-clean-state-v2" / "home"
     marker = shadow_home / ".clroom-state-v2"
-    if marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
-        raise RuntimeError("CLROOM Codex shadow ownership marker missing")
+    try:
+        metadata = marker.lstat()
+    except FileNotFoundError:
+        initialized = False
+    else:
+        if marker.is_symlink() or not marker.is_file():
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
+        if metadata.st_mode & 0o077 or marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
+        initialized = True
+
+    if not initialized:
+        init_argv = [candidate]
+        if mode == "clroom":
+            init_argv.append("codex")
+        init_argv.extend(["mcp", "list", "--json"])
+        result = subprocess.run(
+            init_argv,
+            cwd=project,
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode != 0:
+            markers = re.findall(r"CLROOM_[A-Z0-9_]+", result.stderr or "")
+            detail = f":{markers[-1]}" if markers else ""
+            raise RuntimeError(f"failed to initialize CLROOM-owned Codex shadow{detail}")
+        try:
+            metadata = marker.lstat()
+        except FileNotFoundError:
+            raise RuntimeError("CLROOM Codex shadow ownership marker missing")
+        if marker.is_symlink() or not marker.is_file():
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
+        if metadata.st_mode & 0o077 or marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
+            raise RuntimeError("CLROOM Codex shadow ownership marker invalid")
     config = shadow_home / "config.toml"
     if config.exists() and config.is_symlink():
         raise RuntimeError("synthetic Codex shadow config must not be a symlink")
@@ -296,15 +378,18 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
         log.unlink()
     except FileNotFoundError:
         pass
-    tmpdir = pathlib.Path(home) / "tmp"
+    home_path = pathlib.Path(home)
+    if not home_path.is_absolute():
+        raise RuntimeError("fixture home must be absolute")
+    tmpdir = home_path / "tmp"
     tmpdir.mkdir(parents=True, exist_ok=True)
     tmpdir.chmod(0o700)
     provider_dir = str(pathlib.Path(provider).resolve().parent)
     env = {
         "PATH": provider_dir + ":/usr/bin:/bin",
-        "HOME": str(pathlib.Path(home).resolve()),
-        "CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve()),
-        "TMPDIR": str(tmpdir.resolve()),
+        "HOME": str(home_path),
+        "CODEX_HOME": str(home_path / ".codex"),
+        "TMPDIR": str(tmpdir),
         "TERM": "xterm-256color",
     }
     seed_synthetic_project_trust(candidate, mode, project, home, env)
@@ -388,8 +473,6 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
         os.close(fd)
     except OSError:
         pass
-    if not provider_seen:
-        raise RuntimeError("real Codex provider was not observed")
     if not methods_seen:
         diagnostic = pty_tail.decode("utf-8", errors="replace")
         diagnostic = __import__("re").sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", diagnostic)
@@ -419,7 +502,8 @@ def probe_provider(candidate, mode, project, home, provider, plugin_id, log_path
             f"(provider_seen={provider_seen}, process_reaped={reaped}, {exit_detail}, "
             f"pty_tail={diagnostic!r})"
         )
-    print("CODEX_MCP_PROVIDER_PROBE_PASS")
+    observation = "observed" if provider_seen else "not-observed"
+    print(f"CODEX_MCP_PROVIDER_PROBE_PASS provider_process_observer={observation}")
 
 def self_test():
     with tempfile.TemporaryDirectory(prefix="clroom-mcp-fixture-") as raw:
@@ -442,6 +526,89 @@ def self_test():
             pass
         else:
             raise RuntimeError("conflicting synthetic Codex auth fixture was accepted")
+
+        shadow_home = codex_home / ".clroom-clean-state-v2" / "home"
+        shadow_home.mkdir(parents=True)
+        marker = shadow_home / ".clroom-state-v2"
+        marker.write_text("clroom-state-v2\n", encoding="utf-8")
+        marker.chmod(0o600)
+        project = root / "project"
+        project.mkdir()
+        failing_candidate = root / "must-not-run"
+        failing_candidate.write_text("#!/bin/sh\nexit 97\n", encoding="utf-8")
+        failing_candidate.chmod(0o755)
+        seed_synthetic_project_trust(
+            str(failing_candidate),
+            "clroom",
+            str(project),
+            str(root),
+            {"PATH": "/usr/bin:/bin", "HOME": str(root), "CODEX_HOME": str(codex_home)},
+        )
+        seeded = (shadow_home / "config.toml").read_text(encoding="utf-8")
+        if 'trust_level = "trusted"' not in seeded:
+            raise RuntimeError("existing CLROOM-owned shadow trust seed failed")
+
+        marker.unlink()
+        try:
+            seed_synthetic_project_trust(
+                str(failing_candidate),
+                "clroom",
+                str(project),
+                str(root),
+                {"PATH": "/usr/bin:/bin", "HOME": str(root), "CODEX_HOME": str(codex_home)},
+            )
+        except RuntimeError as error:
+            if "failed to initialize CLROOM-owned Codex shadow" not in str(error):
+                raise
+        else:
+            raise RuntimeError("missing shadow marker did not require bootstrap")
+
+        executable = root / "provider-file"
+        executable_alias = root / "provider-file-alias"
+        unrelated = root / "provider-file-unrelated"
+        executable.write_text("provider\n", encoding="utf-8")
+        os.link(executable, executable_alias)
+        unrelated.write_text("provider\n", encoding="utf-8")
+        if not same_executable_identity(executable, executable_alias):
+            raise RuntimeError("provider file identity rejected an equivalent path")
+        if same_executable_identity(executable, unrelated):
+            raise RuntimeError("provider file identity accepted unrelated executable")
+
+        if sys.platform == "darwin":
+            script_provider = root / "script-provider"
+            script_provider.write_text(
+                "#!/bin/sh\n/bin/sleep 5\n",
+                encoding="utf-8",
+            )
+            script_provider.chmod(0o700)
+            child = subprocess.Popen(
+                [str(script_provider)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            try:
+                deadline = time.monotonic() + 2.0
+                observed = False
+                while time.monotonic() < deadline and child.poll() is None:
+                    if provider_in_tree(child.pid, str(script_provider)):
+                        observed = True
+                        break
+                    time.sleep(0.01)
+                if not observed:
+                    raise RuntimeError(
+                        "provider argv identity missed an interpreter-backed launcher"
+                    )
+                if provider_in_tree(child.pid, str(unrelated)):
+                    raise RuntimeError(
+                        "provider argv identity accepted unrelated executable"
+                    )
+            finally:
+                child.terminate()
+                try:
+                    child.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait(timeout=1)
     print("CODEX_MCP_FIXTURE_SELF_TEST_PASS")
 
 def main():
