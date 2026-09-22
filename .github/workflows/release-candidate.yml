@@ -139,6 +139,8 @@ jobs:
         if: github.event_name == 'pull_request' && env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
         id: codex_rehearsal
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           candidate_sha="${{ github.event.pull_request.head.sha }}"
