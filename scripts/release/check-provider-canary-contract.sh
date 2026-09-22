@@ -127,6 +127,7 @@ for needle in \
   'def create_provider_launch_observer(' \
   'clroom-provider-launched-v1' \
   'provider_launch_observed(provider_marker)' \
+  'str(observer.parent) + ":" + provider_dir + ":/usr/bin:/bin"' \
   'provider launch observer marker invalid' \
   'provider launch observer missed exact provider execution' \
   'provider launch observer did not exec exact provider' \
