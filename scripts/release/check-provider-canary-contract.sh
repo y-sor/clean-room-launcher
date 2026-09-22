@@ -25,7 +25,7 @@ for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$
 done
 
 for needle in \
-  'CODEX_VERSION=0.155.1' \
+  'CODEX_VERSION=0.156.0' \
   'CLAUDE_VERSION=2.1.280' \
   'CODEX_SHA512=' \
   'CODEX_PLATFORM_SHA512=' \
@@ -278,7 +278,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   cat > "$fake_provider" <<'SH'
 #!/usr/bin/env bash
 if [[ ${1:-} == --version ]]; then
-  printf 'codex-cli 0.155.1\n'
+  printf 'codex-cli 0.156.0\n'
 fi
 exit 0
 SH
@@ -292,7 +292,7 @@ SH
   "$qualifier" \
     --provider codex \
     --executable "$fake_provider" \
-    --expected-provider-version 0.155.1 \
+    --expected-provider-version 0.156.0 \
     --candidate "$early_exit_candidate" \
     --source-head 0000000000000000000000000000000000000000 \
     --version 0.4.2 \
