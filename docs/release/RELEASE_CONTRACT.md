@@ -81,7 +81,7 @@ checksums, provenance attestation bundle, and SBOM attestation bundle are
 verified before a guarded Draft Release is created.
 
 Publishing remains a separate action. The tag helper first revalidates provider
-pins and the local provider bytes bound by accepted pre-tag evidence. Only after
+pins and the local provider bytes bound by pre-merge rehearsal evidence. Only after
 those provider checks finish does the final remote guard refresh `main`, confirm
 the tag is still absent, revalidate the active no-bypass `v*` tag ruleset, and
 rerun the whole-release contract against the current published baseline. No
@@ -101,7 +101,7 @@ qualification, and evidence are refreshed.
 
 For whole-plugin activation:
 
-1. **Pre-tag:** exact accepted `main` builds a candidate archive locally. Claude
+1. **Pre-merge rehearsal:** the exact PR candidate builds a candidate archive locally. Claude
    proves clean/selected plugin separation, its selected-plugin TUI, and that
    the pinned provider did not load AGENTS.md from an ancestor outside the
    selected current-project boundary. Codex proves clean → selected → clean MCP
@@ -130,7 +130,7 @@ For Codex whole-plugin activation this means:
 
 - exact-provider CI qualification executes two real-provider startups against
   the same synthetic home;
-- accepted-main pre-tag qualification executes
+- exact-PR rehearsal executes
   clean → selected → clean → real-provider MCP runtime probe → clean on the same
   CLROOM shadow generation;
 - the final post-runtime clean launch must succeed before evidence is
@@ -166,7 +166,7 @@ passes a synthetic launched-provider sandbox probe proving external ancestor
 AGENTS.md and .claude/AGENTS.md are unreadable while project-local equivalents
 remain readable. The probe must separately prove that the launched provider
 body executed after version preflight; a provider `--version` success alone
-cannot satisfy this evidence. Accepted pre-tag evidence additionally requires the real pinned-provider
+cannot satisfy this evidence. Pre-merge rehearsal evidence additionally requires the real pinned-provider
 selected-plugin TUI to run inside a task-owned synthetic nested Git project and
 confirm both sides of the boundary: repo/nested project AGENTS.md is reported as
 loaded, while AGENTS.md and .claude/AGENTS.md above that Git project are not.
