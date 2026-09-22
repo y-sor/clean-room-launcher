@@ -200,6 +200,7 @@ done
 
 for needle in \
   'Rehearse Codex runtime on exact PR candidate' \
+  'GITHUB_TOKEN: ${{ github.token }}' \
   'local-codex-plugin-activation-smoke.sh rehearse' \
   '--fixture-standalone-mcp' \
   'codex-rehearsal-v${CLROOM_RELEASE_VERSION}-${digest}' \
