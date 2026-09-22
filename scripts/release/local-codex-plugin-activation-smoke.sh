@@ -15,7 +15,12 @@ fail() {
 fail_from_stderr() {
   local label=$1
   local stderr_path=$2
+  local fixture_detail=
   local root_code=
+  fixture_detail=$(sed -n 's/^CODEX_MCP_FIXTURE_BLOCKED://p' "$stderr_path" 2>/dev/null | tail -1 || true)
+  if [[ -n "$fixture_detail" ]]; then
+    fail "$label:$fixture_detail"
+  fi
   root_code=$(grep -Eo 'CLROOM_[A-Z0-9_]+' "$stderr_path" 2>/dev/null | tail -1 || true)
   if [[ -n "$root_code" ]]; then
     fail "$label:$root_code"
@@ -381,7 +386,7 @@ provider_mcp_initialize=false
 provider_mcp_tools_list=false
 fixture_mcp_tool_call=false
 
-python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
+if ! python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
   --candidate "$clroom" \
   --mode clroom \
   --project "$root" \
@@ -389,7 +394,9 @@ python3 "$root/scripts/release/codex-mcp-fixture.py" probe-provider \
   --provider "$codex_executable" \
   --plugin-id "$plugin_id" \
   --log "$fixture_log" \
-  || fail "SELECTED_MCP_RUNTIME"
+  2>"$tmp/selected-runtime.err"; then
+  fail_from_stderr "SELECTED_MCP_RUNTIME" "$tmp/selected-runtime.err"
+fi
 runtime_confirmed=true
 runtime_mcp_healthy=true
 provider_mcp_initialize=true
