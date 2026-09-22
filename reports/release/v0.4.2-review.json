@@ -347,5 +347,5 @@
       "Codex release qualification is machine-transported: exact-PR macOS Actions owns pre-merge rehearsal and content-addressed artifact evidence, the tag Release workflow owns Codex Draft runtime evidence, and tag/Draft consumers provenance-check those successful workflow artifacts instead of relying on Owner relay or ambient local Codex"
     ]
   },
-  "reviewed_content_digest": "b08aa0bac6a56a2c037e3a990aef00ba92cff39d2215a01731e164894ead4011"
+  "reviewed_content_digest": "f06053191155dffcd8e8f61a0b8176a2b45905df6ad671a50af35bf98ed47d12"
 }
