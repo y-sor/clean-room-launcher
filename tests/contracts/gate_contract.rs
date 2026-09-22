@@ -612,6 +612,14 @@ fn codex_release_evidence_uses_actions_not_owner_path() {
         std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
 
     assert!(candidate.contains("Rehearse Codex runtime on exact PR candidate"));
+    let rehearsal_step = candidate
+        .split("Rehearse Codex runtime on exact PR candidate")
+        .nth(1)
+        .expect("Codex rehearsal step must exist");
+    assert!(
+        rehearsal_step.contains(r#"GITHUB_TOKEN: ${{ github.token }}"#),
+        "Codex rehearsal release-contract check must use the workflow token"
+    );
     assert!(candidate.contains("local-codex-plugin-activation-smoke.sh rehearse"));
     assert!(candidate.contains("Upload Codex pre-merge rehearsal evidence"));
     assert!(release.contains("verify-codex-draft:"));
