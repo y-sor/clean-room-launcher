@@ -30,7 +30,7 @@
       "decision": "COVERED",
       "evidence": [
         "Cargo.toml/Cargo.lock advance only the package version to 0.4.2; no runtime or build dependency is added, removed, or replaced.",
-        "Release provider qualification refreshes Claude Code from 2.1.278 to current-stable 2.1.280 with exact npm registry SHA-512 integrity for both @anthropic-ai/claude-code and darwin-arm64; Codex remains pinned at current-stable 0.155.1."
+        "Release provider qualification refreshes Claude Code from 2.1.278 to current-stable 2.1.280 and Codex from 0.155.1 to current-stable 0.156.0, with exact live npm registry SHA-512 integrity for each top-level package and the macOS Apple Silicon provider package. Existing provider-version qualification and real-runtime gates already cover this refresh; no new activation authority or dependency class is introduced."
       ]
     },
     "ci": {
@@ -56,7 +56,8 @@
         "The protected tag helper now performs provider checks before a final remote state guard and then executes no provider/network qualification before the single push; gate-contract tests assert provider checks < final remote refresh < push < reconciliation.",
         "Provider/UI runtime evidence is now rehearsed on the exact PR candidate before merge and bound to reviewed_content_digest + exact source_tree + provider bytes; tag/Draft consumers reuse it across squash only after content identity is re-proven and refresh action-time state.",
         "Tag and Draft verification resolve Codex rehearsal evidence from successful canonical workflow artifacts keyed to exact content/tag identity, while live provider registry pins remain action-time checked.",
-        "Canonical release instructions now match machine transport: Claude remains the only local TTY gate; Codex pre-merge and Draft acceptance is resolved from provenance-checked Actions artifacts, with regression coverage forbidding stale local Codex acceptance commands."
+        "Canonical release instructions now match machine transport: Claude remains the only local TTY gate; Codex pre-merge and Draft acceptance is resolved from provenance-checked Actions artifacts, with regression coverage forbidding stale local Codex acceptance commands.",
+        "A live npm stable-tag move from Codex 0.155.1 to 0.156.0 was caught pre-merge by the existing provider pin freshness gate. The candidate is resealed and must re-run the full exact-PR macOS Codex rehearsal on 0.156.0 before acceptance; the provider refresh therefore exercises the existing move-left runtime contract rather than adding a new release mechanism."
       ]
     },
     "public_claims": {
@@ -327,7 +328,7 @@
     {
       "id": "codex-whole-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Build exact PR-candidate v0.4.2 archive on macOS Apple Silicon with pinned current-stable Codex 0.155.1; prove clean→selected→clean visibility using standalone-mcp@clroom-fixture, exact selected MCP path rebasing, real-provider startup reaching MCP initialize and tools/list with at least one tool, fixture tools/call semantics, no model prompt, and a final clean relaunch on the same persistent CLROOM shadow. codex_app is PLUGIN_HOST_REQUIRED and is not a standalone acceptance target. The harness must use only the task-owned private synthetic no-spend Codex auth fixture and must never read or copy real user credentials. Evidence binds to reviewed_content_digest + exact source_tree + provider bytes and is reusable after squash only when candidate-tree == accepted-tree."
+      "requirement": "Build exact PR-candidate v0.4.2 archive on macOS Apple Silicon with pinned current-stable Codex 0.156.0; prove clean→selected→clean visibility using standalone-mcp@clroom-fixture, exact selected MCP path rebasing, real-provider startup reaching MCP initialize and tools/list with at least one tool, fixture tools/call semantics, no model prompt, and a final clean relaunch on the same persistent CLROOM shadow. codex_app is PLUGIN_HOST_REQUIRED and is not a standalone acceptance target. The harness must use only the task-owned private synthetic no-spend Codex auth fixture and must never read or copy real user credentials. Evidence binds to reviewed_content_digest + exact source_tree + provider bytes and is reusable after squash only when candidate-tree == accepted-tree."
     },
     {
       "id": "codex-whole-plugin-activation",
