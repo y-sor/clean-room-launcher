@@ -142,7 +142,7 @@ jobs:
         run: |
           set -euo pipefail
           candidate_sha="${{ github.event.pull_request.head.sha }}"
-          test "$candidate_sha" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$candidate_sha"
           evidence_dir="$RUNNER_TEMP/clroom-release-evidence"
           provider_bin="$RUNNER_TEMP/clroom-codex-rehearsal-bin"
           mkdir -p "$evidence_dir" "$provider_bin"
