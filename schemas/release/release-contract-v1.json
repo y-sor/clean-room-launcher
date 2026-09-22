@@ -29,7 +29,13 @@
         "docs/**/*.html",
         "docs/**/*.yml",
         "docs/**/*.yaml",
-        "docs/**/*.xml"
+        "docs/**/*.xml",
+        "docs/*.md",
+        "docs/*.txt",
+        "docs/*.html",
+        "docs/*.yml",
+        "docs/*.yaml",
+        "docs/*.xml"
       ],
       "historical_exclusions": [
         "CHANGELOG.md"

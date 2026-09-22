@@ -293,6 +293,10 @@ def main():
         if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_TAG_REMOTE_REFRESH_POLICY")
         doc_policy = public_doc_version_policy(contract)
+        if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
+        if not any(matches("docs/release/RELEASE_CONTRACT.md", pattern) for pattern in doc_policy["active_globs"]):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_NESTED_GLOB")
         fixture_pins = {"codex": "0.156.0", "claude": "2.1.280"}
         if public_doc_version_violation(
             "docs/providers.md", "Codex CLI 0.154.0 exact", "", "0.154.0",
