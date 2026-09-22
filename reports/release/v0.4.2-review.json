@@ -291,7 +291,7 @@
     },
     {
       "id": "process-table-observer-blocked-proven-mcp-runtime",
-      "decision": "CONTRACT_NARROW",
+      "decision": "CONTRACT_EXPAND",
       "failure_mode": "Codex rehearsal reached the meaningful runtime boundary (selected exact provider launch path plus MCP initialize/tools-list) but still failed because a supplemental macOS process-table observer did not see the provider. The same failure reproduced in GitHub Actions with pinned Codex 0.155.1, proving the observer was a false-negative gate rather than evidence of provider/runtime failure.",
       "durable_control": "Process-table/argv observation is now diagnostic only. Acceptance requires exact selected provider version and SHA revalidation by the smoke/CLROOM launch identity path, successful selected-provider MCP initialize + tools/list, fixture tool call, and post-runtime clean-state closure. GitHub Actions owns Codex rehearsal/evidence transport so Owner relay is no longer on the critical path."
     }
@@ -353,5 +353,5 @@
       "Codex runtime acceptance is protocol-authoritative: exact selected provider version/SHA are revalidated, CLROOM launches the selected provider, MCP initialize+tools/list and fixture tool-call must pass, and clean-state closure is required; process-table observation is diagnostic-only"
     ]
   },
-  "reviewed_content_digest": "edd76daddd7d4b4cc0e821ac26715d0af426f2ffc44f75f416695752aedfd61e"
+  "reviewed_content_digest": "b4daaf3428e8b8c60208e506961fc3547e2f4d9305f8e88519408c9968fea97a"
 }
