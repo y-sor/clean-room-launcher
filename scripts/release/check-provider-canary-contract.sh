@@ -10,6 +10,8 @@ codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
 codex_mcp_fixture="$root/scripts/release/codex-mcp-fixture.py"
 claude_smoke="$root/scripts/release/local-plugin-activation-smoke.sh"
 tag_helper="$root/scripts/release/push-release-tag.sh"
+codex_rehearsal_resolver="$root/scripts/release/resolve-codex-rehearsal-evidence.sh"
+codex_draft_resolver="$root/scripts/release/resolve-codex-draft-evidence.sh"
 release_candidate="$root/.github/workflows/release-candidate.yml"
 release="$root/.github/workflows/release.yml"
 
@@ -18,7 +20,7 @@ fail() {
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$codex_mcp_fixture" "$claude_smoke" "$tag_helper" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$codex_mcp_fixture" "$claude_smoke" "$tag_helper" "$codex_rehearsal_resolver" "$codex_draft_resolver" "$release_candidate" "$release"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
@@ -184,9 +186,45 @@ for needle in \
   '"evidence_binding": "content-addressed-runtime-v1"' \
   'TAG_GATE_BLOCKED:CODEX_REHEARSAL_FIXTURE_IDENTITY' \
   'REHEARSAL_CODEX_EVIDENCE_PASS' \
-  'TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME' \
-  'TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME'; do
+  'resolve-codex-rehearsal-evidence.sh' \
+  'TAG_GATE_BLOCKED:CODEX_REHEARSAL_ARTIFACT' \
+  'check-provider-pins.sh'; do
   grep -Fq -- "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
+done
+
+for needle in \
+  'Rehearse Codex runtime on exact PR candidate' \
+  'local-codex-plugin-activation-smoke.sh rehearse' \
+  '--fixture-standalone-mcp' \
+  'codex-rehearsal-v${CLROOM_RELEASE_VERSION}-${digest}' \
+  'Upload Codex pre-merge rehearsal evidence'; do
+  grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_PREMERGE_WORKFLOW_MISSING"
+done
+
+for needle in \
+  'verify-codex-draft:' \
+  'Verify Codex plugin runtime against Draft assets' \
+  'local-codex-plugin-activation-smoke.sh draft' \
+  'codex-draft-${GITHUB_REF_NAME}-${GITHUB_SHA}' \
+  'Upload Codex Draft evidence'; do
+  grep -Fq -- "$needle" "$release" || fail "CODEX_DRAFT_WORKFLOW_MISSING"
+done
+
+for needle in \
+  'Release candidate readiness' \
+  '.github/workflows/release-candidate.yml' \
+  'event": "pull_request"' \
+  'conclusion": "success"' \
+  'CODEX_REHEARSAL_EVIDENCE_RESOLVED'; do
+  grep -Fq -- "$needle" "$codex_rehearsal_resolver" || fail "CODEX_REHEARSAL_RESOLVER_CONTRACT"
+done
+
+for needle in \
+  '"name": "Release"' \
+  '.github/workflows/release.yml' \
+  '"event": "push"' \
+  'CODEX_DRAFT_EVIDENCE_RESOLVED'; do
+  grep -Fq -- "$needle" "$codex_draft_resolver" || fail "CODEX_DRAFT_RESOLVER_CONTRACT"
 done
 
 for workflow in "$release_candidate" "$release"; do
@@ -207,6 +245,8 @@ bash -n "$pins" || fail "PINS_SYNTAX"
 bash -n "$codex_smoke" || fail "CODEX_SMOKE_SYNTAX"
 bash -n "$claude_smoke" || fail "CLAUDE_SMOKE_SYNTAX"
 bash -n "$tag_helper" || fail "TAG_HELPER_SYNTAX"
+bash -n "$codex_rehearsal_resolver" || fail "CODEX_REHEARSAL_RESOLVER_SYNTAX"
+bash -n "$codex_draft_resolver" || fail "CODEX_DRAFT_RESOLVER_SYNTAX"
 bash -n "$qualifier" || fail "QUALIFIER_SYNTAX"
 python3 "$codex_mcp_fixture" --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 
