@@ -8,7 +8,8 @@
       "evidence": [
         "Codex 0.155.1 upstream writes provider-owned state under CODEX_HOME/.tmp, including plugin-share-local-paths-v1.json and rollout-maintenance.lock. v0.4.2 admits .tmp only through the initialized-capability provider roots after CLROOM's v2 state marker exists; both a fresh uninitialized shadow and the legacy .sandbox_migration compatibility path remain unable to authorize preexisting .tmp, and unknown top-level siblings still fail closed.",
         "Pinned Claude Code 2.1.280 includes the built-in agents-md ancestor walk introduced in Claude Code 2.1.277 for AGENTS.md and .claude/AGENTS.md. CLROOM now denies those exact files only above the nearest real Git worktree boundary (or the launch directory outside Git), preserving repo-root and nested project instructions when Claude starts from a subdirectory.",
-        "Codex projection cleanup now accepts an exact pre-rebase legacy-v1 raw bundle digest only as ownership proof for removing a previously CLROOM-owned projection; selected-plugin verification and execution still require the current semantic digest, so the compatibility path cannot authorize stale projection execution."
+        "Codex projection cleanup now accepts an exact pre-rebase legacy-v1 raw bundle digest only as ownership proof for removing a previously CLROOM-owned projection; selected-plugin verification and execution still require the current semantic digest, so the compatibility path cannot authorize stale projection execution.",
+        "The product exact clean/plugin qualification tuples advance in lockstep with the release pins to Codex 0.156.0 and Claude Code 2.1.280 on macOS Apple Silicon. Regression coverage rejects the immediately previous Codex 0.155.1 and Claude 2.1.278 tuples, so stale provider versions remain fail-closed rather than inheriting qualification."
       ]
     },
     "tests": {
@@ -23,7 +24,8 @@
         "The v1→v2 release-review migration fixture proves removal of ancestry-bound reviewed_through_commit and requires an explicit fresh content-addressed reseal; the stale v1 digest is rejected, while v2 self-tests separately prove review-semantic changes alter the seal.",
         "Codex standalone MCP qualification uses a task-owned fixture and the real pinned provider: provider startup must reach MCP initialize plus tools/list, while the fixture protocol probe separately proves a non-empty tool catalog and successful tools/call semantics.",
         "Contract coverage now fails if Claude/Codex release rehearsal is accepted-main-only, if content-addressed binding fields disappear, or if tag/Draft gates stop consuming the shared Git-common-dir rehearsal evidence.",
-        "Contract coverage now checks release documentation itself so Actions-owned Codex evidence cannot regress operationally into a local Codex copy-paste acceptance path."
+        "Contract coverage now checks release documentation itself so Actions-owned Codex evidence cannot regress operationally into a local Codex copy-paste acceptance path.",
+        "Provider-inventory regression coverage binds clean launch and plugin activation to the current exact Codex 0.156.0 / Claude 2.1.280 tuples and explicitly rejects the previous provider tuples."
       ]
     },
     "dependencies": {
