@@ -94,7 +94,7 @@ Raw Codex configuration/plugin controls such as `-c`, `--config`,
 `--profile`, `--enable`, `--disable`, and `--plugin` are refused while a
 CLROOM plugin selection is active, so there is only one activation authority.
 
-The exact v0.4.2 qualification target is Codex CLI `0.155.1` on macOS Apple
+The exact v0.4.2 qualification target is Codex CLI `0.156.0` on macOS Apple
 Silicon. Release qualification uses a task-owned standalone MCP plugin fixture
 with the real provider and requires provider startup, MCP `initialize`,
 `tools/list` with at least one tool, and a real fixture tool call; `mcp list`
