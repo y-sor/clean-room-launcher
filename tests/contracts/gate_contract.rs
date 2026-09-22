@@ -236,7 +236,7 @@ fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
 }
 
 #[test]
-fn codex_pretag_smoke_closes_state_after_runtime_probe() {
+fn codex_rehearsal_smoke_closes_state_after_runtime_probe() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
     let tag_helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
@@ -537,8 +537,8 @@ fn draft_release_smoke_requires_repository_release_immutability() {
     assert!(source.contains("\"claude_provider_sha256\":claude_provider_sha"));
 
     let draft_branch = source
-        .find("if [[ \"$phase\" == \"pretag\" ]]; then")
-        .expect("release smoke must branch between pretag and draft behavior");
+        .find("if [[ \"$phase\" == \"rehearse\" ]]; then")
+        .expect("release smoke must branch between rehearsal and draft behavior");
     let policy = source
         .find("immutable-releases --jq .enabled")
         .expect("draft smoke must verify release immutability");
