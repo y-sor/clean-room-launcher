@@ -265,6 +265,19 @@ fn codex_runtime_probe_matches_provider_by_file_identity_not_path_string() {
 }
 
 #[test]
+fn codex_runtime_probe_preserves_lexical_auth_home_identity() {
+    let fixture =
+        std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
+    assert!(fixture.contains("home_path = pathlib.Path(home)"));
+    assert!(fixture.contains(r#""HOME": str(home_path)"#));
+    assert!(fixture.contains(r#""CODEX_HOME": str(home_path / ".codex")"#));
+    assert!(
+        !fixture.contains(r#""CODEX_HOME": str((pathlib.Path(home) / ".codex").resolve())"#),
+        "runtime fixture must not rewrite macOS /var paths to /private/var after shadow auth references exist"
+    );
+}
+
+#[test]
 fn codex_runtime_probe_uses_protocol_success_not_process_table_as_acceptance() {
     let fixture =
         std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
