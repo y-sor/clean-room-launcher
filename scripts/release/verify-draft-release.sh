@@ -155,8 +155,16 @@ claude_rehearsal="$evidence_dir/rehearse-v${version}-${evidence_key}.json"
 claude_draft="$evidence_dir/draft-v${version}-${short}.json"
 codex_rehearsal="$evidence_dir/codex-rehearse-v${version}-${evidence_key}.json"
 codex_draft="$evidence_dir/codex-draft-v${version}-${short}.json"
+
+bash scripts/release/resolve-codex-rehearsal-evidence.sh \
+  "$version" "$current_tree" "$reviewed_content_digest" "$codex_rehearsal" \
+  || fail "CODEX_REHEARSAL_ARTIFACT"
+bash scripts/release/resolve-codex-draft-evidence.sh \
+  "$version" "$expected" "$codex_draft" \
+  || fail "CODEX_DRAFT_ARTIFACT"
+
 for path in "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft"; do
-  [[ -f "$path" ]] || fail "LOCAL_EVIDENCE_MISSING:$path"
+  [[ -f "$path" ]] || fail "EVIDENCE_MISSING:$path"
 done
 
 artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
