@@ -117,7 +117,12 @@ for needle in \
   'init_argv.extend(["mcp", "list", "--json"])' \
   '".clroom-state-v2"' \
   'trust_level = "trusted"' \
-  'CLROOM Codex shadow ownership marker missing'; do
+  'if not initialized:' \
+  'stderr=subprocess.PIPE' \
+  'existing CLROOM-owned shadow trust seed failed' \
+  'missing shadow marker did not require bootstrap' \
+  'CLROOM Codex shadow ownership marker missing' \
+  'CLROOM Codex shadow ownership marker invalid'; do
   grep -Fq -- "$needle" "$codex_mcp_fixture" || fail "CODEX_SYNTHETIC_TRUST_CONTRACT_MISSING"
 done
 
