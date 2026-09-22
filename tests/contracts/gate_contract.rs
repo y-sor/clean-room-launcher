@@ -178,6 +178,46 @@ fn codex_runtime_fixture_seeds_only_owned_synthetic_project_trust() {
 }
 
 #[test]
+fn codex_release_harness_uses_one_private_synthetic_auth_fixture() {
+    let fixture = std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
+    let smoke =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
+
+    for required in [
+        r#"SYNTHETIC_AUTH = {"#,
+        r#""OPENAI_API_KEY": "clroom-provider-qualification""#,
+        r#""tokens": None"#,
+        r#""last_refresh": None"#,
+        "ensure_synthetic_auth(codex_home)",
+        "os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600",
+        "synthetic Codex auth fixture conflicts with existing state",
+    ] {
+        assert!(fixture.contains(required), "shared Codex auth fixture must contain {required}");
+    }
+
+    let smoke_install = smoke
+        .find(r#"codex-mcp-fixture.py" install"#)
+        .expect("pre-tag smoke must install the shared Codex fixture");
+    let smoke_launch = smoke
+        .find(r#""$clroom" --output json info codex"#)
+        .expect("pre-tag smoke must exercise the exact candidate");
+    assert!(smoke_install < smoke_launch, "synthetic auth fixture must exist before the first candidate launch");
+
+    let qualifier_install = qualifier
+        .find(r#"codex-mcp-fixture.py" install"#)
+        .expect("CI qualifier must install the same shared Codex fixture");
+    let qualifier_probe = qualifier
+        .find(r#"codex-mcp-fixture.py" probe-provider"#)
+        .expect("CI qualifier must exercise the real provider");
+    assert!(qualifier_install < qualifier_probe, "CI qualification must seed the shared fixture before provider startup");
+    assert!(
+        !qualifier.contains(r#"{"OPENAI_API_KEY":"clroom-provider-qualification","tokens":null,"last_refresh":null}"#),
+        "the qualifier must not carry a second synthetic-auth payload copy"
+    );
+}
+
+#[test]
 fn codex_real_provider_qualification_requires_repeat_startup_on_one_home() {
     let qualifier = std::fs::read_to_string("scripts/release/qualify-real-provider.sh").unwrap();
     let verifier = std::fs::read_to_string("scripts/release/verify-qualification.py").unwrap();

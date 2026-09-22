@@ -17,6 +17,30 @@ import time
 
 PLUGIN_ID = "standalone-mcp@clroom-fixture"
 MCP_NAME = "clroom_fixture"
+SYNTHETIC_AUTH = {
+    "OPENAI_API_KEY": "clroom-provider-qualification",
+    "tokens": None,
+    "last_refresh": None,
+}
+
+
+def ensure_synthetic_auth(codex_home: pathlib.Path):
+    codex_home.mkdir(parents=True, exist_ok=True)
+    auth = codex_home / "auth.json"
+    payload = (json.dumps(SYNTHETIC_AUTH, separators=(",", ":")) + "\n").encode("utf-8")
+    try:
+        metadata = auth.lstat()
+    except FileNotFoundError:
+        fd = os.open(auth, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload)
+        return auth
+    if auth.is_symlink() or not auth.is_file() or auth.read_bytes() != payload:
+        raise RuntimeError("synthetic Codex auth fixture conflicts with existing state")
+    if metadata.st_mode & 0o077:
+        raise RuntimeError("synthetic Codex auth fixture permissions are not private")
+    return auth
+
 
 SERVER_SOURCE = r'''#!/usr/bin/python3
 import json
@@ -98,6 +122,7 @@ for raw in sys.stdin:
 '''
 
 def install(codex_home: pathlib.Path, log_path: pathlib.Path) -> pathlib.Path:
+    ensure_synthetic_auth(codex_home)
     plugin = codex_home / "plugins" / "cache" / "clroom-fixture" / "standalone-mcp" / "local"
     (plugin / ".codex-plugin").mkdir(parents=True, exist_ok=True)
     (plugin / ".codex-plugin" / "plugin.json").write_text(
@@ -400,8 +425,23 @@ def self_test():
     with tempfile.TemporaryDirectory(prefix="clroom-mcp-fixture-") as raw:
         root = pathlib.Path(raw)
         log = root / "mcp.log"
-        plugin = install(root / ".codex", log)
+        codex_home = root / ".codex"
+        plugin = install(codex_home, log)
+        auth = codex_home / "auth.json"
+        if auth.is_symlink() or not auth.is_file():
+            raise RuntimeError("synthetic Codex auth fixture missing or unsafe")
+        if auth.stat().st_mode & 0o077:
+            raise RuntimeError("synthetic Codex auth fixture permissions are not private")
+        if json.loads(auth.read_text(encoding="utf-8")) != SYNTHETIC_AUTH:
+            raise RuntimeError("synthetic Codex auth fixture payload mismatch")
         probe_server(plugin / "server.py")
+        auth.write_text("{}\n", encoding="utf-8")
+        try:
+            ensure_synthetic_auth(codex_home)
+        except RuntimeError:
+            pass
+        else:
+            raise RuntimeError("conflicting synthetic Codex auth fixture was accepted")
     print("CODEX_MCP_FIXTURE_SELF_TEST_PASS")
 
 def main():
