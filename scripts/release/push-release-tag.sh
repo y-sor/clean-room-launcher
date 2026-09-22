@@ -172,10 +172,11 @@ print("REHEARSAL_CLAUDE_EVIDENCE_PASS")
 PY
 
 codex_evidence="$evidence_dir/codex-rehearse-v${version}-${evidence_key}.json"
-[[ -f "$codex_evidence" ]] || {
-  echo "TAG_GATE_BLOCKED:CODEX_REHEARSAL_EVIDENCE_MISSING:$codex_evidence" >&2
+if ! bash scripts/release/resolve-codex-rehearsal-evidence.sh \
+  "$version" "$current_tree" "$reviewed_content_digest" "$codex_evidence"; then
+  echo "TAG_GATE_BLOCKED:CODEX_REHEARSAL_ARTIFACT" >&2
   exit 80
-}
+fi
 python3 - "$codex_evidence" "$version" "$current_tree" "$reviewed_content_digest" "$CODEX_VERSION" <<'PY'
 import json, re, sys
 path, version, current_tree, reviewed_content_digest, expected_codex_version = sys.argv[1:]
@@ -298,23 +299,6 @@ with open(sys.argv[1], encoding="utf-8") as handle:
     print(json.load(handle)["claude_provider_sha256"])
 PY
 )
-evidence_codex_version=$(python3 - "$codex_evidence" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    print(json.load(handle)["codex_version_output"])
-PY
-)
-evidence_codex_sha=$(python3 - "$codex_evidence" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    print(json.load(handle)["codex_provider_sha256"])
-PY
-)
-
 if ! claude_executable=$(command -v claude); then
   cleanup_local_tag
   echo "TAG_GATE_BLOCKED:CLAUDE_PROVIDER_MISSING_ACTION_TIME" >&2
@@ -341,31 +325,10 @@ fi
   exit 78
 }
 
-if ! codex_executable=$(command -v codex); then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_MISSING_ACTION_TIME" >&2
-  exit 81
-fi
-if ! codex_version_now=$(codex --version 2>&1 | head -1); then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_VERSION_ACTION_TIME" >&2
-  exit 81
-fi
-if ! codex_sha_now=$(shasum -a 256 "$codex_executable" | awk '{print $1}'); then
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_HASH_ACTION_TIME" >&2
-  exit 81
-fi
-[[ "$codex_version_now" == "$evidence_codex_version" ]] || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_DRIFT_ACTION_TIME" >&2
-  exit 81
-}
-[[ "$codex_sha_now" == "$evidence_codex_sha" ]] || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME" >&2
-  exit 81
-}
+# Codex rehearsal is reproducible CI evidence from exact registry-pinned packages.
+# check-provider-pins.sh above fresh-revalidates both wrapper and darwin-arm64
+# package integrity before the final remote guard; no ambient local Codex install
+# participates in tag acceptance.
 
 # Final mutable remote release state guard immediately before the irreversible push.
 # No provider/network qualification runs after this block; the remaining action is the single push.
