@@ -71,6 +71,10 @@ if run.get("head_sha") != artifact_head:
     raise SystemExit(1)
 PY
   then
+    if ! candidate_tree=$(gh api "repos/$repository/git/commits/$artifact_head" --jq .tree.sha 2>/dev/null); then
+      continue
+    fi
+    [[ "$candidate_tree" == "$current_tree" ]] || continue
     selected_run=$run_id
     selected_head=$artifact_head
     break
@@ -78,7 +82,7 @@ PY
 done <"$tmp/candidates"
 
 [[ -n "$selected_run" && "$selected_head" =~ ^[0-9a-f]{40}$ ]] \
-  || fail "SUCCESSFUL_PR_RUN_NOT_FOUND"
+  || fail "SUCCESSFUL_PR_RUN_WITH_MATCHING_TREE_NOT_FOUND"
 
 mkdir -p "$tmp/download"
 gh run download "$selected_run" -R "$repository" -n "$artifact_name" -D "$tmp/download" \
