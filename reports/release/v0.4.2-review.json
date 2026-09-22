@@ -338,5 +338,5 @@
       "Codex runtime provider execution is proven by a private task-owned launcher that execs the exact selected provider and records a private runtime marker; proc_pidpath is supplemental, avoiding false negatives for legitimate shims/interpreters"
     ]
   },
-  "reviewed_content_digest": "9af1a5158187dadb7477304c48f7992c0f6e4f6bfd3ff35b5f51fa7781d1b7e3"
+  "reviewed_content_digest": "239cf1797066a798f41a3897afd56dfb754fe75601ba8d20ec69c79c10cb3507"
 }
