@@ -412,5 +412,5 @@
       "public documentation version-coherence gate: inventory every semver mention across active public docs; bind provider claims to canonical provider pins; allow only explicit compatibility/version-floor exceptions; reject stale exact product versions on current-version surfaces; keep CHANGELOG/SECURITY history historical without exempting current provider claims"
     ]
   },
-  "reviewed_content_digest": "f2d53ce7afc5376d678604a59637c5d2c65cf1d6d1064dadb2f4cfc4ab682e6c"
+  "reviewed_content_digest": "e530af9cb0778a31558b262c10bd73f039e28301a9ea189d2e0db81cafcc07c9"
 }
