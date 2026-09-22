@@ -199,20 +199,26 @@ publish, edit, or replace release assets.
 Use:
 
 ```sh
-# Before merge, on the exact PR candidate HEAD:
+# Before merge, on the exact PR candidate HEAD, only Claude remains a local
+# human-TTY boundary:
 bash scripts/release/local-plugin-activation-smoke.sh rehearse \
   --expected-head <exact-pr-head> --plugin-id <qualified-claude-id>
-bash scripts/release/local-codex-plugin-activation-smoke.sh rehearse \
-  --expected-head <exact-pr-head> --fixture-standalone-mcp
 
+# Codex pre-merge rehearsal is produced by the successful macOS
+# Release-candidate workflow and consumed from its content-addressed artifact.
+
+# After the protected tag creates the Draft, run the local Claude Draft probe:
 bash scripts/release/local-plugin-activation-smoke.sh draft \
   --tag vX.Y.Z --plugin-id <qualified-claude-id>
-bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
-  --tag vX.Y.Z --plugin-id <qualified-codex-id> --expected-mcp <plugin-mcp-name>
 
-# After both Draft smokes PASS, reconcile the complete exact-tag verdict:
+# Codex Draft runtime evidence is produced by the tag Release workflow.
+# Reconcile both provider evidence paths plus exact-tag release state:
 bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
 ```
+
+Local Codex smoke commands are diagnostic/development tools only; they are not
+release-acceptance transport. Canonical Codex pre-merge and Draft evidence comes
+from the provenance-checked GitHub Actions artifacts described above.
 
 Rehearsal evidence is content-addressed by the reviewed release digest plus the
 exact Git tree and provider bytes. It may survive a squash only after
