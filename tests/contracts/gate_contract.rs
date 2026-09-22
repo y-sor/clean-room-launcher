@@ -578,7 +578,6 @@ fn release_review_boundary_is_content_addressed_and_squash_stable() {
 }
 
 #[test]
-#[test]
 fn claude_release_smoke_rejects_unqualified_plugin_before_model_probe() {
     let source =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
@@ -602,6 +601,46 @@ fn claude_release_smoke_rejects_unqualified_plugin_before_model_probe() {
     );
 }
 
+#[test]
+fn release_contract_enforces_public_doc_version_coherence() {
+    let checker =
+        std::fs::read_to_string("scripts/release/check-release-contract.py").unwrap();
+    let schema =
+        std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+    let docs =
+        std::fs::read_to_string("docs/release/RELEASE_CONTRACT.md").unwrap();
+
+    for required in [
+        "validate_public_doc_versions",
+        "provider_versions_from_pins",
+        "PUBLIC_DOC_VERSION_DRIFT",
+        "RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_DRIFT",
+        "PUBLIC_DOC_VERSION_ALLOWLIST_REASON",
+        "docs/providers.md",
+    ] {
+        assert!(
+            checker.contains(required),
+            "release checker must retain public-doc version gate: {required}"
+        );
+    }
+    for required in [
+        "public_doc_version_inventory",
+        "provider_version_source",
+        "allowed_noncurrent_provider_versions",
+        "allowed_other_versions",
+        "historical_exclusions",
+        "stale_or_unclassified_version",
+    ] {
+        assert!(
+            schema.contains(required),
+            "release schema must retain public-doc version policy: {required}"
+        );
+    }
+    assert!(docs.contains("## Public documentation version coherence"));
+    assert!(docs.contains("The release harness never edits documentation after provider tests."));
+}
+
+#[test]
 fn release_runtime_rehearsal_is_premerge_and_content_addressed() {
     let claude =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();

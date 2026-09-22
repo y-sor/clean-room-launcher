@@ -16,7 +16,46 @@
     "codex_premerge_rehearsal_transport": "github_actions_macos_content_addressed_artifact",
     "codex_draft_rehearsal_transport": "github_actions_macos_tag_artifact",
     "claude_premerge_rehearsal_transport": "local_interactive_tty",
-    "ambient_local_codex_release_input": "forbidden"
+    "ambient_local_codex_release_input": "forbidden",
+    "public_doc_version_inventory": {
+      "active_globs": [
+        "README.md",
+        "SECURITY.md",
+        "CONTRIBUTING.md",
+        "GOVERNANCE.md",
+        "CHANGELOG.md",
+        "docs/**/*.md",
+        "docs/**/*.txt",
+        "docs/**/*.html",
+        "docs/**/*.yml",
+        "docs/**/*.yaml",
+        "docs/**/*.xml",
+        "docs/*.md",
+        "docs/*.txt",
+        "docs/*.html",
+        "docs/*.yml",
+        "docs/*.yaml",
+        "docs/*.xml"
+      ],
+      "historical_exclusions": [
+        "CHANGELOG.md"
+      ],
+      "historical_product_paths": [
+        "SECURITY.md"
+      ],
+      "provider_version_source": "scripts/release/provider-pins.sh",
+      "stale_or_unclassified_version": "fail",
+      "allowed_noncurrent_provider_versions": {
+        "codex": {
+          "0.147.0": "minimum accepted Codex parser/runtime range"
+        },
+        "claude": {
+          "2.1.223": "minimum accepted Claude parser/runtime range",
+          "2.1.248": "Claude native --restricted availability floor"
+        }
+      },
+      "allowed_other_versions": {}
+    }
   },
   "domains": [
     {
@@ -69,7 +108,8 @@
         "GOVERNANCE.md",
         "_config.yml",
         "robots.txt",
-        "sitemap.xml"
+        "sitemap.xml",
+        ".github/FUNDING.yml"
       ]
     }
   ],

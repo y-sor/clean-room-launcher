@@ -43,7 +43,7 @@ For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-se
 
 ## v0.4.x: select one installed whole plugin
 
-v0.4.0 introduced one bounded whole-plugin selector:
+v0.4.2 includes one bounded whole-plugin selector:
 
 ```sh
 claude plugin list

@@ -121,6 +121,137 @@ def validate_changelog_baseline_date(declared, published_at):
         )
     return baseline
 
+SEMVER_TOKEN = re.compile(
+    r"(?<![0-9])(?P<prefix>v?)(?P<version>[0-9]+\.[0-9]+\.[0-9]+)(?P<plus>\+)?(?![0-9])"
+)
+
+def public_doc_version_policy(contract):
+    policy = contract.get("policy", {}).get("public_doc_version_inventory")
+    if not isinstance(policy, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_POLICY")
+    if policy.get("provider_version_source") != "scripts/release/provider-pins.sh":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_PROVIDER_VERSION_SOURCE")
+    if policy.get("stale_or_unclassified_version") != "fail":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_FAIL_POLICY")
+    for field in (
+        "active_globs",
+        "historical_exclusions",
+        "historical_product_paths",
+    ):
+        if not isinstance(policy.get(field), list):
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_POLICY:{field}")
+    provider_allow = policy.get("allowed_noncurrent_provider_versions")
+    if not isinstance(provider_allow, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_PROVIDER_ALLOWLIST")
+    if set(provider_allow) != {"codex", "claude"}:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_PROVIDER_ALLOWLIST_KEYS")
+    for provider, versions in provider_allow.items():
+        if not isinstance(versions, dict):
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_PROVIDER_ALLOWLIST:{provider}")
+        for version, reason in versions.items():
+            if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+                raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_KEY:{provider}:{version}")
+            if not isinstance(reason, str) or not reason.strip():
+                raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_REASON:{provider}:{version}")
+    other_allow = policy.get("allowed_other_versions")
+    if not isinstance(other_allow, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_OTHER_ALLOWLIST")
+    for version, reason in other_allow.items():
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_OTHER_ALLOWLIST_KEY:{version}")
+        if not isinstance(reason, str) or not reason.strip():
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_REASON:other:{version}")
+    return policy
+
+def provider_versions_from_pins(policy):
+    source = ROOT / policy["provider_version_source"]
+    text = source.read_text(encoding="utf-8")
+    result = {}
+    for provider, variable in (("codex", "CODEX_VERSION"), ("claude", "CLAUDE_VERSION")):
+        match = re.search(
+            rf"^{variable}=([0-9]+\.[0-9]+\.[0-9]+)$",
+            text,
+            flags=re.MULTILINE,
+        )
+        if match is None:
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_PROVIDER_PIN:{provider}")
+        result[provider] = match.group(1)
+    return result
+
+def public_doc_version_violation(path, line, prefix, version, candidate_version, pins, policy):
+    historical_product_paths = policy["historical_product_paths"]
+    provider_allow = policy["allowed_noncurrent_provider_versions"]
+    other_allow = policy["allowed_other_versions"]
+
+    if prefix == "v":
+        if any(matches(path, pattern) for pattern in historical_product_paths):
+            return None
+        if version == candidate_version or version in other_allow:
+            return None
+        return f"STALE_PRODUCT_VERSION:expected={candidate_version}:actual={version}"
+
+    lower = line.lower()
+    providers = {provider for provider in ("codex", "claude") if provider in lower}
+    if not providers:
+        if any(matches(path, pattern) for pattern in historical_product_paths):
+            return None
+        if version == candidate_version or version in other_allow:
+            return None
+        compatibility_owners = [
+            provider
+            for provider, configured in provider_allow.items()
+            if isinstance(configured, dict) and version in configured
+        ]
+        if len(compatibility_owners) == 1:
+            return None
+        return f"UNCLASSIFIED_VERSION:{version}"
+
+    allowed = {candidate_version}
+    for provider in providers:
+        allowed.add(pins[provider])
+        configured = provider_allow.get(provider, {})
+        if not isinstance(configured, dict):
+            return f"INVALID_PROVIDER_ALLOWLIST:{provider}"
+        allowed.update(configured.keys())
+    if version not in allowed:
+        expected = ",".join(sorted(allowed))
+        return f"STALE_PROVIDER_VERSION:actual={version}:allowed={expected}"
+    return None
+
+def validate_public_doc_versions(contract, candidate_version):
+    policy = public_doc_version_policy(contract)
+    pins = provider_versions_from_pins(policy)
+    tracked = run("git", "ls-files").splitlines()
+    paths = sorted(
+        path
+        for path in tracked
+        if any(matches(path, pattern) for pattern in policy["active_globs"])
+        and not any(matches(path, pattern) for pattern in policy["historical_exclusions"])
+    )
+    inventory = []
+    violations = []
+    for path in paths:
+        text = (ROOT / path).read_text(encoding="utf-8")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for match in SEMVER_TOKEN.finditer(line):
+                raw = match.group(0)
+                prefix = match.group("prefix")
+                version = match.group("version")
+                violation = public_doc_version_violation(
+                    path, line, prefix, version, candidate_version, pins, policy
+                )
+                inventory.append((path, line_number, raw, "PASS" if violation is None else violation))
+                if violation is not None:
+                    violations.append((path, line_number, raw, violation))
+    if violations:
+        for path, line_number, raw, violation in violations:
+            print(
+                f"PUBLIC_DOC_VERSION_DRIFT:{path}:{line_number}:{raw}:{violation}",
+                file=sys.stderr,
+            )
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_DRIFT")
+    return inventory
+
 def reviewed_content_digest(ref, review_path):
     raw = subprocess.check_output(["git", "ls-tree", "-r", "-z", ref], cwd=ROOT)
     records = []
@@ -164,9 +295,10 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE_FLOOR_POLICY")
     if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:TAG_REMOTE_REFRESH_POLICY")
+    public_doc_version_policy(contract)
 
     if args.self_test:
-        sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
+        sample=["src/cli/mod.rs","Cargo.lock",".github/workflows/ci.yml",".github/FUNDING.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
         classified, unknown=classify(sample,contract)
         if unknown or any(not classified[p] for p in sample):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL")
@@ -184,6 +316,56 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DATE_FLOOR_POLICY")
         if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_TAG_REMOTE_REFRESH_POLICY")
+        doc_policy = public_doc_version_policy(contract)
+        if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
+        if not any(matches("docs/release/RELEASE_CONTRACT.md", pattern) for pattern in doc_policy["active_globs"]):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_NESTED_GLOB")
+        fixture_pins = {"codex": "0.156.0", "claude": "2.1.280"}
+        if public_doc_version_violation(
+            "docs/providers.md", "Codex CLI 0.154.0 exact", "", "0.154.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CODEX_DOC_VERSION")
+        if public_doc_version_violation(
+            "docs/providers.md", "Claude Code 2.1.272 exact", "", "2.1.272",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CLAUDE_DOC_VERSION")
+        if public_doc_version_violation(
+            "README.md", "prepared for v0.4.0", "v", "0.4.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_PRODUCT_DOC_VERSION")
+        if public_doc_version_violation(
+            "docs/agent-runners.md", "Runner v0.8.5 compatibility", "v", "0.8.5",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_EXTERNAL_PRODUCT_VERSION_RESIDUE")
+        if public_doc_version_violation(
+            "SECURITY.md", "| 0.4.0 | prior |", "", "0.4.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_HISTORICAL_PRODUCT_VERSION")
+        if public_doc_version_violation(
+            "docs/providers.md", "Codex CLI 0.156.0 exact", "", "0.156.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CODEX_DOC_VERSION")
+        if public_doc_version_violation(
+            "docs/codex.md", "ordinary parser/runtime minimum remains", "", "0.147.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_COMPATIBILITY_FLOOR")
+        if public_doc_version_violation(
+            "docs/codex.md", "stale wrapped version", "", "0.154.0",
+            "0.4.2", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_STALE_VERSION")
+        validate_public_doc_versions(
+            contract,
+            __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"],
+        )
         sample_changelog = [
             "## [9.9.9] - 2026-09-20",
             "",
@@ -257,6 +439,7 @@ def main():
         return
 
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
+    doc_version_inventory = validate_public_doc_versions(contract, version)
     changelog_lines = (ROOT/"CHANGELOG.md").read_text(encoding="utf-8").splitlines()
     try:
         declared_release_date = changelog_release_date(changelog_lines, version)
@@ -369,6 +552,10 @@ def main():
         if args.tag_date is not None:
             print(f"TAG_ACTION_DATE={args.tag_date}")
         print(f"CONTRACT_EVOLUTION={evolution['decision']}")
+        print(f"PUBLIC_DOC_VERSION_MENTIONS={len(doc_version_inventory)}")
+        print("=== PUBLIC DOC VERSION INVENTORY ===")
+        for path, line_number, raw, classification in doc_version_inventory:
+            print(f"{path}:{line_number}\t{raw}\t{classification}")
         print("=== ARTIFACT CAPABILITY GATES ===")
         for gate in review.get("artifact_capability_gates",[]):
             print(f"{gate['phase']}\t{gate['id']}\t{gate['requirement']}")

@@ -31,24 +31,23 @@
   <a href="#remove">Remove</a>
 </p>
 
-## What?
+## A clean/selective launch layer for Codex and Claude Code
 
-> **A clean-room launcher for Codex and Claude Code on macOS.**
+> **Agent runners and orchestrators can start Codex or Claude Code through CLROOM instead of calling the provider directly.**
 
-## Why?
+> **Clean launch by default, with explicit opt-ins**
 
-> **One word instead of many long parameters.**<br>
-> **Bring only the skills you need into your empty place.**
+CLROOM starts the installed `codex` or `claude` CLI without rewriting the setup you normally use. Project files, project instructions, and project-local skills stay available. Known unrelated personal-global instructions and global skills you did not select stay out of that launch.
 
-## Launch your coding agent without unrelated instructions and skills.
+Use `clroom codex` or `clroom claude` directly, choose reusable skill sets for different kinds of work, or put CLROOM underneath software that starts coding-agent processes.
 
-Coding-agent CLIs can load global rules, skills from other work, and forgotten
-instructions from outside the current project. `clroom` keeps them out of this
-launch while your project context stays available.
+Each independently launched worker can get a different CLROOM setup while the outer tool keeps ownership of roles, missions, scheduling, worktrees, session reuse, and coordination.
 
-Your existing setup stays untouched.
+That makes the same launch model useful for daily development, clean skill testing, automated work, and multi-agent systems.
 
-Use the automatic clean launch immediately.
+Your normal provider setup stays untouched.
+
+CLROOM does not become the orchestrator. It gives orchestrators a reusable way to start workers with deliberate per-run inputs.
 
 ## Use the global skills you need without loading the rest.
 
@@ -529,8 +528,10 @@ For vulnerability reports, follow the private-reporting instructions below.
 
 If CLROOM belongs in your workflow, you can support continued development and testing:
 
+<!-- Patreon sponsorship is temporarily hidden.
 - [Patreon](https://www.patreon.com/CLROOM)
-- [Direct support](https://send.monobank.ua/jar/9UUyaEo717)
+-->
+- [Direct support via Monobank](https://send.monobank.ua/jar/9UUyaEo717)
 
 
 ## Security

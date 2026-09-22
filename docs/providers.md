@@ -5,47 +5,48 @@ description: Current CLROOM provider support on macOS Apple Silicon for Codex an
 permalink: /providers.html
 ---
 
-The current release has two supported provider paths:
+The current source has two supported provider families on macOS Apple Silicon.
+Minimum accepted parser/runtime ranges are broader than the exact versions used
+for release qualification:
 
-| Coding-agent CLI | Platform | Status |
+| Coding-agent CLI | Minimum accepted range | Exact release qualification |
 | --- | --- | --- |
-| Codex CLI 0.147.0+ | macOS / Apple Silicon | Minimum accepted range; 0.154.0 is the exact qualification target |
-| Claude Code CLI 2.1.223+ | macOS / Apple Silicon | Minimum accepted range; 2.1.272 is the exact qualification target |
+| Codex CLI | 0.147.0+ | 0.156.0 |
+| Claude Code CLI | 2.1.223+ | 2.1.280 |
 
-Qualified examples:
+The exact qualified launch paths for this source tree are:
 
-```sh
-clroom codex
-clroom codex exec [CODEX_EXEC_ARGS]
-clroom claude
-```
+| Provider path | Exact version | Qualification |
+| --- | --- | --- |
+| `clroom codex` | Codex CLI 0.156.0 | Interactive clean launch |
+| `clroom codex exec ...` | Codex CLI 0.156.0 | Non-interactive clean launch |
+| `clroom codex --with=plugin:<id>` | Codex CLI 0.156.0 | One installed standalone-capable whole plugin |
+| `clroom claude` | Claude Code CLI 2.1.280 | Interactive clean launch |
+| `clroom claude --with=plugin:<id>` | Claude Code CLI 2.1.280 | One installed skill-only whole plugin |
+| Claude Code `-p` response-output semantics | Claude Code CLI 2.1.280 | Launch path exercised; response-output contract is not independently qualified |
 
-For qualified Codex diagnostics, use the top-level forms:
+For provider diagnostics, use the top-level forms:
 
 ```sh
 clroom codex --help
 clroom codex --version
+clroom claude --version
 ```
 
-Clean Room Launcher resolves `codex` from `PATH`, builds the macOS isolation
-profile, prints the filesystem-restriction summary, then starts Codex inside
-`sandbox-exec`. The `exec` path additionally injects native
-`--ignore-user-config`. Terminal streams, signals and exit status remain native.
-Interactive `clroom codex` uses the existing CLROOM isolation path without that
-exec-only enhancement.
+Clean Room Launcher resolves the installed provider from `PATH`; it does not
+install, replace, log in to, or copy credentials from either provider.
 
-For Claude, the launcher creates one private session-scoped skill projection,
-binds it to the real Claude consumer process, and removes it on normal exit or
-after a later launch proves the owner dead. Live or unknown sessions are kept.
-The current release targets the interactive Claude path only for the exact
-version listed above. A Claude Code `-p`
-launch reached the provider and exited successfully during current release
-qualification, but its response-output semantics are not independently qualified here.
+Codex runs inside the CLROOM macOS isolation path. The `exec` path additionally
+injects native `--ignore-user-config`. The v0.4.2 Codex whole-plugin path
+projects exactly one qualified installed bundle into a private shadow
+`CODEX_HOME` and fails closed on host-required app-owned MCP surfaces.
 
-The launcher does not install either provider, create an account, perform
-browser login, inspect provider authentication state, or copy provider
-credentials. Existing authentication is used by the selected CLI itself and
-left untouched.
+Claude runs with project/local settings retained, known personal-global inputs
+restricted, and selected global skills admitted only for that launch. The
+v0.4.2 whole-plugin path admits exactly one installed plugin whose observed
+effective surface is skill-only; hooks, commands, agents, MCP/LSP, monitors,
+executables, settings, custom skill paths, and other broader plugin surfaces
+remain unqualified for activation.
 
 Linux and Windows are `NOT_QUALIFIED`; Intel macOS is not supported by this
-release.
+release. The macOS archive is unsigned and unnotarized.

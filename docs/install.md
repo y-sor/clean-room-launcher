@@ -33,8 +33,8 @@ The exact-version examples below require that the named tag and GitHub Release
 have already been published.
 
 ```sh
-VERSION=v0.4.0
-ASSET=clean-room-launcher-v0.4.0-aarch64-apple-darwin.tar.gz
+VERSION=vX.Y.Z
+ASSET=clean-room-launcher-${VERSION}-aarch64-apple-darwin.tar.gz
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/clroom-archive.XXXXXX")
 trap 'rm -rf -- "$STAGE"' EXIT
 
@@ -67,7 +67,7 @@ other release assets.
 
 ```sh
 cargo install --git https://github.com/y-sor/clean-room-launcher \
-  --tag v0.4.0 --locked
+  --tag vX.Y.Z --locked
 ```
 
 The release is not published to crates.io.
