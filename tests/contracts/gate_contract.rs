@@ -572,6 +572,52 @@ fn release_runtime_rehearsal_is_premerge_and_content_addressed() {
 }
 
 #[test]
+fn codex_release_evidence_uses_actions_not_owner_path() {
+    let candidate =
+        std::fs::read_to_string(".github/workflows/release-candidate.yml").unwrap();
+    let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let draft =
+        std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+    let rehearsal_resolver =
+        std::fs::read_to_string("scripts/release/resolve-codex-rehearsal-evidence.sh").unwrap();
+    let draft_resolver =
+        std::fs::read_to_string("scripts/release/resolve-codex-draft-evidence.sh").unwrap();
+    let contract =
+        std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+
+    assert!(candidate.contains("Rehearse Codex runtime on exact PR candidate"));
+    assert!(candidate.contains("local-codex-plugin-activation-smoke.sh rehearse"));
+    assert!(candidate.contains("Upload Codex pre-merge rehearsal evidence"));
+    assert!(release.contains("verify-codex-draft:"));
+    assert!(release.contains("local-codex-plugin-activation-smoke.sh draft"));
+    assert!(release.contains("Upload Codex Draft evidence"));
+
+    assert!(tag.contains("resolve-codex-rehearsal-evidence.sh"));
+    assert!(!tag.contains("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME"));
+    assert!(!tag.contains("CODEX_PROVIDER_DRIFT_ACTION_TIME"));
+    assert!(draft.contains("resolve-codex-rehearsal-evidence.sh"));
+    assert!(draft.contains("resolve-codex-draft-evidence.sh"));
+
+    for resolver in [&rehearsal_resolver, &draft_resolver] {
+        assert!(resolver.contains("conclusion\": \"success\""));
+        assert!(resolver.contains("gh run download"));
+    }
+    assert!(rehearsal_resolver.contains(".github/workflows/release-candidate.yml"));
+    assert!(draft_resolver.contains(".github/workflows/release.yml"));
+
+    assert!(contract.contains(
+        r#""codex_premerge_rehearsal_transport": "github_actions_macos_content_addressed_artifact""#
+    ));
+    assert!(contract.contains(
+        r#""codex_draft_rehearsal_transport": "github_actions_macos_tag_artifact""#
+    ));
+    assert!(contract.contains(
+        r#""ambient_local_codex_release_input": "forbidden""#
+    ));
+}
+
+#[test]
 fn draft_release_smoke_requires_repository_release_immutability() {
     let source = std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
 
