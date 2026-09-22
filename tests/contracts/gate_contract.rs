@@ -249,6 +249,9 @@ fn codex_runtime_probe_observes_exact_provider_through_private_launcher() {
     assert!(fixture.contains("clroom-provider-launched-v1"));
     assert!(fixture.contains("exec {shlex.quote(provider)}"));
     assert!(fixture.contains("provider_launch_observed(provider_marker)"));
+    assert!(fixture.contains(
+        r#"str(observer.parent) + ":" + provider_dir + ":/usr/bin:/bin""#
+    ));
     assert!(fixture.contains("provider launch observer marker invalid"));
     assert!(fixture.contains("provider launch observer missed exact provider execution"));
     assert!(fixture.contains("provider launch observer did not exec exact provider"));
