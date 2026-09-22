@@ -528,8 +528,10 @@ For vulnerability reports, follow the private-reporting instructions below.
 
 If CLROOM belongs in your workflow, you can support continued development and testing:
 
+<!-- Patreon sponsorship is temporarily hidden.
 - [Patreon](https://www.patreon.com/CLROOM)
-- [Direct support](https://send.monobank.ua/jar/9UUyaEo717)
+-->
+- [Direct support via Monobank](https://send.monobank.ua/jar/9UUyaEo717)
 
 
 ## Security
