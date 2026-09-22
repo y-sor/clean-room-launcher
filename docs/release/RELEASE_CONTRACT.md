@@ -108,7 +108,8 @@ Every active release candidate must inventory semantic-version mentions across
 the active public documentation surface. The canonical release checker compares
 provider-version claims with `scripts/release/provider-pins.sh`, permits only
 explicitly declared compatibility/version-floor exceptions, and fails closed on
-stale or unclassified provider versions. Current-version product surfaces such as
+stale or unclassified provider versions. Every exception must use a canonical
+semantic-version key and a non-empty machine-checked rationale. Current-version product surfaces such as
 the README and install/support matrices must not keep an older exact release
 version after the candidate advances.
 
