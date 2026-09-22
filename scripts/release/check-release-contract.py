@@ -149,7 +149,7 @@ def public_doc_version_policy(contract):
         if not isinstance(versions, dict):
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_PROVIDER_ALLOWLIST:{provider}")
         for version, reason in versions.items():
-            if re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", version) is None:
+            if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
                 raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_KEY:{provider}:{version}")
             if not isinstance(reason, str) or not reason.strip():
                 raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_REASON:{provider}:{version}")
@@ -157,7 +157,7 @@ def public_doc_version_policy(contract):
     if not isinstance(other_allow, dict):
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_OTHER_ALLOWLIST")
     for version, reason in other_allow.items():
-        if re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", version) is None:
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_OTHER_ALLOWLIST_KEY:{version}")
         if not isinstance(reason, str) or not reason.strip():
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_REASON:other:{version}")
