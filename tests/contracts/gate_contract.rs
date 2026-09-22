@@ -265,6 +265,21 @@ fn codex_runtime_probe_matches_provider_by_file_identity_not_path_string() {
 }
 
 #[test]
+fn codex_runtime_probe_uses_protocol_success_not_process_table_as_acceptance() {
+    let fixture =
+        std::fs::read_to_string("scripts/release/codex-mcp-fixture.py").unwrap();
+    assert!(fixture.contains("methods_seen = methods_seen or observed_methods(log)"));
+    assert!(fixture.contains(
+        r#"CODEX_MCP_PROVIDER_PROBE_PASS provider_process_observer="#
+    ));
+    assert!(
+        !fixture.contains(r#"raise RuntimeError("real Codex provider was not observed")"#),
+        "process-table observation is diagnostic only; MCP protocol success is the runtime boundary"
+    );
+    assert!(fixture.contains("Codex did not reach MCP initialize + tools/list"));
+}
+
+#[test]
 fn codex_runtime_probe_preserves_fixture_root_blocker() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
