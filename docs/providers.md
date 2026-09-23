@@ -37,13 +37,13 @@ Clean Room Launcher resolves the installed provider from `PATH`; it does not
 install, replace, log in to, or copy credentials from either provider.
 
 Codex runs inside the CLROOM macOS isolation path. The `exec` path additionally
-injects native `--ignore-user-config`. The v0.4.2 Codex whole-plugin path
+injects native `--ignore-user-config`. The v0.4.3 Codex whole-plugin path
 projects exactly one qualified installed bundle into a private shadow
 `CODEX_HOME` and fails closed on host-required app-owned MCP surfaces.
 
 Claude runs with project/local settings retained, known personal-global inputs
 restricted, and selected global skills admitted only for that launch. The
-v0.4.2 whole-plugin path admits exactly one installed plugin whose observed
+v0.4.3 whole-plugin path admits exactly one installed plugin whose observed
 effective surface is skill-only; hooks, commands, agents, MCP/LSP, monitors,
 executables, settings, custom skill paths, and other broader plugin surfaces
 remain unqualified for activation.
