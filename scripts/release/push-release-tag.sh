@@ -73,10 +73,19 @@ ensure_remote_tag_absent() {
 
 ensure_release_absent() {
   local phase=$1
-  if gh release view "$tag" >/dev/null 2>&1; then
+  local releases_tmp
+  releases_tmp=$(mktemp "${TMPDIR:-/tmp}/clroom-releases.XXXXXX") || return 1
+  if ! gh api --paginate "repos/y-sor/clean-room-launcher/releases?per_page=100" --jq '.[].tag_name' >"$releases_tmp"; then
+    rm -f -- "$releases_tmp"
+    echo "TAG_GATE_BLOCKED:RELEASE_QUERY_$phase" >&2
+    return 1
+  fi
+  if grep -Fxq -- "$tag" "$releases_tmp"; then
+    rm -f -- "$releases_tmp"
     echo "TAG_GATE_BLOCKED:RELEASE_PRESENT_$phase" >&2
     return 1
   fi
+  rm -f -- "$releases_tmp"
 }
 
 verify_immutable_policy() {
@@ -138,8 +147,56 @@ PY
   return 1
 }
 
+verify_required_main_workflows() {
+  local phase=$1
+  local runs_tmp
+  runs_tmp=$(mktemp "${TMPDIR:-/tmp}/clroom-main-runs.XXXXXX") || return 1
+  if ! gh api -X GET "repos/y-sor/clean-room-launcher/actions/runs"       -f head_sha="$expected" -f per_page=100 >"$runs_tmp"; then
+    rm -f -- "$runs_tmp"
+    echo "TAG_GATE_BLOCKED:MAIN_WORKFLOW_QUERY_$phase" >&2
+    return 1
+  fi
+  if ! python3 - "$runs_tmp" "$expected" <<'PY'
+import json, sys
+path, expected = sys.argv[1:]
+data = json.load(open(path, encoding="utf-8"))
+required = {
+    ".github/workflows/ci.yml": "CI",
+    ".github/workflows/codeql.yml": "CodeQL",
+    ".github/workflows/fuzz.yml": "Fuzz smoke",
+    ".github/workflows/release-candidate.yml": "Release candidate readiness",
+}
+for workflow_path, workflow_name in required.items():
+    matches = [
+        run for run in data.get("workflow_runs", [])
+        if run.get("path") == workflow_path
+        and run.get("name") == workflow_name
+        and run.get("event") == "push"
+        and run.get("head_branch") == "main"
+        and run.get("head_sha") == expected
+    ]
+    if not matches:
+        raise SystemExit(f"missing:{workflow_name}")
+    matches.sort(key=lambda run: run.get("created_at") or "", reverse=True)
+    latest = matches[0]
+    if latest.get("status") != "completed" or latest.get("conclusion") != "success":
+        raise SystemExit(
+            f"not-success:{workflow_name}:{latest.get('status')}:{latest.get('conclusion')}"
+        )
+print("REQUIRED_MAIN_WORKFLOWS_PASS")
+PY
+  then
+    rm -f -- "$runs_tmp"
+    echo "TAG_GATE_BLOCKED:REQUIRED_MAIN_WORKFLOWS_$phase" >&2
+    return 1
+  fi
+  rm -f -- "$runs_tmp"
+  return 0
+}
+
 ensure_remote_tag_absent INITIAL || exit 68
 ensure_release_absent INITIAL || exit 68
+verify_required_main_workflows INITIAL || exit 74
 verify_tag_ruleset || exit 74
 verify_immutable_policy INITIAL || exit 74
 python3 scripts/release/check-release-contract.py --report >/dev/null || {
@@ -270,12 +327,24 @@ actual_main_now=$(git rev-parse FETCH_HEAD)
 }
 ensure_remote_tag_absent ACTION_TIME || { cleanup_local_tag; exit 76; }
 ensure_release_absent ACTION_TIME || { cleanup_local_tag; exit 76; }
+verify_required_main_workflows ACTION_TIME || { cleanup_local_tag; exit 76; }
 verify_tag_ruleset || { cleanup_local_tag; exit 76; }
 verify_immutable_policy ACTION_TIME || { cleanup_local_tag; exit 76; }
 python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null || {
   cleanup_local_tag
   echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
   exit 77
+}
+rm -rf -- "$tmp/stage-action-time"
+bash scripts/release/resolve-pretag-stage.sh "$version" "$expected" "$tmp/stage-action-time" || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_ACTION_TIME" >&2
+  exit 80
+}
+python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage-action-time"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --codex-version "$CODEX_VERSION"   --claude-version "$CLAUDE_VERSION" || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING_ACTION_TIME" >&2
+  exit 80
 }
 
 set +e
