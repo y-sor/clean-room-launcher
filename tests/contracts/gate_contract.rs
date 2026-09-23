@@ -235,6 +235,20 @@ fn codex_runtime_probe_preserves_fixture_root_blocker() {
 }
 
 #[test]
+#[test]
+fn provider_canary_negative_fixture_defers_runtime_argv_expansion() {
+    let contract =
+        std::fs::read_to_string("scripts/release/check-provider-canary-contract.sh").unwrap();
+    assert!(
+        contract.contains(r#"if [[ \${1:-} == --version ]]; then"#),
+        "fake-provider fixture must preserve positional expansion for fake-provider runtime"
+    );
+    assert!(
+        contract.contains(r#"EARLY_EXIT_STATUS:$status"#),
+        "negative fixture failure must expose the unexpected qualifier exit status"
+    );
+}
+
 fn codex_rehearsal_and_stage_close_state_before_tag() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
