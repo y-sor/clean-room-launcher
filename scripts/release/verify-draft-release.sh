@@ -93,14 +93,21 @@ record = json.load(open(sys.argv[1], encoding="utf-8"))
 print(record["files"][sys.argv[2]])
 PY
 )
+claude_provider_sha=$(python3 - "$tmp/stage/pretag-manifest.json" <<'PY'
+import json, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+print(record["providers"]["claude"]["executable_sha256"])
+PY
+)
 [[ "$artifact_sha" =~ ^[0-9a-f]{64}$ ]] || fail "STAGED_ARTIFACT_DIGEST"
+[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "STAGED_CLAUDE_PROVIDER_DIGEST"
 
 git_common_dir=$(git rev-parse --git-common-dir)
 if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
 evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
 claude_stage="$evidence_dir/stage-v${version}-${expected:0:12}.json"
 [[ -f "$claude_stage" ]] || fail "CLAUDE_STAGE_EVIDENCE_MISSING:$claude_stage"
-python3 scripts/release/verify-claude-stage-evidence.py   --evidence "$claude_stage"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --artifact-sha256 "$artifact_sha"   --claude-version "$CLAUDE_VERSION"   || fail "CLAUDE_STAGE_EVIDENCE"
+python3 scripts/release/verify-claude-stage-evidence.py   --evidence "$claude_stage"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --artifact-sha256 "$artifact_sha"   --claude-version "$CLAUDE_VERSION"   --expected-provider-sha256 "$claude_provider_sha"   || fail "CLAUDE_STAGE_EVIDENCE"
 
 gh api -X GET "repos/$repository/actions/runs"   -f head_sha="$expected" -f per_page=100   >"$tmp/runs.json" || fail "ACTIONS_QUERY"
 python3 - "$tmp/runs.json" "$tag" "$expected" <<'PY' || fail "EXACT_TAG_PROMOTION_ACTION"
