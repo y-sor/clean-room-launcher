@@ -18,6 +18,9 @@ jobs:
   release-readiness:
     name: CLROOM release readiness
     runs-on: macos-14
+    outputs:
+      version: ${{ steps.lifecycle.outputs.version }}
+      lifecycle: ${{ steps.lifecycle.outputs.lifecycle }}
     steps:
       - name: Check out exact PR HEAD
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -27,6 +30,7 @@ jobs:
           fetch-tags: true
           persist-credentials: false
       - name: Resolve published release lifecycle
+        id: lifecycle
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -54,6 +58,8 @@ jobs:
           echo "CLROOM_RELEASE_VERSION=$candidate_version" >> "$GITHUB_ENV"
           echo "CLROOM_RELEASE_BASE_REF=$latest_tag" >> "$GITHUB_ENV"
           echo "CLROOM_RELEASE_LIFECYCLE=$lifecycle" >> "$GITHUB_ENV"
+          echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
+          echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
           printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
       - name: Prove release attestation contract fails closed
         shell: bash
@@ -65,12 +71,12 @@ jobs:
             rm -f -- "$probe" "$output"
           }
           trap cleanup EXIT HUP INT TERM
-          grep -Fv -- 'name: release-attestations' .github/workflows/release.yml > "$probe"
-          if scripts/release/check-attestation-contract.sh "$probe" >"$output" 2>&1; then
-            echo "release attestation contract unexpectedly passed without artifact handoff" >&2
+          grep -Fv -- 'uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2' .github/workflows/release.yml > "$probe"
+          if bash scripts/release/check-attestation-contract.sh "$probe" .github/workflows/release-candidate.yml >"$output" 2>&1; then
+            echo "release attestation contract unexpectedly passed without the pinned tag attestation action" >&2
             exit 1
           fi
-          grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:ARTIFACT_HANDOFF' "$output"
+          grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_ACTION_PIN' "$output"
       - name: Provision existing Python supply-chain verifier
         shell: bash
         run: |
@@ -154,9 +160,9 @@ jobs:
             bash scripts/release/local-codex-plugin-activation-smoke.sh rehearse \
               --expected-head "$candidate_sha" \
               --fixture-standalone-mcp
-          digest="$(python3 - <<'PY'
-          import json
-          with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+          digest="$(python3 - "$CLROOM_RELEASE_VERSION" <<'PY'
+          import json, sys
+          with open(f"reports/release/v{sys.argv[1]}-review.json", encoding="utf-8") as handle:
               print(json.load(handle)["reviewed_content_digest"])
           PY
           )"
@@ -174,3 +180,95 @@ jobs:
           path: ${{ steps.codex_rehearsal.outputs.evidence }}
           if-no-files-found: error
           retention-days: 30
+
+  pretag-stage:
+    name: Rehearse/stage exact release bytes
+    needs: release-readiness
+    if: needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Provision pinned real provider canaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"
+      - name: Build and qualify exact future shipping bytes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "$source_sha"
+          bash scripts/release/stage-release.sh "$source_sha" "$RUNNER_TEMP/pretag-stage"
+      - name: Upload content-addressed pre-tag stage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/pretag-stage/*
+          if-no-files-found: error
+          retention-days: 30
+
+  pretag-attestation-rehearsal:
+    name: Rehearse attestation mechanism before tag
+    needs: [release-readiness, pretag-stage]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out exact accepted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download exact staged bytes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.sha }}
+          path: pretag-stage
+      - name: Verify staged manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/release/provider-pins.sh
+          python3 scripts/release/verify-pretag-stage.py             --dir pretag-stage             --version "${{ needs.release-readiness.outputs.version }}"             --source-head "$GITHUB_SHA"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
+      - name: Rehearse build provenance attestation
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: pretag-stage/SHA256SUMS
+      - name: Rehearse CycloneDX SBOM attestation
+        id: sbom_attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: pretag-stage/clean-room-launcher-v${{ needs.release-readiness.outputs.version }}-aarch64-apple-darwin.tar.gz
+          sbom-path: pretag-stage/sbom.cdx.json
+      - name: Verify pre-tag attestation mechanism
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release-readiness.outputs.version }}
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom_attestation.outputs.bundle-path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact="clean-room-launcher-v${VERSION}-aarch64-apple-darwin.tar.gz"
+          for subject in "$artifact" sbom.cdx.json install.sh; do
+            gh attestation verify "pretag-stage/$subject"               -R "$GITHUB_REPOSITORY"               --bundle "$PROVENANCE_BUNDLE"               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml"               --source-digest "$GITHUB_SHA"               --source-ref "refs/heads/main"               --deny-self-hosted-runners
+          done
+          gh attestation verify "pretag-stage/$artifact"             -R "$GITHUB_REPOSITORY"             --bundle "$SBOM_BUNDLE"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml"             --source-digest "$GITHUB_SHA"             --source-ref "refs/heads/main"             --deny-self-hosted-runners
+          echo "PRETAG_ATTESTATION_REHEARSAL_PASS source=$GITHUB_SHA"

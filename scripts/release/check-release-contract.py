@@ -14,12 +14,28 @@ def load_json(path):
 def matches(path, pattern):
     return fnmatch.fnmatchcase(path, pattern) or Path(path).match(pattern)
 
+def github_token():
+    for name in ("GITHUB_TOKEN", "GH_TOKEN"):
+        token = os.environ.get(name)
+        if token:
+            return token
+    try:
+        token = subprocess.check_output(
+            ["gh", "auth", "token"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    return token or None
+
 def latest_published_release(repository):
     req = urllib.request.Request(
         f"https://api.github.com/repos/{repository}/releases/latest",
         headers={"Accept":"application/vnd.github+json","User-Agent":"clroom-release-contract-v1"},
     )
-    token = os.environ.get("GITHUB_TOKEN")
+    token = github_token()
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=20) as response:
@@ -293,7 +309,7 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_VERSION_POLICY")
     if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE_FLOOR_POLICY")
-    if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
+    if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_pretag_stage_before_push":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:TAG_REMOTE_REFRESH_POLICY")
     public_doc_version_policy(contract)
 
@@ -314,52 +330,52 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CANDIDATE_VERSION_POLICY")
         if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DATE_FLOOR_POLICY")
-        if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
+        if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_pretag_stage_before_push":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_TAG_REMOTE_REFRESH_POLICY")
         doc_policy = public_doc_version_policy(contract)
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
         if not any(matches("docs/release/RELEASE_CONTRACT.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_NESTED_GLOB")
-        fixture_pins = {"codex": "0.156.0", "claude": "2.1.280"}
+        fixture_pins = {"codex": "0.156.1", "claude": "2.1.280"}
         if public_doc_version_violation(
-            "docs/providers.md", "Codex CLI 0.154.0 exact", "", "0.154.0",
-            "0.4.2", fixture_pins, doc_policy
+            "docs/providers.md", "Codex CLI 0.156.0 exact", "", "0.156.0",
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CODEX_DOC_VERSION")
         if public_doc_version_violation(
             "docs/providers.md", "Claude Code 2.1.272 exact", "", "2.1.272",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CLAUDE_DOC_VERSION")
         if public_doc_version_violation(
             "README.md", "prepared for v0.4.0", "v", "0.4.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_PRODUCT_DOC_VERSION")
         if public_doc_version_violation(
             "docs/agent-runners.md", "Runner v0.8.5 compatibility", "v", "0.8.5",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_EXTERNAL_PRODUCT_VERSION_RESIDUE")
         if public_doc_version_violation(
             "SECURITY.md", "| 0.4.0 | prior |", "", "0.4.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_HISTORICAL_PRODUCT_VERSION")
         if public_doc_version_violation(
-            "docs/providers.md", "Codex CLI 0.156.0 exact", "", "0.156.0",
-            "0.4.2", fixture_pins, doc_policy
+            "docs/providers.md", "Codex CLI 0.156.1 exact", "", "0.156.1",
+            "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CODEX_DOC_VERSION")
         if public_doc_version_violation(
             "docs/codex.md", "ordinary parser/runtime minimum remains", "", "0.147.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_COMPATIBILITY_FLOOR")
         if public_doc_version_violation(
             "docs/codex.md", "stale wrapped version", "", "0.154.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_STALE_VERSION")
         validate_public_doc_versions(

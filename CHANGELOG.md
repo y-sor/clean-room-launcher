@@ -7,6 +7,23 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-23
+
+### Changed
+
+- Advanced the exact macOS Apple Silicon Codex qualification target from `0.156.0` to current stable `0.156.1`, with fresh registry-integrity pins and full exact-candidate runtime requalification.
+
+### Fixed
+
+- Rebuilt the release harness around pre-tag blocker closure: exact future shipping bytes are staged and qualified before protected tag creation, while post-tag automation is limited to tag-bound attestation, byte-for-byte Draft promotion, and reconciliation.
+- Moved repository release-policy verification and all reproducible provider/runtime checks before the tag boundary so a permission or runtime defect cannot first invalidate an already-protected release tag.
+- The unpublished `v0.4.2` candidate remains historical evidence of the harness incident; it was never published and is not the installable latest release.
+
+### Security
+
+- Protected tag creation now requires successful exact-main release staging, frozen provider registry evidence, exact staged-byte Codex runtime evidence, exact staged-byte Claude TTY evidence, immutable-release policy verification, and required accepted-main workflow success before the single irreversible push.
+- Post-tag release automation no longer rebuilds, reruns provider qualification, rechecks mutable provider `latest`, or depends on the current default-branch tip.
+
 ## [0.4.2] - 2026-09-20
 
 ### Added

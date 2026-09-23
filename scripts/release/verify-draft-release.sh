@@ -16,7 +16,6 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 cd "$root"
 repository="y-sor/clean-room-launcher"
 version=${tag#v}
-short=${expected:0:12}
 
 for name in git gh python3 shasum; do
   command -v "$name" >/dev/null 2>&1 || fail "COMMAND_MISSING:$name"
@@ -33,26 +32,112 @@ PY
 )
 [[ "$manifest_version" == "$version" ]] || fail "VERSION_MISMATCH"
 
-immutable_enabled=$(gh api "repos/$repository/immutable-releases" --jq .enabled 2>/dev/null) \
-  || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
+immutable_enabled=$(gh api "repos/$repository/immutable-releases" --jq .enabled 2>/dev/null)   || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
 [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
+
+ruleset_tmp=$(mktemp "${TMPDIR:-/tmp}/clroom-draft-rulesets.XXXXXX") || fail "RULESET_TMP"
+gh api "repos/$repository/rulesets" >"$ruleset_tmp" || fail "RULESET_READ"
+python3 - "$ruleset_tmp" "$repository" <<'PY' || fail "TAG_RULESET_WEAKENED"
+import json, subprocess, sys
+path, repository = sys.argv[1:]
+items = json.load(open(path, encoding="utf-8"))
+for item in items:
+    if item.get("target") != "tag" or item.get("enforcement") != "active":
+        continue
+    detail = json.loads(subprocess.check_output(
+        ["gh", "api", f"repos/{repository}/rulesets/{item['id']}"], text=True
+    ))
+    refs = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
+    rules = {rule.get("type") for rule in detail.get("rules", [])}
+    if (
+        "refs/tags/v*" in refs
+        and {"update", "deletion"} <= rules
+        and not detail.get("bypass_actors")
+        and detail.get("current_user_can_bypass") in (None, "never")
+    ):
+        print("TAG_RULESET_PREPUBLISH_PASS")
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+rm -f -- "$ruleset_tmp"
 
 git fetch --quiet --force origin "refs/tags/$tag:refs/tags/$tag" || fail "TAG_FETCH"
 [[ "$(git cat-file -t "refs/tags/$tag")" == tag ]] || fail "ANNOTATED_TAG_REQUIRED"
 [[ "$(git rev-parse "refs/tags/$tag^{}")" == "$expected" ]] || fail "TAG_TARGET_MISMATCH"
-[[ "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")" == "$tag — Clean Room Launcher" ]] \
-  || fail "TAG_TITLE_MISMATCH"
+[[ "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")" == "$tag — Clean Room Launcher" ]]   || fail "TAG_TITLE_MISMATCH"
+
+current_tree=$(git rev-parse "HEAD^{tree}")
+review_path="reports/release/v${version}-review.json"
+[[ -f "$review_path" ]] || fail "REVIEW_FILE_MISSING"
+reviewed_content_digest=$(python3 - "$review_path" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["reviewed_content_digest"])
+PY
+)
+[[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
+
+# shellcheck source=provider-pins.sh
+source scripts/release/provider-pins.sh
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-draft-release-verify.XXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 
-gh release view "$tag" \
-  --json tagName,name,isDraft,isPrerelease,assets \
-  >"$tmp/release.json" || fail "RELEASE_QUERY"
+bash scripts/release/resolve-pretag-stage.sh "$version" "$expected" "$tmp/stage"   || fail "PRETAG_STAGE"
+python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --codex-version "$CODEX_VERSION"   --claude-version "$CLAUDE_VERSION"   || fail "PRETAG_STAGE_BINDING"
 
-python3 - "$tmp/release.json" "$tag" "$version" <<'PY' || fail "RELEASE_IDENTITY_OR_ASSETS"
+artifact="clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
+artifact_sha=$(python3 - "$tmp/stage/pretag-manifest.json" "$artifact" <<'PY'
 import json, sys
-path, tag, version = sys.argv[1:]
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+print(record["files"][sys.argv[2]])
+PY
+)
+claude_provider_sha=$(python3 - "$tmp/stage/pretag-manifest.json" <<'PY'
+import json, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+print(record["providers"]["claude"]["executable_sha256"])
+PY
+)
+[[ "$artifact_sha" =~ ^[0-9a-f]{64}$ ]] || fail "STAGED_ARTIFACT_DIGEST"
+[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "STAGED_CLAUDE_PROVIDER_DIGEST"
+
+git_common_dir=$(git rev-parse --git-common-dir)
+if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
+evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
+claude_stage="$evidence_dir/stage-v${version}-${expected:0:12}.json"
+[[ -f "$claude_stage" ]] || fail "CLAUDE_STAGE_EVIDENCE_MISSING:$claude_stage"
+python3 scripts/release/verify-claude-stage-evidence.py   --evidence "$claude_stage"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --artifact-sha256 "$artifact_sha"   --claude-version "$CLAUDE_VERSION"   --expected-provider-sha256 "$claude_provider_sha"   || fail "CLAUDE_STAGE_EVIDENCE"
+
+gh api -X GET "repos/$repository/actions/runs"   -f head_sha="$expected" -f per_page=100   >"$tmp/runs.json" || fail "ACTIONS_QUERY"
+python3 - "$tmp/runs.json" "$tag" "$expected" <<'PY' || fail "EXACT_TAG_PROMOTION_ACTION"
+import json, sys
+path, tag, expected = sys.argv[1:]
+data = json.load(open(path, encoding="utf-8"))
+runs = [
+    run for run in data.get("workflow_runs", [])
+    if run.get("name") == "Release"
+    and run.get("event") == "push"
+    and run.get("head_branch") == tag
+    and run.get("head_sha") == expected
+    and run.get("path") == ".github/workflows/release.yml"
+]
+if not runs:
+    raise SystemExit("missing-release-promotion-run")
+bad = [
+    (run.get("id"), run.get("status"), run.get("conclusion"))
+    for run in runs
+    if run.get("status") != "completed" or run.get("conclusion") != "success"
+]
+if bad:
+    raise SystemExit("non-success:" + repr(bad))
+print("EXACT_TAG_PROMOTION_PASS")
+PY
+
+gh release view "$tag"   --json tagName,name,isDraft,isPrerelease,body,assets   >"$tmp/release.json" || fail "RELEASE_QUERY"
+python3 - "$tmp/release.json" "$tag" "$version" "$tmp/stage/release-notes.md" <<'PY'   || fail "RELEASE_IDENTITY_NOTES_OR_ASSETS"
+import json, pathlib, sys
+path, tag, version, notes_path = sys.argv[1:]
 data = json.load(open(path, encoding="utf-8"))
 if data.get("tagName") != tag:
     raise SystemExit("tag")
@@ -60,6 +145,8 @@ if data.get("name") != f"{tag} — Clean Room Launcher":
     raise SystemExit("name")
 if data.get("isDraft") is not True or data.get("isPrerelease") is not False:
     raise SystemExit("state")
+if (data.get("body") or "").rstrip() != pathlib.Path(notes_path).read_text(encoding="utf-8").rstrip():
+    raise SystemExit("notes")
 expected = {
     f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
     f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.provenance.sigstore.json",
@@ -73,222 +160,30 @@ if actual != expected:
     raise SystemExit(f"assets:{sorted(actual)}")
 PY
 
-gh api -X GET "repos/$repository/actions/runs" \
-  -f head_sha="$expected" -f per_page=100 \
-  >"$tmp/runs.json" || fail "ACTIONS_QUERY"
+mkdir -p "$tmp/assets"
+gh release download "$tag" --dir "$tmp/assets" || fail "RELEASE_DOWNLOAD"
 
-python3 - "$tmp/runs.json" "$tag" "$expected" <<'PY' || fail "EXACT_TAG_ACTIONS"
-import json, sys
-path, tag, expected = sys.argv[1:]
-data = json.load(open(path, encoding="utf-8"))
-runs = [
-    run for run in data.get("workflow_runs", [])
-    if run.get("event") == "push"
-    and run.get("head_branch") == tag
-    and run.get("head_sha") == expected
-]
-if not runs:
-    raise SystemExit("no-tag-push-runs")
-names = {run.get("name") for run in runs}
-for required in {"CI", "Release"}:
-    if required not in names:
-        raise SystemExit(f"missing:{required}")
-bad = [
-    (run.get("name"), run.get("id"), run.get("status"), run.get("conclusion"))
-    for run in runs
-    if run.get("status") != "completed" or run.get("conclusion") != "success"
-]
-if bad:
-    raise SystemExit("non-success:" + repr(bad))
-print("EXACT_TAG_ACTIONS_PASS names=" + ",".join(sorted(name for name in names if name)))
+python3 - "$tmp/stage/pretag-manifest.json" "$tmp/assets" <<'PY'   || fail "DRAFT_BYTE_RECONCILIATION"
+import hashlib, json, pathlib, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+root = pathlib.Path(sys.argv[2])
+for name in (record["artifact_name"], "SHA256SUMS", "sbom.cdx.json", "install.sh"):
+    path = root / name
+    if not path.is_file():
+        raise SystemExit("missing:" + name)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != record["files"][name]:
+        raise SystemExit("drift:" + name)
 PY
 
-assets="$tmp/assets"
-mkdir -p "$assets"
-gh release download "$tag" --dir "$assets" || fail "RELEASE_DOWNLOAD"
-artifact="$assets/clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
-provenance="$artifact.provenance.sigstore.json"
-sbom_bundle="$artifact.sbom.sigstore.json"
-for path in "$artifact" "$provenance" "$sbom_bundle" "$assets/SHA256SUMS" "$assets/sbom.cdx.json" "$assets/install.sh"; do
-  [[ -s "$path" ]] || fail "DRAFT_ASSET_MISSING:$(basename "$path")"
+provenance="$tmp/assets/$artifact.provenance.sigstore.json"
+sbom_bundle="$tmp/assets/$artifact.sbom.sigstore.json"
+for path in "$provenance" "$sbom_bundle"; do
+  [[ -s "$path" ]] || fail "DRAFT_ATTESTATION_BUNDLE_MISSING:$(basename "$path")"
 done
-(
-  cd "$assets"
-  shasum -a 256 -c SHA256SUMS
-) >/dev/null || fail "DRAFT_CHECKSUMS"
-
-for subject in "$artifact" "$assets/sbom.cdx.json" "$assets/install.sh"; do
-  gh attestation verify "$subject" \
-    -R "$repository" \
-    --bundle "$provenance" \
-    --signer-workflow "$repository/.github/workflows/release.yml" \
-    --source-digest "$expected" \
-    --source-ref "refs/tags/$tag" \
-    --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE:$(basename "$subject")"
+for subject in "$artifact" sbom.cdx.json install.sh; do
+  gh attestation verify "$tmp/assets/$subject"     -R "$repository"     --bundle "$provenance"     --signer-workflow "$repository/.github/workflows/release.yml"     --source-digest "$expected"     --source-ref "refs/tags/$tag"     --deny-self-hosted-runners >/dev/null     || fail "DRAFT_PROVENANCE:$subject"
 done
-gh attestation verify "$artifact" \
-  -R "$repository" \
-  --bundle "$sbom_bundle" \
-  --predicate-type https://cyclonedx.org/bom \
-  --signer-workflow "$repository/.github/workflows/release.yml" \
-  --source-digest "$expected" \
-  --source-ref "refs/tags/$tag" \
-  --deny-self-hosted-runners >/dev/null || fail "DRAFT_SBOM_ATTESTATION"
-
-bash scripts/release/check-provider-pins.sh || fail "PROVIDER_PINS"
-# shellcheck source=provider-pins.sh
-source scripts/release/provider-pins.sh
-
-current_tree=$(git rev-parse "HEAD^{tree}")
-reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
-    print(json.load(handle)["reviewed_content_digest"])
-PY
-)
-[[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
-git_common_dir=$(git rev-parse --git-common-dir)
-if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
-evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
-evidence_key=${reviewed_content_digest:0:12}
-claude_rehearsal="$evidence_dir/rehearse-v${version}-${evidence_key}.json"
-claude_draft="$evidence_dir/draft-v${version}-${short}.json"
-codex_rehearsal="$evidence_dir/codex-rehearse-v${version}-${evidence_key}.json"
-codex_draft="$evidence_dir/codex-draft-v${version}-${short}.json"
-
-bash scripts/release/resolve-codex-rehearsal-evidence.sh \
-  "$version" "$current_tree" "$reviewed_content_digest" "$codex_rehearsal" \
-  || fail "CODEX_REHEARSAL_ARTIFACT"
-bash scripts/release/resolve-codex-draft-evidence.sh \
-  "$version" "$expected" "$codex_draft" \
-  || fail "CODEX_DRAFT_ARTIFACT"
-
-for path in "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft"; do
-  [[ -f "$path" ]] || fail "EVIDENCE_MISSING:$path"
-done
-
-artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
-python3 - \
-  "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft" \
-  "$version" "$expected" "$current_tree" "$reviewed_content_digest" "$artifact_sha" "$CLAUDE_VERSION" "$CODEX_VERSION" <<'PY' \
-  || fail "LOCAL_EVIDENCE_INVALID"
-import json, re, sys
-(
-    claude_rehearsal_path, claude_draft_path, codex_rehearsal_path, codex_draft_path,
-    version, expected, current_tree, reviewed_content_digest, artifact_sha, claude_version, codex_version,
-) = sys.argv[1:]
-
-def load(path):
-    with open(path, encoding="utf-8") as handle:
-        return json.load(handle)
-
-cp, cd, xp, xd = map(load, [
-    claude_rehearsal_path, claude_draft_path, codex_rehearsal_path, codex_draft_path,
-])
-
-for record, phase in [(cp, "rehearse"), (cd, "draft")]:
-    if record.get("schema_version") != "clroom.plugin-release-smoke.v3":
-        raise SystemExit("claude-schema")
-    required = {
-        "result": "PASS",
-        "phase": phase,
-        "release_version": version,
-        "platform": "macos-aarch64",
-        "claude_version": claude_version,
-        "clean_target_plugin": False,
-        "selected_target_plugin": True,
-        "new_sibling_plugins": 0,
-        "selected_plugin_errors": 0,
-        "persistent_config_unchanged": True,
-        "external_ancestor_agents_sandbox_probe_passed": True,
-    }
-    if phase == "rehearse":
-        required.update({
-            "source_tree": current_tree,
-            "reviewed_content_digest": reviewed_content_digest,
-            "evidence_binding": "content-addressed-runtime-v1",
-        })
-    else:
-        required["source_head"] = expected
-    for key, value in required.items():
-        if record.get(key) != value:
-            raise SystemExit(f"claude-{phase}:{key}")
-    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(record.get("source_head", ""))):
-        raise SystemExit(f"claude-{phase}:source-head")
-    if not record.get("plugin_id"):
-        raise SystemExit(f"claude-{phase}:plugin-id")
-    if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("claude_provider_sha256", ""))):
-        raise SystemExit(f"claude-{phase}:provider-sha")
-
-if cp.get("interactive_selected_tui_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:interactive")
-if cp.get("interactive_no_model_prompt_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:no-model")
-if cp.get("external_ancestor_agents_absent_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:external-ancestor-agents")
-if cp.get("project_agents_retained_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:project-agents-retention")
-if cp.get("plugin_id") != cd.get("plugin_id"):
-    raise SystemExit("claude-plugin-drift")
-if cp.get("claude_provider_sha256") != cd.get("claude_provider_sha256"):
-    raise SystemExit("claude-provider-bytes-drift")
-if cd.get("artifact_sha256") != artifact_sha:
-    raise SystemExit("claude-draft-artifact")
-
-for record, phase in [(xp, "rehearse"), (xd, "draft")]:
-    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v4":
-        raise SystemExit("codex-schema")
-    required = {
-        "result": "PASS",
-        "phase": phase,
-        "release_version": version,
-        "platform": "macos-aarch64",
-        "codex_version": codex_version,
-        "clean_before_expected_mcp": False,
-        "selected_expected_mcp": True,
-        "selected_mcp_plugin_paths_rebased": True,
-        "clean_after_expected_mcp": False,
-        "ambient_config_and_plugin_tree_unchanged": True,
-        "plugin_source_unchanged": True,
-        "provider_mcp_initialize_observed": True,
-        "provider_mcp_tools_list_observed": True,
-        "fixture_mcp_tool_call_passed": True,
-        "provider_state_lifecycle_closed": True,
-    }
-    if phase == "rehearse":
-        required.update({
-            "source_tree": current_tree,
-            "reviewed_content_digest": reviewed_content_digest,
-            "evidence_binding": "content-addressed-runtime-v1",
-        })
-    else:
-        required["source_head"] = expected
-    for key, value in required.items():
-        if record.get(key) != value:
-            raise SystemExit(f"codex-{phase}:{key}")
-    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(record.get("source_head", ""))):
-        raise SystemExit(f"codex-{phase}:source-head")
-    if record.get("plugin_id") != "standalone-mcp@clroom-fixture" or record.get("expected_mcp") != "clroom_fixture":
-        raise SystemExit(f"codex-{phase}:fixture-identity")
-    for key in ("codex_provider_sha256", "plugin_source_sha256"):
-        if not re.fullmatch(r"[0-9a-f]{64}", str(record.get(key, ""))):
-            raise SystemExit(f"codex-{phase}:{key}")
-
-if xp.get("real_provider_runtime_confirmed") is not True:
-    raise SystemExit("codex-rehearsal:runtime")
-if xp.get("expected_mcp_runtime_healthy_confirmed") is not True:
-    raise SystemExit("codex-rehearsal:mcp-health")
-if xp.get("model_prompt_sent") is not False:
-    raise SystemExit("codex-rehearsal:model-prompt")
-if xp.get("post_runtime_clean_confirmed") is not True:
-    raise SystemExit("codex-rehearsal:post-runtime-clean")
-for key in ("plugin_id", "expected_mcp", "codex_provider_sha256", "plugin_source_sha256"):
-    if xp.get(key) != xd.get(key):
-        raise SystemExit(f"codex-drift:{key}")
-if xd.get("artifact_sha256") != artifact_sha:
-    raise SystemExit("codex-draft-artifact")
-if cd.get("artifact_sha256") != xd.get("artifact_sha256"):
-    raise SystemExit("draft-artifact-disagreement")
-PY
+gh attestation verify "$tmp/assets/$artifact"   -R "$repository"   --bundle "$sbom_bundle"   --predicate-type https://cyclonedx.org/bom   --signer-workflow "$repository/.github/workflows/release.yml"   --source-digest "$expected"   --source-ref "refs/tags/$tag"   --deny-self-hosted-runners >/dev/null   || fail "DRAFT_SBOM_ATTESTATION"
 
 echo "DRAFT_RELEASE_VERIFY_PASS tag=$tag target=$expected artifact_sha256=$artifact_sha"

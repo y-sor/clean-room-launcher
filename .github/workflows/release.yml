@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -14,7 +15,7 @@ concurrency:
 
 jobs:
   prepare:
-    name: Validate release identity
+    name: Validate tag and resolve accepted pre-tag stage
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
@@ -26,262 +27,87 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify whole-release contract
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/release/check-release-contract.py --report
-      - name: Bind tag, version, changelog, and action-time default branch
+      - name: Reconcile immutable tag identity
         id: release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
           version="${tag#v}"
           git fetch --force origin "refs/tags/$tag:refs/tags/$tag"
-          test "$(git cat-file -t "refs/tags/$tag")" = "tag" || {
-            echo "release tag must be annotated" >&2
-            exit 1
-          }
-          expected_title="$tag — Clean Room Launcher"
-          actual_title="$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")"
-          test "$actual_title" = "$expected_title" || {
-            echo "annotated tag message must be version-first: $expected_title" >&2
-            exit 1
-          }
-          tag_date="$(python3 - "$tag" <<'PY'
-          import datetime
-          import re
-          import subprocess
-          import sys
+          test "$(git cat-file -t "refs/tags/$tag")" = tag
+          test "$(git rev-parse "refs/tags/$tag^{}")" = "$GITHUB_SHA"
+          test "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")" = "$tag — Clean Room Launcher"
 
-          tag = sys.argv[1]
-          raw = subprocess.check_output(
-              ["git", "cat-file", "-p", f"refs/tags/{tag}"], text=True
-          )
-          line = next((line for line in raw.splitlines() if line.startswith("tagger ")), None)
-          if line is None:
-              raise SystemExit("annotated tagger line missing")
-          match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)
-          if match is None:
-              raise SystemExit("annotated tagger timestamp malformed")
-          epoch = int(match.group(1))
-          minutes = int(match.group(3)) * 60 + int(match.group(4))
-          if match.group(2) == "-":
-              minutes = -minutes
-          tz = datetime.timezone(datetime.timedelta(minutes=minutes))
-          print(datetime.datetime.fromtimestamp(epoch, tz=tz).date().isoformat())
-          PY
-          )"
-          test -n "$tag_date" || { echo "annotated tagger date missing" >&2; exit 1; }
-          python3 - "$tag" "$version" <<'PY'
-          import re, sys
-
-          tag, version = sys.argv[1:]
-          if tag != "v" + version:
-              raise SystemExit("release tag must start with v")
-          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?", version):
-              raise SystemExit("release tag must be vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-rc.N")
-          PY
-          python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null
-          manifest_version=$(python3 - <<'PY'
+          manifest_version="$(python3 - <<'PY'
           import tomllib
           with open("Cargo.toml", "rb") as handle:
               print(tomllib.load(handle)["package"]["version"])
           PY
-          )
-          test "$manifest_version" = "$version" || {
-            echo "Cargo.toml version $manifest_version does not match tag $tag" >&2
-            exit 1
-          }
-          default_ref=$(git ls-remote --symref origin HEAD | awk '$1 == "ref:" && $3 == "HEAD" {print $2}')
-          test -n "$default_ref" || {
-            echo "could not resolve the repository default branch" >&2
-            exit 1
-          }
-          git fetch --no-tags --depth=1 origin "$default_ref"
-          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" || {
-            echo "release tag must point to the exact accepted default-branch tip" >&2
-            exit 1
-          }
+          )"
+          test "$manifest_version" = "$version"
+          test "$tag" = "v$manifest_version"
+
           prerelease=false
-          case "$version" in
-            *-rc.*) prerelease=true ;;
-          esac
+          case "$version" in *-rc.*) prerelease=true ;; esac
           artifact_name="clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
           echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+      - name: Resolve exact accepted pre-tag stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/release/resolve-pretag-stage.sh             "${{ steps.release.outputs.version }}"             "$GITHUB_SHA"             "$RUNNER_TEMP/release-stage"
+      - name: Upload immutable promotion input
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-stage-v${{ steps.release.outputs.version }}-${{ github.sha }}
+          path: ${{ runner.temp }}/release-stage/*
+          if-no-files-found: error
+          retention-days: 7
 
-  build-macos:
-    name: Build and verify macOS artifact
+  attest:
+    name: Bind accepted staged bytes to exact tag
     needs: prepare
-    runs-on: macos-14
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Check out exact tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Install qualified Rust target
-        run: rustup target add aarch64-apple-darwin
-      - name: Re-run exact release tests
-        run: |
-          set -euo pipefail
-          cargo test --locked --all-targets --target aarch64-apple-darwin
-          sh install.sh --self-test
-          git diff --check
-      - name: Prime full locked dependency graph for offline NOTICE
-        run: |
-          set -euo pipefail
-          cargo fetch --locked
-          cargo metadata --locked --offline --format-version 1 >/dev/null
-      - name: Build deterministic release bundle
-        env:
-          CLROOM_TARGET: aarch64-apple-darwin
-          CLROOM_SOURCE_COMMIT: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          rm -rf target/release-artifacts
-          mkdir -p target/release-artifacts
-          cargo metadata \
-            --locked \
-            --offline \
-            --filter-platform aarch64-apple-darwin \
-            --format-version 1 \
-            > target/release-artifacts/cargo-metadata.json
-          ./packaging/build-artifacts.sh target/release-artifacts
-          artifact="target/release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
-          test -f "$artifact"
-          python3 packaging/verify-artifact.py "$artifact"
-          python3 - "$artifact" <<'PY'
-          import sys
-          import tarfile
-
-          with tarfile.open(sys.argv[1], "r:gz") as archive:
-              versions = [member for member in archive.getmembers() if member.isfile() and member.name.endswith("/VERSION")]
-              if len(versions) != 1:
-                  raise SystemExit("expected exactly one VERSION")
-              body = archive.extractfile(versions[0]).read().decode("utf-8")
-              if "qualification=CANDIDATE\n" not in body:
-                  raise SystemExit("archive is not an unqualified candidate")
-          PY
-          python3 packaging/generate-release-sbom.py \
-            --artifact "$artifact" \
-            --metadata target/release-artifacts/cargo-metadata.json \
-            --output target/release-artifacts/sbom.cdx.json
-          install -m 0755 install.sh target/release-artifacts/install.sh
-          (
-            cd target/release-artifacts
-            shasum -a 256 \
-              "${{ needs.prepare.outputs.artifact_name }}" \
-              sbom.cdx.json \
-              install.sh \
-              > SHA256SUMS
-            shasum -a 256 -c SHA256SUMS
-          )
-      - name: Provision pinned real provider canaries
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"
-      - name: Qualify exact release archive with real providers
-        env:
-          CLROOM_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$CLROOM_RELEASE_VERSION" = "0.4.2" || {
-            echo "exact release qualification pins must be reviewed for $CLROOM_RELEASE_VERSION" >&2
-            exit 1
-          }
-          artifact="target/release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
-          evidence_dir="$RUNNER_TEMP/clroom-release-qualification"
-          extract_dir="$RUNNER_TEMP/clroom-release-archive"
-          rm -rf "$extract_dir"
-          mkdir -p "$evidence_dir" "$extract_dir"
-          test -f "$artifact"
-          tar -xzf "$artifact" -C "$extract_dir"
-          archive_root="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)"
-          test -n "$archive_root"
-          codex_candidate="$archive_root/bin/clroom-codex"
-          claude_candidate="$archive_root/bin/clroom-claude"
-          test -x "$codex_candidate"
-          test -x "$claude_candidate"
-          scripts/release/qualify-real-provider.sh \
-            --provider codex \
-            --executable "$CLROOM_PROVIDER_CODEX" \
-            --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" \
-            --candidate "$codex_candidate" \
-            --source-head "$GITHUB_SHA" \
-            --version "$CLROOM_RELEASE_VERSION" \
-            --output "$evidence_dir/codex.json"
-          scripts/release/qualify-real-provider.sh \
-            --provider claude \
-            --executable "$CLROOM_PROVIDER_CLAUDE" \
-            --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION" \
-            --candidate "$claude_candidate" \
-            --source-head "$GITHUB_SHA" \
-            --version "$CLROOM_RELEASE_VERSION" \
-            --output "$evidence_dir/claude.json"
-          python3 scripts/release/verify-qualification.py \
-            "$artifact" "$evidence_dir/codex.json" \
-            "$GITHUB_SHA" "$CLROOM_RELEASE_VERSION" codex "$CLROOM_PROVIDER_CODEX_VERSION"
-          python3 scripts/release/verify-qualification.py \
-            "$artifact" "$evidence_dir/claude.json" \
-            "$GITHUB_SHA" "$CLROOM_RELEASE_VERSION" claude "$CLROOM_PROVIDER_CLAUDE_VERSION"
-      - name: Upload verified release bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: release-macos-aarch64
-          path: |
-            target/release-artifacts/${{ needs.prepare.outputs.artifact_name }}
-            target/release-artifacts/SHA256SUMS
-            target/release-artifacts/sbom.cdx.json
-            target/release-artifacts/install.sh
-          if-no-files-found: error
-          retention-days: 7
-
-  attest:
-    name: Attest release archive and SBOM
-    needs: [prepare, build-macos]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-      artifact-metadata: write
-    steps:
-      - name: Download verified release bundle
+      - name: Download accepted staged bytes
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: release-macos-aarch64
-          path: release-artifacts
-      - name: Reconcile attestation subjects
+          name: release-stage-v${{ needs.prepare.outputs.version }}-${{ github.sha }}
+          path: release-stage
+      - name: Verify staged bytes before tag binding
+        shell: bash
         run: |
           set -euo pipefail
-          test -f "release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
-          test -f release-artifacts/SHA256SUMS
-          test -f release-artifacts/sbom.cdx.json
-          test -f release-artifacts/install.sh
-          test "$(find release-artifacts -maxdepth 1 -type f | wc -l | tr -d ' ')" = 4
-          (
-            cd release-artifacts
-            shasum -a 256 -c SHA256SUMS
-          )
+          source scripts/release/provider-pins.sh
+          python3 scripts/release/verify-pretag-stage.py             --dir release-stage             --version "${{ needs.prepare.outputs.version }}"             --source-head "$GITHUB_SHA"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
       - name: Attest build provenance
         id: provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-checksums: release-artifacts/SHA256SUMS
+          subject-checksums: release-stage/SHA256SUMS
       - name: Attest CycloneDX SBOM
         id: sbom_attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: release-artifacts/${{ needs.prepare.outputs.artifact_name }}
-          sbom-path: release-artifacts/sbom.cdx.json
-      - name: Export and verify release-visible attestation bundles
+          subject-path: release-stage/${{ needs.prepare.outputs.artifact_name }}
+          sbom-path: release-stage/sbom.cdx.json
+      - name: Export and verify release-visible tag-bound attestations
         env:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT: ${{ needs.prepare.outputs.artifact_name }}
@@ -290,207 +116,121 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          provenance="release-artifacts/${ARTIFACT}.provenance.sigstore.json"
-          sbom="release-artifacts/${ARTIFACT}.sbom.sigstore.json"
+          mkdir -p release-attestations
+          provenance="release-attestations/${ARTIFACT}.provenance.sigstore.json"
+          sbom="release-attestations/${ARTIFACT}.sbom.sigstore.json"
           install -m 0644 "$PROVENANCE_BUNDLE" "$provenance"
           install -m 0644 "$SBOM_BUNDLE" "$sbom"
-          test -s "$provenance"
-          test -s "$sbom"
           for subject in "$ARTIFACT" sbom.cdx.json install.sh; do
-            gh attestation verify "release-artifacts/$subject" \
-              -R "$GITHUB_REPOSITORY" \
-              --bundle "$provenance" \
-              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
-              --source-digest "$GITHUB_SHA" \
-              --source-ref "$GITHUB_REF" \
-              --deny-self-hosted-runners
+            gh attestation verify "release-stage/$subject"               -R "$GITHUB_REPOSITORY"               --bundle "$provenance"               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"               --source-digest "$GITHUB_SHA"               --source-ref "$GITHUB_REF"               --deny-self-hosted-runners
           done
-          gh attestation verify "release-artifacts/$ARTIFACT" \
-            -R "$GITHUB_REPOSITORY" \
-            --bundle "$sbom" \
-            --predicate-type https://cyclonedx.org/bom \
-            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
-            --source-digest "$GITHUB_SHA" \
-            --source-ref "$GITHUB_REF" \
-            --deny-self-hosted-runners
-      - name: Upload release-visible attestation bundles
+          gh attestation verify "release-stage/$ARTIFACT"             -R "$GITHUB_REPOSITORY"             --bundle "$sbom"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"             --source-digest "$GITHUB_SHA"             --source-ref "$GITHUB_REF"             --deny-self-hosted-runners
+      - name: Upload tag-bound attestation bundles
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-attestations
-          path: |
-            release-artifacts/${{ needs.prepare.outputs.artifact_name }}.provenance.sigstore.json
-            release-artifacts/${{ needs.prepare.outputs.artifact_name }}.sbom.sigstore.json
+          name: release-attestations-v${{ needs.prepare.outputs.version }}-${{ github.sha }}
+          path: release-attestations/*
           if-no-files-found: error
           retention-days: 7
 
   draft-release:
-    name: Create guarded draft release
-    needs: [prepare, build-macos, attest]
+    name: Promote exact staged bytes to guarded Draft
+    needs: [prepare, attest]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - name: Check out exact tag
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Download verified release bundle
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: release-macos-aarch64
-          path: release-artifacts
-      - name: Download release-visible attestation bundles
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: release-attestations
-          path: release-artifacts
-      - name: Reconcile release bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f "release-artifacts/${{ needs.prepare.outputs.artifact_name }}"
-          test -f release-artifacts/SHA256SUMS
-          test -f release-artifacts/sbom.cdx.json
-          test -f release-artifacts/install.sh
-          test -s "release-artifacts/${{ needs.prepare.outputs.artifact_name }}.provenance.sigstore.json"
-          test -s "release-artifacts/${{ needs.prepare.outputs.artifact_name }}.sbom.sigstore.json"
-          test "$(find release-artifacts -maxdepth 1 -type f | wc -l | tr -d ' ')" = 6
-          (
-            cd release-artifacts
-            shasum -a 256 -c SHA256SUMS
-          )
-      - name: Prepare release notes
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-          ARTIFACT: ${{ needs.prepare.outputs.artifact_name }}
-        run: |
-          python3 - <<'PY'
-          import os
-          from pathlib import Path
-
-          version = os.environ["VERSION"]
-          artifact = os.environ["ARTIFACT"]
-          lines = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
-          start = None
-          body = []
-          for index, line in enumerate(lines):
-              if line.startswith(f"## [{version}] - "):
-                  start = index + 1
-                  continue
-              if start is not None and line.startswith("## ["):
-                  break
-              if start is not None:
-                  body.append(line)
-          if start is None:
-              raise SystemExit("missing changelog release section")
-          text = "\n".join(body).strip()
-          footer = f"""
-
-          ## Install
-
-          ```sh
-          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/y-sor/clean-room-launcher/releases/latest/download/install.sh | sh
-          ```
-
-          ## Download and verification
-
-          - `install.sh` — one-line macOS Apple Silicon installer
-          - `{artifact}` — macOS Apple Silicon archive
-          - `SHA256SUMS` — SHA-256 digests for the archive, SBOM, and installer
-          - `sbom.cdx.json` — CycloneDX SBOM bound to the archive digest
-          - `{artifact}.provenance.sigstore.json` — release-visible Sigstore bundle for build provenance of the exact archive, SBOM, and installer bytes
-          - `{artifact}.sbom.sigstore.json` — release-visible Sigstore bundle for the CycloneDX SBOM attestation bound to the exact archive bytes
-
-          Verify the downloaded archive against its release-visible provenance bundle:
-
-          ```sh
-          gh attestation verify "{artifact}" \
-            -R y-sor/clean-room-launcher \
-            --bundle "{artifact}.provenance.sigstore.json" \
-            --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml
-          ```
-
-          The distributed archive is currently unsigned at the Apple platform-signing layer. Verify the checksums and release-visible GitHub attestation bundles before use.
-          """.strip()
-          Path("release-notes.md").write_text(text + "\n\n" + footer + "\n", encoding="utf-8")
-          PY
-      - name: Create or refresh draft GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="$GITHUB_REF_NAME"
-          title="$GITHUB_REF_NAME — Clean Room Launcher"
-          if gh release view "$tag" --json isDraft,isPrerelease,tagName >/tmp/clroom-release.json 2>/dev/null; then
-            test "$(jq -r .isDraft /tmp/clroom-release.json)" = true || {
-              echo "refusing to modify an already-published release" >&2
-              exit 1
-            }
-            test "$(jq -r .tagName /tmp/clroom-release.json)" = "$tag" || {
-              echo "draft release tag mismatch" >&2
-              exit 1
-            }
-            test "$(jq -r .isPrerelease /tmp/clroom-release.json)" = "$PRERELEASE" || {
-              echo "draft release prerelease state mismatch" >&2
-              exit 1
-            }
-            gh release edit "$tag" --title "$title" --notes-file release-notes.md
-          else
-            args=(release create "$tag" --draft --verify-tag --title "$title" --notes-file release-notes.md)
-            if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
-            gh "${args[@]}"
-          fi
-          gh release upload "$tag" release-artifacts/* --clobber
-  verify-codex-draft:
-    name: Verify Codex Draft runtime
-    needs: [prepare, draft-release]
-    runs-on: macos-14
-    permissions:
-      contents: read
+      actions: read
       attestations: read
     steps:
       - name: Check out exact tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          fetch-tags: true
           persist-credentials: false
-      - name: Provision pinned real provider canaries
+      - name: Download accepted staged bytes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-stage-v${{ needs.prepare.outputs.version }}-${{ github.sha }}
+          path: release-stage
+      - name: Download tag-bound attestations
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-attestations-v${{ needs.prepare.outputs.version }}-${{ github.sha }}
+          path: release-attestations
+      - name: Verify exact promotion inputs
         shell: bash
         run: |
           set -euo pipefail
-          ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"
-      - name: Verify Codex plugin runtime against Draft assets
-        id: codex_draft
+          source scripts/release/provider-pins.sh
+          python3 scripts/release/verify-pretag-stage.py             --dir release-stage             --version "${{ needs.prepare.outputs.version }}"             --source-head "$GITHUB_SHA"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
+          test -s "release-attestations/${{ needs.prepare.outputs.artifact_name }}.provenance.sigstore.json"
+          test -s "release-attestations/${{ needs.prepare.outputs.artifact_name }}.sbom.sigstore.json"
+      - name: Create or refresh Draft using accepted bytes only
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+          ARTIFACT: ${{ needs.prepare.outputs.artifact_name }}
         shell: bash
         run: |
           set -euo pipefail
-          provider_bin="$RUNNER_TEMP/clroom-codex-draft-bin"
-          evidence_dir="$RUNNER_TEMP/clroom-release-evidence"
-          mkdir -p "$provider_bin" "$evidence_dir"
-          ln -s "$CLROOM_PROVIDER_CODEX" "$provider_bin/codex"
-          PATH="$provider_bin:$PATH" \
-          CLROOM_RELEASE_EVIDENCE_DIR="$evidence_dir" \
-            bash scripts/release/local-codex-plugin-activation-smoke.sh draft \
-              --tag "$GITHUB_REF_NAME" \
-              --fixture-standalone-mcp
-          version="${GITHUB_REF_NAME#v}"
-          short="${GITHUB_SHA:0:12}"
-          evidence="$evidence_dir/codex-draft-v${version}-${short}.json"
-          test -s "$evidence"
-          artifact_name="codex-draft-${GITHUB_REF_NAME}-${GITHUB_SHA}"
-          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
-          echo "evidence=$evidence" >> "$GITHUB_OUTPUT"
-      - name: Upload Codex Draft evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ steps.codex_draft.outputs.artifact_name }}
-          path: ${{ steps.codex_draft.outputs.evidence }}
-          if-no-files-found: error
-          retention-days: 30
+          tag="$GITHUB_REF_NAME"
+          title="$tag — Clean Room Launcher"
+          if gh release view "$tag" --json isDraft,isPrerelease,tagName >/tmp/clroom-release.json 2>/dev/null; then
+            test "$(jq -r .isDraft /tmp/clroom-release.json)" = true
+            test "$(jq -r .tagName /tmp/clroom-release.json)" = "$tag"
+            test "$(jq -r .isPrerelease /tmp/clroom-release.json)" = "$PRERELEASE"
+            gh release edit "$tag" --title "$title" --notes-file release-stage/release-notes.md
+          else
+            args=(release create "$tag" --draft --verify-tag --title "$title" --notes-file release-stage/release-notes.md)
+            if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
+            gh "${args[@]}"
+          fi
+          gh release upload "$tag"             "release-stage/$ARTIFACT"             release-stage/SHA256SUMS             release-stage/sbom.cdx.json             release-stage/install.sh             "release-attestations/$ARTIFACT.provenance.sigstore.json"             "release-attestations/$ARTIFACT.sbom.sigstore.json"             --clobber
+      - name: Reconcile Draft bytes against accepted pre-tag manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ARTIFACT: ${{ needs.prepare.outputs.artifact_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$RUNNER_TEMP/draft-reconcile"
+          rm -rf "$tmp"
+          mkdir -p "$tmp"
+          gh release view "$GITHUB_REF_NAME" --json tagName,name,isDraft,isPrerelease,assets >"$tmp/release.json"
+          python3 - "$tmp/release.json" "$GITHUB_REF_NAME" "$VERSION" "${{ needs.prepare.outputs.prerelease }}" <<'PY'
+          import json, sys
+          path, tag, version, prerelease = sys.argv[1:]
+          data = json.load(open(path, encoding="utf-8"))
+          if data.get("tagName") != tag or data.get("name") != f"{tag} — Clean Room Launcher":
+              raise SystemExit("release-identity")
+          if data.get("isDraft") is not True or data.get("isPrerelease") is not (prerelease == "true"):
+              raise SystemExit("release-state")
+          expected = {
+              f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
+              f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.provenance.sigstore.json",
+              f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.sbom.sigstore.json",
+              "install.sh", "sbom.cdx.json", "SHA256SUMS",
+          }
+          actual = {item.get("name") for item in data.get("assets", [])}
+          if actual != expected:
+              raise SystemExit("asset-set:" + repr(sorted(actual)))
+          PY
+          gh release download "$GITHUB_REF_NAME" --dir "$tmp/assets"
+          python3 - release-stage/pretag-manifest.json "$tmp/assets" <<'PY'
+          import hashlib, json, pathlib, sys
+          manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+          root = pathlib.Path(sys.argv[2])
+          for name in (manifest["artifact_name"], "SHA256SUMS", "sbom.cdx.json", "install.sh"):
+              h = hashlib.sha256((root / name).read_bytes()).hexdigest()
+              if h != manifest["files"][name]:
+                  raise SystemExit("byte-drift:" + name)
+          PY
+          provenance="$tmp/assets/$ARTIFACT.provenance.sigstore.json"
+          sbom="$tmp/assets/$ARTIFACT.sbom.sigstore.json"
+          for subject in "$ARTIFACT" sbom.cdx.json install.sh; do
+            gh attestation verify "$tmp/assets/$subject"               -R "$GITHUB_REPOSITORY"               --bundle "$provenance"               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"               --source-digest "$GITHUB_SHA"               --source-ref "$GITHUB_REF"               --deny-self-hosted-runners
+          done
+          gh attestation verify "$tmp/assets/$ARTIFACT"             -R "$GITHUB_REPOSITORY"             --bundle "$sbom"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"             --source-digest "$GITHUB_SHA"             --source-ref "$GITHUB_REF"             --deny-self-hosted-runners
+          echo "DRAFT_PROMOTION_RECONCILE_PASS tag=$GITHUB_REF_NAME source=$GITHUB_SHA"

@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: scripts/release/local-plugin-activation-smoke.sh rehearse --expected-head SHA --plugin-id ID" >&2
-  echo "       scripts/release/local-plugin-activation-smoke.sh draft --tag vX.Y.Z --plugin-id ID" >&2
+  echo "       scripts/release/local-plugin-activation-smoke.sh stage --expected-head SHA --artifact PATH --plugin-id ID" >&2
   exit 64
 }
 
@@ -13,27 +13,26 @@ fail() {
 }
 
 phase=${1:-}
-[[ "$phase" == "rehearse" || "$phase" == "draft" ]] || usage
+[[ "$phase" == "rehearse" || "$phase" == "stage" ]] || usage
 shift || true
 
-tag=
+artifact_input=
 expected_head=
 plugin_id=
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag) tag=${2:-}; shift 2 ;;
+    --artifact) artifact_input=${2:-}; shift 2 ;;
     --expected-head) expected_head=${2:-}; shift 2 ;;
     --plugin-id) plugin_id=${2:-}; shift 2 ;;
     *) usage ;;
   esac
 done
 [[ -n "$plugin_id" ]] || fail "PLUGIN_ID_REQUIRED"
-if [[ "$phase" == "draft" ]]; then
-  [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
-  [[ -z "$expected_head" ]] || usage
+[[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
+if [[ "$phase" == "stage" ]]; then
+  [[ -n "$artifact_input" && -f "$artifact_input" ]] || fail "STAGE_ARTIFACT_REQUIRED"
 else
-  [[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
-  [[ -z "$tag" ]] || usage
+  [[ -z "$artifact_input" ]] || usage
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
@@ -48,7 +47,14 @@ done
 
 # shellcheck source=provider-pins.sh
 source "$root/scripts/release/provider-pins.sh"
-bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+if [[ "$phase" == "rehearse" ]]; then
+  bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+else
+  # Accepted-main staging already froze registry freshness/integrity. The stage
+  # TTY validates the pinned provider/version against the exact staged archive
+  # without making a second mutable npm-latest decision.
+  echo "PROVIDER_REGISTRY_FREEZE_REUSED=YES"
+fi
 claude_executable=$(command -v claude)
 claude_version_output=$(claude --version 2>&1 | head -1) || fail "CLAUDE_VERSION"
 claude_version=$(python3 - "$claude_version_output" <<'PY'
@@ -74,63 +80,32 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-plugin-release-smoke.XXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 
 artifact=
-source_head=
-source_tree=
+source_head="$head"
+source_tree=$(git rev-parse "HEAD^{tree}")
 reviewed_content_digest=
 assets="$tmp/assets"
 mkdir -p "$assets"
 
-if [[ "$phase" == "rehearse" ]]; then
-  source_head="$head"
-  [[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
-  source_tree=$(git rev-parse "HEAD^{tree}")
-  python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
-  reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+[[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
+python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
+review_path="reports/release/v${version}-review.json"
+[[ -f "$review_path" ]] || fail "REVIEW_FILE_MISSING"
+reviewed_content_digest=$(python3 - "$review_path" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
     print(json.load(handle)["reviewed_content_digest"])
 PY
 )
-  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
+[[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 
+if [[ "$phase" == "rehearse" ]]; then
   cargo fetch --locked >/dev/null
-  CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET=''     ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
+  CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET='' \
+    ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
   artifact=$(sed -n 's/^ARTIFACT=//p' "$tmp/build.log" | tail -1)
   [[ -n "$artifact" && -f "$artifact" ]] || fail "ARTIFACT_MISSING"
 else
-  command -v gh >/dev/null 2>&1 || fail "GH_REQUIRED"
-  gh auth status >/dev/null 2>&1 || fail "GH_AUTH_REQUIRED"
-  immutable_enabled=$(gh api repos/y-sor/clean-room-launcher/immutable-releases --jq .enabled 2>/dev/null) \
-    || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
-  [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
-  git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
-  source_head=$(git rev-list -n 1 "$tag")
-  source_tree=$(git rev-parse "$tag^{tree}")
-  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
-  reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
-    print(json.load(handle)["reviewed_content_digest"])
-PY
-)
-  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
-  [[ "${tag#v}" == "$version" ]] || fail "TAG_VERSION_MISMATCH"
-  [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == "true" ]]     || fail "RELEASE_NOT_DRAFT"
-
-  gh release download "$tag" --dir "$assets"
-  artifact="$assets/clean-room-launcher-${tag}-aarch64-apple-darwin.tar.gz"
-  [[ -f "$artifact" ]] || fail "DRAFT_ARCHIVE_MISSING"
-  [[ -f "$assets/SHA256SUMS" ]] || fail "DRAFT_SHA256SUMS_MISSING"
-  (
-    cd "$assets"
-    shasum -a 256 -c SHA256SUMS
-  ) >/dev/null || fail "DRAFT_CHECKSUMS"
-
-  provenance="$artifact.provenance.sigstore.json"
-  sbom="$artifact.sbom.sigstore.json"
-  [[ -s "$provenance" && -s "$sbom" ]] || fail "DRAFT_ATTESTATION_BUNDLE_MISSING"
-  gh attestation verify "$artifact"     -R y-sor/clean-room-launcher     --bundle "$provenance"     --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml     --source-digest "$source_head"     --source-ref "refs/tags/$tag"     --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE"
-  gh attestation verify "$artifact"     -R y-sor/clean-room-launcher     --bundle "$sbom"     --predicate-type https://cyclonedx.org/bom     --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml     --source-digest "$source_head"     --source-ref "refs/tags/$tag"     --deny-self-hosted-runners >/dev/null || fail "DRAFT_SBOM_ATTESTATION"
+  artifact="$artifact_input"
 fi
 
 python3 packaging/verify-artifact.py "$artifact" >/dev/null || fail "ARTIFACT_METADATA"
@@ -376,7 +351,7 @@ PY
 interactive=false
 external_ancestor_agents_absent=false
 project_agents_retained=false
-if [[ "$phase" == "rehearse" ]]; then
+if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
 
   tui_workspace="$tmp/real-tui-workspace"
