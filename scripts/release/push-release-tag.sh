@@ -239,8 +239,18 @@ record = json.load(open(sys.argv[1], encoding="utf-8"))
 print(record["files"][sys.argv[2]])
 PY
 )
+claude_provider_sha=$(python3 - "$tmp/stage/pretag-manifest.json" <<'PY'
+import json, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+print(record["providers"]["claude"]["executable_sha256"])
+PY
+)
 [[ "$artifact_sha" =~ ^[0-9a-f]{64}$ ]] || {
   echo "TAG_GATE_BLOCKED:STAGED_ARTIFACT_DIGEST" >&2
+  exit 80
+}
+[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "TAG_GATE_BLOCKED:STAGED_CLAUDE_PROVIDER_DIGEST" >&2
   exit 80
 }
 
@@ -259,7 +269,8 @@ python3 scripts/release/verify-claude-stage-evidence.py \
   --source-tree "$current_tree" \
   --reviewed-content-digest "$reviewed_content_digest" \
   --artifact-sha256 "$artifact_sha" \
-  --claude-version "$CLAUDE_VERSION" || {
+  --claude-version "$CLAUDE_VERSION" \
+  --expected-provider-sha256 "$claude_provider_sha" || {
     echo "TAG_GATE_BLOCKED:CLAUDE_STAGE_EVIDENCE" >&2
     exit 75
   }
@@ -335,18 +346,6 @@ python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --repor
   echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
   exit 77
 }
-rm -rf -- "$tmp/stage-action-time"
-bash scripts/release/resolve-pretag-stage.sh "$version" "$expected" "$tmp/stage-action-time" || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_ACTION_TIME" >&2
-  exit 80
-}
-python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage-action-time"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --codex-version "$CODEX_VERSION"   --claude-version "$CLAUDE_VERSION" || {
-  cleanup_local_tag
-  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING_ACTION_TIME" >&2
-  exit 80
-}
-
 set +e
 git push origin "refs/tags/$tag"
 push_rc=$?
