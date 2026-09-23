@@ -235,7 +235,6 @@ fn codex_runtime_probe_preserves_fixture_root_blocker() {
 }
 
 #[test]
-#[test]
 fn provider_canary_negative_fixture_defers_runtime_argv_expansion() {
     let contract =
         std::fs::read_to_string("scripts/release/check-provider-canary-contract.sh").unwrap();
@@ -247,8 +246,17 @@ fn provider_canary_negative_fixture_defers_runtime_argv_expansion() {
         contract.contains(r#"EARLY_EXIT_STATUS:$status"#),
         "negative fixture failure must expose the unexpected qualifier exit status"
     );
+    assert!(
+        !contract.contains("python3 -m py_compile"),
+        "release contract self-test must not write Python bytecode into the public source tree"
+    );
+    assert!(
+        contract.contains("ast.parse("),
+        "Python verifier syntax must be checked without creating __pycache__"
+    );
 }
 
+#[test]
 fn codex_rehearsal_and_stage_close_state_before_tag() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
