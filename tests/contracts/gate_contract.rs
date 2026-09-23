@@ -311,7 +311,8 @@ fn codex_runtime_probe_preserves_fixture_root_blocker() {
 fn codex_rehearsal_smoke_closes_state_after_runtime_probe() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
-    let tag_helper = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let stage =
+        std::fs::read_to_string("scripts/release/verify-release-stage.py").unwrap();
 
     let runtime = smoke
         .find("codex-mcp-fixture.py\" probe-provider")
@@ -326,51 +327,60 @@ fn codex_rehearsal_smoke_closes_state_after_runtime_probe() {
         runtime < post_interactive && post_interactive < evidence,
         "post-runtime clean closure must happen before accepted evidence is written"
     );
-    assert!(smoke.contains(r#""provider_mcp_initialize_observed": provider_mcp_initialize == "true""#));
-    assert!(smoke.contains(r#""provider_mcp_tools_list_observed": provider_mcp_tools_list == "true""#));
-    assert!(smoke.contains(r#""fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true""#));
-    assert!(smoke.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(smoke.contains(r#""real_provider_runtime_confirmed": runtime_confirmed == "true""#));
-    assert!(smoke.contains(r#""expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true""#));
-    assert!(smoke.contains(r#""model_prompt_sent": False"#));
-    assert!(smoke.contains(r#""post_runtime_clean_confirmed": post_runtime_clean == "true""#));
-    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v4""#));
-    assert!(tag_helper.contains(r#""provider_mcp_initialize_observed": True"#));
-    assert!(tag_helper.contains(r#""provider_mcp_tools_list_observed": True"#));
-    assert!(tag_helper.contains(r#""fixture_mcp_tool_call_passed": True"#));
-    assert!(tag_helper.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(tag_helper.contains(r#""real_provider_runtime_confirmed": True"#));
-    assert!(tag_helper.contains(r#""expected_mcp_runtime_healthy_confirmed": True"#));
-    assert!(tag_helper.contains(r#""model_prompt_sent": False"#));
-    assert!(tag_helper.contains(r#""post_runtime_clean_confirmed": True"#));
+    for required in [
+        "\"provider_mcp_initialize_observed\": provider_mcp_initialize == \"true\"",
+        "\"provider_mcp_tools_list_observed\": provider_mcp_tools_list == \"true\"",
+        "\"fixture_mcp_tool_call_passed\": fixture_mcp_tool_call == \"true\"",
+        "\"provider_state_lifecycle_closed\": True",
+        "\"real_provider_runtime_confirmed\": runtime_confirmed == \"true\"",
+        "\"expected_mcp_runtime_healthy_confirmed\": runtime_mcp_healthy == \"true\"",
+        "\"model_prompt_sent\": False",
+        "\"post_runtime_clean_confirmed\": post_runtime_clean == \"true\"",
+    ] {
+        assert!(smoke.contains(required), "missing Codex runtime evidence field");
+    }
+    assert!(smoke.contains("exact-release-artifact-v1"));
+    assert!(smoke.contains(r#""$phase" == "stage""#));
+    for required in [
+        "\"phase\": \"stage\"",
+        "\"evidence_binding\": \"exact-release-artifact-v1\"",
+        "\"provider_state_lifecycle_closed\": True",
+        "\"ambient_config_and_plugin_tree_unchanged\": True",
+        "\"plugin_source_unchanged\": True",
+        "\"post_runtime_clean_confirmed\": True",
+    ] {
+        assert!(stage.contains(required), "stage verifier must retain runtime invariant");
+    }
 }
 
 #[test]
-fn ci_keeps_exact_tag_push_validation_while_deduping_branch_pushes() {
-    let workflow = std::fs::read_to_string(".github/workflows/ci.yml").unwrap();
-    assert!(workflow.contains("branches:\n      - main"));
-    assert!(workflow.contains("tags:\n      - \"v*\""));
-    assert!(workflow.contains("pull_request:"));
-    assert!(workflow.contains("cancel-in-progress: true"));
+fn ci_stops_full_test_reruns_after_protected_tag() {
+    let ci = std::fs::read_to_string(".github/workflows/ci.yml").unwrap();
+    let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    assert!(ci.contains("branches:\n      - main"));
+    assert!(!ci.contains("tags:\n      - \"v*\""));
+    assert!(ci.contains("pull_request:"));
+    assert!(ci.contains("cancel-in-progress: true"));
+    assert!(release.contains("tags:\n      - \"v*\""));
 }
 
 #[test]
-fn draft_release_verdict_reconciles_all_exact_tag_actions_and_local_evidence() {
+fn draft_release_verdict_reconciles_exact_staged_bytes_without_runtime_reruns() {
     let verifier = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
 
-    assert!(verifier.contains(r#"head_sha="$expected""#));
+    assert!(verifier.contains("resolve-release-stage.sh"));
+    assert!(verifier.contains("verify-release-stage.py"));
+    assert!(verifier.contains("STAGED_BYTE_DRIFT"));
     assert!(verifier.contains(r#"run.get("head_branch") == tag"#));
     assert!(verifier.contains(r#"run.get("head_sha") == expected"#));
     assert!(verifier.contains(r#"run.get("event") == "push""#));
-    assert!(verifier.contains(r#"for required in {"CI", "Release"}"#));
+    assert!(verifier.contains(r#"if "Release" not in names"#));
     assert!(verifier.contains(r#"run.get("status") != "completed" or run.get("conclusion") != "success""#));
-    assert!(verifier.contains("clroom.codex-plugin-release-smoke.v4"));
-    assert!(verifier.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(verifier.contains(r#"xp.get("real_provider_runtime_confirmed") is not True"#));
-    assert!(verifier.contains(r#"xp.get("expected_mcp_runtime_healthy_confirmed") is not True"#));
-    assert!(verifier.contains(r#"xp.get("model_prompt_sent") is not False"#));
-    assert!(verifier.contains(r#"xp.get("post_runtime_clean_confirmed") is not True"#));
     assert!(verifier.contains("DRAFT_RELEASE_VERIFY_PASS"));
+    assert!(!verifier.contains("check-provider-pins.sh"));
+    assert!(!verifier.contains("local-codex-plugin-activation-smoke"));
+    assert!(!verifier.contains("local-plugin-activation-smoke"));
+    assert!(!verifier.contains("resolve-codex-draft-evidence.sh"));
 }
 
 #[test]
@@ -397,7 +407,7 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(contract.contains(r#""changelog_action_time_relation": "declared_on_or_before_tag""#));
     assert!(contract.contains(r#""candidate_version_relation": "strictly_after_published_baseline""#));
     assert!(contract.contains(r#""changelog_date_floor": "published_baseline_date""#));
-    assert!(contract.contains(r#""tag_remote_refresh_order": "after_provider_checks_before_push""#));
+    assert!(contract.contains(r#""tag_remote_refresh_order": "after_staged_release_closure_before_push""#));
     assert!(checker.contains("validate_changelog_tag_date"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_LATER_TAG"));
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
@@ -407,15 +417,7 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_BEFORE_BASELINE"));
     assert!(checker.contains("RELEASE_CONTRACT_BLOCKED:CANDIDATE_NOT_ADVANCED"));
     assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
-    assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
-    assert!(
-        !helper.contains("grep -Fxq \"## [$version] - $tag_date\" CHANGELOG.md"),
-        "tag helper must not require candidate bytes to predict the future tagger day"
-    );
-    assert!(
-        !workflow.contains("heading = f\"## [{version}] - {tag_date}\""),
-        "tag workflow must share the monotonic release-contract relation"
-    );
+    assert!(!workflow.contains("check-release-contract.py --tag-date"));
 }
 
 #[test]
@@ -471,32 +473,21 @@ fn release_lifecycle_resolver_and_local_audit_are_fail_closed() {
 }
 
 #[test]
-fn tag_push_revalidates_mutable_remote_state_at_action_time() {
+fn tag_push_requires_staged_closure_then_refreshes_only_action_time_state() {
     let source = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
 
-    assert!(source.contains("REMOTE_TAG_QUERY_$phase"));
-    assert!(source.contains("REMOTE_TAG_PRESENT_$phase"));
-
-    let codex_artifact = source
-        .find("resolve-codex-rehearsal-evidence.sh")
-        .expect("Codex rehearsal must come from the canonical Actions artifact");
-    let provider_pins = source
-        .find("if ! bash scripts/release/check-provider-pins.sh; then")
-        .expect("registry provider pins must be refreshed at action time");
-    let provider_evidence = source
-        .find("evidence_claude_version=$(python3 - \"$evidence\"")
-        .expect("Claude action-time provider evidence must be loaded");
-    let provider_version = source
-        .find("CLAUDE_PROVIDER_DRIFT_ACTION_TIME")
-        .expect("Claude provider version must be revalidated");
-    let provider_bytes = source
-        .find("CLAUDE_PROVIDER_BYTES_DRIFT_ACTION_TIME")
-        .expect("Claude provider bytes must be revalidated");
-    assert!(!source.contains("CODEX_PROVIDER_DRIFT_ACTION_TIME"));
-    assert!(!source.contains("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME"));
+    let stage = source
+        .find("resolve-release-stage.sh")
+        .expect("accepted-main staged bytes must be resolved before tag");
+    let claude_stage = source
+        .find("STAGE_CLAUDE_EVIDENCE_MISSING")
+        .expect("exact staged Claude TTY evidence must be required before tag");
+    let initial_policy = source
+        .find("verify_immutable_release_policy INITIAL")
+        .expect("repository release policy must be observable before irreversible tag");
     let final_remote = source
-        .find("# Final mutable remote release state guard immediately before the irreversible push.")
-        .expect("tag helper must refresh remote state after provider checks");
+        .find("# Final mutable action-time guard.")
+        .expect("tag helper must have a final mutable action-time guard");
     let push = source
         .find("git push origin \"refs/tags/$tag\"")
         .expect("tag helper must push the protected tag");
@@ -504,45 +495,25 @@ fn tag_push_revalidates_mutable_remote_state_at_action_time() {
         .find("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED")
         .expect("tag push must reconcile the remote result");
 
-    assert_eq!(
-        source.matches("git push origin \"refs/tags/$tag\"").count(),
-        1,
-        "tag helper must perform exactly one irreversible tag push"
-    );
-    assert_eq!(
-        source.matches("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED").count(),
-        1,
-        "tag push unresolved-outcome handling must exist only after the actual push"
-    );
-    assert!(source.contains(r#"git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}""#));
-    assert!(source.contains("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED"));
-    assert!(source.contains("TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH"));
-    assert!(source.contains("TAG_PUSH_OUTCOME_RECONCILED_ABSENT"));
-    assert!(
-        codex_artifact < provider_pins
-            && provider_pins < provider_evidence
-            && provider_evidence < provider_version
-            && provider_version < provider_bytes
-            && provider_bytes < final_remote
-            && final_remote < push
-            && push < reconciliation,
-        "provider checks must finish before the final remote guard; the single push follows immediately"
-    );
+    assert!(stage < claude_stage && initial_policy < final_remote && claude_stage < final_remote);
+    assert!(final_remote < push && push < reconciliation);
+    assert_eq!(source.matches("git push origin \"refs/tags/$tag\"").count(), 1);
+    assert!(!source.contains("check-provider-pins.sh"));
+    assert!(!source.contains("CLAUDE_PROVIDER_DRIFT_ACTION_TIME"));
+    assert!(!source.contains("CODEX_PROVIDER_DRIFT_ACTION_TIME"));
 
     let guard = &source[final_remote..push];
-    assert!(!guard.contains("check-provider-pins.sh"));
-    assert!(!guard.contains("command -v claude"));
-    assert!(!guard.contains("command -v codex"));
     for required in [
         "git fetch --quiet origin main",
         "MAIN_DRIFT_ACTION_TIME",
         "LOCAL_HEAD_DRIFT_ACTION_TIME",
         "ensure_remote_tag_absent ACTION_TIME",
+        "ensure_remote_release_absent ACTION_TIME",
         "verify_tag_ruleset",
+        "verify_immutable_release_policy ACTION_TIME",
         "check-release-contract.py --tag-date \"$tag_date\" --report",
-        "RELEASE_CONTRACT_ACTION_TIME",
     ] {
-        assert!(guard.contains(required), "missing action-time tag guard: {required}");
+        assert!(guard.contains(required), "missing action-time tag guard");
     }
 }
 
@@ -641,140 +612,85 @@ fn release_contract_enforces_public_doc_version_coherence() {
 }
 
 #[test]
-fn release_runtime_rehearsal_is_premerge_and_content_addressed() {
+fn release_runtime_rehearsal_is_premerge_then_exact_staged_bytes_before_tag() {
     let claude =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
     let codex =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
     let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
-    let draft = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+    let stage = std::fs::read_to_string("scripts/release/verify-release-stage.py").unwrap();
     let contract =
         std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
 
     for smoke in [&claude, &codex] {
         assert!(smoke.contains(r#""$phase" == "rehearse""#));
+        assert!(smoke.contains(r#""$phase" == "stage""#));
         assert!(smoke.contains("HEAD_NOT_EXPECTED_CANDIDATE"));
-        assert!(smoke.contains("source_tree"));
-        assert!(smoke.contains("reviewed_content_digest"));
+        assert!(smoke.contains("HEAD_NOT_EXPECTED_ACCEPTED_MAIN"));
         assert!(smoke.contains("content-addressed-runtime-v1"));
-        assert!(!smoke.contains("HEAD_NOT_ACCEPTED_MAIN"));
-    }
-    for consumer in [&tag, &draft] {
-        assert!(consumer.contains("reviewed_content_digest"));
-        assert!(consumer.contains("current_tree"));
-        assert!(consumer.contains("content-addressed-runtime-v1"));
-        assert!(consumer.contains("clroom-release-evidence"));
+        assert!(smoke.contains("exact-release-artifact-v1"));
     }
     assert!(tag.contains("rehearse-v${version}-${evidence_key}.json"));
     assert!(tag.contains("codex-rehearse-v${version}-${evidence_key}.json"));
-    assert!(contract.contains(r#""runtime_rehearsal_phase": "exact_pr_candidate_before_merge_when_observable""#));
-    assert!(contract.contains(r#""runtime_evidence_binding": "reviewed_content_digest_and_tree_plus_provider_inputs""#));
-    assert!(contract.contains(r#""post_merge_runtime_role": "identity_state_and_action_time_revalidation_only""#));
+    assert!(tag.contains("stage-v${version}-${expected:0:12}.json"));
+    assert!(tag.contains("resolve-release-stage.sh"));
+    assert!(stage.contains("clroom.release-stage.v1"));
+    assert!(contract.contains(r#""post_merge_runtime_role": "accepted_main_exact_shipping_stage_before_tag""#));
+    assert!(contract.contains(r#""post_tag_release_role": "promotion_attestation_and_reconciliation_only""#));
 }
 
 #[test]
-fn codex_release_evidence_uses_actions_not_owner_path() {
+fn codex_release_evidence_uses_actions_for_pr_and_exact_staged_bytes() {
     let candidate =
         std::fs::read_to_string(".github/workflows/release-candidate.yml").unwrap();
     let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
-    let draft =
-        std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
-    let rehearsal_resolver =
-        std::fs::read_to_string("scripts/release/resolve-codex-rehearsal-evidence.sh").unwrap();
-    let draft_resolver =
-        std::fs::read_to_string("scripts/release/resolve-codex-draft-evidence.sh").unwrap();
+    let stage_resolver =
+        std::fs::read_to_string("scripts/release/resolve-release-stage.sh").unwrap();
     let contract =
         std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
-    let release_docs =
-        std::fs::read_to_string("docs/release/RELEASE_CONTRACT.md").unwrap();
 
     assert!(candidate.contains("Rehearse Codex runtime on exact PR candidate"));
-    let rehearsal_step = candidate
-        .split("Rehearse Codex runtime on exact PR candidate")
-        .nth(1)
-        .expect("Codex rehearsal step must exist");
-    assert!(
-        rehearsal_step.contains(r#"GITHUB_TOKEN: ${{ github.token }}"#),
-        "Codex rehearsal release-contract check must use the workflow token"
-    );
     assert!(candidate.contains("local-codex-plugin-activation-smoke.sh rehearse"));
-    assert!(candidate.contains("Upload Codex pre-merge rehearsal evidence"));
-    assert!(release.contains("verify-codex-draft:"));
-    assert!(release.contains("local-codex-plugin-activation-smoke.sh draft"));
-    assert!(release.contains("Upload Codex Draft evidence"));
-
-    assert!(tag.contains("resolve-codex-rehearsal-evidence.sh"));
-    assert!(!tag.contains("CODEX_PROVIDER_BYTES_DRIFT_ACTION_TIME"));
-    assert!(!tag.contains("CODEX_PROVIDER_DRIFT_ACTION_TIME"));
-    assert!(draft.contains("resolve-codex-rehearsal-evidence.sh"));
-    assert!(draft.contains("resolve-codex-draft-evidence.sh"));
-
-    for resolver in [&rehearsal_resolver, &draft_resolver] {
-        assert!(resolver.contains("conclusion\": \"success\""));
-        assert!(resolver.contains("gh run download"));
-    }
-    assert!(rehearsal_resolver.contains(".github/workflows/release-candidate.yml"));
-    assert!(rehearsal_resolver.contains("git/commits/$artifact_head"));
-    assert!(rehearsal_resolver.contains(r#"[[ "$candidate_tree" == "$current_tree" ]] || continue"#));
-    assert!(rehearsal_resolver.contains("SUCCESSFUL_PR_RUN_WITH_MATCHING_TREE_NOT_FOUND"));
-    assert!(draft_resolver.contains(".github/workflows/release.yml"));
-
-    assert!(contract.contains(
-        r#""codex_premerge_rehearsal_transport": "github_actions_macos_content_addressed_artifact""#
-    ));
-    assert!(contract.contains(
-        r#""codex_draft_rehearsal_transport": "github_actions_macos_tag_artifact""#
-    ));
-    assert!(contract.contains(
-        r#""ambient_local_codex_release_input": "forbidden""#
-    ));
-    assert!(release_docs.contains(
-        "Canonical Codex pre-merge and Draft evidence comes"
-    ));
-    assert!(!release_docs.contains(
-        "local-codex-plugin-activation-smoke.sh rehearse"
-    ));
-    assert!(!release_docs.contains(
-        "local-codex-plugin-activation-smoke.sh draft"
-    ));
+    assert!(candidate.contains("Stage exact accepted-main release bytes"));
+    assert!(candidate.contains("local-codex-plugin-activation-smoke.sh stage"));
+    assert!(candidate.contains("Upload accepted-main release stage"));
+    assert!(candidate.contains("Rehearse staged attestation mechanism"));
+    assert!(tag.contains("resolve-release-stage.sh"));
+    assert!(release.contains("resolve-release-stage.sh"));
+    assert!(!release.contains("local-codex-plugin-activation-smoke"));
+    assert!(!release.contains("provision-provider-canaries"));
+    assert!(stage_resolver.contains("Release candidate readiness"));
+    assert!(stage_resolver.contains("SUCCESSFUL_ACCEPTED_MAIN_RUN_NOT_FOUND"));
+    assert!(contract.contains(r#""codex_pretag_stage_transport": "accepted_main_github_actions_exact_artifact""#));
+    assert!(contract.contains(r#""ambient_local_codex_release_input": "forbidden""#));
 }
 
 #[test]
-fn draft_release_smoke_requires_repository_release_immutability() {
-    let source = std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
+fn repository_release_immutability_is_checked_with_owner_auth_not_actions_runtime() {
+    let claude =
+        std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
+    let codex =
+        std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let verifier = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+    let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
 
-    assert!(source.contains("repos/y-sor/clean-room-launcher/immutable-releases"));
-    assert!(source.contains("IMMUTABLE_RELEASE_POLICY_UNVERIFIED"));
-    assert!(source.contains("IMMUTABLE_RELEASE_POLICY_DISABLED"));
-    assert!(source.contains("\"claude_provider_sha256\":claude_provider_sha"));
-
-    let draft_branch = source
-        .find("if [[ \"$phase\" == \"rehearse\" ]]; then")
-        .expect("release smoke must branch between rehearsal and draft behavior");
-    let policy = source
-        .find("immutable-releases --jq .enabled")
-        .expect("draft smoke must verify release immutability");
-    let release_download = source
-        .find("gh release download \"$tag\" --dir \"$assets\"")
-        .expect("draft smoke must download the exact Draft assets");
-    assert!(
-        draft_branch < policy && policy < release_download,
-        "immutability must be proven in the Draft pre-publish path before accepting release assets"
-    );
+    assert!(!claude.contains("immutable-releases"));
+    assert!(!codex.contains("immutable-releases"));
+    assert!(!release.contains("immutable-releases"));
+    assert!(tag.contains("repos/y-sor/clean-room-launcher/immutable-releases"));
+    assert!(verifier.contains("repos/$repository/immutable-releases"));
 }
 
 #[test]
-fn draft_plugin_release_smoke_binds_cyclonedx_predicate() {
-    let source = std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
-    assert!(
-        source.contains("--bundle \"$sbom\"     --predicate-type https://cyclonedx.org/bom"),
-        "draft release smoke must verify the SBOM bundle as CycloneDX instead of the default SLSA provenance predicate"
-    );
+fn tag_bound_promotion_binds_cyclonedx_predicate() {
+    let source = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    assert!(source.contains("--bundle \"$sbom\""));
+    assert!(source.contains("--predicate-type https://cyclonedx.org/bom"));
+    assert!(source.contains("--source-ref \"$GITHUB_REF\""));
+    assert!(source.contains("--source-digest \"$GITHUB_SHA\""));
 }
-
-use std::os::unix::fs::PermissionsExt;
-
 
 #[test]
 fn canonical_readiness_owns_the_draft_release_verifier() {
@@ -788,11 +704,11 @@ fn canonical_readiness_owns_the_draft_release_verifier() {
 fn codex_lifecycle_evidence_names_only_the_ambient_state_it_fingerprints() {
     let smoke =
         std::fs::read_to_string("scripts/release/local-codex-plugin-activation-smoke.sh").unwrap();
-    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
-    let draft = std::fs::read_to_string("scripts/release/verify-draft-release.sh").unwrap();
+    let stage =
+        std::fs::read_to_string("scripts/release/verify-release-stage.py").unwrap();
 
     assert!(smoke.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
     assert!(!smoke.contains("persistent_provider_state_unchanged"));
-    assert!(tag.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
-    assert!(draft.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(stage.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(stage.contains("\"plugin_source_unchanged\": True"));
 }
