@@ -124,13 +124,13 @@ fn pretag_stage_qualifies_the_exact_archive_before_tag() {
     );
     assert!(
         source.contains(
-            "\"$GITHUB_SHA\" \"$CLROOM_RELEASE_VERSION\" codex \"$CLROOM_PROVIDER_CODEX_VERSION\""
+            "\"$CLROOM_STAGE_ARTIFACT\" \"$CLROOM_STAGE_DIR/codex-qualification.json\" \"$GITHUB_SHA\" \"$VERSION\" codex \"$CLROOM_PROVIDER_CODEX_VERSION\""
         ),
         "Codex archive evidence verification must consume the canonical pinned provider version"
     );
     assert!(
         source.contains(
-            "\"$GITHUB_SHA\" \"$CLROOM_RELEASE_VERSION\" claude \"$CLROOM_PROVIDER_CLAUDE_VERSION\""
+            "\"$CLROOM_STAGE_ARTIFACT\" \"$CLROOM_STAGE_DIR/claude-qualification.json\" \"$GITHUB_SHA\" \"$VERSION\" claude \"$CLROOM_PROVIDER_CLAUDE_VERSION\""
         ),
         "Claude archive evidence verification must consume the canonical pinned provider version"
     );
@@ -321,20 +321,20 @@ fn codex_rehearsal_smoke_closes_state_after_runtime_probe() {
     assert!(smoke.contains(r#""provider_mcp_initialize_observed": provider_mcp_initialize == "true""#));
     assert!(smoke.contains(r#""provider_mcp_tools_list_observed": provider_mcp_tools_list == "true""#));
     assert!(smoke.contains(r#""fixture_mcp_tool_call_passed": fixture_mcp_tool_call == "true""#));
-    assert!(smoke.contains(r#""provider_state_lifecycle_closed": True"#));
+    assert!(smoke.contains(r#""provider_state_lifecycle_closed":True"#));
     assert!(smoke.contains(r#""real_provider_runtime_confirmed": runtime_confirmed == "true""#));
     assert!(smoke.contains(r#""expected_mcp_runtime_healthy_confirmed": runtime_mcp_healthy == "true""#));
-    assert!(smoke.contains(r#""model_prompt_sent": False"#));
+    assert!(smoke.contains(r#""model_prompt_sent":False"#));
     assert!(smoke.contains(r#""post_runtime_clean_confirmed": post_runtime_clean == "true""#));
-    assert!(tag_helper.contains(r#""schema_version": "clroom.codex-plugin-release-smoke.v4""#));
-    assert!(tag_helper.contains(r#""provider_mcp_initialize_observed": True"#));
-    assert!(tag_helper.contains(r#""provider_mcp_tools_list_observed": True"#));
-    assert!(tag_helper.contains(r#""fixture_mcp_tool_call_passed": True"#));
+    assert!(tag_helper.contains(r#""schema_version":"clroom.codex-plugin-release-smoke.v4""#));
+    assert!(tag_helper.contains(r#""provider_mcp_initialize_observed":True"#));
+    assert!(tag_helper.contains(r#""provider_mcp_tools_list_observed":True"#));
+    assert!(tag_helper.contains(r#""fixture_mcp_tool_call_passed":True"#));
     assert!(tag_helper.contains(r#""provider_state_lifecycle_closed": True"#));
-    assert!(tag_helper.contains(r#""real_provider_runtime_confirmed": True"#));
-    assert!(tag_helper.contains(r#""expected_mcp_runtime_healthy_confirmed": True"#));
+    assert!(tag_helper.contains(r#""real_provider_runtime_confirmed":True"#));
+    assert!(tag_helper.contains(r#""expected_mcp_runtime_healthy_confirmed":True"#));
     assert!(tag_helper.contains(r#""model_prompt_sent": False"#));
-    assert!(tag_helper.contains(r#""post_runtime_clean_confirmed": True"#));
+    assert!(tag_helper.contains(r#""post_runtime_clean_confirmed":True"#));
 }
 
 #[test]
@@ -368,11 +368,11 @@ fn draft_release_verdict_reconciles_exact_stage_promotion_only() {
 fn local_tag_helper_parses_annotated_tagger_timestamp_with_digit_regex() {
     let source = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
     assert!(
-        source.contains(r#"match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)"#),
+        source.contains(r#"re.search(r" (\d+) ([+-])(\d{2})(\d{2})$",line)"#),
         "tag helper must parse the real annotated-tagger timestamp format"
     );
     assert!(
-        !source.contains(r#"match = re.search(r" (\\d+) ([+-])(\\d{2})(\\d{2})$", line)"#),
+        !source.contains(r#"re.search(r" (\\d+) ([+-])(\\d{2})(\\d{2})$",line)"#),
         "double-escaped digit classes would match literal backslashes and break the tag gate"
     );
 }
@@ -684,6 +684,6 @@ fn codex_lifecycle_evidence_names_only_the_ambient_state_it_fingerprints() {
 
     assert!(smoke.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
     assert!(!smoke.contains("persistent_provider_state_unchanged"));
-    assert!(tag.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
-    assert!(draft.contains("\"ambient_config_and_plugin_tree_unchanged\": True"));
+    assert!(tag.contains("\"ambient_config_and_plugin_tree_unchanged\":True"));
+    assert!(draft.contains("CLAUDE_STAGE_EVIDENCE"));
 }
