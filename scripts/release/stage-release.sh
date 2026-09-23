@@ -101,9 +101,18 @@ install -m 0755 install.sh "$output/install.sh"
   shasum -a 256 -c SHA256SUMS
 ) >/dev/null
 
-scripts/release/qualify-real-provider.sh   --provider codex   --executable "$CLROOM_PROVIDER_CODEX"   --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION"   --candidate "$artifact"   --source-head "$head"   --version "$version"   --output "$output/codex-qualification.json"   --candidate-archive   || fail "GENERIC_CODEX_QUALIFICATION"
+extract_dir="$tmp/release-archive"
+mkdir -p "$extract_dir"
+tar -xzf "$artifact" -C "$extract_dir"
+archive_root=$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)
+[[ -n "$archive_root" ]] || fail "ARCHIVE_ROOT_MISSING"
+codex_candidate="$archive_root/bin/clroom-codex"
+claude_candidate="$archive_root/bin/clroom-claude"
+[[ -x "$codex_candidate" && -x "$claude_candidate" ]] || fail "ARCHIVE_PROVIDER_ENTRYPOINTS"
 
-scripts/release/qualify-real-provider.sh   --provider claude   --executable "$CLROOM_PROVIDER_CLAUDE"   --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION"   --candidate "$artifact"   --source-head "$head"   --version "$version"   --output "$output/claude-qualification.json"   --candidate-archive   || fail "GENERIC_CLAUDE_QUALIFICATION"
+scripts/release/qualify-real-provider.sh   --provider codex   --executable "$CLROOM_PROVIDER_CODEX"   --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION"   --candidate "$codex_candidate"   --source-head "$head"   --version "$version"   --output "$output/codex-qualification.json"   || fail "GENERIC_CODEX_QUALIFICATION"
+
+scripts/release/qualify-real-provider.sh   --provider claude   --executable "$CLROOM_PROVIDER_CLAUDE"   --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION"   --candidate "$claude_candidate"   --source-head "$head"   --version "$version"   --output "$output/claude-qualification.json"   || fail "GENERIC_CLAUDE_QUALIFICATION"
 
 python3 scripts/release/verify-qualification.py   "$artifact" "$output/codex-qualification.json"   "$head" "$version" codex "$CODEX_VERSION"   || fail "GENERIC_CODEX_EVIDENCE"
 python3 scripts/release/verify-qualification.py   "$artifact" "$output/claude-qualification.json"   "$head" "$version" claude "$CLAUDE_VERSION"   || fail "GENERIC_CLAUDE_EVIDENCE"
