@@ -41,6 +41,64 @@ jobs:
           python3 scripts/release/check-workflow-exec-contract.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py
           python3 scripts/release/check-release-contract.py --self-test
+      - name: Resolve published release lifecycle
+        id: lifecycle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_version="$(python3 - <<'PY'
+          import tomllib
+          with open("Cargo.toml", "rb") as handle:
+              print(tomllib.load(handle)["package"]["version"])
+          PY
+          )"
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest")"
+          latest_tag="$(jq -r .tag_name <<<"$release_json")"
+          test -n "$latest_tag"
+          test "$(jq -r .draft <<<"$release_json")" = false
+          test "$(jq -r .prerelease <<<"$release_json")" = false
+          test "$(jq -r .immutable <<<"$release_json")" = true
+          lifecycle="$(python3 scripts/release/resolve-release-lifecycle.py \
+            --candidate-version "$candidate_version" \
+            --published-tag "$latest_tag")"
+          if ! git rev-parse --verify "refs/tags/$latest_tag^{commit}" >/dev/null 2>&1; then
+            git fetch --no-tags origin "refs/tags/$latest_tag:refs/tags/$latest_tag"
+          fi
+          git rev-parse --verify "refs/tags/$latest_tag^{commit}" >/dev/null
+          echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
+          echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
+          echo "baseline=$latest_tag" >> "$GITHUB_OUTPUT"
+          printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
+      - name: Validate active candidate seal before expensive lanes
+        if: steps.lifecycle.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/check-release-contract.py --report >/dev/null
+  release-readiness:
+    name: CLROOM release readiness
+    needs: release-eligibility
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      CLROOM_RELEASE_VERSION: ${{ needs.release-eligibility.outputs.version }}
+      CLROOM_RELEASE_BASE_REF: ${{ needs.release-eligibility.outputs.baseline }}
+      CLROOM_RELEASE_LIFECYCLE: ${{ needs.release-eligibility.outputs.lifecycle }}
+    steps:
+      - name: Check out exact PR HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Validate workflow-local execution parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release/check-workflow-exec-contract.py --self-test
+          python3 scripts/release/check-workflow-exec-contract.py
       - name: Prove release attestation contract fails closed
         shell: bash
         run: |
@@ -244,7 +302,6 @@ jobs:
           done
           gh attestation verify "pretag-stage/$artifact"             -R "$GITHUB_REPOSITORY"             --bundle "$SBOM_BUNDLE"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml"             --source-digest "$GITHUB_SHA"             --source-ref "refs/heads/main"             --deny-self-hosted-runners
           echo "PRETAG_ATTESTATION_REHEARSAL_PASS source=$GITHUB_SHA"
-
 
   release-required:
     name: Release required
