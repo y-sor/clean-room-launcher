@@ -96,6 +96,20 @@ SHA, source tree, reviewed-content digest, provider pins/integrities, exact
 provider executable SHA-256 digests and exact file digests. The tag gate resolves only a successful accepted-main workflow
 artifact for that exact SHA.
 
+Workflow execution semantics are part of the release contract, not incidental
+filesystem metadata. Every repo-local script invoked directly by a GitHub Actions
+workflow must either be tracked executable in Git or be invoked through an
+explicit interpreter such as `bash` or `python3`. Canonical readiness runs a
+repository-wide workflow/script mode contract with negative fixtures so a
+non-executable direct invocation fails before provider provisioning.
+
+After accepted-main staging completes, a separate Ubuntu
+`Release promotion rehearsal` workflow resolves the exact accepted stage using
+the same explicit `bash scripts/release/resolve-pretag-stage.sh` invocation used
+by the tag-triggered Release workflow. The protected tag helper requires this
+exact-source rehearsal to have completed successfully. This closes runner OS,
+Git file-mode and shell invocation parity before the irreversible tag boundary.
+
 Claude remains the one genuine local human-TTY boundary. Before tag creation,
 the Owner runs the Claude stage smoke against the exact staged archive, not a
 rebuild and not a Draft download. Its durable evidence binds the exact accepted
