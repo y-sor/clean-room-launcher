@@ -101,15 +101,26 @@ import sys
 workflow_dir = Path(sys.argv[1])
 release_workflow = Path(sys.argv[2]).resolve()
 
+def yaml_key(line: str):
+    match = re.match(
+        r"^(?P<indent>[ \\t]*)(?:(?P<dq>\"[^\"]+\")|(?P<sq>'[^']+')|(?P<bare>[A-Za-z0-9_-]+))\\s*:\\s*(?P<rest>.*)$",
+        line,
+    )
+    if not match:
+        return None
+    raw = match.group("dq") or match.group("sq") or match.group("bare")
+    key = raw[1:-1] if raw[:1] in ("\"", "'") else raw
+    return len(match.group("indent").replace("\\t", "  ")), key, match.group("rest").strip()
+
 def on_block(text: str) -> list[str]:
     lines = text.splitlines()
     start = None
     inline = None
     for index, line in enumerate(lines):
-        match = re.match(r"^on:\s*(.*)$", line)
-        if match:
+        parsed = yaml_key(line)
+        if parsed and parsed[0] == 0 and parsed[1] == "on":
             start = index
-            inline = match.group(1).strip()
+            inline = parsed[2]
             break
     if start is None:
         return []
@@ -117,7 +128,8 @@ def on_block(text: str) -> list[str]:
         return [f"on: {inline}"]
     block = [lines[start]]
     for line in lines[start + 1:]:
-        if line.strip() and not line.startswith((" ", "\t", "#")):
+        parsed = yaml_key(line)
+        if parsed and parsed[0] == 0:
             break
         block.append(line)
     return block
@@ -127,29 +139,44 @@ def push_can_match_tags(block: list[str]) -> bool:
         return False
     if len(block) == 1:
         inline = block[0].split(":", 1)[1].strip()
-        return bool(re.search(r"(^|[\[, ]+)push([\], ]+|$)", inline))
-    index = 1
-    while index < len(block):
-        line = block[index]
-        event = re.match(r"^  push:\s*(.*)$", line)
-        if not event:
-            index += 1
+        return bool(re.search(r"(^|[\\[, {]+)[\"']?push[\"']?([\\], }:]+|$)", inline))
+
+    event_indents = []
+    parsed_lines = []
+    for index, line in enumerate(block[1:], start=1):
+        parsed = yaml_key(line)
+        parsed_lines.append((index, parsed))
+        if parsed and parsed[0] > 0:
+            event_indents.append(parsed[0])
+    if not event_indents:
+        return False
+    event_indent = min(event_indents)
+
+    for index, parsed in parsed_lines:
+        if not parsed or parsed[0] != event_indent or parsed[1] != "push":
             continue
-        inline = event.group(1).strip()
+        inline = parsed[2]
         if inline:
+            # Inline push mappings are deliberately treated as tag-capable.
+            # Branch-only push filters must use block form so this guard can
+            # prove their semantics instead of guessing.
             return True
-        nested = []
-        index += 1
-        while index < len(block):
-            candidate = block[index]
-            if candidate.strip() and len(candidate) - len(candidate.lstrip(" ")) <= 2:
+        nested_keys = []
+        cursor = index + 1
+        while cursor < len(block):
+            child = yaml_key(block[cursor])
+            if child and child[0] <= event_indent:
                 break
-            nested.append(candidate)
-            index += 1
-        joined = "\n".join(nested)
-        if re.search(r"^\s+tags(?:-ignore)?:", joined, flags=re.M):
+            if child and child[0] > event_indent:
+                nested_keys.append((child[0], child[1]))
+            cursor += 1
+        if not nested_keys:
             return True
-        if not re.search(r"^\s+branches(?:-ignore)?:", joined, flags=re.M):
+        filter_indent = min(indent for indent, _ in nested_keys)
+        filters = {key for indent, key in nested_keys if indent == filter_indent}
+        if "tags" in filters or "tags-ignore" in filters:
+            return True
+        if "branches" not in filters and "branches-ignore" not in filters:
             return True
     return False
 
