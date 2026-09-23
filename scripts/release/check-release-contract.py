@@ -323,7 +323,7 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_NESTED_GLOB")
         fixture_pins = {"codex": "0.156.1", "claude": "2.1.280"}
         if public_doc_version_violation(
-            "docs/providers.md", "Codex CLI 0.156.1 exact", "", "0.156.1",
+            "docs/providers.md", "Codex CLI 0.156.0 exact", "", "0.156.0",
             "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CODEX_DOC_VERSION")
@@ -348,7 +348,7 @@ def main():
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_HISTORICAL_PRODUCT_VERSION")
         if public_doc_version_violation(
-            "docs/providers.md", "Codex CLI 0.156.0 exact", "", "0.156.0",
+            "docs/providers.md", "Codex CLI 0.156.1 exact", "", "0.156.1",
             "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CODEX_DOC_VERSION")
