@@ -56,7 +56,9 @@ fi
 [[ -x scripts/release/local-plugin-activation-smoke.sh ]] || fail "PLUGIN_SMOKE_EXECUTABLE"
 [[ -x scripts/release/verify-draft-release.sh ]] || fail "DRAFT_RELEASE_VERIFY_EXECUTABLE"
 [[ -f scripts/release/resolve-codex-rehearsal-evidence.sh ]] || fail "CODEX_REHEARSAL_RESOLVER_MISSING"
-[[ -f scripts/release/resolve-codex-draft-evidence.sh ]] || fail "CODEX_DRAFT_RESOLVER_MISSING"
+[[ -f scripts/release/resolve-release-stage.sh ]] || fail "RELEASE_STAGE_RESOLVER_MISSING"
+[[ -f scripts/release/stage-manifest.py ]] || fail "RELEASE_STAGE_MANIFEST_MISSING"
+[[ -f scripts/release/render-release-notes.py ]] || fail "RELEASE_NOTES_RENDERER_MISSING"
 python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
 python3 scripts/release/codex-mcp-fixture.py --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
@@ -65,7 +67,7 @@ else
   printf 'RELEASE_CONTRACT_SKIPPED lifecycle=POST_PUBLISH baseline=%s version=%s\n' "$baseline" "$version"
 fi
 release_workflow=.github/workflows/release.yml
-bash scripts/release/check-attestation-contract.sh "$release_workflow" || fail "RELEASE_ATTESTATION_CONTRACT"
+bash scripts/release/check-attestation-contract.sh "$release_workflow" .github/workflows/release-candidate.yml || fail "RELEASE_ATTESTATION_CONTRACT"
 bash scripts/release/check-provider-canary-contract.sh || fail "PROVIDER_CANARY_CONTRACT"
 grep -Fq 'title="$GITHUB_REF_NAME — Clean Room Launcher"' "$release_workflow" || fail "RELEASE_TITLE_CONTRACT"
 if command -v shellcheck >/dev/null 2>&1; then
@@ -81,10 +83,11 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/resolve-codex-rehearsal-evidence.sh \
-    scripts/release/resolve-codex-draft-evidence.sh \
+    scripts/release/resolve-release-stage.sh \
     scripts/release/verify-draft-release.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
+  python3 -m py_compile scripts/release/render-release-notes.py scripts/release/stage-manifest.py || fail "PYTHON_SYNTAX"
 else
   bash -n \
     packaging/build-artifacts.sh \
@@ -98,9 +101,10 @@ else
     scripts/release/local-plugin-activation-smoke.sh \
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/resolve-codex-rehearsal-evidence.sh \
-    scripts/release/resolve-codex-draft-evidence.sh \
+    scripts/release/resolve-release-stage.sh \
     scripts/release/verify-draft-release.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
+  python3 -m py_compile scripts/release/render-release-notes.py scripts/release/stage-manifest.py || fail "PYTHON_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
 sh install.sh --self-test || fail "INSTALLER_CONTRACT"
