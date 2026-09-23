@@ -7,6 +7,31 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-23
+
+### Changed
+
+- Rebuilt the release assurance path around `PRETAG_BLOCKER_CLOSURE`: accepted
+  `main` now stages the exact future shipping archive before a protected tag,
+  freezes provider qualification evidence against those bytes, rehearses the
+  attestation mechanism, and requires the remaining human Claude TTY boundary
+  against the same staged archive.
+- The tag-triggered Release workflow is promotion-only: it resolves the accepted
+  pre-tag stage, creates only tag-bound attestations, uploads those exact bytes
+  to a guarded Draft, and reconciles the Draft byte-for-byte.
+- Provider `latest` is no longer re-decided after tag, full CI no longer reruns
+  on tag pushes, and repository release-immutability policy is checked through
+  the Owner-authenticated pre-tag/pre-publish boundary instead of an
+  under-privileged Actions token.
+
+### Fixed
+
+- Treat the second avoidable late release escape as a HARNESS INCIDENT rather
+  than another one-off workaround. The protected `v0.4.2` candidate remains
+  unpublished after its post-tag Draft runtime job could not read the repository
+  immutable-release policy. `v0.4.3` supersedes that candidate without moving
+  or rewriting the protected tag.
+
 ## [0.4.2] - 2026-09-20
 
 ### Added
