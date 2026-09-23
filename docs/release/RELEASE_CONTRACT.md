@@ -73,34 +73,59 @@ This is intentionally separate from ordinary CI. CI answers whether the current
 candidate passes existing controls. Contract evolution asks whether the delta
 made any existing control insufficient.
 
-## Artifact integrity
+## Artifact integrity and pre-tag closure
 
-The release workflow qualifies the provider launchers extracted from the exact
-release archive, not sibling build outputs. The archive, installer, SBOM,
-checksums, provenance attestation bundle, and SBOM attestation bundle are
-verified before a guarded Draft Release is created.
+A protected release tag is an irreversible identity boundary, not a test trigger.
+All technically reproducible release blockers must be closed before the tag.
 
-Publishing remains a separate action. The tag helper first revalidates live
-provider pins, revalidates the local Claude provider bytes bound by pre-merge
-rehearsal evidence, and resolves the Codex pre-merge evidence from the successful
-exact-PR macOS GitHub Actions artifact. Ambient local Codex installation state is
-not a release input. Only after those provider checks finish does the final remote
-guard refresh `main`, confirm
-the tag is still absent, revalidate the active no-bypass `v*` tag ruleset, and
-rerun the whole-release contract against the current published baseline. No
-provider/network qualification runs after that final remote guard before the
-single tag push. GitHub does not provide an atomic predicate tying a new tag to
-an unchanged branch/release state, so this ordering minimizes the residual TOCTOU
-window; any observed drift blocks the push.
+The exact PR candidate still receives the earliest available product/runtime
+rehearsal before merge. After an accepted squash/merge, exact shipping bytes can
+change because the archive records the accepted source commit. Therefore
+accepted-main Release-candidate automation builds the future shipping archive
+once, generates the installer copy, checksums, CycloneDX SBOM and release notes,
+freezes the current provider registry/integrity decision, qualifies the provider
+entrypoints extracted from that exact archive, and runs the real Codex whole-
+plugin MCP runtime against that exact archive.
 
-Because stable `v*` tags are protected against update/deletion, provider
-capabilities with release-specific behavior are exercised on exact candidate
-bytes before the irreversible tag/publish boundaries.
+The same accepted-main workflow also rehearses the GitHub attestation mechanism
+with the exact staged subjects before any tag exists. A successful workflow
+uploads one content-addressed pre-tag stage artifact bound to the accepted source
+SHA, source tree, reviewed-content digest, provider pins/integrities and exact
+file digests. The tag gate resolves only a successful accepted-main workflow
+artifact for that exact SHA.
 
-Before provider canaries or tag push, `scripts/release/check-provider-pins.sh`
-fresh-resolves npm `latest` and registry integrity for the exact Codex and
-Claude Code pins. A provider stable-version move blocks the release until pins,
-qualification, and evidence are refreshed.
+Claude remains the one genuine local human-TTY boundary. Before tag creation,
+the Owner runs the Claude stage smoke against the exact staged archive, not a
+rebuild and not a Draft download. Its durable evidence binds the exact accepted
+source/tree/review digest, Claude version/provider bytes and staged archive
+SHA-256.
+
+Provider latest is a pre-tag decision. check-provider-pins.sh resolves the
+current npm stable tags and exact registry integrity during accepted-main
+staging. Those provider inputs are frozen into the staged manifest/evidence.
+After tag creation, release verification must not ask a mutable registry whether
+the already accepted tuple is still latest; a later upstream release cannot
+invalidate an already staged candidate.
+
+Immediately before the single tag push, push-release-tag.sh refreshes only
+genuinely mutable action-time state: accepted main, tag/release absence, the
+active no-bypass v* ruleset, immutable-release repository policy, release
+contract and the presence/binding of the complete staged evidence. No build,
+provider provisioning, provider runtime, installer test or registry freshness
+check executes after this final guard before the irreversible push.
+
+Post-tag automation is promotion-only. It resolves the already accepted staged
+bytes, creates tag-bound attestations for those same bytes, creates/refreshes a
+guarded Draft, uploads only the accepted release-visible files, downloads the
+Draft again and proves byte equality plus tag-bound attestation identity. It
+must not rebuild, rerun tests, provision providers, execute Codex/Claude runtime
+qualification, or call repository-admin policy endpoints.
+
+A transient GitHub/network failure in tag-bound attestation, Draft creation,
+upload or reconciliation is retried on the same protected tag with the same
+accepted bytes. It does not justify moving the tag or consuming another version.
+Any deterministic post-tag blocker that was technically reproducible pre-tag is
+a release-harness escape.
 
 ## Public documentation version coherence
 
@@ -130,25 +155,27 @@ For whole-plugin activation:
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
    Claude runs locally because its selected-plugin TUI requires a genuine human
    terminal confirmation; its evidence stays outside the tracked tree. Codex runs
-   automatically in the macOS Release-candidate workflow using the exact
-   registry-integrity-pinned provider canary, proves clean → selected → clean MCP
-   visibility through a task-owned standalone fixture, unchanged provider/plugin
-   state, and a real provider PTY startup that reaches MCP initialize + tools/list.
-   Successful Codex evidence is uploaded as a content-addressed GitHub Actions
-   artifact and is the canonical Codex rehearsal transport. Before that
-   PTY probe, the harness initializes a CLROOM-owned synthetic shadow, verifies
-   its ownership marker, and records `trusted` only for the exact synthetic
-   project so qualification never depends on scraping the trust UI. The harness
-   sends no model prompt.
-2. **Action-time tag guard:** the helper rechecks live stable provider pins,
-   revalidates local Claude version/bytes, and resolves/validates the successful
-   exact-PR Codex Actions artifact before the protected tag push. It never depends
-   on whichever Codex happens to be installed in the Owner's ambient PATH.
-3. **Pre-publish:** repository release immutability must still be enabled. The
-   exact Draft Release archive is downloaded and its checksums/attestations are
-   revalidated; Codex Draft runtime qualification runs automatically in the tag
-   Release workflow and is consumed as a successful Actions artifact, while the
-   Claude Draft probe remains on the authenticated local provider boundary.
+   automatically in the macOS Release-candidate workflow and proves the real MCP
+   runtime plus post-runtime clean-state closure. This catches product/runtime
+   failures at the earliest candidate boundary.
+2. **Accepted-main exact-byte staging:** after merge identity is known, the
+   Release-candidate workflow builds the future shipping archive once and runs
+   generic provider qualification plus the Codex whole-plugin runtime against
+   that exact archive. The Owner then runs the Claude stage TTY smoke against
+   that same downloaded staged archive. The successful accepted-main Actions run
+   plus Claude stage evidence form the blocker closure required by the tag gate.
+3. **Action-time tag guard:** the helper validates the successful staged Actions
+   artifact and local Claude stage evidence, verifies immutable-release policy
+   with the Owner-authenticated gh, refreshes main/tag/release/ruleset/contract
+   state and performs one protected tag push. It does not re-decide provider
+   latest.
+4. **Post-tag promotion:** the Release workflow performs only tag-dependent
+   attestation, exact-byte Draft promotion and reconciliation. There is no Codex
+   Draft runtime job and no Claude Draft runtime probe.
+5. **Pre-publish:** the canonical local verifier confirms repository release
+   immutability, exact tag/Draft identity, exact byte equality with the pre-tag
+   manifest, tag-bound attestations, successful promotion workflow and preserved
+   Claude stage evidence. It performs no rebuild or provider/runtime rerun.
 
 ## Stateful provider lifecycle closure
 
@@ -208,57 +235,53 @@ evidence to be refreshed before a protected tag can be created.
 
 ## Exact-tag pre-publish reconciliation
 
-A successful Release workflow is not by itself a publish verdict. Before an
-Owner publish gate, the canonical local verifier
-`scripts/release/verify-draft-release.sh` must reconcile the exact tag and
-source SHA, Draft identity and exact asset set, checksums and release-visible
-attestations, current provider pins, pre-merge rehearsal and Draft provider
-evidence, and every tag-triggered GitHub Actions run for that exact tag/SHA.
-Any incomplete or non-success tag-triggered run blocks publication.
+A successful promotion workflow is necessary but not by itself the publish
+verdict. Before an Owner publish gate, the canonical local verifier
+scripts/release/verify-draft-release.sh must reconcile:
 
-This verifier is read-only with respect to public release state. It does not
-publish, edit, or replace release assets.
+- exact protected tag and source SHA;
+- successful accepted-main pre-tag stage for that SHA;
+- exact staged manifest and staged shipping-byte digests;
+- preserved Claude exact-stage TTY evidence;
+- successful exact-tag Release promotion workflow;
+- Draft identity, release notes and exact six-asset public set;
+- byte-for-byte equality of archive, SHA256SUMS, SBOM and installer against the
+  pre-tag manifest;
+- release-visible tag-bound provenance and CycloneDX attestation bundles;
+- repository immutable-release policy.
+
+The verifier explicitly does not rebuild, run Codex or Claude, provision a
+provider, or query npm latest. Those are pre-tag blockers and must already be
+closed.
 
 Use:
 
-```sh
-# Before merge, on the exact PR candidate HEAD, only Claude remains a local
-# human-TTY boundary:
+~~~sh
+# Before merge: exact PR candidate, only Claude remains a local human-TTY gate.
 bash scripts/release/local-plugin-activation-smoke.sh rehearse \
   --expected-head <exact-pr-head> --plugin-id <qualified-claude-id>
 
-# Codex pre-merge rehearsal is produced by the successful macOS
-# Release-candidate workflow and consumed from its content-addressed artifact.
+# Codex pre-merge rehearsal is produced automatically by the PR
+# Release-candidate workflow.
 
-# After the protected tag creates the Draft, run the local Claude Draft probe:
-bash scripts/release/local-plugin-activation-smoke.sh draft \
-  --tag vX.Y.Z --plugin-id <qualified-claude-id>
+# After merge and successful accepted-main staging, download the canonical stage
+# and run Claude once against those exact future shipping bytes:
+bash scripts/release/resolve-pretag-stage.sh \
+  <version> <accepted-main-sha> <stage-dir>
+bash scripts/release/local-plugin-activation-smoke.sh stage \
+  --expected-head <accepted-main-sha> \
+  --artifact <stage-dir>/clean-room-launcher-v<version>-aarch64-apple-darwin.tar.gz \
+  --plugin-id <qualified-claude-id>
 
-# Codex Draft runtime evidence is produced by the tag Release workflow.
-# Reconcile both provider evidence paths plus exact-tag release state:
-bash scripts/release/verify-draft-release.sh vX.Y.Z <exact-tag-source-sha>
-```
+# Only after that evidence passes may the Owner authorize the protected tag.
+# After tag-bound promotion creates the Draft:
+bash scripts/release/verify-draft-release.sh v<version> <exact-tag-source-sha>
+~~~
 
-Local Codex smoke commands are diagnostic/development tools only; they are not
-release-acceptance transport. Canonical Codex pre-merge and Draft evidence comes
-from the provenance-checked GitHub Actions artifacts described above.
+Local Codex smoke commands remain diagnostic/development tools only. Canonical
+Codex pre-merge and exact-stage evidence is produced by macOS GitHub Actions;
+ambient local Codex is not a release input.
 
-Rehearsal evidence is content-addressed by the reviewed release digest plus the
-exact Git tree and provider bytes. It may survive a squash only after
-candidate-tree == accepted-tree verification; commit SHA remains provenance.
-Dynamic evidence is stored outside the tracked tree in the repository Git common
-directory by default, so normal task-worktree cleanup does not destroy release
-evidence. The tag helper refreshes mutable/provider/action-time state instead of
-rerunning the content proof solely because squash changed the commit SHA.
-
-These smokes never install, update, enable persistently, remove, or downgrade a
-provider/plugin. Claude's automated probe uses its established startup evidence
-path. Codex configuration visibility is not runtime proof. Release qualification
-uses a task-owned standalone MCP fixture with the real pinned provider and
-requires provider startup, MCP `initialize`, `tools/list` with at least one
-tool, and a real fixture tool call. `mcp list --json` remains a configuration
-check only. The app-owned `codex_app` surface is classified
-`PLUGIN_HOST_REQUIRED` in standalone CLROOM and cannot satisfy this gate.
 
 ## Local audit
 
