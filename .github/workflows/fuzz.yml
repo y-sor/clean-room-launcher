@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: fuzz-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   fuzz-smoke:
     name: Bounded cargo-fuzz smoke
@@ -22,13 +26,17 @@ jobs:
         run: rustup toolchain install nightly-2026-09-16 --profile minimal
       - name: Install pinned cargo-fuzz
         run: cargo install cargo-fuzz --locked --git https://github.com/rust-fuzz/cargo-fuzz --rev 984c861c8dfea28055254c5f1d2659ab2cd63f76
-      - name: Bootstrap fuzz lockfile
+      - name: Verify committed fuzz lockfile
         run: |
-          cargo +nightly-2026-09-16 generate-lockfile --manifest-path fuzz/Cargo.toml
-          printf '%s\n' '--- FUZZ_CARGO_LOCK_BEGIN ---'
-          cat fuzz/Cargo.lock
-          printf '%s\n' '--- FUZZ_CARGO_LOCK_END ---'
+          test -s fuzz/Cargo.lock
+          cargo +nightly-2026-09-16 metadata --locked --manifest-path fuzz/Cargo.toml --no-deps --format-version 1 >/dev/null
+      - name: Fetch locked fuzz dependencies
+        run: cargo +nightly-2026-09-16 fetch --locked --manifest-path fuzz/Cargo.toml
       - name: Fuzz schema validation
+        env:
+          CARGO_NET_OFFLINE: true
         run: cargo +nightly-2026-09-16 fuzz run schema_validate -- -max_total_time=15 -max_len=4096 -timeout=2 -rss_limit_mb=2048
       - name: Fuzz manifest framing
+        env:
+          CARGO_NET_OFFLINE: true
         run: cargo +nightly-2026-09-16 fuzz run manifest_framing -- -max_total_time=15 -max_len=4096 -timeout=2 -rss_limit_mb=2048
