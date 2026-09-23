@@ -324,42 +324,42 @@ def main():
         fixture_pins = {"codex": "0.156.0", "claude": "2.1.280"}
         if public_doc_version_violation(
             "docs/providers.md", "Codex CLI 0.154.0 exact", "", "0.154.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CODEX_DOC_VERSION")
         if public_doc_version_violation(
             "docs/providers.md", "Claude Code 2.1.272 exact", "", "2.1.272",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CLAUDE_DOC_VERSION")
         if public_doc_version_violation(
             "README.md", "prepared for v0.4.0", "v", "0.4.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_PRODUCT_DOC_VERSION")
         if public_doc_version_violation(
             "docs/agent-runners.md", "Runner v0.8.5 compatibility", "v", "0.8.5",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_EXTERNAL_PRODUCT_VERSION_RESIDUE")
         if public_doc_version_violation(
             "SECURITY.md", "| 0.4.0 | prior |", "", "0.4.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_HISTORICAL_PRODUCT_VERSION")
         if public_doc_version_violation(
             "docs/providers.md", "Codex CLI 0.156.0 exact", "", "0.156.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CODEX_DOC_VERSION")
         if public_doc_version_violation(
             "docs/codex.md", "ordinary parser/runtime minimum remains", "", "0.147.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is not None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_COMPATIBILITY_FLOOR")
         if public_doc_version_violation(
             "docs/codex.md", "stale wrapped version", "", "0.154.0",
-            "0.4.2", fixture_pins, doc_policy
+            "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_STALE_VERSION")
         validate_public_doc_versions(
