@@ -302,6 +302,25 @@ jobs:
         with:
           name: ${{ needs.release-readiness.outputs.stage_artifact_name }}
           path: release-stage
+      - name: Rehearse promotion token Actions-read capability
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGE_ARTIFACT_NAME: ${{ needs.release-readiness.outputs.stage_artifact_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+            > "$RUNNER_TEMP/stage-artifacts.json"
+          jq -e --arg name "$STAGE_ARTIFACT_NAME" \
+            '.artifacts | any(.name == $name and .expired == false)' \
+            "$RUNNER_TEMP/stage-artifacts.json" >/dev/null
+          probe="$RUNNER_TEMP/stage-actions-read-probe"
+          rm -rf "$probe"
+          mkdir -p "$probe"
+          gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" \
+            -n "$STAGE_ARTIFACT_NAME" -D "$probe"
+          cmp release-stage/stage-manifest.json "$probe/stage-manifest.json"
+          echo "PROMOTION_ACTIONS_READ_REHEARSAL_PASS"
       - name: Verify staged bytes before attestation rehearsal
         shell: bash
         run: |
