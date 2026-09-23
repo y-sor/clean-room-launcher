@@ -182,17 +182,17 @@ jobs:
           retention-days: 30
 
   pretag-stage:
-    name: Stage exact accepted-main release bytes
+    name: Rehearse/stage exact release bytes
     needs: release-readiness
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+    if: needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     runs-on: macos-14
     permissions:
       contents: read
     steps:
-      - name: Check out exact accepted main
+      - name: Check out exact candidate source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
@@ -205,11 +205,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/release/stage-release.sh "$GITHUB_SHA" "$RUNNER_TEMP/pretag-stage"
+          source_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "$source_sha"
+          bash scripts/release/stage-release.sh "$source_sha" "$RUNNER_TEMP/pretag-stage"
       - name: Upload content-addressed pre-tag stage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.sha }}
+          name: pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/pretag-stage/*
           if-no-files-found: error
           retention-days: 30
