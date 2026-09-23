@@ -139,7 +139,8 @@ def push_can_match_tags(block: list[str]) -> bool:
         return False
     if len(block) == 1:
         inline = block[0].split(":", 1)[1].strip()
-        return bool(re.search(r"(^|[\\[, {]+)[\"']?push[\"']?([\\], }:]+|$)", inline))
+        cleaned = inline.replace('"', "").replace("'", "")
+        return bool(re.search(r"(^|[\[\{, ]+)push([\]\}, :]+|$)", cleaned))
 
     event_indents = []
     parsed_lines = []
@@ -194,12 +195,16 @@ def self_test():
         "name: bad\non:\n  push:\n    tags-ignore:\n      - beta\njobs: {}\n",
         "name: bad\non:\n  push: { branches: [main] }\njobs: {}\n",
     ]
-    for fixture in safe:
+    for index, fixture in enumerate(safe):
         if push_can_match_tags(on_block(fixture)):
-            raise SystemExit("POST_TAG_CONTRACT_BLOCKED:WORKFLOW_TAG_TRIGGER_SELF_TEST_SAFE")
-    for fixture in unsafe:
+            raise SystemExit(
+                f"POST_TAG_CONTRACT_BLOCKED:WORKFLOW_TAG_TRIGGER_SELF_TEST_SAFE:{index}"
+            )
+    for index, fixture in enumerate(unsafe):
         if not push_can_match_tags(on_block(fixture)):
-            raise SystemExit("POST_TAG_CONTRACT_BLOCKED:WORKFLOW_TAG_TRIGGER_SELF_TEST_UNSAFE")
+            raise SystemExit(
+                f"POST_TAG_CONTRACT_BLOCKED:WORKFLOW_TAG_TRIGGER_SELF_TEST_UNSAFE:{index}"
+            )
     print("WORKFLOW_TAG_TRIGGER_SELF_TEST_PASS")
 
 self_test()
