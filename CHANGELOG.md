@@ -7,6 +7,20 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-09-23
+
+### Fixed
+
+- Closed the v0.4.3 post-tag workflow execution escape by invoking the accepted-stage resolver through an explicit shell interpreter instead of relying on an executable Git mode that the file did not have.
+- Added a repository-wide workflow execution contract that rejects direct invocation of non-executable repo-local scripts and runs its negative self-test before expensive release qualification.
+- Added an accepted-main Ubuntu promotion-prepare rehearsal that resolves and verifies the exact staged bytes with the same resolver invocation used by the tag-triggered Release workflow; the protected tag helper now requires that exact-source rehearsal to pass.
+- The protected v0.4.3 tag remains historical evidence of the harness incident. Its Release workflow failed before attestation or Draft creation, no GitHub Release was created for v0.4.3, and the tag is not moved or reused.
+
+### Security
+
+- Release readiness now treats workflow command semantics and tracked executable mode as release-critical evidence, preventing a platform/file-mode mismatch from first surfacing after an immutable tag.
+- Post-tag promotion remains exact-byte-only; the recovery adds no manual upload, tag move, provider rerun, or release-policy bypass.
+
 ## [0.4.3] - 2026-09-23
 
 ### Changed

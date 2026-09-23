@@ -60,7 +60,9 @@
     "claude_pretag_stage_transport": "local_interactive_tty_exact_staged_archive",
     "provider_freshness_freeze": "accepted_main_pretag_stage",
     "post_tag_provider_latest_recheck": "forbidden",
-    "post_tag_role": "tag_bound_attestation_exact_byte_promotion_and_reconciliation_only"
+    "post_tag_role": "tag_bound_attestation_exact_byte_promotion_and_reconciliation_only",
+    "workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter",
+    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required"
   },
   "domains": [
     {
@@ -99,7 +101,8 @@
         "packaging/**",
         "install.sh",
         "schemas/release/**",
-        "reports/release/**"
+        "reports/release/**",
+        "scripts/check-public-boundary.sh"
       ]
     },
     {

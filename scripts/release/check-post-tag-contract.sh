@@ -91,6 +91,9 @@ do
   grep -Fq -- "$required" "$release_workflow" || fail "PROMOTION_CONTRACT:$required"
 done
 
+grep -Fq -- 'bash scripts/release/resolve-pretag-stage.sh' "$release_workflow" \
+  || fail "PROMOTION_RESOLVER_INVOCATION"
+
 workflow_dir=$(cd "$(dirname "$release_workflow")" && pwd -P)
 release_workflow_abs=$(cd "$(dirname "$release_workflow")" && pwd -P)/$(basename "$release_workflow")
 python3 - "$workflow_dir" "$release_workflow_abs" <<'PY'

@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scripts/release/resolve-pretag-stage.sh             "${{ steps.release.outputs.version }}"             "$GITHUB_SHA"             "$RUNNER_TEMP/release-stage"
+          bash scripts/release/resolve-pretag-stage.sh             "${{ steps.release.outputs.version }}"             "$GITHUB_SHA"             "$RUNNER_TEMP/release-stage"
       - name: Upload immutable promotion input
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

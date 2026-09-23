@@ -29,6 +29,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
+      - name: Validate workflow-local execution parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release/check-workflow-exec-contract.py --self-test
+          python3 scripts/release/check-workflow-exec-contract.py
       - name: Resolve published release lifecycle
         id: lifecycle
         env:
