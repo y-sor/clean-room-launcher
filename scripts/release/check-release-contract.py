@@ -311,6 +311,10 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE_FLOOR_POLICY")
     if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_pretag_stage_before_push":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:TAG_REMOTE_REFRESH_POLICY")
+    if contract.get("policy", {}).get("workflow_local_exec_contract") != "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:WORKFLOW_EXEC_POLICY")
+    if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PROMOTION_PREPARE_REHEARSAL_POLICY")
     public_doc_version_policy(contract)
 
     if args.self_test:
@@ -332,6 +336,10 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DATE_FLOOR_POLICY")
         if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_pretag_stage_before_push":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_TAG_REMOTE_REFRESH_POLICY")
+        if contract.get("policy", {}).get("workflow_local_exec_contract") != "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_WORKFLOW_EXEC_POLICY")
+        if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PROMOTION_PREPARE_REHEARSAL_POLICY")
         doc_policy = public_doc_version_policy(contract)
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
