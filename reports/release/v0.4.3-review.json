@@ -76,7 +76,7 @@
         "Post-tag Release automation is promotion-only and contract-tested to forbid cargo build/test/fetch, packaging rebuilds, provider provisioning/runtime, npm latest, repository-admin policy reads, full mutable release-contract checks and default-branch-tip checks. Draft verification compares promoted bytes against the accepted pre-tag manifest and verifies tag-bound attestations without rerunning providers.",
         "The protected tag helper snapshots a deterministic digest over every already-verified staged file and rechecks that local staged-byte binding inside the final action-time guard immediately before the single tag push. This closes local stage TOCTOU without re-downloading the stage, rebuilding, querying registries, or rerunning provider/runtime qualification.",
         "The provider-canary contract's early-exit negative fixture now preserves its fake provider's positional argument expansion until fake-provider runtime; this prevents the meta-test itself from failing with a shell syntax error before it can prove that an immediate-exit candidate is rejected by real-provider qualification.",
-        "Post-tag trigger closure is repository-wide, not Release-workflow-local: check-post-tag-contract.sh scans every .github/workflows/*.yml/*.yaml file and rejects any non-release workflow whose push trigger can match tags, so a future CI/CodeQL/new workflow cannot silently reintroduce a first-post-tag blocker outside release.yml."
+        "Post-tag trigger closure is repository-wide and executable: check-post-tag-contract.sh scans every .github/workflows/*.yml/*.yaml file, correctly parses bare/quoted on and push keys, and runs safe/unsafe fixtures on every readiness invocation. The fixtures reject direct/list/empty/tag-filter/inline push forms while accepting explicit branch-only filters, so parser escaping or a future CI/CodeQL/new workflow cannot silently reintroduce a first-post-tag blocker outside release.yml."
       ]
     },
     "public_claims": {
@@ -438,5 +438,5 @@
       "action-time staged-byte immutability check: deterministic fingerprint of all already-verified local pre-tag stage files is captured before tag construction and must remain identical inside the final mutable guard immediately before the single protected tag push"
     ]
   },
-  "reviewed_content_digest": "fa231990f3af908d24b9d596ce716e07beb25988ba9a754ac46db35e28b83e85"
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
 }
