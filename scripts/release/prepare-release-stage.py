@@ -161,6 +161,8 @@ def main() -> int:
         "provider_mcp_tools_list_observed": True,
         "fixture_mcp_tool_call_passed": True,
         "provider_state_lifecycle_closed": True,
+        "ambient_config_and_plugin_tree_unchanged": True,
+        "plugin_source_unchanged": True,
         "post_runtime_clean_confirmed": True,
         "model_prompt_sent": False,
     }
