@@ -42,7 +42,8 @@ for item in items:
 PY
 
 [[ -s "$tmp/candidates" ]] || fail "ARTIFACT_NOT_FOUND"
-selected_run=
+successful_runs="$tmp/successful-runs"
+: >"$successful_runs"
 while read -r artifact_id run_id artifact_head; do
   [[ -n "$artifact_id" && -n "$run_id" ]] || continue
   [[ "$artifact_head" == "$expected" ]] || continue
@@ -67,16 +68,23 @@ for key, value in required.items():
         raise SystemExit(1)
 PY
   then
-    selected_run=$run_id
-    break
+    printf '%s\n' "$run_id" >>"$successful_runs"
   fi
 done <"$tmp/candidates"
-[[ -n "$selected_run" ]] || fail "SUCCESSFUL_MAIN_STAGE_RUN_NOT_FOUND"
+[[ -s "$successful_runs" ]] || fail "SUCCESSFUL_MAIN_STAGE_RUN_NOT_FOUND"
 
-mkdir -p "$tmp/download"
-gh run download "$selected_run" -R "$repository" -n "$artifact_name" -D "$tmp/download"   || fail "ARTIFACT_DOWNLOAD"
-
-stage_root=$(python3 - "$tmp/download" <<'PY'
+# shellcheck source=provider-pins.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/provider-pins.sh"
+bindings="$tmp/bindings"
+: >"$bindings"
+selected_run=
+selected_stage=
+while read -r run_id; do
+  [[ -n "$run_id" ]] || continue
+  download="$tmp/download-$run_id"
+  mkdir -p "$download"
+  gh run download "$run_id" -R "$repository" -n "$artifact_name" -D "$download" || fail "ARTIFACT_DOWNLOAD:$run_id"
+  stage_root=$(python3 - "$download" <<'PY'
 import pathlib, sys
 root = pathlib.Path(sys.argv[1])
 matches = [path.parent for path in root.rglob("pretag-manifest.json") if path.is_file()]
@@ -85,14 +93,33 @@ if len(unique) != 1:
     raise SystemExit(1)
 print(unique[0])
 PY
-) || fail "MANIFEST_COUNT"
+  ) || fail "MANIFEST_COUNT:$run_id"
+  python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/verify-pretag-stage.py" \
+    --dir "$stage_root" \
+    --version "$version" \
+    --source-head "$expected" \
+    --codex-version "$CODEX_VERSION" \
+    --claude-version "$CLAUDE_VERSION" || fail "VERIFY:$run_id"
+  binding=$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/stage-binding.py" --dir "$stage_root") || fail "BINDING:$run_id"
+  printf '%s %s\n' "$run_id" "$binding" >>"$bindings"
+  if [[ -z "$selected_run" ]]; then
+    selected_run=$run_id
+    selected_stage=$stage_root
+  fi
+done <"$successful_runs"
+
+python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/stage-binding.py" --check "$bindings" || fail "DIVERGENT_SUCCESSFUL_STAGES"
+[[ -n "$selected_run" && -n "$selected_stage" ]] || fail "SUCCESSFUL_MAIN_STAGE_RUN_NOT_FOUND"
 
 rm -rf -- "$destination"
 mkdir -p "$destination"
-cp -R "$stage_root"/. "$destination"/
+cp -R "$selected_stage"/. "$destination"/
 
-# shellcheck source=provider-pins.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/provider-pins.sh"
-python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/verify-pretag-stage.py"   --dir "$destination"   --version "$version"   --source-head "$expected"   --codex-version "$CODEX_VERSION"   --claude-version "$CLAUDE_VERSION"   || fail "VERIFY"
+python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/verify-pretag-stage.py" \
+  --dir "$destination" \
+  --version "$version" \
+  --source-head "$expected" \
+  --codex-version "$CODEX_VERSION" \
+  --claude-version "$CLAUDE_VERSION" || fail "VERIFY"
 
 printf 'PRETAG_STAGE_RESOLVED run=%s artifact=%s\n' "$selected_run" "$artifact_name"
