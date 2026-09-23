@@ -14,12 +14,28 @@ def load_json(path):
 def matches(path, pattern):
     return fnmatch.fnmatchcase(path, pattern) or Path(path).match(pattern)
 
+def github_token():
+    for name in ("GITHUB_TOKEN", "GH_TOKEN"):
+        token = os.environ.get(name)
+        if token:
+            return token
+    try:
+        token = subprocess.check_output(
+            ["gh", "auth", "token"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+    return token or None
+
 def latest_published_release(repository):
     req = urllib.request.Request(
         f"https://api.github.com/repos/{repository}/releases/latest",
         headers={"Accept":"application/vnd.github+json","User-Agent":"clroom-release-contract-v1"},
     )
-    token = os.environ.get("GITHUB_TOKEN")
+    token = github_token()
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=20) as response:
