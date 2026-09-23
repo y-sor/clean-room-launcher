@@ -151,7 +151,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   stderr_log="$tmp/stderr.log"
   cat > "$fake_provider" <<SH
 #!/usr/bin/env bash
-if [[ ${1:-} == --version ]]; then
+if [[ \${1:-} == --version ]]; then
   printf 'codex-cli %s\n' '$CODEX_VERSION'
 fi
 exit 0
@@ -171,7 +171,7 @@ PY
   "$qualifier"     --provider codex     --executable "$fake_provider"     --expected-provider-version "$CODEX_VERSION"     --candidate "$early_exit_candidate"     --source-head 0000000000000000000000000000000000000000     --version "$manifest_version"     --output "$record"     >"$tmp/stdout.log" 2>"$stderr_log"
   status=$?
   set -e
-  [[ $status -eq 1 ]] || fail "EARLY_EXIT_STATUS"
+  [[ $status -eq 1 ]] || fail "EARLY_EXIT_STATUS:$status"
   ! grep -Fq 'Traceback' "$stderr_log" || fail "EARLY_EXIT_TRACEBACK"
   [[ -f "$record" ]] || fail "EARLY_EXIT_RECORD_MISSING"
   python3 - "$record" <<'PY' || fail "EARLY_EXIT_RECORD_INVALID"
