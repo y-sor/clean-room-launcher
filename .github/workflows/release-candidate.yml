@@ -61,7 +61,7 @@ jobs:
           echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
           echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
           printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
-      - name: Prove release attestation contract fails closed
+      - name: Prove release promotion contract fails closed
         shell: bash
         run: |
           set -euo pipefail
@@ -71,12 +71,12 @@ jobs:
             rm -f -- "$probe" "$output"
           }
           trap cleanup EXIT HUP INT TERM
-          grep -Fv -- 'name: release-attestations' .github/workflows/release.yml > "$probe"
-          if scripts/release/check-attestation-contract.sh "$probe" >"$output" 2>&1; then
-            echo "release attestation contract unexpectedly passed without artifact handoff" >&2
+          grep -Fv -- 'DRAFT_PROMOTION_RECONCILE_PASS' .github/workflows/release.yml > "$probe"
+          if bash scripts/release/check-attestation-contract.sh "$probe" .github/workflows/release-candidate.yml >"$output" 2>&1; then
+            echo "release promotion contract unexpectedly passed without reconciliation" >&2
             exit 1
           fi
-          grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:ARTIFACT_HANDOFF' "$output"
+          grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:PROMOTION_RECONCILIATION' "$output"
       - name: Provision existing Python supply-chain verifier
         shell: bash
         run: |
