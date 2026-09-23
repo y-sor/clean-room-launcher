@@ -431,5 +431,5 @@
       "action-time staged-byte immutability check: deterministic fingerprint of all already-verified local pre-tag stage files is captured before tag construction and must remain identical inside the final mutable guard immediately before the single protected tag push"
     ]
   },
-  "reviewed_content_digest": "b97e4c3bf9cd2eda7edc5a9dfe766779e8095d293689b94bb06575d890e3f583"
+  "reviewed_content_digest": "2b703255d4ea8ceb9493d0130f5ed1dd8e8622e6090ed18e0de803d0cd9d89ef"
 }
