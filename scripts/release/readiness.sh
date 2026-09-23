@@ -35,6 +35,9 @@ git diff --check || fail "DIFF_CHECK"
 git diff --quiet || fail "CLEAN_TREE_REQUIRED"
 python3 scripts/release/check-workflow-exec-contract.py --self-test || fail "WORKFLOW_EXEC_CONTRACT_SELF_TEST"
 python3 scripts/release/check-workflow-exec-contract.py || fail "WORKFLOW_EXEC_CONTRACT"
+python3 scripts/release/check-harness-contract.py --self-test || fail "HARNESS_CONTRACT_SELF_TEST"
+python3 scripts/release/check-harness-contract.py || fail "HARNESS_CONTRACT"
+python3 scripts/release/stage-binding.py --self-test || fail "STAGE_BINDING_SELF_TEST"
 
 legacy_upper=$(printf '%s%s' TASK SEAL)
 legacy_lower=$(printf '%s%s' task seal)
@@ -64,6 +67,8 @@ fi
 [[ -f scripts/release/stage-release.sh ]] || fail "PRETAG_STAGE_SCRIPT_MISSING"
 [[ -f scripts/release/resolve-pretag-stage.sh ]] || fail "PRETAG_STAGE_RESOLVER_MISSING"
 [[ -f scripts/release/verify-pretag-stage.py ]] || fail "PRETAG_STAGE_VERIFIER_MISSING"
+[[ -f scripts/release/check-harness-contract.py ]] || fail "HARNESS_CONTRACT_MISSING"
+[[ -f scripts/release/stage-binding.py ]] || fail "STAGE_BINDING_HELPER_MISSING"
 [[ -f scripts/release/verify-claude-stage-evidence.py ]] || fail "CLAUDE_STAGE_VERIFIER_MISSING"
 [[ -f scripts/release/render-release-notes.py ]] || fail "RELEASE_NOTES_RENDERER_MISSING"
 [[ -f scripts/release/check-post-tag-contract.sh ]] || fail "POST_TAG_CONTRACT_MISSING"
