@@ -83,6 +83,8 @@ def main() -> int:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:{provider.upper()}_PACKAGE_INTEGRITY")
         if not re.fullmatch(r"[A-Za-z0-9+/=]{40,}", str(item.get("platform_integrity_sha512", ""))):
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:{provider.upper()}_PLATFORM_INTEGRITY")
+        if not re.fullmatch(r"[0-9a-f]{64}", str(item.get("executable_sha256", ""))):
+            raise SystemExit(f"PRETAG_STAGE_BLOCKED:{provider.upper()}_EXECUTABLE_SHA256")
 
     if set(record.get("blocker_closure") or []) != REQUIRED_CLOSURE:
         raise SystemExit("PRETAG_STAGE_BLOCKED:BLOCKER_CLOSURE")
@@ -131,6 +133,8 @@ def main() -> int:
     for key, value in runtime_required.items():
         if codex.get(key) != value:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:CODEX_RUNTIME:{key}")
+    if codex.get("codex_provider_sha256") != providers["codex"]["executable_sha256"]:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:CODEX_RUNTIME:provider_bytes")
 
     print(
         f"PRETAG_STAGE_VERIFY_PASS version={args.version} "
