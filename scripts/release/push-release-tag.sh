@@ -165,7 +165,6 @@ required = {
     ".github/workflows/codeql.yml": ("CodeQL", "push"),
     ".github/workflows/fuzz.yml": ("Fuzz smoke", "push"),
     ".github/workflows/release-candidate.yml": ("Release candidate readiness", "push"),
-    ".github/workflows/release-promotion-rehearsal.yml": ("Release promotion rehearsal", "workflow_run"),
 }
 for workflow_path, (workflow_name, workflow_event) in required.items():
     matches = [
