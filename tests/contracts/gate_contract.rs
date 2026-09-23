@@ -608,7 +608,9 @@ fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
     assert!(guard.contains("WORKFLOW_TAG_TRIGGER_SELF_TEST_SAFE"));
     assert!(guard.contains("WORKFLOW_TAG_TRIGGER_SELF_TEST_UNSAFE"));
     assert!(guard.contains("on: [push, pull_request]"));
-    assert!(guard.contains("push: { branches: [main] }"));\n    assert!(guard.contains("cleaned = inline.replace"));\n    assert!(guard.contains("SELF_TEST_UNSAFE:{index}"));
+    assert!(guard.contains("push: { branches: [main] }"));
+    assert!(guard.contains("cleaned = inline.replace"));
+    assert!(guard.contains("SELF_TEST_UNSAFE:{index}"));
 }
 
 #[test]
