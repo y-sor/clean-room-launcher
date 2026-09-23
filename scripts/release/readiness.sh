@@ -73,7 +73,7 @@ release_workflow=.github/workflows/release.yml
 bash scripts/release/check-attestation-contract.sh "$release_workflow" .github/workflows/release-candidate.yml || fail "RELEASE_ATTESTATION_CONTRACT"
 bash scripts/release/check-post-tag-contract.sh "$release_workflow" .github/workflows/ci.yml || fail "POST_TAG_CONTRACT"
 bash scripts/release/check-provider-canary-contract.sh || fail "PROVIDER_CANARY_CONTRACT"
-grep -Fq 'title="$GITHUB_REF_NAME — Clean Room Launcher"' "$release_workflow" || fail "RELEASE_TITLE_CONTRACT"
+grep -Fq 'title="$tag — Clean Room Launcher"' "$release_workflow" || fail "RELEASE_TITLE_CONTRACT"
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck \
     packaging/build-artifacts.sh \
