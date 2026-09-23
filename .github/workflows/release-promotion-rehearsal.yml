@@ -45,6 +45,23 @@ jobs:
               print(tomllib.load(handle)["package"]["version"])
           PY
           )"
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest")"
+          latest_tag="$(jq -r .tag_name <<<"$release_json")"
+          test -n "$latest_tag"
+          test "$(jq -r .draft <<<"$release_json")" = false
+          test "$(jq -r .prerelease <<<"$release_json")" = false
+          test "$(jq -r .immutable <<<"$release_json")" = true
+          lifecycle="$(python3 scripts/release/resolve-release-lifecycle.py \
+            --candidate-version "$version" \
+            --published-tag "$latest_tag")"
+          if [[ "$lifecycle" == "POST_PUBLISH" ]]; then
+            echo "PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH source=$SOURCE_SHA version=$version baseline=$latest_tag"
+            exit 0
+          fi
+          [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]] || {
+            echo "unexpected release lifecycle: $lifecycle" >&2
+            exit 1
+          }
           bash scripts/release/resolve-pretag-stage.sh             "$version"             "$SOURCE_SHA"             "$RUNNER_TEMP/release-stage"
 
           source scripts/release/provider-pins.sh
