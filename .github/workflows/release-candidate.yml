@@ -203,6 +203,8 @@ jobs:
           ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"
       - name: Build and qualify exact future shipping bytes
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           source_sha="${{ github.event.pull_request.head.sha || github.sha }}"
