@@ -53,6 +53,10 @@ do
 done
 [[ "$CLROOM_PROVIDER_CODEX_VERSION" == "$CODEX_VERSION" ]] || fail "CODEX_PROVIDER_VERSION_ENV"
 [[ "$CLROOM_PROVIDER_CLAUDE_VERSION" == "$CLAUDE_VERSION" ]] || fail "CLAUDE_PROVIDER_VERSION_ENV"
+codex_provider_sha=$(shasum -a 256 "$CLROOM_PROVIDER_CODEX" | awk '{print $1}')
+claude_provider_sha=$(shasum -a 256 "$CLROOM_PROVIDER_CLAUDE" | awk '{print $1}')
+[[ "$codex_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CODEX_PROVIDER_SHA256"
+[[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CLAUDE_PROVIDER_SHA256"
 
 rm -rf -- "$output"
 mkdir -p "$output"
@@ -129,12 +133,12 @@ install -m 0644 "$codex_evidence" "$output/codex-stage.json"
 
 python3 scripts/release/render-release-notes.py   --version "$version"   --artifact "$artifact_name"   --output "$output/release-notes.md"   || fail "RELEASE_NOTES"
 
-python3 -   "$output" "$version" "$head" "$source_tree" "$reviewed_content_digest"   "$artifact_name" "$CODEX_VERSION" "$CODEX_SHA512" "$CODEX_PLATFORM_SHA512"   "$CLAUDE_VERSION" "$CLAUDE_SHA512" "$CLAUDE_PLATFORM_SHA512" <<'PY'
+python3 -   "$output" "$version" "$head" "$source_tree" "$reviewed_content_digest"   "$artifact_name" "$CODEX_VERSION" "$CODEX_SHA512" "$CODEX_PLATFORM_SHA512" "$codex_provider_sha"   "$CLAUDE_VERSION" "$CLAUDE_SHA512" "$CLAUDE_PLATFORM_SHA512" "$claude_provider_sha" <<'PY'
 import hashlib, json, pathlib, sys
 (
     raw_root, version, source_head, source_tree, review_digest, artifact_name,
-    codex_version, codex_sha512, codex_platform_sha512,
-    claude_version, claude_sha512, claude_platform_sha512,
+    codex_version, codex_sha512, codex_platform_sha512, codex_provider_sha,
+    claude_version, claude_sha512, claude_platform_sha512, claude_provider_sha,
 ) = sys.argv[1:]
 root = pathlib.Path(raw_root)
 
@@ -171,11 +175,13 @@ record = {
             "version": codex_version,
             "package_integrity_sha512": codex_sha512,
             "platform_integrity_sha512": codex_platform_sha512,
+            "executable_sha256": codex_provider_sha,
         },
         "claude": {
             "version": claude_version,
             "package_integrity_sha512": claude_sha512,
             "platform_integrity_sha512": claude_platform_sha512,
+            "executable_sha256": claude_provider_sha,
         },
     },
     "blocker_closure": sorted({
