@@ -73,6 +73,14 @@ fn accepted_main_stage_qualifies_exact_archive_before_tag() {
     assert_eq!(stage.matches("scripts/release/qualify-real-provider.sh").count(), 2);
     assert_eq!(stage.matches("scripts/release/verify-qualification.py").count(), 2);
     assert!(candidate.contains("Rehearse/stage exact release bytes"));
+    let stage_step = candidate
+        .split("Build and qualify exact future shipping bytes")
+        .nth(1)
+        .expect("exact-byte stage step must exist");
+    assert!(
+        stage_step.contains(r#"GITHUB_TOKEN: ${{ github.token }}"#),
+        "exact-byte stage must authenticate release-contract GitHub API reads"
+    );
     assert!(candidate.contains("pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}"));
     assert!(candidate.contains(
         "./scripts/release/provision-provider-canaries.sh \"$RUNNER_TEMP/clroom-providers\" \"$GITHUB_ENV\""
