@@ -93,9 +93,41 @@ python3 - "$codex_stage" "$version" "$expected" "$current_tree" "$review_digest"
 import json,re,sys
 path,version,head,tree,digest,artifact_sha,provider_version=sys.argv[1:]
 r=json.load(open(path,encoding="utf-8"))
-required={"schema_version":"clroom.codex-plugin-release-smoke.v4","result":"PASS","phase":"stage","release_version":version,"source_head":head,"source_tree":tree,"reviewed_content_digest":digest,"evidence_binding":"content-addressed-runtime-v1","artifact_sha256":artifact_sha,"platform":"macos-aarch64","codex_version":provider_version,"plugin_id":"standalone-mcp@clroom-fixture","expected_mcp":"clroom_fixture","real_provider_runtime_confirmed":True,"expected_mcp_runtime_healthy_confirmed":True,"provider_mcp_initialize_observed":True,"provider_mcp_tools_list_observed":True,"fixture_mcp_tool_call_passed":True,"provider_state_lifecycle_closed":True,"post_runtime_clean_confirmed":True,"model_prompt_sent":False}
+required={
+    "schema_version":"clroom.codex-plugin-release-smoke.v4",
+    "result":"PASS",
+    "phase":"stage",
+    "release_version":version,
+    "source_head":head,
+    "source_tree":tree,
+    "reviewed_content_digest":digest,
+    "evidence_binding":"content-addressed-runtime-v1",
+    "artifact_sha256":artifact_sha,
+    "platform":"macos-aarch64",
+    "codex_version":provider_version,
+    "plugin_id":"standalone-mcp@clroom-fixture",
+    "expected_mcp":"clroom_fixture",
+    "clean_before_expected_mcp":False,
+    "selected_expected_mcp":True,
+    "selected_mcp_plugin_paths_rebased":True,
+    "clean_after_expected_mcp":False,
+    "ambient_config_and_plugin_tree_unchanged":True,
+    "plugin_source_unchanged":True,
+    "real_provider_runtime_confirmed":True,
+    "expected_mcp_runtime_healthy_confirmed":True,
+    "provider_mcp_initialize_observed":True,
+    "provider_mcp_tools_list_observed":True,
+    "fixture_mcp_tool_call_passed":True,
+    "provider_state_lifecycle_closed":True,
+    "post_runtime_clean_confirmed":True,
+    "model_prompt_sent":False,
+}
 for k,v in required.items():
-    if r.get(k)!=v: raise SystemExit(f"TAG_GATE_BLOCKED:CODEX_STAGE:{k}")
+    if r.get(k)!=v:
+        raise SystemExit(f"TAG_GATE_BLOCKED:CODEX_STAGE:{k}")
+for k in ("codex_provider_sha256","plugin_source_sha256"):
+    if not re.fullmatch(r"[0-9a-f]{64}",str(r.get(k,""))):
+        raise SystemExit(f"TAG_GATE_BLOCKED:CODEX_STAGE:{k}")
 PY
 
 git_common_dir=$(git rev-parse --git-common-dir)
