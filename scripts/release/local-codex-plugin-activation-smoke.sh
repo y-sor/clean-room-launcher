@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: scripts/release/local-codex-plugin-activation-smoke.sh rehearse --expected-head SHA --fixture-standalone-mcp" >&2
-  echo "       scripts/release/local-codex-plugin-activation-smoke.sh draft --tag vX.Y.Z --fixture-standalone-mcp" >&2
+  echo "       scripts/release/local-codex-plugin-activation-smoke.sh stage --expected-head SHA --artifact PATH --fixture-standalone-mcp" >&2
   exit 64
 }
 
@@ -29,18 +29,18 @@ fail_from_stderr() {
 }
 
 phase=${1:-}
-[[ "$phase" == "rehearse" || "$phase" == "draft" ]] || usage
+[[ "$phase" == "rehearse" || "$phase" == "stage" ]] || usage
 shift || true
 
-tag=
 expected_head=
+artifact_path=
 plugin_id=
 expected_mcp=
 fixture_standalone_mcp=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag) tag=${2:-}; shift 2 ;;
     --expected-head) expected_head=${2:-}; shift 2 ;;
+    --artifact) artifact_path=${2:-}; shift 2 ;;
     --plugin-id) plugin_id=${2:-}; shift 2 ;;
     --expected-mcp) expected_mcp=${2:-}; shift 2 ;;
     --fixture-standalone-mcp) fixture_standalone_mcp=true; shift ;;
@@ -54,12 +54,11 @@ if [[ "$fixture_standalone_mcp" == true ]]; then
 else
   fail "STANDALONE_FIXTURE_REQUIRED"
 fi
-if [[ "$phase" == "draft" ]]; then
-  [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
-  [[ -z "$expected_head" ]] || usage
+[[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
+if [[ "$phase" == "stage" ]]; then
+  [[ -n "$artifact_path" ]] || fail "STAGE_ARTIFACT_REQUIRED"
 else
-  [[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
-  [[ -z "$tag" ]] || usage
+  [[ -z "$artifact_path" ]] || usage
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
@@ -74,7 +73,7 @@ done
 
 # shellcheck source=provider-pins.sh
 source "$root/scripts/release/provider-pins.sh"
-bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+if [[ "$phase" == "rehearse" ]]; then bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"; fi
 codex_executable=$(command -v codex)
 codex_version_output=$(codex --version 2>&1 | head -1) || fail "CODEX_VERSION"
 codex_version=$(python3 - "$codex_version_output" <<'PY'
@@ -106,74 +105,28 @@ reviewed_content_digest=
 assets="$tmp/assets"
 mkdir -p "$assets"
 
-if [[ "$phase" == "rehearse" ]]; then
-  source_head="$head"
-  [[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
-  source_tree=$(git rev-parse "HEAD^{tree}")
-  python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
-  reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+source_head="$head"
+[[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
+source_tree=$(git rev-parse "HEAD^{tree}")
+python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
+reviewed_content_digest=$(python3 - "$version" <<'PY'
+import json, sys
+with open(f"reports/release/v{sys.argv[1]}-review.json", encoding="utf-8") as handle:
     print(json.load(handle)["reviewed_content_digest"])
 PY
 )
-  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
+[[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 
+if [[ "$phase" == "rehearse" ]]; then
   cargo fetch --locked >/dev/null
   CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET='' \
     ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
   artifact=$(sed -n 's/^ARTIFACT=//p' "$tmp/build.log" | tail -1)
   [[ -n "$artifact" && -f "$artifact" ]] || fail "ARTIFACT_MISSING"
 else
-  command -v gh >/dev/null 2>&1 || fail "GH_REQUIRED"
-  gh auth status >/dev/null 2>&1 || fail "GH_AUTH_REQUIRED"
-  immutable_enabled=$(gh api repos/y-sor/clean-room-launcher/immutable-releases --jq .enabled 2>/dev/null) \
-    || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
-  [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
-  git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
-  source_head=$(git rev-list -n 1 "$tag")
-  source_tree=$(git rev-parse "$tag^{tree}")
-  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
-  reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
-    print(json.load(handle)["reviewed_content_digest"])
-PY
-)
-  [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
-  [[ "${tag#v}" == "$version" ]] || fail "TAG_VERSION_MISMATCH"
-  [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == "true" ]] \
-    || fail "RELEASE_NOT_DRAFT"
-
-  gh release download "$tag" --dir "$assets"
-  artifact="$assets/clean-room-launcher-${tag}-aarch64-apple-darwin.tar.gz"
-  [[ -f "$artifact" ]] || fail "DRAFT_ARCHIVE_MISSING"
-  [[ -f "$assets/SHA256SUMS" ]] || fail "DRAFT_SHA256SUMS_MISSING"
-  (
-    cd "$assets"
-    shasum -a 256 -c SHA256SUMS
-  ) >/dev/null || fail "DRAFT_CHECKSUMS"
-
-  provenance="$artifact.provenance.sigstore.json"
-  sbom="$artifact.sbom.sigstore.json"
-  [[ -s "$provenance" && -s "$sbom" ]] || fail "DRAFT_ATTESTATION_BUNDLE_MISSING"
-  gh attestation verify "$artifact" \
-    -R y-sor/clean-room-launcher \
-    --bundle "$provenance" \
-    --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml \
-    --source-digest "$source_head" \
-    --source-ref "refs/tags/$tag" \
-    --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE"
-  gh attestation verify "$artifact" \
-    -R y-sor/clean-room-launcher \
-    --bundle "$sbom" \
-    --predicate-type https://cyclonedx.org/bom \
-    --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml \
-    --source-digest "$source_head" \
-    --source-ref "refs/tags/$tag" \
-    --deny-self-hosted-runners >/dev/null || fail "DRAFT_SBOM_ATTESTATION"
+  artifact="$artifact_path"
+  [[ -f "$artifact" ]] || fail "STAGE_ARTIFACT_MISSING"
 fi
-
 python3 packaging/verify-artifact.py "$artifact" >/dev/null || fail "ARTIFACT_METADATA"
 artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
 
