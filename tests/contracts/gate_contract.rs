@@ -783,7 +783,19 @@ fn accepted_main_rehearses_exact_post_tag_prepare_invocation() {
     assert!(rehearsal.contains("workflow_run:"));
     assert!(rehearsal.contains("Release candidate readiness"));
     assert!(rehearsal.contains("runs-on: ubuntu-latest"));
+    assert!(rehearsal.contains("resolve-release-lifecycle.py"));
+    assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH"));
     assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_PASS"));
+    let lifecycle = rehearsal
+        .find("resolve-release-lifecycle.py")
+        .expect("promotion rehearsal must resolve release lifecycle");
+    let post_publish = rehearsal
+        .find("PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH")
+        .expect("post-publish main must exit cleanly without staged bytes");
+    let resolver = rehearsal
+        .find("bash scripts/release/resolve-pretag-stage.sh")
+        .expect("active candidates must still rehearse the tag resolver");
+    assert!(lifecycle < post_publish && post_publish < resolver);
     assert!(tag.contains(".github/workflows/release-promotion-rehearsal.yml"));
     assert!(tag.contains(r#"("Release promotion rehearsal", "workflow_run")"#));
     assert!(post_tag.contains("PROMOTION_RESOLVER_INVOCATION"));

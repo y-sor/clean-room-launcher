@@ -153,6 +153,18 @@ def check(root: Path) -> list[str]:
     require(errors, "- Release candidate readiness" in promotion, "PROMOTION_CHAIN_SOURCE")
     require(errors, "branches:\n      - main" in promotion, "PROMOTION_CHAIN_BRANCH")
     require(errors, "github.event.workflow_run.conclusion == 'success'" in promotion, "PROMOTION_CHAIN_SUCCESS_ONLY")
+    lifecycle_guard = promotion.find("resolve-release-lifecycle.py")
+    stage_resolver = promotion.find("bash scripts/release/resolve-pretag-stage.sh")
+    require(
+        errors,
+        lifecycle_guard >= 0 and stage_resolver >= 0 and lifecycle_guard < stage_resolver,
+        "PROMOTION_CHAIN_LIFECYCLE_GUARD",
+    )
+    require(
+        errors,
+        "PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH" in promotion,
+        "PROMOTION_CHAIN_POST_PUBLISH_NOOP",
+    )
     require(errors, "contents: write" not in promotion, "PROMOTION_CHAIN_WRITE_PERMISSION")
 
     release = workflow_text[".github/workflows/release.yml"]
