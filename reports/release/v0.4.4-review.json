@@ -451,5 +451,5 @@
       "workflow execution parity: every repo-local shell helper invoked by GitHub Actions is machine-checked against tracked Git mode or an explicit shell interpreter; accepted-main Ubuntu rehearses the exact post-tag stage resolver transport against the current run artifact before tag"
     ]
   },
-  "reviewed_content_digest": "3174d66d523507b26f4a7356b00e034e3eb9dde3b81891e415071f2fbafb007f"
+  "reviewed_content_digest": "5b259b676dd4797bd151f204ac4dc4f985c273f12637abecd2e56d9062640dda"
 }
