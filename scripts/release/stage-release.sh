@@ -15,7 +15,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 cd "$root"
 
 [[ "$(uname -s)" == Darwin && "$(uname -m)" == arm64 ]] || fail "MACOS_ARM64_REQUIRED"
-for name in git cargo rustc python3 shasum tar; do
+for name in git cargo rustc rustup python3 shasum tar; do
   command -v "$name" >/dev/null 2>&1 || fail "COMMAND_MISSING:$name"
 done
 [[ -z "$(git status --porcelain)" ]] || fail "WORKTREE_NOT_CLEAN"
