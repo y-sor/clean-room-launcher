@@ -15,6 +15,9 @@ for path in "$release_workflow" "$ci_workflow" "$stage_resolver" "$stage_verifie
   [[ -f "$path" ]] || fail "SURFACE_MISSING:$path"
 done
 
+python3 scripts/release/check-workflow-script-invocations.py \
+  || fail "WORKFLOW_SCRIPT_INVOCATION_CONTRACT"
+
 # The tag workflow is promotion-only. These tokens represent classes of work
 # that must have completed during PR/accepted-main rehearsal.
 for forbidden in \
@@ -82,7 +85,7 @@ for surface in "$stage_resolver" "$stage_verifier"; do
 done
 
 for required in \
-  'resolve-pretag-stage.sh' \
+  'bash scripts/release/resolve-pretag-stage.sh' \
   'verify-pretag-stage.py' \
   'uses: actions/attest@' \
   'gh release upload' \
