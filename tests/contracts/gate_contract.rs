@@ -65,6 +65,7 @@ fn accepted_main_stage_qualifies_exact_archive_before_tag() {
         "local-codex-plugin-activation-smoke.sh stage",
         "--artifact \"$artifact\"",
         "pretag-manifest.json",
+        "\"executable_sha256\"",
         "PRETAG_STAGE_PASS",
     ] {
         assert!(stage.contains(required), "missing pre-tag exact-byte gate: {required}");
@@ -82,6 +83,10 @@ fn accepted_main_stage_qualifies_exact_archive_before_tag() {
     assert!(!release.contains("local-plugin-activation-smoke.sh"));
     assert!(!provisioner.contains("npm install"));
     assert!(verifier.contains("record[\"provider_version\"] != expected_provider_version"));
+    let stage_verifier =
+        std::fs::read_to_string("scripts/release/verify-pretag-stage.py").unwrap();
+    assert!(stage_verifier.contains("CODEX_RUNTIME:provider_bytes"));
+    assert!(stage_verifier.contains("EXECUTABLE_SHA256"));
 }
 
 #[test]
@@ -449,6 +454,8 @@ fn tag_push_requires_complete_stage_then_refreshes_only_mutable_state() {
         "npm ",
         "local-codex-plugin-activation-smoke.sh",
         "local-plugin-activation-smoke.sh",
+        "resolve-pretag-stage.sh",
+        "verify-pretag-stage.py",
     ] {
         assert!(!guard.contains(forbidden), "final guard must not reopen {forbidden}");
     }
@@ -549,6 +556,17 @@ fn release_contract_enforces_public_doc_version_coherence() {
 }
 
 #[test]
+#[test]
+fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
+    let guard =
+        std::fs::read_to_string("scripts/release/check-post-tag-contract.sh").unwrap();
+    assert!(guard.contains("POST_TAG_SCRIPT_NOT_ALLOWED"));
+    assert!(guard.contains("POST_TAG_HELPER_BLOCKER"));
+    assert!(guard.contains("scripts/release/resolve-pretag-stage.sh"));
+    assert!(guard.contains("scripts/release/verify-pretag-stage.py"));
+    assert!(guard.contains("scripts/release/provider-pins.sh"));
+}
+
 fn release_runtime_rehearsal_moves_left_and_exact_shipping_bytes_close_before_tag() {
     let claude =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
