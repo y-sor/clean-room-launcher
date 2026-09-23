@@ -787,7 +787,9 @@ fn accepted_main_rehearses_exact_post_tag_prepare_invocation() {
         !rehearsal.contains("workflow_run:"),
         "promotion rehearsal must not use privileged workflow_run checkout chains"
     );
-    assert!(rehearsal.contains("inputs.source_sha"));
+    assert!(!rehearsal.contains("inputs.source_sha"));
+    assert!(rehearsal.contains("ref: ${{ github.sha }}"));
+    assert!(rehearsal.contains("SOURCE_SHA: ${{ github.sha }}"));
     assert!(rehearsal.contains("runs-on: ubuntu-latest"));
     assert!(rehearsal.contains("resolve-release-lifecycle.py"));
     assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH"));
