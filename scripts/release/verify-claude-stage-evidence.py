@@ -27,6 +27,7 @@ def main() -> int:
         "artifact_sha256": args.artifact_sha256,
         "platform": "macos-aarch64",
         "claude_version": args.claude_version,
+        "plugin_id": "frontend-design@claude-plugins-official",
         "clean_system_init": True,
         "selected_system_init": True,
         "clean_target_plugin": False,
