@@ -95,6 +95,31 @@ def main() -> int:
         if sha256(assets_dir / name) != expected:
             fail(f"CHECKSUM:{name}")
 
+    qualifications = stage / "qualification"
+    for provider in ("codex", "claude"):
+        evidence = qualifications / f"{provider}.json"
+        if not evidence.is_file() or evidence.stat().st_size == 0:
+            fail(f"QUALIFICATION_MISSING:{provider}")
+        provider_version = manifest.get("providers", {}).get(provider, {}).get("version")
+        if not isinstance(provider_version, str) or not provider_version:
+            fail(f"QUALIFICATION_VERSION:{provider}")
+        try:
+            subprocess.check_call(
+                [
+                    "python3",
+                    "scripts/release/verify-qualification.py",
+                    str(assets_dir / artifact_name),
+                    str(evidence),
+                    args.expected_head,
+                    version,
+                    provider,
+                    provider_version,
+                ],
+                cwd=ROOT,
+            )
+        except subprocess.CalledProcessError:
+            fail(f"QUALIFICATION_INVALID:{provider}")
+
     codex_path = stage / "codex-stage-evidence.json"
     codex = json.loads(codex_path.read_text(encoding="utf-8"))
     required = {
