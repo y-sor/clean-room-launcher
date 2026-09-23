@@ -24,9 +24,9 @@ This table is deliberately conservative.
 | Claude Code | v0.4.3 selected plugin root | Exact active install root is revalidated and reopened read-only; persistent provider configuration is not rewritten | Focused negative tests plus exact real-provider E2E |
 | Claude Code | v0.4.3 raw plugin activation overlap | `--plugin-dir` and `--plugin-url` are refused while CLROOM resource selection is active | CLI conflict tests |
 | Codex | global `AGENTS.md` / `AGENTS.override.md` | Known global instruction inputs blocked for the CLROOM launch | Confirmed from current CLROOM source |
-| Codex | interactive top-level launch | Existing isolation path retained; exact qualification target is 0.156.0 | Current-release qualification canary |
-| Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config`; exact qualification target is 0.156.0 | Current-release qualification canary |
-| Codex | v0.4.3 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one installed standalone-capable bundle into a private shadow PluginStore | Exact real-provider E2E on Codex CLI 0.156.0 / macOS Apple Silicon |
+| Codex | interactive top-level launch | Existing isolation path retained; exact qualification target is 0.156.1 | Current-release qualification canary |
+| Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config`; exact qualification target is 0.156.1 | Current-release qualification canary |
+| Codex | v0.4.3 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one installed standalone-capable bundle into a private shadow PluginStore | Exact real-provider E2E on Codex CLI 0.156.1 / macOS Apple Silicon |
 | Codex | v0.4.3 host-required plugin surface | App-owned `codex_app` MCP is classified `PLUGIN_HOST_REQUIRED` instead of being treated as standalone-capable | Negative qualification plus real standalone MCP fixture evidence |
 | Codex | project instruction chain | Retained | Confirmed from current CLROOM source |
 | Codex | unselected personal-global skill contents | Known personal-global skill roots restricted | Confirmed from current CLROOM source |
