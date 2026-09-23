@@ -334,3 +334,14 @@ the manifest advances to a new release version.
 
 Local audit complements GitHub CI and real-provider/draft-artifact evidence; it
 does not grant merge, tag, or publish permission.
+
+## Declared automation-chain topology
+
+`AUTOMATION_CHAIN_RELEASE_CANDIDATE_TO_PROMOTION_REHEARSAL`
+The only automatic continuation from the accepted-main `Release candidate readiness` workflow is the read-only `Release promotion rehearsal` `workflow_run` chain. It is restricted to `main`, requires the upstream workflow conclusion to be `success`, carries only `contents: read` and `actions: read`, and performs no publication.
+
+`AUTOMATION_CHAIN_TAG_TO_DRAFT`
+A protected `v*` tag triggers the `Release` workflow. That workflow may bind attestations and create or refresh a GitHub Draft Release from already accepted bytes. It must not rebuild, requalify providers, mutate repository settings, move the tag, or publish the Draft.
+
+`AUTOMATION_CHAIN_NO_AUTO_PUBLISH`
+No repository workflow is authorized to publish a GitHub Release automatically. Publish remains a separate Owner action-time gate after exact Draft reconciliation. A fallback executor must preserve the same tag/source/byte identity and cannot bypass the canonical release helpers or evidence.
