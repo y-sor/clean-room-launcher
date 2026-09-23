@@ -92,15 +92,15 @@ plugin MCP runtime against that exact archive.
 The same accepted-main workflow also rehearses the GitHub attestation mechanism
 with the exact staged subjects before any tag exists. A successful workflow
 uploads one content-addressed pre-tag stage artifact bound to the accepted source
-SHA, source tree, reviewed-content digest, provider pins/integrities and exact
-file digests. The tag gate resolves only a successful accepted-main workflow
+SHA, source tree, reviewed-content digest, provider pins/integrities, exact
+provider executable SHA-256 digests and exact file digests. The tag gate resolves only a successful accepted-main workflow
 artifact for that exact SHA.
 
 Claude remains the one genuine local human-TTY boundary. Before tag creation,
 the Owner runs the Claude stage smoke against the exact staged archive, not a
 rebuild and not a Draft download. Its durable evidence binds the exact accepted
-source/tree/review digest, Claude version/provider bytes and staged archive
-SHA-256.
+source/tree/review digest, Claude version, the exact frozen Claude provider
+executable SHA-256 and staged archive SHA-256.
 
 Provider latest is a pre-tag decision. check-provider-pins.sh resolves the
 current npm stable tags and exact registry integrity during accepted-main
@@ -112,9 +112,11 @@ invalidate an already staged candidate.
 Immediately before the single tag push, push-release-tag.sh refreshes only
 genuinely mutable action-time state: accepted main, tag/release absence, the
 active no-bypass v* ruleset, immutable-release repository policy, release
-contract and the presence/binding of the complete staged evidence. No build,
-provider provisioning, provider runtime, installer test or registry freshness
-check executes after this final guard before the irreversible push.
+contract and the presence/binding of the complete staged evidence. Stage
+download/content verification completes before this final mutable-state guard.
+No build, stage retrieval, provider provisioning, provider runtime, installer
+test or registry freshness check executes after the guard before the irreversible
+push.
 
 Post-tag automation is promotion-only. It resolves the already accepted staged
 bytes, creates tag-bound attestations for those same bytes, creates/refreshes a
