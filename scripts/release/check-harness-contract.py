@@ -149,10 +149,23 @@ def check(root: Path) -> list[str]:
         require(errors, marker in docs, "AUTOMATION_MARKER_MISSING:" + marker)
 
     promotion = workflow_text[".github/workflows/release-promotion-rehearsal.yml"]
-    require(errors, "workflow_run:" in promotion, "PROMOTION_CHAIN_TRIGGER")
-    require(errors, "- Release candidate readiness" in promotion, "PROMOTION_CHAIN_SOURCE")
-    require(errors, "branches:\n      - main" in promotion, "PROMOTION_CHAIN_BRANCH")
-    require(errors, "github.event.workflow_run.conclusion == 'success'" in promotion, "PROMOTION_CHAIN_SUCCESS_ONLY")
+    require(errors, "workflow_call:" in promotion, "PROMOTION_CHAIN_REUSABLE_TRIGGER")
+    require(errors, "workflow_run:" not in promotion, "PROMOTION_CHAIN_PRIVILEGED_TRIGGER_FORBIDDEN")
+    require(errors, "source_sha:" in promotion and "inputs.source_sha" in promotion, "PROMOTION_CHAIN_SOURCE_INPUT")
+    require(
+        errors,
+        "uses: ./.github/workflows/release-promotion-rehearsal.yml" in release_candidate,
+        "PROMOTION_CHAIN_CALLER_MISSING",
+    )
+    promotion_job = release_jobs.get("promotion-prepare-rehearsal", "")
+    require(errors, "github.event_name == 'push'" in promotion_job, "PROMOTION_CHAIN_PUSH_ONLY")
+    require(errors, "github.ref == 'refs/heads/main'" in promotion_job, "PROMOTION_CHAIN_MAIN_ONLY")
+    require(errors, "needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE'" in promotion_job, "PROMOTION_CHAIN_ACTIVE_ONLY")
+    require(
+        errors,
+        "promotion-prepare-rehearsal" in release_required,
+        "RELEASE_REQUIRED_PROMOTION_TOPOLOGY",
+    )
     lifecycle_guard = promotion.find("resolve-release-lifecycle.py")
     stage_resolver = promotion.find("bash scripts/release/resolve-pretag-stage.sh")
     require(
