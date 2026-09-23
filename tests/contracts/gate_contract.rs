@@ -633,6 +633,8 @@ fn immutable_release_policy_is_owner_authenticated_before_tag_and_publish() {
     assert!(draft.contains("repos/$repository/immutable-releases"));
     assert!(draft.contains("IMMUTABLE_RELEASE_POLICY_UNVERIFIED"));
     assert!(draft.contains("IMMUTABLE_RELEASE_POLICY_DISABLED"));
+    assert!(draft.contains("TAG_RULESET_PREPUBLISH_PASS"));
+    assert!(draft.contains("TAG_RULESET_WEAKENED"));
 }
 
 #[test]
