@@ -12,9 +12,8 @@
     "tag_remote_refresh_order": "after_provider_checks_before_push",
     "runtime_rehearsal_phase": "exact_pr_candidate_before_merge_when_observable",
     "runtime_evidence_binding": "reviewed_content_digest_and_tree_plus_provider_inputs",
-    "post_merge_runtime_role": "identity_state_and_action_time_revalidation_only",
+    "post_merge_runtime_role": "exact_shipping_byte_stage_and_action_time_revalidation",
     "codex_premerge_rehearsal_transport": "github_actions_macos_content_addressed_artifact",
-    "codex_draft_rehearsal_transport": "github_actions_macos_tag_artifact",
     "claude_premerge_rehearsal_transport": "local_interactive_tty",
     "ambient_local_codex_release_input": "forbidden",
     "public_doc_version_inventory": {
@@ -55,7 +54,14 @@
         }
       },
       "allowed_other_versions": {}
-    }
+    },
+    "pretag_blocker_closure": "required",
+    "exact_shipping_byte_stage": "accepted_main_before_tag",
+    "post_tag_role": "promotion_identity_attestation_reconciliation_only",
+    "provider_latest_decision": "freeze_in_pretag_stage_evidence",
+    "repository_admin_policy_check": "owner_authenticated_before_tag_and_publish",
+    "codex_stage_rehearsal_transport": "github_actions_macos_exact_shipping_bytes",
+    "claude_stage_rehearsal_transport": "local_interactive_tty_exact_shipping_bytes"
   },
   "domains": [
     {
