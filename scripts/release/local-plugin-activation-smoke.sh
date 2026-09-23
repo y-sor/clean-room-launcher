@@ -47,7 +47,14 @@ done
 
 # shellcheck source=provider-pins.sh
 source "$root/scripts/release/provider-pins.sh"
-bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+if [[ "$phase" == "rehearse" ]]; then
+  bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+else
+  # Accepted-main staging already froze registry freshness/integrity. The stage
+  # TTY validates the pinned provider/version against the exact staged archive
+  # without making a second mutable npm-latest decision.
+  echo "PROVIDER_REGISTRY_FREEZE_REUSED=YES"
+fi
 claude_executable=$(command -v claude)
 claude_version_output=$(claude --version 2>&1 | head -1) || fail "CLAUDE_VERSION"
 claude_version=$(python3 - "$claude_version_output" <<'PY'
