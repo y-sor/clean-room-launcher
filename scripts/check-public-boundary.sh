@@ -45,6 +45,7 @@ while IFS= read -r file; do
     exit 12
   fi
   if LC_ALL=C grep -E -q '(/Users/[A-Za-z0-9._-]+/|/home/[A-Za-z0-9._-]+/)' "$file"; then
+    printf 'PUBLIC_BOUNDARY_FILE:%s\n' "$relative"
     echo "ABSOLUTE_HOME_PATH" >&2
     exit 13
   fi
