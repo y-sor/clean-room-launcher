@@ -444,6 +444,7 @@ fn tag_push_requires_complete_stage_then_refreshes_only_mutable_state() {
         "verify_tag_ruleset",
         "verify_immutable_policy ACTION_TIME",
         "check-release-contract.py --tag-date \"$tag_date\" --report",
+        "PRETAG_STAGE_BINDING_ACTION_TIME=PASS",
     ] {
         assert!(guard.contains(required), "missing action-time guard: {required}");
     }
