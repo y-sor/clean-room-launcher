@@ -303,9 +303,20 @@ jobs:
           gh attestation verify "pretag-stage/$artifact"             -R "$GITHUB_REPOSITORY"             --bundle "$SBOM_BUNDLE"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml"             --source-digest "$GITHUB_SHA"             --source-ref "refs/heads/main"             --deny-self-hosted-runners
           echo "PRETAG_ATTESTATION_REHEARSAL_PASS source=$GITHUB_SHA"
 
+  promotion-prepare-rehearsal:
+    name: Promotion prepare rehearsal
+    needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+    uses: ./.github/workflows/release-promotion-rehearsal.yml
+    with:
+      source_sha: ${{ github.sha }}
+    permissions:
+      contents: read
+      actions: read
+
   release-required:
     name: Release required
-    needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal]
+    needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal, promotion-prepare-rehearsal]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -318,6 +329,7 @@ jobs:
           READINESS: ${{ needs.release-readiness.result }}
           STAGE: ${{ needs.pretag-stage.result }}
           ATTEST: ${{ needs.pretag-attestation-rehearsal.result }}
+          PROMOTION: ${{ needs.promotion-prepare-rehearsal.result }}
         shell: bash
         run: |
           set -euo pipefail
@@ -327,18 +339,22 @@ jobs:
             ACTIVE_CANDIDATE:pull_request)
               test "$STAGE" = success
               test "$ATTEST" = skipped
+              test "$PROMOTION" = skipped
               ;;
             ACTIVE_CANDIDATE:push)
               test "$STAGE" = success
               test "$ATTEST" = success
+              test "$PROMOTION" = success
               ;;
             ACTIVE_CANDIDATE:workflow_dispatch)
               test "$STAGE" = skipped
               test "$ATTEST" = skipped
+              test "$PROMOTION" = skipped
               ;;
             POST_PUBLISH:*)
               test "$STAGE" = skipped
               test "$ATTEST" = skipped
+              test "$PROMOTION" = skipped
               ;;
             *)
               echo "unexpected release topology lifecycle=$LIFECYCLE event=$EVENT" >&2
