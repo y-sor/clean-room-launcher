@@ -18,6 +18,9 @@ jobs:
   release-readiness:
     name: CLROOM release readiness
     runs-on: macos-14
+    outputs:
+      version: ${{ steps.lifecycle.outputs.version }}
+      lifecycle: ${{ steps.lifecycle.outputs.lifecycle }}
     steps:
       - name: Check out exact PR HEAD
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -27,6 +30,7 @@ jobs:
           fetch-tags: true
           persist-credentials: false
       - name: Resolve published release lifecycle
+        id: lifecycle
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -54,6 +58,8 @@ jobs:
           echo "CLROOM_RELEASE_VERSION=$candidate_version" >> "$GITHUB_ENV"
           echo "CLROOM_RELEASE_BASE_REF=$latest_tag" >> "$GITHUB_ENV"
           echo "CLROOM_RELEASE_LIFECYCLE=$lifecycle" >> "$GITHUB_ENV"
+          echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
+          echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
           printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
       - name: Prove release attestation contract fails closed
         shell: bash
@@ -154,9 +160,9 @@ jobs:
             bash scripts/release/local-codex-plugin-activation-smoke.sh rehearse \
               --expected-head "$candidate_sha" \
               --fixture-standalone-mcp
-          digest="$(python3 - <<'PY'
-          import json
-          with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+          digest="$(python3 - "$CLROOM_RELEASE_VERSION" <<'PY'
+          import json, sys
+          with open(f"reports/release/v{sys.argv[1]}-review.json", encoding="utf-8") as handle:
               print(json.load(handle)["reviewed_content_digest"])
           PY
           )"
@@ -172,5 +178,143 @@ jobs:
         with:
           name: ${{ steps.codex_rehearsal.outputs.artifact_name }}
           path: ${{ steps.codex_rehearsal.outputs.evidence }}
+          if-no-files-found: error
+          retention-days: 30
+
+stage-release:
+    name: Stage exact shipping bytes before tag
+    needs: release-readiness
+    if: github.event_name == 'push' && needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+    runs-on: macos-14
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out exact accepted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Install qualified Rust target
+        run: rustup target add aarch64-apple-darwin
+      - name: Build exact future shipping bundle once
+        env:
+          VERSION: ${{ needs.release-readiness.outputs.version }}
+          CLROOM_TARGET: aarch64-apple-darwin
+          CLROOM_SOURCE_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/release-stage"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+          cargo fetch --locked
+          cargo metadata --locked --offline --format-version 1 >/dev/null
+          cargo metadata --locked --offline --filter-platform aarch64-apple-darwin --format-version 1 >"$stage/cargo-metadata.json"
+          ./packaging/build-artifacts.sh "$stage"
+          artifact="$stage/clean-room-launcher-v${VERSION}-aarch64-apple-darwin.tar.gz"
+          test -f "$artifact"
+          python3 packaging/verify-artifact.py "$artifact"
+          python3 packaging/generate-release-sbom.py --artifact "$artifact" --metadata "$stage/cargo-metadata.json" --output "$stage/sbom.cdx.json"
+          install -m 0755 install.sh "$stage/install.sh"
+          (
+            cd "$stage"
+            shasum -a 256 "clean-room-launcher-v${VERSION}-aarch64-apple-darwin.tar.gz" sbom.cdx.json install.sh >SHA256SUMS
+            shasum -a 256 -c SHA256SUMS
+          )
+          python3 scripts/release/render-release-notes.py --version "$VERSION" --artifact "clean-room-launcher-v${VERSION}-aarch64-apple-darwin.tar.gz" --output "$stage/release-notes.md"
+          echo "CLROOM_STAGE_DIR=$stage" >>"$GITHUB_ENV"
+          echo "CLROOM_STAGE_ARTIFACT=$artifact" >>"$GITHUB_ENV"
+      - name: Provision frozen provider tuple
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"
+      - name: Qualify exact staged archive with real providers
+        env:
+          VERSION: ${{ needs.release-readiness.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          extract_dir="$RUNNER_TEMP/stage-archive"
+          rm -rf "$extract_dir"
+          mkdir -p "$extract_dir"
+          tar -xzf "$CLROOM_STAGE_ARTIFACT" -C "$extract_dir"
+          archive_root="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$archive_root"
+          scripts/release/qualify-real-provider.sh --provider codex --executable "$CLROOM_PROVIDER_CODEX" --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" --candidate "$archive_root/bin/clroom-codex" --source-head "$GITHUB_SHA" --version "$VERSION" --output "$CLROOM_STAGE_DIR/codex-qualification.json"
+          scripts/release/qualify-real-provider.sh --provider claude --executable "$CLROOM_PROVIDER_CLAUDE" --expected-provider-version "$CLROOM_PROVIDER_CLAUDE_VERSION" --candidate "$archive_root/bin/clroom-claude" --source-head "$GITHUB_SHA" --version "$VERSION" --output "$CLROOM_STAGE_DIR/claude-qualification.json"
+          python3 scripts/release/verify-qualification.py "$CLROOM_STAGE_ARTIFACT" "$CLROOM_STAGE_DIR/codex-qualification.json" "$GITHUB_SHA" "$VERSION" codex "$CLROOM_PROVIDER_CODEX_VERSION"
+          python3 scripts/release/verify-qualification.py "$CLROOM_STAGE_ARTIFACT" "$CLROOM_STAGE_DIR/claude-qualification.json" "$GITHUB_SHA" "$VERSION" claude "$CLROOM_PROVIDER_CLAUDE_VERSION"
+      - name: Rehearse Codex runtime on exact staged shipping bytes
+        env:
+          VERSION: ${{ needs.release-readiness.outputs.version }}
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          provider_bin="$RUNNER_TEMP/clroom-codex-stage-bin"
+          mkdir -p "$provider_bin"
+          ln -s "$CLROOM_PROVIDER_CODEX" "$provider_bin/codex"
+          PATH="$provider_bin:$PATH" CLROOM_RELEASE_EVIDENCE_DIR="$CLROOM_STAGE_DIR" \
+            bash scripts/release/local-codex-plugin-activation-smoke.sh stage \
+              --expected-head "$GITHUB_SHA" \
+              --artifact "$CLROOM_STAGE_ARTIFACT" \
+              --fixture-standalone-mcp
+          test -s "$CLROOM_STAGE_DIR/codex-stage-v${VERSION}-${GITHUB_SHA:0:12}.json"
+      - name: Rehearse attestation mechanism before tag
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: ${{ env.CLROOM_STAGE_DIR }}/SHA256SUMS
+      - name: Rehearse CycloneDX attestation before tag
+        id: sbom_attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ env.CLROOM_STAGE_ARTIFACT }}
+          sbom-path: ${{ env.CLROOM_STAGE_DIR }}/sbom.cdx.json
+      - name: Verify pre-tag attestation rehearsal and seal stage manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release-readiness.outputs.version }}
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom_attestation.outputs.bundle-path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 0644 "$PROVENANCE_BUNDLE" "$CLROOM_STAGE_DIR/pretag-provenance.sigstore.json"
+          install -m 0644 "$SBOM_BUNDLE" "$CLROOM_STAGE_DIR/pretag-sbom.sigstore.json"
+          for subject in "$CLROOM_STAGE_ARTIFACT" "$CLROOM_STAGE_DIR/sbom.cdx.json" "$CLROOM_STAGE_DIR/install.sh"; do
+            gh attestation verify "$subject" -R "$GITHUB_REPOSITORY" --bundle "$CLROOM_STAGE_DIR/pretag-provenance.sigstore.json" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml" --source-digest "$GITHUB_SHA" --source-ref "$GITHUB_REF" --deny-self-hosted-runners
+          done
+          gh attestation verify "$CLROOM_STAGE_ARTIFACT" -R "$GITHUB_REPOSITORY" --bundle "$CLROOM_STAGE_DIR/pretag-sbom.sigstore.json" --predicate-type https://cyclonedx.org/bom --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml" --source-digest "$GITHUB_SHA" --source-ref "$GITHUB_REF" --deny-self-hosted-runners
+          source scripts/release/provider-pins.sh
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          digest="$(python3 - "$VERSION" <<'PY'
+          import json, sys
+          with open(f"reports/release/v{sys.argv[1]}-review.json", encoding="utf-8") as handle:
+              print(json.load(handle)["reviewed_content_digest"])
+          PY
+          )"
+          python3 scripts/release/stage-manifest.py create \
+            --root "$CLROOM_STAGE_DIR" --version "$VERSION" --source-head "$GITHUB_SHA" --source-tree "$tree" --reviewed-content-digest "$digest" \
+            --artifact-name "clean-room-launcher-v${VERSION}-aarch64-apple-darwin.tar.gz" \
+            --codex-stage "$CLROOM_STAGE_DIR/codex-stage-v${VERSION}-${GITHUB_SHA:0:12}.json" \
+            --codex-qualification "$CLROOM_STAGE_DIR/codex-qualification.json" --claude-qualification "$CLROOM_STAGE_DIR/claude-qualification.json" \
+            --pretag-provenance "$CLROOM_STAGE_DIR/pretag-provenance.sigstore.json" --pretag-sbom "$CLROOM_STAGE_DIR/pretag-sbom.sigstore.json" \
+            --codex-version "$CODEX_VERSION" --codex-sha512 "$CODEX_SHA512" --codex-platform-sha512 "$CODEX_PLATFORM_SHA512" \
+            --claude-version "$CLAUDE_VERSION" --claude-sha512 "$CLAUDE_SHA512" --claude-platform-sha512 "$CLAUDE_PLATFORM_SHA512" \
+            --output "$CLROOM_STAGE_DIR/release-stage.json"
+          python3 scripts/release/stage-manifest.py verify --root "$CLROOM_STAGE_DIR" --version "$VERSION" --source-head "$GITHUB_SHA"
+          rm -f "$CLROOM_STAGE_DIR/cargo-metadata.json"
+      - name: Upload exact pre-tag release stage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.sha }}
+          path: ${{ env.CLROOM_STAGE_DIR }}
           if-no-files-found: error
           retention-days: 30
