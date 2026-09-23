@@ -1,0 +1,394 @@
+{
+  "schema_version": "clroom.release-review.v2",
+  "release": "v0.4.3",
+  "baseline_release": "v0.4.0",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The whole-product delta retains the v0.4.x Codex and Claude whole-plugin paths and their exact provider/runtime security controls from the unpublished v0.4.1/v0.4.2 candidates; exact PR-candidate Codex/Claude rehearsal remains required before merge.",
+        "Accepted-main staging now exercises Codex whole-plugin MCP initialize/tools-list/tool-call plus post-runtime clean closure against the exact future shipping archive, while Claude stage evidence uses the same exact archive in a genuine local selected-plugin TTY before tag."
+      ]
+    },
+    "tests": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "gate_contract regression coverage now requires PRETAG staged-byte runtime closure, forbids full CI on v* tags, requires promotion-only tag automation, and forbids post-tag provider/latest/runtime evidence paths.",
+        "check-post-tag-surface.py scans the tag-triggered workflow and pre-publish verifier fail-closed for build/test/provider/runtime/registry-latest/repository-admin blockers and rejects any non-release workflow that reintroduces a v* tag trigger.",
+        "Accepted-main staging rehearses the exact Actions artifact-read capability later used for promotion with the same workflow-scoped token permission before any protected tag exists."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "Cargo.toml/Cargo.lock advance only the clean-room-launcher package version from the unpublished 0.4.2 candidate to 0.4.3; no Rust runtime/build dependency is added, removed or replaced.",
+        "Provider qualification remains pinned to Codex 0.156.0 and Claude Code 2.1.280 with canonical npm package/platform integrity. Registry freshness is checked while staging, then frozen into the accepted stage manifest instead of being re-decided after tag."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Release candidate readiness on accepted main now produces a content-addressed release-stage artifact for the exact accepted SHA and a separate pre-tag attestation rehearsal proves the actions/attestation mechanism and workflow-token artifact-read capability.",
+        "The ordinary CI workflow no longer triggers on v* tags, eliminating a second full test graph after the irreversible tag boundary.",
+        "The tag-triggered Release workflow contains no cargo build/test/fetch, provider provisioning/qualification/runtime, npm latest/package, or repository-admin policy check; it resolves and promotes only a successful exact accepted-main stage."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "PRETAG_BLOCKER_CLOSURE is implemented as exact accepted-main staging: shipping archive/SBOM/checksums/release notes/provider tuple and runtime evidence are bound in clroom.release-stage.v1 before tag.",
+        "push-release-tag.sh requires the exact successful accepted-main stage plus local Claude exact-stage TTY evidence, verifies tag/Release absence, no-bypass tag protection and Immutable Releases with the Owner-authenticated gh session, then performs one protected tag push after a final mutable-state refresh.",
+        "release.yml is promotion-only: it resolves the preaccepted stage, creates unavoidable tag-bound provenance/SBOM attestations, uploads exactly those bytes to a guarded Draft and downloads/cmp-reconciles the six remote assets.",
+        "verify-draft-release.sh compares Draft payload bytes to the accepted stage and validates tag-bound attestations and Immutable Releases without rebuilding, rerunning Codex/Claude or asking npm whether the frozen provider tuple is still latest.",
+        "Transient GitHub transport failures after tag are reconciliation/retry events on the same immutable tag; a deterministic blocker first observable post-tag is now classified as a harness escape rather than consuming another release number."
+      ]
+    },
+    "public_claims": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Active README, SECURITY and provider/support documentation identify v0.4.3 as the current source contract while v0.4.1 and v0.4.2 remain explicitly unpublished historical candidates.",
+        "CHANGELOG v0.4.3 documents the release-harness incident and the pre-tag staged-byte architecture without claiming that v0.4.1 or v0.4.2 were published.",
+        "The existing public documentation version-coherence gate continues to bind current provider claims to Codex 0.156.0 / Claude Code 2.1.280 and rejects stale current-product version claims."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "codex-session-flags-without-active-pluginstore-bundle",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex activation requires both exact-bundle projection into the active private shadow PluginStore and session-layer exact plugin enablement; session flags alone are not treated as qualification evidence."
+    },
+    {
+      "id": "codex-projection-admits-sibling-or-stale-bundle",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Shadow PluginStore selection is single-bundle only, verified by path+digest ownership marker and cache-only-selected checks; stale owned projections are reconciled, while unknown siblings or tampered projections fail closed and are preserved rather than blindly deleted."
+    },
+    {
+      "id": "codex-projected-bundle-writable-or-mode-corrupted",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Projection preserves executable bits while removing write bits recursively; provider sandbox also write-denies the shadow plugin cache and marker, with regression tests for read-only and executable semantics."
+    },
+    {
+      "id": "codex-plugin-source-or-provider-drifts-after-plan",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Provider identity/version, installed source identity/digest and projected bundle are revalidated after planning and again immediately before provider exec; any drift refuses before provider birth."
+    },
+    {
+      "id": "raw-codex-controls-create-second-activation-authority",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "When CLROOM plugin selection is active, raw Codex config/profile/feature/plugin controls are refused before provider birth; arguments after the provider terminator remain literal."
+    },
+    {
+      "id": "daily-provider-release-drift-invalidates-exact-qualification",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Canonical provider-pins.sh records exact current-stable versions and npm integrity; check-provider-pins.sh verifies latest tags and integrity during candidate provisioning and again at the action-time tag boundary."
+    },
+    {
+      "id": "provider-pin-contract-test-split-brain",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release contract tests and qualification evidence verification consume the canonical pinned provider versions instead of duplicating stale provider version/digest literals; evidence is rejected unless its provider version exactly matches the pinned canary version."
+    },
+    {
+      "id": "clean-default-expansion-breaks-public-native-identity-contract",
+      "decision": "COVERED",
+      "durable_control": "Public identity tests include features.remote_plugin=false in the exact Codex clean argv contract while preserving native Codex process identity and passthrough semantics."
+    },
+    {
+      "id": "sbom-attestation-predicate-not-explicitly-cyclonedx",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "The post-v0.4.0 release delta explicitly verifies the exported SBOM attestation bundle with the CycloneDX predicate before publication."
+    },
+    {
+      "id": "tag-action-uses-stale-main-provider-or-release-state",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Protected-tag helper refreshes main/tag/ruleset/release-contract/provider-pin state at action time, compares local provider version and bytes to pretag evidence, performs one tag push, then reconciles the authoritative remote result."
+    },
+    {
+      "id": "negative-provider-qualification-test-skipped-without-real-provider",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Release readiness provisions the pinned current Codex canary before full locked tests; negative qualification tests derive the executable's actual provider version and therefore exercise the fail-closed harness instead of returning early or failing before evidence creation."
+    },
+    {
+      "id": "codex-shadow-generation-reuses-legacy-plugin-cache",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex v0.4.1 uses a new .clroom-clean-state-v2/.clroom-state-v2 shadow generation. Legacy v1 shadow state is preserved but never imported or deleted; regression coverage seeds stale plugin-cache content in v1 and proves selected projection starts in clean v2 state while the existing unknown-sibling guard remains fail-closed."
+    },
+    {
+      "id": "codex-shadow-generation-sandbox-protection-drift",
+      "decision": "CONTRACT_EXPAND",
+      "durable_control": "Codex state management and sandbox write denial consume the same shared active shadow-generation constant; regression coverage requires the sandbox profile to protect the active v2 plugin cache and not the preserved legacy v1 cache."
+    },
+    {
+      "id": "codex-cli-plugin-map-path-and-mcp-policy-misaddress",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Codex CLI dotted-path encoding can misaddress provider-owned plugin IDs, and selected whole-plugin MCP capability can remain disabled by provider MCP policy.",
+      "durable_control": "Atomic root-level exact-plugin config with MCP enablement derived only from the captured exact bundle inventory, covered by real-provider clean→selected→clean qualification."
+    },
+    {
+      "id": "codex-provider-owned-dot-tmp-breaks-repeat-launch",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Pinned Codex 0.155.1 legitimately creates CODEX_HOME/.tmp state after CLROOM shadow initialization; the previous static allowlist rejected that state on the next launch.",
+      "durable_control": "The initialized v2 shadow admits the exact provider-owned .tmp top-level class, with regression fixtures for pinned upstream plugin-share and rollout-maintenance state plus a negative test proving preexisting unowned .tmp remains fail-closed."
+    },
+    {
+      "id": "pretag-interactive-state-not-revalidated",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The v0.4.1 pre-tag smoke proved clean→selected→clean before the selected interactive TUI, then accepted evidence without proving the next clean launch after provider-written interactive state.",
+      "durable_control": "Codex pre-tag evidence schema v3 requires clean→selected→clean→real-provider MCP runtime probe→clean on the same persistent shadow; push-release-tag.sh rejects evidence without post_runtime_clean_confirmed=true."
+    },
+    {
+      "id": "manual-prepublish-review-missed-independent-tag-action",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A successful Release workflow was initially treated as the relevant Draft signal while a separate exact-tag CI run had failed, so manual review could miss an independent tag-triggered blocker.",
+      "durable_control": "Canonical verify-draft-release.sh requires all exact-tag push Actions for the exact source SHA, including CI and Release, to be completed successfully and also reconciles Draft identity/assets/attestations/provider pins/local evidence before a publish verdict."
+    },
+    {
+      "id": "codex-evidence-overstated-persistent-state-immutability",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The previous evidence field name persistent_provider_state_unchanged overstated what the smoke actually fingerprinted: ambient config.toml and the ambient plugin tree, while CLROOM shadow provider state is intentionally allowed to evolve.",
+      "durable_control": "Codex v2 evidence names the measured invariant ambient_config_and_plugin_tree_unchanged and separately proves provider_state_lifecycle_closed, preventing evidence semantics from claiming stronger state immutability than was measured."
+    },
+    {
+      "id": "published-sitemap-source-only-verification-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Source-level sitemap configuration could pass while the deployed GitHub Pages sitemap was malformed, redirected, stale, foreign-hosted, or otherwise unusable by crawlers.",
+      "durable_control": "CI validates the sitemap template and negative fixtures, while the same-SHA post-Pages IndexNow workflow fetches the canonical live sitemap with redirects refused and bounded XML/canonical-URL validation before search-engine notification."
+    },
+    {
+      "id": "claude-provider-pin-added-ambient-agents-instruction-surface",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Pinned Claude Code 2.1.278 includes the built-in agents-md ancestor walk introduced in 2.1.277. The existing clean-launch model and pre-tag smoke covered CLAUDE.md/settings/skills but allowed an external ancestor AGENTS.md to enter the real selected-plugin TUI.",
+      "durable_control": "Claude isolation now denies AGENTS.md and .claude/AGENTS.md above the nearest real Git worktree boundary (or cwd outside Git), preserves repo-root and nested project instructions, and carries negative/positive sandbox, launched-provider, exact-artifact and real-TUI evidence into pre-tag schema v2 and the protected tag gate."
+    },
+    {
+      "id": "release-review-ancestry-binding-created-squash-reseal-loop",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Commit-ancestry-bound release review became stale after squash even when the accepted tree was byte-equivalent to the reviewed candidate, generating bookkeeping-only reseal PRs without changing product content.",
+      "durable_control": "Release-review v2 removes reviewed_through_commit and binds acceptance to the exact tracked tree plus canonical review semantics. Candidate-tree == accepted-tree verification carries the content verdict across squash; mutable action-time state remains separately refreshed."
+    },
+    {
+      "id": "claude-agents-sandbox-probe-could-pass-on-version-preflight",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The first synthetic artifact boundary probe invoked clroom claude --version while its fake provider exited successfully on the version path before testing AGENTS reads, so evidence could report PASS without executing the launched-provider isolation assertions.",
+      "durable_control": "The probe now launches the normal Claude provider path, writes a task-owned execution marker only after external-ancestor deny and project-local positive assertions execute, fails if that marker is absent, and the provider-canary contract requires the execution-marker guard."
+    },
+    {
+      "id": "claude-agents-cwd-boundary-would-drop-repo-root-context",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The first AGENTS isolation repair treated the launch working directory itself as the project boundary. A user starting Claude from repo/subdir would therefore lose the legitimate repo-root AGENTS.md that Claude's project instruction walk is expected to retain.",
+      "durable_control": "For Git projects the boundary is now the nearest real non-symlink .git file/directory; outside Git it falls back to the launch directory. Unit, launched-provider and exact-artifact regression probes all start from a nested cwd and require external ancestors to stay denied while repo-root plus nested AGENTS.md/.claude/AGENTS.md remain readable."
+    },
+    {
+      "id": "claude-agents-tui-absence-only-could-hide-project-loss",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A real-TUI check that confirmed only the absence of an external ancestor AGENTS.md could still pass if Claude's agents-md ancestor walk failed on the denied ambient file and consequently dropped legitimate repo-root or nested project AGENTS instructions too.",
+      "durable_control": "The pre-tag real pinned-provider TUI now runs inside a task-owned synthetic nested Git project and requires both positive project AGENTS visibility and negative external-ancestor absence. Evidence v2 records project_agents_retained_confirmed separately, and the protected tag plus pre-publish verifier require that positive proof."
+    },
+    {
+      "id": "claude-agents-probe-tmpdir-was-not-private",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The accepted-main Claude AGENTS artifact probe created its synthetic TMPDIR with the caller's default umask. Under a normal 022 umask the directory became 0755, so CLROOM correctly rejected session-only projection setup before the fake provider ran, making the release gate report AGENTS_BOUNDARY_SANDBOX_PROBE without exercising the intended boundary assertions.",
+      "durable_control": "The pre-tag probe explicitly chmods its synthetic TMPDIR to 0700 and fail-closes on the observed mode before launch; the provider-canary contract statically requires both the private-TMPDIR setup and its failure marker so the fixture cannot silently regress."
+    },
+    {
+      "id": "codex-projected-legacy-mcp-paths-pointed-at-denied-ambient-store",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The installed codex-app-tools bundle first exposed an ambient-path rebase defect; after that was repaired, real TUI evidence still showed codex_app failed with zero tools because the app-owned MCP requires host context that standalone CLROOM does not provide.",
+      "durable_control": "CLROOM preserves in-bundle MCP path rebasing generally, but classifies codex_app as PLUGIN_HOST_REQUIRED for standalone activation. Release qualification uses a standalone MCP fixture and requires real-provider initialize/tools-list evidence instead of server-name visibility."
+    },
+    {
+      "id": "codex-semantic-digest-transition-stranded-owned-projection",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The MCP path-rebase repair changed `.mcp.json` bundle digest semantics. A CLROOM-owned projection left by the immediately previous candidate therefore carried a valid legacy-v1 marker digest that the repaired binary recomputed under the new semantic digest, causing the next clean launch to refuse cleanup as CLROOM_CODEX_PLUGIN_PROJECTION_CHANGED before Codex started.",
+      "durable_control": "Projection cleanup verifies ownership against either the current semantic digest or the exact legacy-v1 raw digest recorded by the existing v1 marker, but this dual-digest compatibility is cleanup-only. Runtime selected-projection verification continues to require the current semantic digest, and mutation after marker creation is still preserved and refused."
+    },
+    {
+      "id": "codex-mcp-configuration-visibility-mistaken-for-runtime-capability",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "mcp list --json proved only that a server declaration was visible; it could pass while the real provider later reported a failed server with zero tools.",
+      "durable_control": "Codex qualification separates configuration visibility from runtime evidence: the real pinned provider must start the selected standalone fixture and reach MCP initialize plus tools/list; the fixture must expose a real tool and pass tools/call. codex_app cannot satisfy standalone acceptance."
+    },
+    {
+      "id": "duplicate-branch-and-pr-ci-plus-manual-main-readiness",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The same candidate work was re-run on branch push and pull_request while accepted-main release readiness depended on repeated manual dispatch, increasing latency and Owner intervention without adding evidence.",
+      "durable_control": "Branch validation is pull_request-driven, push runs are main-only, superseded runs are cancelled by stable concurrency groups, and release-candidate readiness runs automatically on accepted main."
+    },
+    {
+      "id": "tracked-changelog-date-bound-to-future-tagger-day",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The protected tag helper required the tracked v0.4.2 changelog date to equal the future annotated tagger calendar day exactly. Crossing midnight after an accepted candidate therefore forced a bookkeeping-only content mutation, new SHA, reseal and requalification even though no product or release capability changed.",
+      "durable_control": "Release Contract v1 now defines a monotonic action-time relation: the candidate carries exactly one canonical ISO changelog date and the real annotated tagger timestamp remains authoritative action-time evidence. Both local tag push and exact-tag CI call the same checker and accept declared_date <= tagger_date while rejecting future-dated declarations; checker self-tests prove same-day, later-tag and future-date-negative cases."
+    },
+    {
+      "id": "release-version-advance-lived-only-in-readiness-transport",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Release-candidate readiness rejected versions that were not newer than the latest published stable release, but the canonical whole-release checker used by the protected tag path did not own that invariant. A tag path therefore depended on a prior transport having run rather than proving version progression itself.",
+      "durable_control": "check-release-contract.py now invokes the canonical lifecycle resolver against the live latest published stable tag and requires ACTIVE_CANDIDATE. The same contract also requires the candidate changelog date to be on or after the published baseline date, so version and public chronology are enforced by the tag-path authority itself."
+    },
+    {
+      "id": "tag-remote-state-refresh-preceded-provider-checks",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The tag helper labeled remote main/tag/ruleset/release-contract state as action-time fresh, but then performed provider pin and local provider byte checks before the irreversible push. Main or release state could therefore drift in that window and leave a protected tag pointing at a no-longer-current candidate before post-tag CI caught it.",
+      "durable_control": "Provider pin and local provider-byte checks now complete before the final remote guard. Immediately before the single tag push the helper refreshes remote main, confirms tag absence, revalidates the no-bypass tag ruleset and reruns the canonical release contract; regression coverage asserts that no provider qualification runs inside that final guard-to-push window."
+    },
+    {
+      "id": "post-push-tag-reconciliation-ambiguous-outcome",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "After the single protected tag push, reconciliation queried only the peeled ref under fail-fast shell semantics. A reconciliation read failure could therefore terminate without an explicit OUTCOME UNKNOWN state, while a concurrently created wrong-target or lightweight tag could be misreported as absent.",
+      "durable_control": "Post-push reconciliation now captures the remote query status, queries both direct and peeled tag refs, preserves local evidence on unresolved outcome, accepts success only when the peeled target equals the approved SHA, distinguishes present wrong/lightweight refs from verified absence, and reports reconciled absence only after a successful authoritative read."
+    },
+    {
+      "id": "codex-pretag-fixture-omitted-synthetic-auth",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The accepted-main Codex pre-tag smoke created a task-owned temporary CODEX_HOME containing the standalone MCP fixture but omitted the provider-native auth fixture that CLROOM correctly requires. The first clean MCP listing therefore failed deterministically with CLROOM_CODEX_AUTH_UNAVAILABLE even though CI's real-provider qualifier already used a safe no-spend synthetic auth record.",
+      "durable_control": "The shared codex-mcp-fixture.py install path now owns a private mode-0600 no-spend synthetic Codex auth record, refuses conflicting preexisting auth state, and is consumed by both CI real-provider qualification and accepted-main/Draft plugin smokes. A pre-merge contract test requires fixture installation before the first candidate/provider launch and forbids a second hard-coded auth payload in the qualifier."
+    },
+    {
+      "id": "runtime-rehearsal-was-main-only-after-merge",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The release protocol required provider/runtime/UI blockers to run on the exact PR candidate before merge, but both local plugin smokes hard-coded pretag execution to HEAD == origin/main and tag/Draft verification keyed that evidence by the accepted-main commit SHA. Squash therefore made the first full runtime rehearsal happen only after merge, allowing avoidable release escapes despite content-equivalent candidate and accepted trees.",
+      "durable_control": "Release smokes now have an exact-head rehearse mode that runs before merge and writes dynamic evidence outside the tracked tree, bound to reviewed_content_digest + exact source_tree + provider/version bytes. Tag and Draft verification accept that evidence across squash only after the current accepted tree and review digest match, while provider/mutable/action-time state is refreshed. Contract tests fail if rehearsal becomes accepted-main-only again."
+    },
+    {
+      "id": "codex-rehearsal-rebootstrapped-owned-shadow",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The exact-PR Codex rehearsal successfully completed clean/selected/clean discovery, then the PTY runtime probe unconditionally launched an additional clean CLROOM command only to recreate a shadow that already had the exact CLROOM ownership marker. That redundant fourth launch became a new blocker-producing surface and hid its root stderr.",
+      "durable_control": "The fixture now reuses an already initialized CLROOM-owned shadow when its private regular ownership marker is exact; bootstrap runs only when the marker is absent. Invalid markers fail closed, bootstrap stderr is captured for CLROOM root markers, and both fixture self-test plus provider-canary meta-contract assert the reuse/negative paths."
+    },
+    {
+      "id": "codex-runtime-root-marker-was-collapsed",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The exact-PR Codex runtime fixture emitted a specific CODEX_MCP_FIXTURE_BLOCKED root marker, but local-codex-plugin-activation-smoke.sh routed probe-provider failures directly to the generic SELECTED_MCP_RUNTIME label. Repeated verification therefore produced the same non-actionable outer marker and caused a no-progress loop.",
+      "durable_control": "The outer smoke now captures probe-provider stderr, preserves the nested CODEX_MCP_FIXTURE_BLOCKED detail inside the canonical CODEX_PLUGIN_RELEASE_SMOKE_BLOCKED marker, and contract/meta-contract tests forbid collapsing that runtime root cause back to a generic marker."
+    },
+    {
+      "id": "codex-runtime-observer-assumed-provider-path-equals-process-path",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The exact-PR Codex runtime probe treated the selected provider path as if it had to become a live process executable. Upstream Codex uses an interpreter-backed JavaScript launcher that spawns and waits for a bundled native Codex binary, so proc_pidpath() legitimately names Node/native Codex rather than the launcher script even though the exact selected launcher is executing.",
+      "durable_control": "The attempted process-path/argv identity repair is retained only as diagnostic coverage. Final acceptance does not depend on process-table observation: exact selected provider version/SHA are revalidated before launch, then MCP initialize + tools/list, fixture tool-call semantics, and post-runtime clean-state closure are authoritative. This final control is exercised automatically by the exact-PR macOS Actions rehearsal."
+    },
+    {
+      "id": "manual-codex-rehearsal-relay-was-critical-path",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Codex pre-merge runtime qualification depended on a local executor plus human/GPT relay of markers and evidence paths. Repeated output suppression and local provider-shape differences caused no-progress cycles even though the provider boundary was reproducible on a macOS GitHub runner.",
+      "durable_control": "Codex pre-merge rehearsal now runs automatically in the exact-PR macOS Release-candidate workflow using registry-integrity-pinned canary bytes and uploads content-addressed PASS evidence as a GitHub Actions artifact. The tag gate resolves and provenance-checks that successful PR artifact. Codex Draft runtime verification likewise runs in the tag Release workflow and is consumed as a successful Actions artifact. Ambient local Codex installation state is no longer a release input; only Claude retains a local human-TTY boundary."
+    },
+    {
+      "id": "process-table-observer-blocked-proven-mcp-runtime",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Codex rehearsal reached the meaningful runtime boundary (selected exact provider launch path plus MCP initialize/tools-list) but still failed because a supplemental macOS process-table observer did not see the provider. The same failure reproduced in GitHub Actions with pinned Codex 0.155.1, proving the observer was a false-negative gate rather than evidence of provider/runtime failure.",
+      "durable_control": "Process-table/argv observation is now diagnostic only. Acceptance requires exact selected provider version and SHA revalidation by the smoke/CLROOM launch identity path, successful selected-provider MCP initialize + tools/list, fixture tool call, and post-runtime clean-state closure. GitHub Actions owns Codex rehearsal/evidence transport so Owner relay is no longer on the critical path."
+    },
+    {
+      "id": "actions-codex-rehearsal-was-unauthenticated",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "After moving Codex rehearsal into GitHub Actions, the dedicated rehearsal step invoked the release-contract checker without GITHUB_TOKEN. The canonical readiness step passed, but the later rehearsal independently queried GitHub unauthenticated and failed with HTTP 403 rate-limit exhaustion before runtime evidence could be emitted.",
+      "durable_control": "The Codex rehearsal step now receives the workflow-scoped github.token explicitly. Contract and meta-contract tests require that token on the rehearsal step so the automated evidence path cannot silently regress to unauthenticated GitHub API access."
+    },
+    {
+      "id": "codex-auth-reference-path-was-canonicalized-between-phases",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The release smoke created the clean Codex shadow while CODEX_HOME used the shell's lexical macOS /var path, then probe-provider canonicalized the same home with pathlib.resolve() to /private/var. The auth reference contract intentionally compares the symlink target path exactly, so the same underlying auth file appeared to change identity between phases and interactive runtime failed with CLROOM_CODEX_AUTH_REFERENCE_INVALID.",
+      "durable_control": "The runtime fixture now preserves the already-established absolute lexical HOME/CODEX_HOME/TMPDIR paths across clean and selected phases instead of canonicalizing macOS firmlink aliases. Contract and meta-contract tests forbid reintroducing CODEX_HOME resolve() at this boundary."
+    },
+    {
+      "id": "codex-auth-reference-compared-lexically",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "GitHub-hosted pre-merge Codex rehearsal used an equivalent ambient auth path spelling with a doubled separator, while the shadow auth reference check compared the symlink target lexically. The same auth file was therefore rejected as CLROOM_CODEX_AUTH_REFERENCE_INVALID.",
+      "durable_control": "Codex shadow auth references compare canonical resolved file identity rather than pathname spelling. Regression coverage accepts an equivalent lexical path and rejects a symlink to any different auth file."
+    },
+    {
+      "id": "codex-actions-transport-left-stale-local-runbook",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "After Codex rehearsal and Draft verification moved to provenance-checked GitHub Actions artifacts, the release runbook still listed local Codex smoke commands as release steps. That stale operator path could reintroduce the same Owner/executor relay and ambient-local-provider dependency that the machine transport removed.",
+      "durable_control": "The canonical release runbook now lists only Claude as the local human-TTY provider boundary, states that Codex pre-merge/Draft acceptance comes from Actions artifacts, and contract tests fail if local Codex rehearsal/Draft commands reappear in release instructions."
+    },
+    {
+      "id": "claude-release-smoke-probed-before-plugin-qualification",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The local Claude release smoke accepted an arbitrary installed plugin ID and ran automated clean/selected provider prompts before checking whether candidate CLROOM classified that plugin as the v0.4.x qualified skill-only surface. A hook-bearing plugin therefore consumed provider-probe work before the smoke rejected it as unqualified.",
+      "durable_control": "Candidate CLROOM plugin info is now validated immediately after read-only inspection and before any automated model prompt. Rejection emits only sanitized qualification state (installation, selection, qualification, activation policy, conflicts, component kinds), and contract tests enforce preflight-before-prompt ordering."
+    },
+    {
+      "id": "public-doc-provider-version-drift",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Provider pins and runtime qualification advanced to Codex 0.156.0 / Claude 2.1.280 while active public pages such as docs/providers.md, docs/configuration-matrix.md and SECURITY.md still described older exact provider tuples; a docs-only PR branched before the provider bump also reintroduced the stale versions into README.",
+      "durable_control": "Every candidate/tag release-contract run inventories all semantic-version mentions across the declared active public documentation surface. Provider claims must match canonical provider pins or an explicit compatibility/version-floor allowlist; current-product surfaces reject older exact candidate versions. Historical CHANGELOG and SECURITY version-history data stay historical, while provider claims inside SECURITY remain checked. CI never auto-rewrites docs; drift blocks the candidate until docs are corrected in-tree."
+    },
+    {
+      "id": "post-tag-blocker-class-remained-open-after-v0-4-1",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The v0.4.1 incident moved several runtime checks earlier but did not mechanically forbid all first-time blocker-producing checks after a protected tag. In v0.4.2 the tag-triggered Codex Draft smoke attempted GET /immutable-releases with a restricted Actions GITHUB_TOKEN that cannot read repository administration settings, so the Release workflow failed before Codex runtime even though candidate runtime and release bytes were otherwise healthy.",
+      "durable_control": "PRETAG_BLOCKER_CLOSURE now requires exact accepted-main staged shipping bytes and closes every technically reproducible build/package/provider/runtime/permission/API/release-policy blocker before tag. Immutable Releases is checked with the Owner-authenticated gh session before tag and pre-publish; Actions never performs that admin read. Static regression rejects post-tag build/test/provider/latest/runtime/admin checks and non-release v* workflows."
+    },
+    {
+      "id": "post-tag-provider-latest-redecision-could-strand-accepted-bytes",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The old pre-publish verifier reran check-provider-pins.sh after tag. An upstream Codex or Claude stable-tag move between tag and publication could therefore strand already-qualified immutable release bytes for reasons unrelated to those bytes.",
+      "durable_control": "Provider latest/integrity is resolved during accepted-main staging and frozen into clroom.release-stage.v1. Tag promotion and pre-publish verification validate that frozen tuple and exact bytes but never make a second mutable latest decision."
+    },
+    {
+      "id": "tag-triggered-full-ci-was-an-independent-late-blocker",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "CI still triggered on v* tags and reran the full target/test graph after the irreversible tag even after runtime rehearsal had been moved left, leaving an independent first-time late failure surface.",
+      "durable_control": "CI no longer subscribes to v* pushes. check-post-tag-surface.py fails if any non-release workflow reintroduces the v* trigger, while the sole tag workflow is constrained to staged-byte promotion, tag-bound attestation and reconciliation."
+    },
+    {
+      "id": "promotion-token-capability-was-not-rehearsed-before-tag",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The v0.4.2 escape showed that a workflow can contain a logically valid API check but still be incapable of executing it under its actual token permissions. Static permission declarations alone are insufficient proof.",
+      "durable_control": "Accepted-main attestation rehearsal uses the workflow-scoped token with actions:read to list and download the exact stage artifact and byte-compare its manifest before tag. Repository-admin policy checks are deliberately kept on the Owner-authenticated local boundary."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "On the exact v0.4.3 PR candidate tree, pinned Codex 0.156.0 must prove the standalone-mcp@clroom-fixture whole-plugin path through real-provider MCP initialize, tools/list, a real fixture tools/call, state lifecycle closure and a final clean relaunch with no model prompt. Evidence is content-addressed to reviewed_content_digest + source_tree + provider/plugin bytes and may survive squash only after candidate-tree == accepted-tree."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "On the exact v0.4.3 PR candidate tree, pinned Claude Code 2.1.280 must prove the selected skill-only plugin in a genuine local TTY with no model prompt, unchanged persistent provider config, external ancestor AGENTS exclusion and repo/nested project AGENTS retention. Evidence is content-addressed to reviewed_content_digest + source_tree + provider bytes."
+    },
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "The exact future v0.4.3 shipping archive built from accepted main must be provider-qualified and then exercised automatically with pinned Codex 0.156.0 through the standalone MCP initialize/tools-list/tool-call runtime boundary plus post-runtime clean closure. Stage evidence binds exact accepted source SHA/tree, reviewed_content_digest, provider/plugin bytes and shipping artifact SHA-256 with evidence_binding=exact-release-artifact-v1."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Before tag, the exact future v0.4.3 shipping archive from accepted main must pass the local Claude 2.1.280 skill-only selected-plugin TTY proof, including project AGENTS retention/external ancestor exclusion and no model prompt. Stage evidence must bind the exact accepted source SHA/tree, reviewed_content_digest, Claude provider bytes and shipping artifact SHA-256 with evidence_binding=exact-release-artifact-v1."
+    },
+    {
+      "id": "release-promotion",
+      "phase": "TAG_BOUND_PROMOTION",
+      "requirement": "After the protected tag, automation may only resolve the already accepted exact stage, create tag-bound provenance/SBOM attestations, create/update a Draft, upload the accepted payload bytes and download/cmp-reconcile the exact six assets. No build/test/provider/runtime/latest/admin-policy gate may first execute here."
+    }
+  ],
+  "product_outcome": "Ship v0.4.3 from the published v0.4.0 baseline with the bounded Codex/Claude whole-plugin capability accumulated in the unpublished v0.4.1/v0.4.2 candidates, while repairing the release harness after the second avoidable late escape. The release train now closes all technically reproducible build/package/provider/runtime/permission/release-policy blockers before a protected tag: exact PR rehearsal remains pre-merge, accepted main builds and qualifies the exact future shipping bytes once, provider registry freshness/integrity is frozen into a staged manifest, Codex whole-plugin runtime and attestation mechanism are rehearsed on those staged bytes, and Claude performs the one genuine local human-TTY stage proof against the same archive. The tag workflow is promotion-only and can only add unavoidable tag-bound attestations, create the Draft, upload the already accepted bytes and byte-reconcile them. Pre-publish verification rechecks immutable release policy, tag/Draft identity, exact staged-byte equality, attestations and promotion success without rebuilding, rerunning providers, or reopening a mutable provider-latest decision.",
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "The v0.4.2 protected tag exposed the second avoidable late release escape in the v0.4.x train. Product/provider runtime had already been rehearsed, but the release architecture still allowed new blocker-producing surfaces after tag: full CI, fresh shipping build/qualification, mutable provider-latest rechecks, Draft runtime, and a repository-admin Immutable Releases API check executed under an Actions token that could not read it. The repair therefore addresses the class, not the marker: exact future shipping bytes are staged and fully qualified before tag; provider freshness is frozen at staging; Actions token capabilities used for promotion are rehearsed before tag; repository-admin policy is owned by the Owner-authenticated local boundary; tag automation is promotion-only; and static negative controls forbid reintroducing first-time post-tag blockers.",
+    "promoted_controls": [
+      "PRETAG_BLOCKER_CLOSURE machine policy in Release Contract v1",
+      "clroom.release-stage.v1 content-addressed manifest binding accepted source SHA/tree, review digest, exact payload digests, release-notes digest and frozen provider version/integrity tuple",
+      "accepted-main exact shipping archive built once and provider-qualified before tag",
+      "automatic Codex whole-plugin runtime against the exact staged shipping archive before tag",
+      "local Claude human-TTY stage proof against the exact staged shipping archive before tag",
+      "accepted-main GitHub attestation-mechanism rehearsal before tag",
+      "accepted-main workflow-token actions:read capability rehearsal by listing/downloading the exact stage artifact before tag",
+      "Owner-authenticated Immutable Releases policy check at pre-tag action-time and pre-publish boundaries",
+      "promotion-only v* Release workflow with no build/test/provider/runtime/latest/admin check",
+      "removal of ordinary CI v* trigger so Release is the sole tag-push workflow",
+      "post-tag static negative contract forbidding first-time blocker surfaces",
+      "provider latest/integrity freeze at accepted-main staging with no post-tag mutable latest redecision",
+      "Draft byte equality reconciliation against the accepted stage plus tag-bound attestation verification",
+      "same-tag retry semantics for transient post-tag transport failures after authoritative reconciliation",
+      "inherited exact-PR content-addressed Codex/Claude rehearsal and whole-product release review from the v0.4.0→candidate delta"
+    ]
+  },
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+}
