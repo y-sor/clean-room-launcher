@@ -180,7 +180,7 @@ record = {
     },
     "blocker_closure": sorted({
         "release_contract",
-        "accepted_main_ci",
+        "release_readiness",
         "exact_shipping_archive",
         "generic_provider_qualification",
         "codex_exact_archive_runtime",
