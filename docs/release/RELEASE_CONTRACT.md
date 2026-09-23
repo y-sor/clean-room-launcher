@@ -58,8 +58,10 @@ candidate-only whole-delta/artifact qualification is skipped. Once the manifest
 version advances beyond that published release, readiness enters
 `ACTIVE_CANDIDATE`: the full whole-delta release contract is required against
 the latest published stable baseline, including a new versioned review snapshot
-and candidate artifact/provider qualification. The tag workflow always runs the
-full contract check for the exact tagged candidate.
+and candidate artifact/provider qualification. The protected tag helper runs
+the final full contract check before the irreversible push. Post-tag automation
+does not re-run the mutable whole-release contract; it consumes the already
+accepted staged manifest and immutable tag identity.
 
 ## Contract evolution review
 
@@ -145,8 +147,8 @@ the current provider pins.
 
 The release harness never edits documentation after provider tests. A provider
 pin move must be accompanied by the required qualification evidence and matching
-documentation changes in the same reviewed candidate. Release-candidate and tag
-contract checks block until that coherence is restored. This keeps candidate
+documentation changes in the same reviewed candidate. Release-candidate and
+pre-tag contract checks block until that coherence is restored. This keeps candidate
 bytes deterministic and makes documentation drift a pre-release failure rather
 than a post-test auto-write.
 
