@@ -9,6 +9,10 @@ Semantic Versioning after the first public release.
 
 ## [0.4.3] - 2026-09-23
 
+### Changed
+
+- Advanced the exact macOS Apple Silicon Codex qualification target from `0.156.0` to current stable `0.156.1`, with fresh registry-integrity pins and full exact-candidate runtime requalification.
+
 ### Fixed
 
 - Rebuilt the release harness around pre-tag blocker closure: exact future shipping bytes are staged and qualified before protected tag creation, while post-tag automation is limited to tag-bound attestation, byte-for-byte Draft promotion, and reconciliation.
@@ -39,7 +43,7 @@ Semantic Versioning after the first public release.
   from runtime capability and requires a standalone MCP `initialize` +
   `tools/list` boundary with a real fixture tool call.
 - Advanced exact macOS Apple Silicon release qualification to current stable
-  Codex `0.156.1` and Claude Code `2.1.280`.
+  Codex `0.156.0` and Claude Code `2.1.280`.
 - Release provider pins fail closed against live npm `latest` and registry
   integrity before canary provisioning and again at the protected tag boundary.
 - Codex release qualification now proves provider-state lifecycle continuity:
