@@ -91,13 +91,77 @@ do
   grep -Fq -- "$required" "$release_workflow" || fail "PROMOTION_CONTRACT:$required"
 done
 
-python3 - "$ci_workflow" <<'PY'
+workflow_dir=$(cd "$(dirname "$release_workflow")" && pwd -P)
+release_workflow_abs=$(cd "$(dirname "$release_workflow")" && pwd -P)/$(basename "$release_workflow")
+python3 - "$workflow_dir" "$release_workflow_abs" <<'PY'
 from pathlib import Path
+import re
 import sys
-text = Path(sys.argv[1]).read_text(encoding="utf-8")
-on_block = text.split("concurrency:", 1)[0]
-if 'tags:' in on_block or '- "v*"' in on_block or "- 'v*'" in on_block:
-    raise SystemExit("POST_TAG_CONTRACT_BLOCKED:TAG_CI_TRIGGER")
+
+workflow_dir = Path(sys.argv[1])
+release_workflow = Path(sys.argv[2]).resolve()
+
+def on_block(text: str) -> list[str]:
+    lines = text.splitlines()
+    start = None
+    inline = None
+    for index, line in enumerate(lines):
+        match = re.match(r"^on:\s*(.*)$", line)
+        if match:
+            start = index
+            inline = match.group(1).strip()
+            break
+    if start is None:
+        return []
+    if inline:
+        return [f"on: {inline}"]
+    block = [lines[start]]
+    for line in lines[start + 1:]:
+        if line.strip() and not line.startswith((" ", "\t", "#")):
+            break
+        block.append(line)
+    return block
+
+def push_can_match_tags(block: list[str]) -> bool:
+    if not block:
+        return False
+    if len(block) == 1:
+        inline = block[0].split(":", 1)[1].strip()
+        return bool(re.search(r"(^|[\[, ]+)push([\], ]+|$)", inline))
+    index = 1
+    while index < len(block):
+        line = block[index]
+        event = re.match(r"^  push:\s*(.*)$", line)
+        if not event:
+            index += 1
+            continue
+        inline = event.group(1).strip()
+        if inline:
+            return True
+        nested = []
+        index += 1
+        while index < len(block):
+            candidate = block[index]
+            if candidate.strip() and len(candidate) - len(candidate.lstrip(" ")) <= 2:
+                break
+            nested.append(candidate)
+            index += 1
+        joined = "\n".join(nested)
+        if re.search(r"^\s+tags(?:-ignore)?:", joined, flags=re.M):
+            return True
+        if not re.search(r"^\s+branches(?:-ignore)?:", joined, flags=re.M):
+            return True
+    return False
+
+candidates = sorted(set(workflow_dir.glob("*.yml")) | set(workflow_dir.glob("*.yaml")))
+for workflow in candidates:
+    if workflow.resolve() == release_workflow:
+        continue
+    block = on_block(workflow.read_text(encoding="utf-8"))
+    if push_can_match_tags(block):
+        raise SystemExit(
+            "POST_TAG_CONTRACT_BLOCKED:NON_RELEASE_TAG_TRIGGER:" + workflow.name
+        )
 PY
 
 printf 'POST_TAG_CONTRACT_PASS release=%s ci=%s resolver=%s verifier=%s\n' \
