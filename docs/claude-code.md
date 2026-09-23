@@ -43,7 +43,7 @@ For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-se
 
 ## v0.4.x: select one installed whole plugin
 
-v0.4.2 includes one bounded whole-plugin selector:
+v0.4.3 includes one bounded whole-plugin selector:
 
 ```sh
 claude plugin list
@@ -84,7 +84,7 @@ While a CLROOM resource selection is active, raw `--plugin-dir` and
 `--plugin-url` arguments are refused to avoid two competing activation
 authorities. More than one selected whole plugin is also refused.
 
-v0.4.2 requalifies both the ordinary clean launch and this whole-plugin path on
+v0.4.3 requalifies both the ordinary clean launch and this whole-plugin path on
 the current stable Claude Code `2.1.280` for macOS Apple Silicon. Release
 qualification includes the provider's built-in `agents-md` behavior: AGENTS
 instructions above the Git project boundary must stay outside the launch while
@@ -94,7 +94,7 @@ the candidate is tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
 This Claude slice still does not add standalone MCP resource activation,
 `--with=all`, presets, installation/update/removal, or component-level
-selection. Codex whole-plugin activation is a separate v0.4.2 provider-specific
+selection. Codex whole-plugin activation is a separate v0.4.3 provider-specific
 path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?
