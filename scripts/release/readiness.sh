@@ -10,6 +10,9 @@ fail() {
 }
 
 cd "$root"
+# Release checks must not write Python bytecode into the public source tree.
+# This applies to every helper and to Python subprocesses launched from cargo tests.
+export PYTHONDONTWRITEBYTECODE=1
 manifest_version="$(python3 - <<'PY'
 import tomllib
 with open("Cargo.toml", "rb") as handle:
@@ -117,7 +120,8 @@ sh install.sh --self-test || fail "INSTALLER_CONTRACT"
 canonical_install_url='https://github.com/y-sor/clean-room-launcher/releases/latest/download/install.sh'
 grep -Fq "$canonical_install_url" README.md || fail "README_INSTALLER_CONTRACT"
 grep -Fq "$canonical_install_url" docs/install.md || fail "DOCS_INSTALLER_CONTRACT"
-PYTHONDONTWRITEBYTECODE=1 cargo test --locked --all-targets || fail "FULL_LOCKED_TESTS"
+./scripts/check-public-boundary.sh --root "$root" || fail "PUBLIC_BOUNDARY_POST_PREFLIGHT"
+cargo test --locked --all-targets || fail "FULL_LOCKED_TESTS"
 
 if ! command -v cargo-deny >/dev/null 2>&1; then
   fail "SCA_TOOL_NOT_AVAILABLE"
