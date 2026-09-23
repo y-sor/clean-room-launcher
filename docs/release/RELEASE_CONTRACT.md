@@ -261,7 +261,7 @@ Use:
 ~~~sh
 # Before merge: exact PR candidate, only Claude remains a local human-TTY gate.
 bash scripts/release/local-plugin-activation-smoke.sh rehearse \
-  --expected-head <exact-pr-head> --plugin-id <qualified-claude-id>
+  --expected-head <exact-pr-head> --plugin-id frontend-design@claude-plugins-official
 
 # Codex pre-merge rehearsal is produced automatically by the PR
 # Release-candidate workflow.
@@ -273,7 +273,7 @@ bash scripts/release/resolve-pretag-stage.sh \
 bash scripts/release/local-plugin-activation-smoke.sh stage \
   --expected-head <accepted-main-sha> \
   --artifact <stage-dir>/clean-room-launcher-v<version>-aarch64-apple-darwin.tar.gz \
-  --plugin-id <qualified-claude-id>
+  --plugin-id frontend-design@claude-plugins-official
 
 # Only after that evidence passes may the Owner authorize the protected tag.
 # After tag-bound promotion creates the Draft:
