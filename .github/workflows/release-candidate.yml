@@ -61,6 +61,12 @@ jobs:
           echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
           echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
           printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
+      - name: Validate workflow-local execution parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release/check-workflow-exec-contract.py --self-test
+          python3 scripts/release/check-workflow-exec-contract.py
       - name: Prove release attestation contract fails closed
         shell: bash
         run: |
