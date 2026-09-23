@@ -91,7 +91,7 @@ do
   grep -Fq -- "$needle" "$codex_rehearsal_resolver" || fail "CODEX_REHEARSAL_RESOLVER_CONTRACT:$needle"
 done
 
-for needle in   'pretag-stage:'   'Rehearse/stage exact release bytes'   'source_sha="${{ github.event.pull_request.head.sha || github.sha }}"'   'bash scripts/release/stage-release.sh "$source_sha" "$RUNNER_TEMP/pretag-stage"'   'pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}'   'pretag-attestation-rehearsal:'   'Rehearse attestation mechanism before tag'   'PRETAG_ATTESTATION_REHEARSAL_PASS'
+for needle in   'pretag-stage:'   'Rehearse/stage exact release bytes'   'source_sha="${{ github.event.pull_request.head.sha || github.sha }}"'   'bash scripts/release/stage-release.sh "$source_sha" "$RUNNER_TEMP/pretag-stage"'   'pretag-stage-v${{ needs.release-eligibility.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}'   'pretag-attestation-rehearsal:'   'Rehearse attestation mechanism before tag'   'PRETAG_ATTESTATION_REHEARSAL_PASS'
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "PRETAG_WORKFLOW_MISSING:$needle"
 done

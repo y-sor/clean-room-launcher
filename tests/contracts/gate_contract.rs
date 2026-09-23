@@ -81,7 +81,7 @@ fn accepted_main_stage_qualifies_exact_archive_before_tag() {
         stage_step.contains(r#"GITHUB_TOKEN: ${{ github.token }}"#),
         "exact-byte stage must authenticate release-contract GitHub API reads"
     );
-    assert!(candidate.contains("pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}"));
+    assert!(candidate.contains("pretag-stage-v${{ needs.release-eligibility.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}"));
     assert!(candidate.contains(
         "./scripts/release/provision-provider-canaries.sh \"$RUNNER_TEMP/clroom-providers\" \"$GITHUB_ENV\""
     ));

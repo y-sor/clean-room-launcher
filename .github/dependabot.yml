@@ -11,4 +11,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      codeql-family:
+        patterns:
+          - "github/codeql-action/*"
     open-pull-requests-limit: 3

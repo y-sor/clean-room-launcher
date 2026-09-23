@@ -17,6 +17,7 @@ jobs:
   prepare:
     name: Validate tag and resolve accepted pre-tag stage
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       version: ${{ steps.release.outputs.version }}
       prerelease: ${{ steps.release.outputs.prerelease }}
@@ -73,6 +74,7 @@ jobs:
     name: Bind accepted staged bytes to exact tag
     needs: prepare
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       actions: read
@@ -137,6 +139,7 @@ jobs:
     name: Promote exact staged bytes to guarded Draft
     needs: [prepare, attest]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       actions: read

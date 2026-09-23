@@ -15,26 +15,32 @@ permissions:
   contents: read
 
 jobs:
-  release-readiness:
-    name: CLROOM release readiness
-    runs-on: macos-14
+  release-eligibility:
+    name: Release eligibility and harness seal
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.lifecycle.outputs.version }}
       lifecycle: ${{ steps.lifecycle.outputs.lifecycle }}
+      baseline: ${{ steps.lifecycle.outputs.baseline }}
     steps:
-      - name: Check out exact PR HEAD
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
-      - name: Validate workflow-local execution parity
+      - name: Validate cheap harness invariants
         shell: bash
         run: |
           set -euo pipefail
+          python3 scripts/release/check-harness-contract.py --self-test
+          python3 scripts/release/check-harness-contract.py
+          python3 scripts/release/stage-binding.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py
+          python3 scripts/release/check-release-contract.py --self-test
       - name: Resolve published release lifecycle
         id: lifecycle
         env:
@@ -61,12 +67,38 @@ jobs:
             git fetch --no-tags origin "refs/tags/$latest_tag:refs/tags/$latest_tag"
           fi
           git rev-parse --verify "refs/tags/$latest_tag^{commit}" >/dev/null
-          echo "CLROOM_RELEASE_VERSION=$candidate_version" >> "$GITHUB_ENV"
-          echo "CLROOM_RELEASE_BASE_REF=$latest_tag" >> "$GITHUB_ENV"
-          echo "CLROOM_RELEASE_LIFECYCLE=$lifecycle" >> "$GITHUB_ENV"
           echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
           echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
+          echo "baseline=$latest_tag" >> "$GITHUB_OUTPUT"
           printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
+      - name: Validate active candidate seal before expensive lanes
+        if: steps.lifecycle.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/check-release-contract.py --report >/dev/null
+  release-readiness:
+    name: CLROOM release readiness
+    needs: release-eligibility
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      CLROOM_RELEASE_VERSION: ${{ needs.release-eligibility.outputs.version }}
+      CLROOM_RELEASE_BASE_REF: ${{ needs.release-eligibility.outputs.baseline }}
+      CLROOM_RELEASE_LIFECYCLE: ${{ needs.release-eligibility.outputs.lifecycle }}
+    steps:
+      - name: Check out exact PR HEAD
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Validate workflow-local execution parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release/check-workflow-exec-contract.py --self-test
+          python3 scripts/release/check-workflow-exec-contract.py
       - name: Prove release attestation contract fails closed
         shell: bash
         run: |
@@ -83,16 +115,6 @@ jobs:
             exit 1
           fi
           grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_ACTION_PIN' "$output"
-      - name: Provision existing Python supply-chain verifier
-        shell: bash
-        run: |
-          set -euo pipefail
-          verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"
-          python3 -m venv "$verifier_root"
-          "$verifier_root/bin/python" -m pip install --disable-pip-version-check --no-input \
-            "jsonschema==4.26.0"
-          echo "$verifier_root/bin" >> "$GITHUB_PATH"
-          test "$("$verifier_root/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("jsonschema"))')" = "4.26.0"
       - name: Install cargo-deny 0.20.2 verification tool
         shell: bash
         run: |
@@ -189,9 +211,10 @@ jobs:
 
   pretag-stage:
     name: Rehearse/stage exact release bytes
-    needs: release-readiness
-    if: needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    needs: [release-eligibility, release-readiness]
+    if: needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     runs-on: macos-14
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -219,16 +242,17 @@ jobs:
       - name: Upload content-addressed pre-tag stage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}
+          name: pretag-stage-v${{ needs.release-eligibility.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/pretag-stage/*
           if-no-files-found: error
           retention-days: 30
 
   pretag-attestation-rehearsal:
     name: Rehearse attestation mechanism before tag
-    needs: [release-readiness, pretag-stage]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE'
+    needs: [release-eligibility, release-readiness, pretag-stage]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -244,14 +268,14 @@ jobs:
       - name: Download exact staged bytes
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.sha }}
+          name: pretag-stage-v${{ needs.release-eligibility.outputs.version }}-${{ github.sha }}
           path: pretag-stage
       - name: Verify staged manifest
         shell: bash
         run: |
           set -euo pipefail
           source scripts/release/provider-pins.sh
-          python3 scripts/release/verify-pretag-stage.py             --dir pretag-stage             --version "${{ needs.release-readiness.outputs.version }}"             --source-head "$GITHUB_SHA"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
+          python3 scripts/release/verify-pretag-stage.py             --dir pretag-stage             --version "${{ needs.release-eligibility.outputs.version }}"             --source-head "$GITHUB_SHA"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
       - name: Rehearse build provenance attestation
         id: provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -261,12 +285,12 @@ jobs:
         id: sbom_attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: pretag-stage/clean-room-launcher-v${{ needs.release-readiness.outputs.version }}-aarch64-apple-darwin.tar.gz
+          subject-path: pretag-stage/clean-room-launcher-v${{ needs.release-eligibility.outputs.version }}-aarch64-apple-darwin.tar.gz
           sbom-path: pretag-stage/sbom.cdx.json
       - name: Verify pre-tag attestation mechanism
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.release-readiness.outputs.version }}
+          VERSION: ${{ needs.release-eligibility.outputs.version }}
           PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
           SBOM_BUNDLE: ${{ steps.sbom_attestation.outputs.bundle-path }}
         shell: bash
@@ -278,3 +302,47 @@ jobs:
           done
           gh attestation verify "pretag-stage/$artifact"             -R "$GITHUB_REPOSITORY"             --bundle "$SBOM_BUNDLE"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-candidate.yml"             --source-digest "$GITHUB_SHA"             --source-ref "refs/heads/main"             --deny-self-hosted-runners
           echo "PRETAG_ATTESTATION_REHEARSAL_PASS source=$GITHUB_SHA"
+
+  release-required:
+    name: Release required
+    needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require complete release-candidate topology
+        env:
+          EVENT: ${{ github.event_name }}
+          LIFECYCLE: ${{ needs.release-eligibility.outputs.lifecycle }}
+          ELIGIBILITY: ${{ needs.release-eligibility.result }}
+          READINESS: ${{ needs.release-readiness.result }}
+          STAGE: ${{ needs.pretag-stage.result }}
+          ATTEST: ${{ needs.pretag-attestation-rehearsal.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$ELIGIBILITY" = success
+          test "$READINESS" = success
+          case "$LIFECYCLE:$EVENT" in
+            ACTIVE_CANDIDATE:pull_request)
+              test "$STAGE" = success
+              test "$ATTEST" = skipped
+              ;;
+            ACTIVE_CANDIDATE:push)
+              test "$STAGE" = success
+              test "$ATTEST" = success
+              ;;
+            ACTIVE_CANDIDATE:workflow_dispatch)
+              test "$STAGE" = skipped
+              test "$ATTEST" = skipped
+              ;;
+            POST_PUBLISH:*)
+              test "$STAGE" = skipped
+              test "$ATTEST" = skipped
+              ;;
+            *)
+              echo "unexpected release topology lifecycle=$LIFECYCLE event=$EVENT" >&2
+              exit 1
+              ;;
+          esac
+          echo "RELEASE_REQUIRED_PASS lifecycle=$LIFECYCLE event=$EVENT"
