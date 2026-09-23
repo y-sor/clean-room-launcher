@@ -166,7 +166,7 @@ PY
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-tag-stage.XXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
-GH_TOKEN=${GH_TOKEN:-} bash scripts/release/resolve-pretag-stage.sh   "$version" "$expected" "$tmp/stage" || {
+bash scripts/release/resolve-pretag-stage.sh   "$version" "$expected" "$tmp/stage" || {
     echo "TAG_GATE_BLOCKED:PRETAG_STAGE" >&2
     exit 80
   }
@@ -195,44 +195,17 @@ claude_stage="$evidence_dir/stage-v${version}-${expected:0:12}.json"
   echo "TAG_GATE_BLOCKED:CLAUDE_STAGE_EVIDENCE_MISSING:$claude_stage" >&2
   exit 75
 }
-python3 -   "$claude_stage" "$version" "$expected" "$current_tree"   "$reviewed_content_digest" "$artifact_sha" "$CLAUDE_VERSION" <<'PY'
-import json, re, sys
-path, version, expected, tree, review_digest, artifact_sha, claude_version = sys.argv[1:]
-record = json.load(open(path, encoding="utf-8"))
-required = {
-    "schema_version": "clroom.plugin-release-smoke.v3",
-    "result": "PASS",
-    "phase": "stage",
-    "release_version": version,
-    "source_head": expected,
-    "source_tree": tree,
-    "reviewed_content_digest": review_digest,
-    "artifact_sha256": artifact_sha,
-    "platform": "macos-aarch64",
-    "claude_version": claude_version,
-    "clean_system_init": True,
-    "selected_system_init": True,
-    "clean_target_plugin": False,
-    "selected_target_plugin": True,
-    "new_sibling_plugins": 0,
-    "selected_plugin_errors": 0,
-    "persistent_config_unchanged": True,
-    "interactive_selected_tui_confirmed": True,
-    "automated_probe_prompt_supplied": True,
-    "interactive_no_model_prompt_confirmed": True,
-    "external_ancestor_agents_absent_confirmed": True,
-    "project_agents_retained_confirmed": True,
-    "external_ancestor_agents_sandbox_probe_passed": True,
-}
-for key, value in required.items():
-    if record.get(key) != value:
-        raise SystemExit(f"TAG_GATE_BLOCKED:CLAUDE_STAGE_EVIDENCE:{key}")
-if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("claude_provider_sha256", ""))):
-    raise SystemExit("TAG_GATE_BLOCKED:CLAUDE_STAGE_PROVIDER_SHA")
-if not record.get("plugin_id"):
-    raise SystemExit("TAG_GATE_BLOCKED:CLAUDE_STAGE_PLUGIN_ID")
-print("CLAUDE_STAGE_EVIDENCE_PASS")
-PY
+python3 scripts/release/verify-claude-stage-evidence.py \
+  --evidence "$claude_stage" \
+  --version "$version" \
+  --source-head "$expected" \
+  --source-tree "$current_tree" \
+  --reviewed-content-digest "$reviewed_content_digest" \
+  --artifact-sha256 "$artifact_sha" \
+  --claude-version "$CLAUDE_VERSION" || {
+    echo "TAG_GATE_BLOCKED:CLAUDE_STAGE_EVIDENCE" >&2
+    exit 75
+  }
 
 title="$tag — Clean Room Launcher"
 git tag -a "$tag" "$expected" -m "$title"
