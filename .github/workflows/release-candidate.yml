@@ -68,12 +68,13 @@ jobs:
             rm -f -- "$probe" "$output"
           }
           trap cleanup EXIT HUP INT TERM
-          grep -Fv -- 'name: release-attestations' .github/workflows/release.yml > "$probe"
+          grep -Fv -- 'uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2' \
+            .github/workflows/release.yml > "$probe"
           if scripts/release/check-attestation-contract.sh "$probe" >"$output" 2>&1; then
-            echo "release attestation contract unexpectedly passed without artifact handoff" >&2
+            echo "release attestation contract unexpectedly passed without pinned attestation action" >&2
             exit 1
           fi
-          grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:ARTIFACT_HANDOFF' "$output"
+          grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:RELEASE_ATTEST_ACTION_PIN' "$output"
       - name: Provision existing Python supply-chain verifier
         shell: bash
         run: |
