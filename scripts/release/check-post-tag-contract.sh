@@ -103,14 +103,14 @@ release_workflow = Path(sys.argv[2]).resolve()
 
 def yaml_key(line: str):
     match = re.match(
-        r"^(?P<indent>[ \\t]*)(?:(?P<dq>\"[^\"]+\")|(?P<sq>'[^']+')|(?P<bare>[A-Za-z0-9_-]+))\\s*:\\s*(?P<rest>.*)$",
+        r"^(?P<indent>[ \t]*)(?:(?P<dq>\"[^\"]+\")|(?P<sq>'[^']+')|(?P<bare>[A-Za-z0-9_-]+))\s*:\s*(?P<rest>.*)$",
         line,
     )
     if not match:
         return None
     raw = match.group("dq") or match.group("sq") or match.group("bare")
     key = raw[1:-1] if raw[:1] in ("\"", "'") else raw
-    return len(match.group("indent").replace("\\t", "  ")), key, match.group("rest").strip()
+    return len(match.group("indent").replace("\t", "  ")), key, match.group("rest").strip()
 
 def on_block(text: str) -> list[str]:
     lines = text.splitlines()
@@ -179,6 +179,30 @@ def push_can_match_tags(block: list[str]) -> bool:
         if "branches" not in filters and "branches-ignore" not in filters:
             return True
     return False
+
+def self_test():
+    safe = [
+        "name: safe\non:\n  pull_request:\n  push:\n    branches:\n      - main\njobs: {}\n",
+        "name: safe\n\"on\":\n  \"push\":\n    branches-ignore:\n      - legacy\njobs: {}\n",
+        "name: safe\non:\n  pull_request:\njobs: {}\n",
+    ]
+    unsafe = [
+        "name: bad\non: push\njobs: {}\n",
+        "name: bad\non: [push, pull_request]\njobs: {}\n",
+        "name: bad\non:\n  push:\njobs: {}\n",
+        "name: bad\n'on':\n  'push':\n    tags:\n      - 'v*'\njobs: {}\n",
+        "name: bad\non:\n  push:\n    tags-ignore:\n      - beta\njobs: {}\n",
+        "name: bad\non:\n  push: { branches: [main] }\njobs: {}\n",
+    ]
+    for fixture in safe:
+        if push_can_match_tags(on_block(fixture)):
+            raise SystemExit("POST_TAG_CONTRACT_BLOCKED:WORKFLOW_TAG_TRIGGER_SELF_TEST_SAFE")
+    for fixture in unsafe:
+        if not push_can_match_tags(on_block(fixture)):
+            raise SystemExit("POST_TAG_CONTRACT_BLOCKED:WORKFLOW_TAG_TRIGGER_SELF_TEST_UNSAFE")
+    print("WORKFLOW_TAG_TRIGGER_SELF_TEST_PASS")
+
+self_test()
 
 candidates = sorted(set(workflow_dir.glob("*.yml")) | set(workflow_dir.glob("*.yaml")))
 for workflow in candidates:
