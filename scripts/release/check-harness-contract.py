@@ -139,7 +139,7 @@ def check(root: Path) -> list[str]:
     require(errors, "name: Release required" in release_required, "RELEASE_REQUIRED_NAME")
     require(
         errors,
-        "needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal]" in release_required,
+        "needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal, promotion-prepare-rehearsal]" in release_required,
         "RELEASE_REQUIRED_TOPOLOGY",
     )
     require(errors, "if: always()" in release_required, "RELEASE_REQUIRED_ALWAYS")
@@ -191,6 +191,8 @@ def check(root: Path) -> list[str]:
         blocks = job_blocks(text)
         require(errors, bool(blocks), f"WORKFLOW_JOBS:{path}")
         for job, block in blocks.items():
+            if re.search(r"(?m)^    uses:\s+\./\.github/workflows/", block):
+                continue
             require(errors, "timeout-minutes:" in block, f"JOB_TIMEOUT:{path}:{job}")
 
     return errors
