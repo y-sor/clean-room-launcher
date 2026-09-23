@@ -293,7 +293,7 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_VERSION_POLICY")
     if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CHANGELOG_DATE_FLOOR_POLICY")
-    if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
+    if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_pretag_stage_before_push":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:TAG_REMOTE_REFRESH_POLICY")
     public_doc_version_policy(contract)
 
@@ -314,7 +314,7 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CANDIDATE_VERSION_POLICY")
         if contract.get("policy", {}).get("changelog_date_floor") != "published_baseline_date":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_DATE_FLOOR_POLICY")
-        if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_provider_checks_before_push":
+        if contract.get("policy", {}).get("tag_remote_refresh_order") != "after_pretag_stage_before_push":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_TAG_REMOTE_REFRESH_POLICY")
         doc_policy = public_doc_version_policy(contract)
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
