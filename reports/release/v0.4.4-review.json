@@ -79,7 +79,8 @@
         "The protected tag helper snapshots a deterministic digest over every already-verified staged file and rechecks that local staged-byte binding inside the final action-time guard immediately before the single tag push. This closes local stage TOCTOU without re-downloading the stage, rebuilding, querying registries, or rerunning provider/runtime qualification.",
         "The provider-canary contract's early-exit negative fixture now preserves its fake provider's positional argument expansion until fake-provider runtime; this prevents the meta-test itself from failing with a shell syntax error before it can prove that an immediate-exit candidate is rejected by real-provider qualification.",
         "Post-tag trigger closure is repository-wide and executable: check-post-tag-contract.sh scans every .github/workflows/*.yml/*.yaml file, correctly parses bare/quoted on and push keys, normalizes quoted inline on values before token matching, and runs named safe/unsafe fixtures on every readiness invocation. The fixtures reject direct/list/empty/tag-filter/inline push forms while accepting explicit branch-only filters, so parser escaping or a future CI/CodeQL/new workflow cannot silently reintroduce a first-post-tag blocker outside release.yml.",
-        "The v0.4.3 protected tag reached the exact accepted commit but its Release workflow failed before attestation/Draft creation because release.yml directly invoked scripts/release/resolve-pretag-stage.sh with tracked mode 100644. v0.4.4 treats this as HARNESS INCIDENT evidence: the tag remains immutable/unpublished, the resolver is invoked explicitly through bash, a repository-wide workflow execution-mode contract runs before expensive qualification, and the tag helper requires the successful exact-source Ubuntu promotion-prepare rehearsal."
+        "The v0.4.3 protected tag reached the exact accepted commit but its Release workflow failed before attestation/Draft creation because release.yml directly invoked scripts/release/resolve-pretag-stage.sh with tracked mode 100644. v0.4.4 treats this as HARNESS INCIDENT evidence: the tag remains immutable/unpublished, the resolver is invoked explicitly through bash, a repository-wide workflow execution-mode contract runs before expensive qualification, and the tag helper requires the successful exact-source Ubuntu promotion-prepare rehearsal.",
+        "Public-boundary allowlisting for the new release-promotion rehearsal workflow is itself classified as release-control delta so the whole-delta checker does not accept an unowned gate mutation."
       ]
     },
     "public_claims": {
@@ -456,5 +457,5 @@
       "protected tag prerequisite for successful exact-source Release promotion rehearsal workflow_run"
     ]
   },
-  "reviewed_content_digest": "9ff6d29ce4ddf8a0953f4dc44d70e2834bb0484dd19a2b38e65aa6d8da2eac6d"
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
 }
