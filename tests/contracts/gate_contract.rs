@@ -598,7 +598,12 @@ fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
     assert!(guard.contains("NON_RELEASE_TAG_TRIGGER"));
     assert!(guard.contains(r#"workflow_dir.glob("*.yml")"#));
     assert!(guard.contains(r#"workflow_dir.glob("*.yaml")"#));
-    assert!(guard.contains("branches(?:-ignore)?"));
+    assert!(guard.contains("def yaml_key(line: str):"));
+    assert!(guard.contains("parsed[0] == 0 && parsed[1] == \"on\"") == false);
+    assert!(guard.contains(r#"parsed[0] == 0 and parsed[1] == "on""#));
+    assert!(guard.contains(r#"parsed[1] != "push""#));
+    assert!(guard.contains(r#""tags-ignore" in filters"#));
+    assert!(guard.contains(r#""branches-ignore" not in filters"#));
 }
 
 #[test]
