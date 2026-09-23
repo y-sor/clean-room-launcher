@@ -11,7 +11,9 @@ codex_mcp_fixture="$root/scripts/release/codex-mcp-fixture.py"
 claude_smoke="$root/scripts/release/local-plugin-activation-smoke.sh"
 tag_helper="$root/scripts/release/push-release-tag.sh"
 codex_rehearsal_resolver="$root/scripts/release/resolve-codex-rehearsal-evidence.sh"
-codex_draft_resolver="$root/scripts/release/resolve-codex-draft-evidence.sh"
+stage_resolver="$root/scripts/release/resolve-release-stage.sh"
+stage_verifier="$root/scripts/release/verify-release-stage.py"
+post_tag_surface="$root/scripts/release/check-post-tag-surface.py"
 release_candidate="$root/.github/workflows/release-candidate.yml"
 release="$root/.github/workflows/release.yml"
 
@@ -20,7 +22,7 @@ fail() {
   exit 1
 }
 
-for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$codex_mcp_fixture" "$claude_smoke" "$tag_helper" "$codex_rehearsal_resolver" "$codex_draft_resolver" "$release_candidate" "$release"; do
+for file in "$provisioner" "$qualifier" "$pins" "$pin_checker" "$codex_smoke" "$codex_mcp_fixture" "$claude_smoke" "$tag_helper" "$codex_rehearsal_resolver" "$stage_resolver" "$stage_verifier" "$post_tag_surface" "$release_candidate" "$release"; do
   [[ -f "$file" ]] || fail "FILE_MISSING"
 done
 
@@ -85,8 +87,12 @@ for needle in \
   '"post_runtime_clean_confirmed": post_runtime_clean == "true"' \
   '"source_tree": source_tree' \
   '"reviewed_content_digest": reviewed_content_digest' \
-  '"evidence_binding": "content-addressed-runtime-v1"' \
+  'binding="content-addressed-runtime-v1"' \
+  'if [[ "$phase" == "stage" ]]; then binding="exact-release-artifact-v1"; fi' \
+  '"evidence_binding": binding' \
   'HEAD_NOT_EXPECTED_CANDIDATE' \
+  'HEAD_NOT_EXPECTED_ACCEPTED_MAIN' \
+  'STAGED_ARTIFACT_MISSING' \
   'clroom-release-evidence' \
   'codex-mcp-fixture.py" probe-provider' \
   'CODEX_MCP_FIXTURE_BLOCKED:' \
@@ -103,8 +109,12 @@ for needle in \
   '"external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true"' \
   '"source_tree":source_tree' \
   '"reviewed_content_digest":reviewed_content_digest' \
-  '"evidence_binding":"content-addressed-runtime-v1"' \
+  'binding="content-addressed-runtime-v1"' \
+  'if [[ "$phase" == "stage" ]]; then binding="exact-release-artifact-v1"; fi' \
+  '"evidence_binding":binding' \
   'HEAD_NOT_EXPECTED_CANDIDATE' \
+  'HEAD_NOT_EXPECTED_ACCEPTED_MAIN' \
+  'STAGED_ARTIFACT_MISSING' \
   'clroom-release-evidence' \
   'PROJECT_AGENTS_NOT_CONFIRMED' \
   'real-tui-workspace' \
@@ -180,26 +190,21 @@ done
 
 for needle in \
   'codex-rehearse-v${version}-${evidence_key}.json' \
-  '"schema_version": "clroom.codex-plugin-release-smoke.v4"' \
-  '"ambient_config_and_plugin_tree_unchanged": True' \
-  '"provider_mcp_initialize_observed": True' \
-  '"provider_mcp_tools_list_observed": True' \
-  '"fixture_mcp_tool_call_passed": True' \
-  '"provider_state_lifecycle_closed": True' \
-  '"real_provider_runtime_confirmed": True' \
-  '"expected_mcp_runtime_healthy_confirmed": True' \
-  '"model_prompt_sent": False' \
-  '"post_runtime_clean_confirmed": True' \
-  '"source_tree": current_tree' \
-  '"reviewed_content_digest": reviewed_content_digest' \
-  '"evidence_binding": "content-addressed-runtime-v1"' \
-  'TAG_GATE_BLOCKED:CODEX_REHEARSAL_FIXTURE_IDENTITY' \
-  'REHEARSAL_CODEX_EVIDENCE_PASS' \
   'resolve-codex-rehearsal-evidence.sh' \
   'TAG_GATE_BLOCKED:CODEX_REHEARSAL_ARTIFACT' \
-  'check-provider-pins.sh'; do
-  grep -Fq -- "$needle" "$tag_helper" || fail "CODEX_TAG_GATE_MISSING"
+  'resolve-release-stage.sh' \
+  'verify-release-stage.py' \
+  'STAGE_CLAUDE_EVIDENCE_MISSING' \
+  '"phase": "stage"' \
+  '"evidence_binding": "exact-release-artifact-v1"' \
+  'verify_immutable_release_policy INITIAL' \
+  'ensure_remote_release_absent ACTION_TIME' \
+  'verify_immutable_release_policy ACTION_TIME'; do
+  grep -Fq -- "$needle" "$tag_helper" || fail "PRETAG_STAGE_GATE_MISSING"
 done
+if grep -Fq -- 'check-provider-pins.sh' "$tag_helper"; then
+  fail "POST_STAGE_PROVIDER_LATEST_REDECISION"
+fi
 
 for needle in \
   'Rehearse Codex runtime on exact PR candidate' \
@@ -212,12 +217,33 @@ for needle in \
 done
 
 for needle in \
-  'verify-codex-draft:' \
-  'Verify Codex plugin runtime against Draft assets' \
-  'local-codex-plugin-activation-smoke.sh draft' \
-  'codex-draft-${GITHUB_REF_NAME}-${GITHUB_SHA}' \
-  'Upload Codex Draft evidence'; do
-  grep -Fq -- "$needle" "$release" || fail "CODEX_DRAFT_WORKFLOW_MISSING"
+  'Stage exact accepted-main release bytes' \
+  'local-codex-plugin-activation-smoke.sh stage' \
+  'Upload accepted-main release stage' \
+  'Rehearse staged attestation mechanism' \
+  'Rehearse promotion token Actions-read capability' \
+  'PROMOTION_ACTIONS_READ_REHEARSAL_PASS'; do
+  grep -Fq -- "$needle" "$release_candidate" || fail "PRETAG_STAGE_WORKFLOW_MISSING"
+done
+
+for needle in \
+  'Promote accepted staged bytes to Draft' \
+  'resolve-release-stage.sh' \
+  'verify-release-stage.py' \
+  'Reconcile uploaded Draft bytes' \
+  'DRAFT_PROMOTION_RECONCILED'; do
+  grep -Fq -- "$needle" "$release" || fail "PROMOTION_WORKFLOW_MISSING"
+done
+for forbidden in \
+  'local-codex-plugin-activation-smoke' \
+  'local-plugin-activation-smoke' \
+  'provision-provider-canaries' \
+  'qualify-real-provider' \
+  'check-provider-pins.sh' \
+  '/immutable-releases'; do
+  if grep -Fq -- "$forbidden" "$release"; then
+    fail "POST_TAG_BLOCKER_REINTRODUCED"
+  fi
 done
 
 for needle in \
@@ -233,20 +259,33 @@ for needle in \
 done
 
 for needle in \
-  '"name": "Release"' \
-  '.github/workflows/release.yml' \
+  'release-stage-v${version}-${expected}' \
+  '"name": "Release candidate readiness"' \
   '"event": "push"' \
-  'CODEX_DRAFT_EVIDENCE_RESOLVED'; do
-  grep -Fq -- "$needle" "$codex_draft_resolver" || fail "CODEX_DRAFT_RESOLVER_CONTRACT"
+  '"head_branch": "main"' \
+  'SUCCESSFUL_ACCEPTED_MAIN_RUN_NOT_FOUND' \
+  'RELEASE_STAGE_RESOLVED'; do
+  grep -Fq -- "$needle" "$stage_resolver" || fail "RELEASE_STAGE_RESOLVER_CONTRACT"
+done
+for needle in \
+  'clroom.release-stage.v1' \
+  'QUALIFICATION_INVALID' \
+  'exact-release-artifact-v1' \
+  'provider_state_lifecycle_closed' \
+  'post_runtime_clean_confirmed'; do
+  grep -Fq -- "$needle" "$stage_verifier" || fail "RELEASE_STAGE_VERIFIER_CONTRACT"
 done
 
+grep -Fq './scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"' "$release_candidate" \
+  || fail "CANDIDATE_WORKFLOW_PROVISIONER_MISSING"
 for workflow in "$release_candidate" "$release"; do
-  grep -Fq './scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-providers" "$GITHUB_ENV"' "$workflow" \
-    || fail "WORKFLOW_PROVISIONER_MISSING"
   if grep -Eq 'npm[[:space:]]+install[[:space:]]' "$workflow"; then
     fail "WORKFLOW_NPM_INSTALL_FORBIDDEN"
   fi
 done
+if grep -Fq 'provision-provider-canaries.sh' "$release"; then
+  fail "TAG_WORKFLOW_PROVIDER_PROVISION_FORBIDDEN"
+fi
 
 if grep -Eq 'npm[[:space:]]+install[[:space:]]' "$provisioner"; then
   fail "PROVISIONER_NPM_INSTALL_FORBIDDEN"
@@ -259,7 +298,8 @@ bash -n "$codex_smoke" || fail "CODEX_SMOKE_SYNTAX"
 bash -n "$claude_smoke" || fail "CLAUDE_SMOKE_SYNTAX"
 bash -n "$tag_helper" || fail "TAG_HELPER_SYNTAX"
 bash -n "$codex_rehearsal_resolver" || fail "CODEX_REHEARSAL_RESOLVER_SYNTAX"
-bash -n "$codex_draft_resolver" || fail "CODEX_DRAFT_RESOLVER_SYNTAX"
+bash -n "$stage_resolver" || fail "RELEASE_STAGE_RESOLVER_SYNTAX"
+python3 -m py_compile "$stage_verifier" "$post_tag_surface" || fail "RELEASE_STAGE_PYTHON_SYNTAX"
 bash -n "$qualifier" || fail "QUALIFIER_SYNTAX"
 python3 "$codex_mcp_fixture" --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 
