@@ -769,6 +769,8 @@ fn workflow_local_exec_contract_blocks_nonexec_direct_invocations() {
 #[test]
 fn accepted_main_rehearses_exact_post_tag_prepare_invocation() {
     let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let candidate =
+        std::fs::read_to_string(".github/workflows/release-candidate.yml").unwrap();
     let rehearsal =
         std::fs::read_to_string(".github/workflows/release-promotion-rehearsal.yml").unwrap();
     let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
@@ -780,24 +782,38 @@ fn accepted_main_rehearses_exact_post_tag_prepare_invocation() {
     for source in [&release, &rehearsal] {
         assert!(source.contains("bash scripts/release/resolve-pretag-stage.sh"));
     }
-    assert!(rehearsal.contains("workflow_run:"));
-    assert!(rehearsal.contains("Release candidate readiness"));
+    assert!(rehearsal.contains("workflow_call:"));
+    assert!(
+        !rehearsal.contains("workflow_run:"),
+        "promotion rehearsal must not use privileged workflow_run checkout chains"
+    );
+    assert!(!rehearsal.contains("inputs.source_sha"));
+    assert!(rehearsal.contains("ref: ${{ github.sha }}"));
+    assert!(rehearsal.contains("SOURCE_SHA: ${{ github.sha }}"));
     assert!(rehearsal.contains("runs-on: ubuntu-latest"));
     assert!(rehearsal.contains("resolve-release-lifecycle.py"));
     assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH"));
     assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_PASS"));
+    assert!(candidate.contains("promotion-prepare-rehearsal:"));
+    assert!(candidate.contains("uses: ./.github/workflows/release-promotion-rehearsal.yml"));
+    assert!(candidate.contains("github.event_name == 'push'"));
+    assert!(candidate.contains("github.ref == 'refs/heads/main'"));
+    assert!(candidate.contains("needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE'"));
+    assert!(candidate.contains("PROMOTION: ${{ needs.promotion-prepare-rehearsal.result }}"));
     let lifecycle = rehearsal
         .find("resolve-release-lifecycle.py")
         .expect("promotion rehearsal must resolve release lifecycle");
     let post_publish = rehearsal
         .find("PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH")
-        .expect("post-publish main must exit cleanly without staged bytes");
+        .expect("post-publish invocation must exit cleanly without staged bytes");
     let resolver = rehearsal
         .find("bash scripts/release/resolve-pretag-stage.sh")
         .expect("active candidates must still rehearse the tag resolver");
     assert!(lifecycle < post_publish && post_publish < resolver);
-    assert!(tag.contains(".github/workflows/release-promotion-rehearsal.yml"));
-    assert!(tag.contains(r#"("Release promotion rehearsal", "workflow_run")"#));
+    assert!(
+        !tag.contains(r#"("Release promotion rehearsal", "workflow_run")"#),
+        "tag gate must consume promotion proof through the successful release-candidate run"
+    );
     assert!(post_tag.contains("PROMOTION_RESOLVER_INVOCATION"));
     assert!(contract.contains(
         r#""workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter""#
