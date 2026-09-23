@@ -747,3 +747,50 @@ fn codex_lifecycle_evidence_is_consumed_by_pretag_stage_not_posttag_runtime() {
     assert!(!release.contains("local-codex-plugin-activation-smoke.sh"));
 }
 
+
+#[test]
+fn workflow_local_exec_contract_blocks_nonexec_direct_invocations() {
+    let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
+    let checker =
+        std::fs::read_to_string("scripts/release/check-workflow-exec-contract.py").unwrap();
+    let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+
+    assert!(readiness.contains("check-workflow-exec-contract.py --self-test"));
+    assert!(readiness.contains("check-workflow-exec-contract.py || fail"));
+    assert!(checker.contains("WORKFLOW_EXEC_CONTRACT_SELF_TEST_PASS"));
+    assert!(checker.contains("direct_invocation_requires_executable"));
+    assert!(checker.contains("git", "ls-files", "--stage""));
+    assert!(release.contains("bash scripts/release/resolve-pretag-stage.sh"));
+    assert!(!release.contains(
+        "\n          scripts/release/resolve-pretag-stage.sh             "
+    ));
+}
+
+#[test]
+fn accepted_main_rehearses_exact_post_tag_prepare_invocation() {
+    let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let rehearsal =
+        std::fs::read_to_string(".github/workflows/release-promotion-rehearsal.yml").unwrap();
+    let tag = std::fs::read_to_string("scripts/release/push-release-tag.sh").unwrap();
+    let post_tag =
+        std::fs::read_to_string("scripts/release/check-post-tag-contract.sh").unwrap();
+    let contract =
+        std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
+
+    for source in [&release, &rehearsal] {
+        assert!(source.contains("bash scripts/release/resolve-pretag-stage.sh"));
+    }
+    assert!(rehearsal.contains("workflow_run:"));
+    assert!(rehearsal.contains("Release candidate readiness"));
+    assert!(rehearsal.contains("runs-on: ubuntu-latest"));
+    assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_PASS"));
+    assert!(tag.contains(".github/workflows/release-promotion-rehearsal.yml"));
+    assert!(tag.contains("("Release promotion rehearsal", "workflow_run")"));
+    assert!(post_tag.contains("PROMOTION_RESOLVER_INVOCATION"));
+    assert!(contract.contains(
+        r#""workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter""#
+    ));
+    assert!(contract.contains(
+        r#""pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required""#
+    ));
+}
