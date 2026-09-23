@@ -7,6 +7,52 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-09-23
+
+### Changed
+
+- Rebuilt the release train around pre-tag staged shipping bytes. Accepted `main`
+  now builds the future release archive once, freezes the qualified provider
+  tuple into a content-addressed stage manifest, runs exact-archive provider
+  qualification and Codex whole-plugin runtime before tag, and rehearses the
+  GitHub attestation mechanism before the irreversible tag boundary.
+- The protected tag path now consumes the accepted stage and a local Claude
+  exact-staged-byte TTY proof, then refreshes only mutable action-time state.
+  Tag-triggered automation is promotion-only: it creates tag-bound attestations,
+  uploads the already accepted bytes to a Draft Release, and byte-reconciles the
+  remote Draft instead of rebuilding or rerunning providers.
+- Provider `latest` is a pre-tag staging decision. Pre-publish verification no
+  longer reopens the release verdict because an upstream provider publishes a
+  new version after the candidate bytes were accepted.
+
+### Fixed
+
+- Prevented repository Immutable Releases policy from being first checked inside
+  a tag-triggered Codex job whose GitHub Actions token cannot read repository
+  administration settings. The policy is now checked with the
+  Owner-authenticated `gh` session before tag and again before publish.
+- Removed full CI tag triggers and added a fail-closed post-tag surface contract
+  that rejects release workflows which reintroduce build, test, provider
+  provisioning/runtime, mutable registry-latest, or repository-admin checks
+  after a protected tag.
+- Added an accepted-main capability rehearsal for the exact Actions artifact-read
+  permission used later by tag promotion, closing the permission class exposed
+  by the unpublished v0.4.2 Draft incident.
+
+### Security
+
+- A protected tag can no longer be created without exact staged-archive digests,
+  successful pre-tag runtime evidence, provider-integrity freeze, attestation
+  rehearsal, repository release-policy verification, and a machine-checked
+  no-first-post-tag-blocker contract.
+- Draft publication remains separately gated and verifies exact tag identity,
+  staged-byte equality, tag-bound provenance/SBOM attestations, release
+  immutability, and successful promotion without rerunning provider/runtime
+  qualification.
+- `v0.4.1` and `v0.4.2` remain unpublished release candidates and are not the
+  installable latest release.
+
+
 ## [0.4.2] - 2026-09-20
 
 ### Added
