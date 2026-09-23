@@ -151,7 +151,9 @@ def check(root: Path) -> list[str]:
     promotion = workflow_text[".github/workflows/release-promotion-rehearsal.yml"]
     require(errors, "workflow_call:" in promotion, "PROMOTION_CHAIN_REUSABLE_TRIGGER")
     require(errors, "workflow_run:" not in promotion, "PROMOTION_CHAIN_PRIVILEGED_TRIGGER_FORBIDDEN")
-    require(errors, "source_sha:" in promotion and "inputs.source_sha" in promotion, "PROMOTION_CHAIN_SOURCE_INPUT")
+    require(errors, "inputs.source_sha" not in promotion, "PROMOTION_CHAIN_UNTRUSTED_SOURCE_INPUT")
+    require(errors, "ref: ${{ github.sha }}" in promotion, "PROMOTION_CHAIN_TRUSTED_CHECKOUT")
+    require(errors, "SOURCE_SHA: ${{ github.sha }}" in promotion, "PROMOTION_CHAIN_TRUSTED_SOURCE")
     require(
         errors,
         "uses: ./.github/workflows/release-promotion-rehearsal.yml" in release_candidate,
