@@ -138,7 +138,12 @@ for script in   "$provisioner" "$pin_checker" "$pins" "$codex_smoke" "$claude_sm
 do
   bash -n "$script" || fail "SHELL_SYNTAX:$(basename "$script")"
 done
-python3 -m py_compile "$stage_verifier" "$claude_stage_verifier" || fail "PYTHON_SYNTAX"
+python3 - "$stage_verifier" "$claude_stage_verifier" <<'PY' || fail "PYTHON_SYNTAX"
+import ast, pathlib, sys
+for raw in sys.argv[1:]:
+    path = pathlib.Path(raw)
+    ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+PY
 python3 "$codex_mcp_fixture" --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
