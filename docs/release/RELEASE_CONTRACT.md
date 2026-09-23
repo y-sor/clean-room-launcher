@@ -338,7 +338,7 @@ does not grant merge, tag, or publish permission.
 ## Declared automation-chain topology
 
 `AUTOMATION_CHAIN_RELEASE_CANDIDATE_TO_PROMOTION_REHEARSAL`
-The only automatic continuation from the accepted-main `Release candidate readiness` workflow is the read-only `Release promotion rehearsal` `workflow_run` chain. It is restricted to `main`, requires the upstream workflow conclusion to be `success`, carries only `contents: read` and `actions: read`, and performs no publication.
+The only automatic continuation from accepted-main `Release candidate readiness` into promotion preparation is a local reusable `workflow_call`. The caller is restricted to trusted `push` runs on `refs/heads/main` in `ACTIVE_CANDIDATE`, passes the exact `github.sha`, and closes the promotion rehearsal inside the same release-candidate run. Privileged `workflow_run` checkout chains are forbidden. The reusable workflow carries only `contents: read` and `actions: read` and performs no publication.
 
 `AUTOMATION_CHAIN_TAG_TO_DRAFT`
 A protected `v*` tag triggers the `Release` workflow. That workflow may bind attestations and create or refresh a GitHub Draft Release from already accepted bytes. It must not rebuild, requalify providers, mutate repository settings, move the tag, or publish the Draft.
