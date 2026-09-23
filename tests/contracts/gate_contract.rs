@@ -1,3 +1,5 @@
+use std::os::unix::fs::PermissionsExt;
+
 #[test]
 fn consolidated_gate_exists_and_is_executable_contract_surface() {
     let path = std::path::Path::new("scripts/gates/p02/verify.sh");
