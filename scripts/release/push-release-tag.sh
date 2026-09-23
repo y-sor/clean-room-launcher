@@ -232,6 +232,38 @@ python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage"   --version 
     exit 80
   }
 
+stage_binding_digest() {
+  python3 - "$tmp/stage" <<'PY'
+import hashlib
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+files = sorted(path for path in root.rglob("*") if path.is_file())
+if not files:
+    raise SystemExit("empty-stage")
+digest = hashlib.sha256()
+for path in files:
+    relative = path.relative_to(root).as_posix().encode("utf-8")
+    body = path.read_bytes()
+    digest.update(len(relative).to_bytes(8, "big"))
+    digest.update(relative)
+    digest.update(len(body).to_bytes(8, "big"))
+    digest.update(body)
+print(digest.hexdigest())
+PY
+}
+
+pretag_stage_binding=$(stage_binding_digest) || {
+  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING" >&2
+  exit 80
+}
+[[ "$pretag_stage_binding" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING" >&2
+  exit 80
+}
+printf 'PRETAG_STAGE_BINDING_PASS sha256=%s\n' "$pretag_stage_binding"
+
 artifact_name="clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
 artifact_sha=$(python3 - "$tmp/stage/pretag-manifest.json" "$artifact_name" <<'PY'
 import json, sys
@@ -346,6 +378,17 @@ python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --repor
   echo "TAG_GATE_BLOCKED:RELEASE_CONTRACT_ACTION_TIME" >&2
   exit 77
 }
+pretag_stage_binding_now=$(stage_binding_digest) || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING_ACTION_TIME" >&2
+  exit 80
+}
+[[ "$pretag_stage_binding_now" == "$pretag_stage_binding" ]] || {
+  cleanup_local_tag
+  echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING_ACTION_TIME" >&2
+  exit 80
+}
+echo "PRETAG_STAGE_BINDING_ACTION_TIME=PASS"
 set +e
 git push origin "refs/tags/$tag"
 push_rc=$?
