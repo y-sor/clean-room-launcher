@@ -123,7 +123,16 @@ bytes, creates tag-bound attestations for those same bytes, creates/refreshes a
 guarded Draft, uploads only the accepted release-visible files, downloads the
 Draft again and proves byte equality plus tag-bound attestation identity. It
 must not rebuild, rerun tests, provision providers, execute Codex/Claude runtime
-qualification, or call repository-admin policy endpoints. The contract scans
+qualification, or call repository-admin policy endpoints.
+
+Workflow execution transport is part of the pre-tag contract. Every repo-local
+shell helper referenced from GitHub Actions is checked against its tracked Git
+mode: direct execution requires executable mode, while non-executable helpers
+must use an explicit shell interpreter. The exact post-tag stage resolver
+transport is additionally executed on accepted-main Ubuntu against the current
+run's already-uploaded stage before a protected tag can be authorized. This
+prevents platform/file-mode invocation differences from first appearing after
+the immutable tag boundary. The contract scans
 the complete repository workflow directory: `.github/workflows/release.yml` is
 the only workflow allowed to match a tag push; every other push workflow must
 be explicitly branch-filtered.
