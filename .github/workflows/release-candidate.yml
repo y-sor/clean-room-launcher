@@ -308,8 +308,6 @@ jobs:
     needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE'
     uses: ./.github/workflows/release-promotion-rehearsal.yml
-    with:
-      source_sha: ${{ github.sha }}
     permissions:
       contents: read
       actions: read
