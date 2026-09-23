@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: scripts/release/local-plugin-activation-smoke.sh rehearse --expected-head SHA --plugin-id ID" >&2
-  echo "       scripts/release/local-plugin-activation-smoke.sh draft --tag vX.Y.Z --plugin-id ID" >&2
+  echo "       scripts/release/local-plugin-activation-smoke.sh stage --expected-head SHA --artifact PATH --plugin-id ID" >&2
   exit 64
 }
 
@@ -13,27 +13,26 @@ fail() {
 }
 
 phase=${1:-}
-[[ "$phase" == "rehearse" || "$phase" == "draft" ]] || usage
+[[ "$phase" == "rehearse" || "$phase" == "stage" ]] || usage
 shift || true
 
-tag=
+artifact_input=
 expected_head=
 plugin_id=
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag) tag=${2:-}; shift 2 ;;
+    --artifact) artifact_input=${2:-}; shift 2 ;;
     --expected-head) expected_head=${2:-}; shift 2 ;;
     --plugin-id) plugin_id=${2:-}; shift 2 ;;
     *) usage ;;
   esac
 done
 [[ -n "$plugin_id" ]] || fail "PLUGIN_ID_REQUIRED"
-if [[ "$phase" == "draft" ]]; then
-  [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
-  [[ -z "$expected_head" ]] || usage
+[[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
+if [[ "$phase" == "stage" ]]; then
+  [[ -n "$artifact_input" ]] || fail "ARTIFACT_REQUIRED"
 else
-  [[ "$expected_head" =~ ^[0-9a-f]{40}$|^[0-9a-f]{64}$ ]] || fail "EXPECTED_HEAD_REQUIRED"
-  [[ -z "$tag" ]] || usage
+  [[ -z "$artifact_input" ]] || usage
 fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
@@ -85,54 +84,42 @@ if [[ "$phase" == "rehearse" ]]; then
   [[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_CANDIDATE"
   source_tree=$(git rev-parse "HEAD^{tree}")
   python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
-  reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+  reviewed_content_digest=$(python3 - "$version" <<'PY'
+import json, sys
+version = sys.argv[1]
+with open(f"reports/release/v{version}-review.json", encoding="utf-8") as handle:
     print(json.load(handle)["reviewed_content_digest"])
 PY
 )
   [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 
   cargo fetch --locked >/dev/null
-  CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET=''     ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
+  CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET='' \
+    ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
   artifact=$(sed -n 's/^ARTIFACT=//p' "$tmp/build.log" | tail -1)
   [[ -n "$artifact" && -f "$artifact" ]] || fail "ARTIFACT_MISSING"
 else
-  command -v gh >/dev/null 2>&1 || fail "GH_REQUIRED"
-  gh auth status >/dev/null 2>&1 || fail "GH_AUTH_REQUIRED"
-  immutable_enabled=$(gh api repos/y-sor/clean-room-launcher/immutable-releases --jq .enabled 2>/dev/null) \
-    || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
-  [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
-  git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag"
-  source_head=$(git rev-list -n 1 "$tag")
-  source_tree=$(git rev-parse "$tag^{tree}")
-  [[ "$head" == "$source_head" ]] || fail "HEAD_NOT_TAG_SOURCE"
-  reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
+  source_head="$head"
+  [[ "$head" == "$expected_head" ]] || fail "HEAD_NOT_EXPECTED_ACCEPTED_MAIN"
+  source_tree=$(git rev-parse "HEAD^{tree}")
+  python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
+  reviewed_content_digest=$(python3 - "$version" <<'PY'
+import json, sys
+version = sys.argv[1]
+with open(f"reports/release/v{version}-review.json", encoding="utf-8") as handle:
     print(json.load(handle)["reviewed_content_digest"])
 PY
 )
   [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
-  [[ "${tag#v}" == "$version" ]] || fail "TAG_VERSION_MISMATCH"
-  [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" == "true" ]]     || fail "RELEASE_NOT_DRAFT"
-
-  gh release download "$tag" --dir "$assets"
-  artifact="$assets/clean-room-launcher-${tag}-aarch64-apple-darwin.tar.gz"
-  [[ -f "$artifact" ]] || fail "DRAFT_ARCHIVE_MISSING"
-  [[ -f "$assets/SHA256SUMS" ]] || fail "DRAFT_SHA256SUMS_MISSING"
-  (
-    cd "$assets"
-    shasum -a 256 -c SHA256SUMS
-  ) >/dev/null || fail "DRAFT_CHECKSUMS"
-
-  provenance="$artifact.provenance.sigstore.json"
-  sbom="$artifact.sbom.sigstore.json"
-  [[ -s "$provenance" && -s "$sbom" ]] || fail "DRAFT_ATTESTATION_BUNDLE_MISSING"
-  gh attestation verify "$artifact"     -R y-sor/clean-room-launcher     --bundle "$provenance"     --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml     --source-digest "$source_head"     --source-ref "refs/tags/$tag"     --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE"
-  gh attestation verify "$artifact"     -R y-sor/clean-room-launcher     --bundle "$sbom"     --predicate-type https://cyclonedx.org/bom     --signer-workflow y-sor/clean-room-launcher/.github/workflows/release.yml     --source-digest "$source_head"     --source-ref "refs/tags/$tag"     --deny-self-hosted-runners >/dev/null || fail "DRAFT_SBOM_ATTESTATION"
+  artifact=$(python3 - "$artifact_input" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1]).expanduser().resolve()
+if not path.is_file():
+    raise SystemExit(1)
+print(path)
+PY
+) || fail "STAGED_ARTIFACT_MISSING"
 fi
-
 python3 packaging/verify-artifact.py "$artifact" >/dev/null || fail "ARTIFACT_METADATA"
 artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
 
@@ -428,12 +415,14 @@ evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evid
 mkdir -p "$evidence_dir"
 if [[ "$phase" == "rehearse" ]]; then evidence_key=${reviewed_content_digest:0:12}; else evidence_key=${source_head:0:12}; fi
 evidence="$evidence_dir/${phase}-v${version}-${evidence_key}.json"
+binding="content-addressed-runtime-v1"
+if [[ "$phase" == "stage" ]]; then binding="exact-release-artifact-v1"; fi
 python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$reviewed_content_digest" "$artifact_sha" \
-  "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
+  "$binding" "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
   "$project_agents_retained" "$agents_boundary_probe" "$claude_version_output" \
   "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,source_tree,reviewed_content_digest,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,project_agents_retained,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
+output,phase,version,source,source_tree,reviewed_content_digest,artifact_sha,binding,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,project_agents_retained,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
 record={
   "schema_version":"clroom.plugin-release-smoke.v3",
   "result":"PASS",
@@ -442,7 +431,7 @@ record={
   "source_head":source,
   "source_tree":source_tree,
   "reviewed_content_digest":reviewed_content_digest,
-  "evidence_binding":"content-addressed-runtime-v1",
+  "evidence_binding":binding,
   "artifact_sha256":artifact_sha,
   "platform":"macos-aarch64",
   "claude_version_output":claude_version_output,
