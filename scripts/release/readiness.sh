@@ -117,19 +117,7 @@ sh install.sh --self-test || fail "INSTALLER_CONTRACT"
 canonical_install_url='https://github.com/y-sor/clean-room-launcher/releases/latest/download/install.sh'
 grep -Fq "$canonical_install_url" README.md || fail "README_INSTALLER_CONTRACT"
 grep -Fq "$canonical_install_url" docs/install.md || fail "DOCS_INSTALLER_CONTRACT"
-if ! cargo test --locked --all-targets; then
-  while IFS= read -r file; do
-    relative=${file#"$root"/}
-    if LC_ALL=C grep -E -q '(/Users/[A-Za-z0-9._-]+/|/home/[A-Za-z0-9._-]+/)' "$file"; then
-      printf 'TEST_POLLUTION_ABSOLUTE_HOME_PATH:%s\n' "$relative" >&2
-    fi
-  done < <(
-    find "$root" \
-      \( -name .git -o -name target -o -name .clroom-dev -o -path "$root/reports/gates" -o -path "$root/scripts/gates" \) -prune \
-      -o -type f -print | LC_ALL=C sort
-  )
-  fail "FULL_LOCKED_TESTS"
-fi
+PYTHONDONTWRITEBYTECODE=1 cargo test --locked --all-targets || fail "FULL_LOCKED_TESTS"
 
 if ! command -v cargo-deny >/dev/null 2>&1; then
   fail "SCA_TOOL_NOT_AVAILABLE"
