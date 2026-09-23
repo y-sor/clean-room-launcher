@@ -20,25 +20,33 @@ concurrency:
 jobs:
   prepare-rehearsal:
     name: Rehearse exact post-tag prepare path
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out exact accepted main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
       - name: Resolve exact accepted pre-tag stage with tag-path invocation
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          if [[ "$SOURCE_SHA" != "$TRIGGER_SHA" ]]; then
+            echo "PROMOTION_PREPARE_REHEARSAL_SKIPPED stale_source=$TRIGGER_SHA current_main=$SOURCE_SHA"
+            exit 0
+          fi
           version="$(python3 - <<'PY'
           import tomllib
           with open("Cargo.toml", "rb") as handle:

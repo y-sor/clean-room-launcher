@@ -783,6 +783,16 @@ fn accepted_main_rehearses_exact_post_tag_prepare_invocation() {
     assert!(rehearsal.contains("workflow_run:"));
     assert!(rehearsal.contains("Release candidate readiness"));
     assert!(rehearsal.contains("runs-on: ubuntu-latest"));
+    assert!(rehearsal.contains("github.event.workflow_run.event == 'push'"));
+    assert!(rehearsal.contains("github.event.workflow_run.head_branch == 'main'"));
+    assert!(rehearsal.contains(
+        "github.event.workflow_run.head_repository.full_name == github.repository"
+    ));
+    assert!(rehearsal.contains("ref: main"));
+    assert!(!rehearsal.contains("ref: ${{ github.event.workflow_run.head_sha }}"));
+    assert!(rehearsal.contains("TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}"));
+    assert!(rehearsal.contains(r#"SOURCE_SHA="$(git rev-parse HEAD)""#));
+    assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_SKIPPED stale_source="));
     assert!(rehearsal.contains("resolve-release-lifecycle.py"));
     assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_SKIPPED lifecycle=POST_PUBLISH"));
     assert!(rehearsal.contains("PROMOTION_PREPARE_REHEARSAL_PASS"));

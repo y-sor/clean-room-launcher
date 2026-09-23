@@ -153,6 +153,29 @@ def check(root: Path) -> list[str]:
     require(errors, "- Release candidate readiness" in promotion, "PROMOTION_CHAIN_SOURCE")
     require(errors, "branches:\n      - main" in promotion, "PROMOTION_CHAIN_BRANCH")
     require(errors, "github.event.workflow_run.conclusion == 'success'" in promotion, "PROMOTION_CHAIN_SUCCESS_ONLY")
+    require(errors, "github.event.workflow_run.event == 'push'" in promotion, "PROMOTION_CHAIN_PUSH_ONLY")
+    require(errors, "github.event.workflow_run.head_branch == 'main'" in promotion, "PROMOTION_CHAIN_MAIN_ONLY")
+    require(
+        errors,
+        "github.event.workflow_run.head_repository.full_name == github.repository" in promotion,
+        "PROMOTION_CHAIN_SAME_REPOSITORY",
+    )
+    require(errors, "ref: main" in promotion, "PROMOTION_CHAIN_TRUSTED_CHECKOUT")
+    require(
+        errors,
+        "ref: ${{ github.event.workflow_run.head_sha }}" not in promotion,
+        "PROMOTION_CHAIN_UNTRUSTED_CHECKOUT",
+    )
+    require(
+        errors,
+        'TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}' in promotion,
+        "PROMOTION_CHAIN_TRIGGER_IDENTITY",
+    )
+    require(
+        errors,
+        'SOURCE_SHA="$(git rev-parse HEAD)"' in promotion,
+        "PROMOTION_CHAIN_TRUSTED_SOURCE_IDENTITY",
+    )
     lifecycle_guard = promotion.find("resolve-release-lifecycle.py")
     stage_resolver = promotion.find("bash scripts/release/resolve-pretag-stage.sh")
     require(
