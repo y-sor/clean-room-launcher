@@ -1,0 +1,59 @@
+name: Release promotion rehearsal
+
+on:
+  workflow_run:
+    workflows:
+      - Release candidate readiness
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-promotion-rehearsal-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-rehearsal:
+    name: Rehearse exact post-tag prepare path
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact accepted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve exact accepted pre-tag stage with tag-path invocation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          version="$(python3 - <<'PY'
+          import tomllib
+          with open("Cargo.toml", "rb") as handle:
+              print(tomllib.load(handle)["package"]["version"])
+          PY
+          )"
+          bash scripts/release/resolve-pretag-stage.sh             "$version"             "$SOURCE_SHA"             "$RUNNER_TEMP/release-stage"
+
+          source scripts/release/provider-pins.sh
+          source_tree="$(git rev-parse 'HEAD^{tree}')"
+          review_digest="$(python3 - "$version" <<'PY'
+          import json, sys
+          with open(f"reports/release/v{sys.argv[1]}-review.json", encoding="utf-8") as handle:
+              print(json.load(handle)["reviewed_content_digest"])
+          PY
+          )"
+          python3 scripts/release/verify-pretag-stage.py             --dir "$RUNNER_TEMP/release-stage"             --version "$version"             --source-head "$SOURCE_SHA"             --source-tree "$source_tree"             --reviewed-content-digest "$review_digest"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
+
+          echo "PROMOTION_PREPARE_REHEARSAL_PASS source=$SOURCE_SHA version=$version"
