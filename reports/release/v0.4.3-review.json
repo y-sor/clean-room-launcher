@@ -428,5 +428,5 @@
       "Owner-authenticated pre-tag action-time closure: exact-main CI/CodeQL/Fuzz/Release-candidate success, tag/release absence, no-bypass tag ruleset, immutable-release policy, full release contract, staged artifact availability/binding, and Claude exact-stage TTY evidence are all refreshed before the single irreversible push."
     ]
   },
-  "reviewed_content_digest": "e859717fafe409d3dcfff29e6ed84cdabe08a6c2db96b6f4a2f00d43a3c14d4e"
+  "reviewed_content_digest": "7626ce1a999c5d9f0d89190acfbac823fd6f46558b0f76ee34fb4a86a8de74ca"
 }
