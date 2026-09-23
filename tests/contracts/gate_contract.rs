@@ -595,6 +595,10 @@ fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
     assert!(guard.contains("scripts/release/resolve-pretag-stage.sh"));
     assert!(guard.contains("scripts/release/verify-pretag-stage.py"));
     assert!(guard.contains("scripts/release/provider-pins.sh"));
+    assert!(guard.contains("NON_RELEASE_TAG_TRIGGER"));
+    assert!(guard.contains(r#"workflow_dir.glob("*.yml")"#));
+    assert!(guard.contains(r#"workflow_dir.glob("*.yaml")"#));
+    assert!(guard.contains("branches(?:-ignore)?"));
 }
 
 #[test]
