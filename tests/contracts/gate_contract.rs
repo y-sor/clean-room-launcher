@@ -747,3 +747,71 @@ fn codex_lifecycle_evidence_is_consumed_by_pretag_stage_not_posttag_runtime() {
     assert!(!release.contains("local-codex-plugin-activation-smoke.sh"));
 }
 
+
+#[test]
+fn workflow_script_invocation_contract_rejects_nonexecutable_direct_helpers() {
+    let checker =
+        std::fs::read_to_string("scripts/release/check-workflow-script-invocations.py").unwrap();
+    let readiness = std::fs::read_to_string("scripts/release/readiness.sh").unwrap();
+
+    for required in [
+        "WORKFLOW_SCRIPT_INVOCATION_BLOCKED",
+        "WORKFLOW_SCRIPT_INVOCATION_SELF_TEST_PASS",
+        "WORKFLOW_SCRIPT_INVOCATION_CONTRACT_PASS",
+        "NOT_EXECUTABLE",
+        "UNTRACKED",
+    ] {
+        assert!(
+            checker.contains(required),
+            "workflow invocation contract must retain marker: {required}"
+        );
+    }
+    assert!(readiness.contains(
+        "python3 scripts/release/check-workflow-script-invocations.py --self-test"
+    ));
+    assert!(readiness.contains(
+        "python3 scripts/release/check-workflow-script-invocations.py"
+    ));
+
+    let self_test = std::process::Command::new("python3")
+        .args([
+            "scripts/release/check-workflow-script-invocations.py",
+            "--self-test",
+        ])
+        .status()
+        .expect("workflow script invocation self-test must execute");
+    assert!(self_test.success());
+
+    let real_contract = std::process::Command::new("python3")
+        .arg("scripts/release/check-workflow-script-invocations.py")
+        .status()
+        .expect("workflow script invocation contract must execute");
+    assert!(real_contract.success());
+}
+
+#[test]
+fn accepted_main_rehearses_the_exact_post_tag_stage_resolver_invocation() {
+    let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
+    let candidate =
+        std::fs::read_to_string(".github/workflows/release-candidate.yml").unwrap();
+    let resolver =
+        std::fs::read_to_string("scripts/release/resolve-pretag-stage.sh").unwrap();
+
+    assert!(release.contains(
+        "bash scripts/release/resolve-pretag-stage.sh"
+    ));
+    assert!(!release.contains(
+        "\n          scripts/release/resolve-pretag-stage.sh"
+    ));
+
+    assert!(candidate.contains("Rehearse exact post-tag stage resolution"));
+    assert!(candidate.contains("--rehearse-run-id \"$GITHUB_RUN_ID\""));
+    assert!(candidate.contains("actions: read"));
+
+    assert!(resolver.contains("--rehearse-run-id"));
+    assert!(resolver.contains("CURRENT_MAIN_STAGE_RUN_NOT_FOUND"));
+    assert!(resolver.contains("PRETAG_STAGE_REHEARSAL_RESOLVED"));
+    assert!(resolver.contains(
+        "if run.get(\"status\") not in {\"in_progress\", \"completed\"}"
+    ));
+}
