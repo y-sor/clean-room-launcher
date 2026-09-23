@@ -11,7 +11,7 @@ fail() {
 
 [[ -f "$release_workflow" && -f "$ci_workflow" ]] || fail "WORKFLOW_MISSING"
 
-for forbidden in   'cargo test'   'cargo build'   'cargo fetch'   'packaging/build-artifacts.sh'   'provision-provider-canaries.sh'   'check-provider-pins.sh'   'local-codex-plugin-activation-smoke.sh'   'local-plugin-activation-smoke.sh'   'npm view'   'immutable-releases'
+for forbidden in   'cargo test'   'cargo build'   'cargo fetch'   'packaging/build-artifacts.sh'   'provision-provider-canaries.sh'   'check-provider-pins.sh'   'local-codex-plugin-activation-smoke.sh'   'local-plugin-activation-smoke.sh'   'npm view'   'immutable-releases'   'check-release-contract.py'   'resolve-release-lifecycle.py'   'git ls-remote --symref origin HEAD'   'refs/heads/main'
 do
   if grep -Fq -- "$forbidden" "$release_workflow"; then
     fail "POST_TAG_BLOCKER:$forbidden"
