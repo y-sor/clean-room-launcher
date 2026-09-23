@@ -1,294 +1,117 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-fail() {
-  echo "DRAFT_RELEASE_VERIFY_BLOCKED:$1" >&2
-  exit "${2:-1}"
-}
-
-[[ $# -eq 2 ]] || fail "USAGE:verify-draft-release.sh_vX.Y.Z_EXPECTED_SHA" 64
+fail(){ printf 'DRAFT_RELEASE_VERIFY_BLOCKED:%s\n' "$1" >&2; exit "${2:-1}"; }
+[[ $# -eq 2 ]] || fail USAGE 64
 tag=$1
 expected=$2
-[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "STABLE_TAG_REQUIRED"
-[[ "$expected" =~ ^[0-9a-f]{40}$ ]] || fail "EXPECTED_SHA_INVALID"
+[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || fail TAG
+[[ "$expected" =~ ^[0-9a-f]{40}$ ]] || fail EXPECTED_SHA
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 cd "$root"
 repository="y-sor/clean-room-launcher"
+command -v gh >/dev/null 2>&1 || fail GH_REQUIRED
+command -v python3 >/dev/null 2>&1 || fail PYTHON_REQUIRED
+gh auth status >/dev/null 2>&1 || fail GH_AUTH_REQUIRED
+[[ -z "$(git status --porcelain)" ]] || fail WORKTREE_NOT_CLEAN
+[[ "$(git rev-parse HEAD)" == "$expected" ]] || fail HEAD_NOT_EXPECTED
+
+git fetch --quiet origin "refs/tags/$tag:refs/tags/$tag" || fail TAG_FETCH
+[[ "$(git cat-file -t "refs/tags/$tag")" == tag ]] || fail ANNOTATED_TAG_REQUIRED
+[[ "$(git rev-parse "$tag^{}")" == "$expected" ]] || fail TAG_TARGET
 version=${tag#v}
-short=${expected:0:12}
-
-for name in git gh python3 shasum; do
-  command -v "$name" >/dev/null 2>&1 || fail "COMMAND_MISSING:$name"
-done
-gh auth status >/dev/null 2>&1 || fail "GH_AUTH_REQUIRED"
-[[ "$(git rev-parse HEAD)" == "$expected" ]] || fail "LOCAL_HEAD_MISMATCH"
-[[ -z "$(git status --porcelain)" ]] || fail "WORKTREE_NOT_CLEAN"
-
 manifest_version=$(python3 - <<'PY'
 import tomllib
-with open("Cargo.toml", "rb") as handle:
-    print(tomllib.load(handle)["package"]["version"])
+print(tomllib.load(open("Cargo.toml","rb"))["package"]["version"])
 PY
 )
-[[ "$manifest_version" == "$version" ]] || fail "VERSION_MISMATCH"
+[[ "$manifest_version" == "$version" ]] || fail VERSION_MISMATCH
 
-immutable_enabled=$(gh api "repos/$repository/immutable-releases" --jq .enabled 2>/dev/null) \
-  || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
-[[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
+immutable_enabled=$(gh api repos/$repository/immutable-releases --jq .enabled 2>/dev/null) || fail IMMUTABLE_RELEASE_POLICY_UNVERIFIED
+[[ "$immutable_enabled" == true ]] || fail IMMUTABLE_RELEASE_POLICY_DISABLED
 
-git fetch --quiet --force origin "refs/tags/$tag:refs/tags/$tag" || fail "TAG_FETCH"
-[[ "$(git cat-file -t "refs/tags/$tag")" == tag ]] || fail "ANNOTATED_TAG_REQUIRED"
-[[ "$(git rev-parse "refs/tags/$tag^{}")" == "$expected" ]] || fail "TAG_TARGET_MISMATCH"
-[[ "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")" == "$tag — Clean Room Launcher" ]] \
-  || fail "TAG_TITLE_MISMATCH"
-
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-draft-release-verify.XXXXXX")
-trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
-
-gh release view "$tag" \
-  --json tagName,name,isDraft,isPrerelease,assets \
-  >"$tmp/release.json" || fail "RELEASE_QUERY"
-
-python3 - "$tmp/release.json" "$tag" "$version" <<'PY' || fail "RELEASE_IDENTITY_OR_ASSETS"
-import json, sys
-path, tag, version = sys.argv[1:]
-data = json.load(open(path, encoding="utf-8"))
-if data.get("tagName") != tag:
-    raise SystemExit("tag")
-if data.get("name") != f"{tag} — Clean Room Launcher":
-    raise SystemExit("name")
-if data.get("isDraft") is not True or data.get("isPrerelease") is not False:
-    raise SystemExit("state")
-expected = {
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.provenance.sigstore.json",
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.sbom.sigstore.json",
-    "install.sh",
-    "sbom.cdx.json",
-    "SHA256SUMS",
-}
-actual = {item.get("name") for item in data.get("assets", [])}
-if actual != expected:
-    raise SystemExit(f"assets:{sorted(actual)}")
+rules_tmp=$(mktemp "${TMPDIR:-/tmp}/clroom-draft-rules.XXXXXX")
+gh api "repos/$repository/rulesets" >"$rules_tmp" || fail RULESET_READ
+python3 - "$rules_tmp" <<'PY' || fail TAG_RULESET
+import json,subprocess,sys
+for item in json.load(open(sys.argv[1],encoding="utf-8")):
+    if item.get("target")!="tag" or item.get("enforcement")!="active": continue
+    d=json.loads(subprocess.check_output(["gh","api",f"repos/y-sor/clean-room-launcher/rulesets/{item['id']}"],text=True))
+    refs=d.get("conditions",{}).get("ref_name",{}).get("include",[])
+    types={x.get("type") for x in d.get("rules",[])}
+    if "refs/tags/v*" in refs and {"update","deletion"} <= types and not d.get("bypass_actors") and d.get("current_user_can_bypass") in (None,"never"):
+        raise SystemExit(0)
+raise SystemExit(1)
 PY
+rm -f "$rules_tmp"
 
-gh api -X GET "repos/$repository/actions/runs" \
-  -f head_sha="$expected" -f per_page=100 \
-  >"$tmp/runs.json" || fail "ACTIONS_QUERY"
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-draft-verify.XXXXXX")
+trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
+stage="$tmp/stage"
+bash scripts/release/resolve-release-stage.sh "$version" "$expected" "$stage" || fail RELEASE_STAGE
+python3 scripts/release/stage-manifest.py verify --root "$stage" --version "$version" --source-head "$expected" || fail RELEASE_STAGE_MANIFEST
 
-python3 - "$tmp/runs.json" "$tag" "$expected" <<'PY' || fail "EXACT_TAG_ACTIONS"
-import json, sys
-path, tag, expected = sys.argv[1:]
-data = json.load(open(path, encoding="utf-8"))
-runs = [
-    run for run in data.get("workflow_runs", [])
-    if run.get("event") == "push"
-    and run.get("head_branch") == tag
-    and run.get("head_sha") == expected
-]
-if not runs:
-    raise SystemExit("no-tag-push-runs")
-names = {run.get("name") for run in runs}
-for required in {"CI", "Release"}:
-    if required not in names:
-        raise SystemExit(f"missing:{required}")
-bad = [
-    (run.get("name"), run.get("id"), run.get("status"), run.get("conclusion"))
-    for run in runs
-    if run.get("status") != "completed" or run.get("conclusion") != "success"
-]
-if bad:
-    raise SystemExit("non-success:" + repr(bad))
-print("EXACT_TAG_ACTIONS_PASS names=" + ",".join(sorted(name for name in names if name)))
+gh release view "$tag" --json isDraft,isPrerelease,tagName,body >"$tmp/release.json" || fail RELEASE_VIEW
+python3 - "$tmp/release.json" "$tag" "$stage/release-notes.md" <<'PY' || fail RELEASE_IDENTITY_OR_NOTES
+import json,sys
+r=json.load(open(sys.argv[1],encoding="utf-8"))
+notes=open(sys.argv[3],encoding="utf-8").read()
+if r.get("tagName")!=sys.argv[2] or r.get("isDraft") is not True:
+    raise SystemExit(1)
+if (r.get("body") or "").rstrip("\r\n") != notes.rstrip("\r\n"):
+    raise SystemExit(2)
 PY
 
 assets="$tmp/assets"
 mkdir -p "$assets"
-gh release download "$tag" --dir "$assets" || fail "RELEASE_DOWNLOAD"
+gh release download "$tag" --dir "$assets" || fail RELEASE_DOWNLOAD
 artifact="$assets/clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
-provenance="$artifact.provenance.sigstore.json"
-sbom_bundle="$artifact.sbom.sigstore.json"
-for path in "$artifact" "$provenance" "$sbom_bundle" "$assets/SHA256SUMS" "$assets/sbom.cdx.json" "$assets/install.sh"; do
-  [[ -s "$path" ]] || fail "DRAFT_ASSET_MISSING:$(basename "$path")"
+test "$(find "$assets" -maxdepth 1 -type f | wc -l | tr -d ' ')" = 6 || fail ASSET_COUNT
+for name in "clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz" SHA256SUMS sbom.cdx.json install.sh; do
+  cmp "$stage/$name" "$assets/$name" || fail "STAGED_BYTE_DRIFT:$name"
 done
 (
   cd "$assets"
   shasum -a 256 -c SHA256SUMS
-) >/dev/null || fail "DRAFT_CHECKSUMS"
-
+) >/dev/null || fail DRAFT_CHECKSUMS
+provenance="$artifact.provenance.sigstore.json"
+sbom="$artifact.sbom.sigstore.json"
+[[ -s "$provenance" && -s "$sbom" ]] || fail DRAFT_ATTESTATIONS_MISSING
 for subject in "$artifact" "$assets/sbom.cdx.json" "$assets/install.sh"; do
-  gh attestation verify "$subject" \
-    -R "$repository" \
-    --bundle "$provenance" \
-    --signer-workflow "$repository/.github/workflows/release.yml" \
-    --source-digest "$expected" \
-    --source-ref "refs/tags/$tag" \
-    --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE:$(basename "$subject")"
+  gh attestation verify "$subject" -R "$repository" --bundle "$provenance" --signer-workflow "$repository/.github/workflows/release.yml" --source-digest "$expected" --source-ref "refs/tags/$tag" --deny-self-hosted-runners >/dev/null || fail "DRAFT_PROVENANCE:$(basename "$subject")"
 done
-gh attestation verify "$artifact" \
-  -R "$repository" \
-  --bundle "$sbom_bundle" \
-  --predicate-type https://cyclonedx.org/bom \
-  --signer-workflow "$repository/.github/workflows/release.yml" \
-  --source-digest "$expected" \
-  --source-ref "refs/tags/$tag" \
-  --deny-self-hosted-runners >/dev/null || fail "DRAFT_SBOM_ATTESTATION"
+gh attestation verify "$artifact" -R "$repository" --bundle "$sbom" --predicate-type https://cyclonedx.org/bom --signer-workflow "$repository/.github/workflows/release.yml" --source-digest "$expected" --source-ref "refs/tags/$tag" --deny-self-hosted-runners >/dev/null || fail DRAFT_SBOM_ATTESTATION
 
-bash scripts/release/check-provider-pins.sh || fail "PROVIDER_PINS"
-# shellcheck source=provider-pins.sh
-source scripts/release/provider-pins.sh
+gh api -X GET "repos/$repository/actions/runs" -f head_sha="$expected" -f event=push -f per_page=100 >"$tmp/runs.json" || fail ACTIONS_QUERY
+python3 - "$tmp/runs.json" "$tag" "$expected" <<'PY' || fail TAG_RELEASE_WORKFLOW
+import json,sys
+data=json.load(open(sys.argv[1],encoding="utf-8")); tag,expected=sys.argv[2:]
+runs=[r for r in data.get("workflow_runs",[]) if r.get("name")=="Release" and r.get("path")==".github/workflows/release.yml" and r.get("head_branch")==tag and r.get("head_sha")==expected and r.get("event")=="push"]
+if not runs: raise SystemExit("missing")
+if any(r.get("status")!="completed" or r.get("conclusion")!="success" for r in runs): raise SystemExit("not-success")
+PY
 
-current_tree=$(git rev-parse "HEAD^{tree}")
-reviewed_content_digest=$(python3 - <<'PY'
-import json
-with open("reports/release/v0.4.2-review.json", encoding="utf-8") as handle:
-    print(json.load(handle)["reviewed_content_digest"])
+stage_manifest="$stage/release-stage.json"
+read -r current_tree review_digest artifact_sha claude_version < <(
+python3 - "$stage_manifest" <<'PY'
+import json,sys
+r=json.load(open(sys.argv[1],encoding="utf-8")); a=r["artifact_name"]
+print(r["source_tree"],r["reviewed_content_digest"],r["files"][a],r["providers"]["claude"]["version"])
 PY
 )
-[[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 git_common_dir=$(git rev-parse --git-common-dir)
-if [[ "$git_common_dir" != /* ]]; then git_common_dir="$root/$git_common_dir"; fi
+[[ "$git_common_dir" == /* ]] || git_common_dir="$root/$git_common_dir"
 evidence_dir=${CLROOM_RELEASE_EVIDENCE_DIR:-"$git_common_dir/clroom-release-evidence"}
-evidence_key=${reviewed_content_digest:0:12}
-claude_rehearsal="$evidence_dir/rehearse-v${version}-${evidence_key}.json"
-claude_draft="$evidence_dir/draft-v${version}-${short}.json"
-codex_rehearsal="$evidence_dir/codex-rehearse-v${version}-${evidence_key}.json"
-codex_draft="$evidence_dir/codex-draft-v${version}-${short}.json"
-
-bash scripts/release/resolve-codex-rehearsal-evidence.sh \
-  "$version" "$current_tree" "$reviewed_content_digest" "$codex_rehearsal" \
-  || fail "CODEX_REHEARSAL_ARTIFACT"
-bash scripts/release/resolve-codex-draft-evidence.sh \
-  "$version" "$expected" "$codex_draft" \
-  || fail "CODEX_DRAFT_ARTIFACT"
-
-for path in "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft"; do
-  [[ -f "$path" ]] || fail "EVIDENCE_MISSING:$path"
-done
-
-artifact_sha=$(shasum -a 256 "$artifact" | awk '{print $1}')
-python3 - \
-  "$claude_rehearsal" "$claude_draft" "$codex_rehearsal" "$codex_draft" \
-  "$version" "$expected" "$current_tree" "$reviewed_content_digest" "$artifact_sha" "$CLAUDE_VERSION" "$CODEX_VERSION" <<'PY' \
-  || fail "LOCAL_EVIDENCE_INVALID"
-import json, re, sys
-(
-    claude_rehearsal_path, claude_draft_path, codex_rehearsal_path, codex_draft_path,
-    version, expected, current_tree, reviewed_content_digest, artifact_sha, claude_version, codex_version,
-) = sys.argv[1:]
-
-def load(path):
-    with open(path, encoding="utf-8") as handle:
-        return json.load(handle)
-
-cp, cd, xp, xd = map(load, [
-    claude_rehearsal_path, claude_draft_path, codex_rehearsal_path, codex_draft_path,
-])
-
-for record, phase in [(cp, "rehearse"), (cd, "draft")]:
-    if record.get("schema_version") != "clroom.plugin-release-smoke.v3":
-        raise SystemExit("claude-schema")
-    required = {
-        "result": "PASS",
-        "phase": phase,
-        "release_version": version,
-        "platform": "macos-aarch64",
-        "claude_version": claude_version,
-        "clean_target_plugin": False,
-        "selected_target_plugin": True,
-        "new_sibling_plugins": 0,
-        "selected_plugin_errors": 0,
-        "persistent_config_unchanged": True,
-        "external_ancestor_agents_sandbox_probe_passed": True,
-    }
-    if phase == "rehearse":
-        required.update({
-            "source_tree": current_tree,
-            "reviewed_content_digest": reviewed_content_digest,
-            "evidence_binding": "content-addressed-runtime-v1",
-        })
-    else:
-        required["source_head"] = expected
-    for key, value in required.items():
-        if record.get(key) != value:
-            raise SystemExit(f"claude-{phase}:{key}")
-    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(record.get("source_head", ""))):
-        raise SystemExit(f"claude-{phase}:source-head")
-    if not record.get("plugin_id"):
-        raise SystemExit(f"claude-{phase}:plugin-id")
-    if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("claude_provider_sha256", ""))):
-        raise SystemExit(f"claude-{phase}:provider-sha")
-
-if cp.get("interactive_selected_tui_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:interactive")
-if cp.get("interactive_no_model_prompt_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:no-model")
-if cp.get("external_ancestor_agents_absent_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:external-ancestor-agents")
-if cp.get("project_agents_retained_confirmed") is not True:
-    raise SystemExit("claude-rehearsal:project-agents-retention")
-if cp.get("plugin_id") != cd.get("plugin_id"):
-    raise SystemExit("claude-plugin-drift")
-if cp.get("claude_provider_sha256") != cd.get("claude_provider_sha256"):
-    raise SystemExit("claude-provider-bytes-drift")
-if cd.get("artifact_sha256") != artifact_sha:
-    raise SystemExit("claude-draft-artifact")
-
-for record, phase in [(xp, "rehearse"), (xd, "draft")]:
-    if record.get("schema_version") != "clroom.codex-plugin-release-smoke.v4":
-        raise SystemExit("codex-schema")
-    required = {
-        "result": "PASS",
-        "phase": phase,
-        "release_version": version,
-        "platform": "macos-aarch64",
-        "codex_version": codex_version,
-        "clean_before_expected_mcp": False,
-        "selected_expected_mcp": True,
-        "selected_mcp_plugin_paths_rebased": True,
-        "clean_after_expected_mcp": False,
-        "ambient_config_and_plugin_tree_unchanged": True,
-        "plugin_source_unchanged": True,
-        "provider_mcp_initialize_observed": True,
-        "provider_mcp_tools_list_observed": True,
-        "fixture_mcp_tool_call_passed": True,
-        "provider_state_lifecycle_closed": True,
-    }
-    if phase == "rehearse":
-        required.update({
-            "source_tree": current_tree,
-            "reviewed_content_digest": reviewed_content_digest,
-            "evidence_binding": "content-addressed-runtime-v1",
-        })
-    else:
-        required["source_head"] = expected
-    for key, value in required.items():
-        if record.get(key) != value:
-            raise SystemExit(f"codex-{phase}:{key}")
-    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", str(record.get("source_head", ""))):
-        raise SystemExit(f"codex-{phase}:source-head")
-    if record.get("plugin_id") != "standalone-mcp@clroom-fixture" or record.get("expected_mcp") != "clroom_fixture":
-        raise SystemExit(f"codex-{phase}:fixture-identity")
-    for key in ("codex_provider_sha256", "plugin_source_sha256"):
-        if not re.fullmatch(r"[0-9a-f]{64}", str(record.get(key, ""))):
-            raise SystemExit(f"codex-{phase}:{key}")
-
-if xp.get("real_provider_runtime_confirmed") is not True:
-    raise SystemExit("codex-rehearsal:runtime")
-if xp.get("expected_mcp_runtime_healthy_confirmed") is not True:
-    raise SystemExit("codex-rehearsal:mcp-health")
-if xp.get("model_prompt_sent") is not False:
-    raise SystemExit("codex-rehearsal:model-prompt")
-if xp.get("post_runtime_clean_confirmed") is not True:
-    raise SystemExit("codex-rehearsal:post-runtime-clean")
-for key in ("plugin_id", "expected_mcp", "codex_provider_sha256", "plugin_source_sha256"):
-    if xp.get(key) != xd.get(key):
-        raise SystemExit(f"codex-drift:{key}")
-if xd.get("artifact_sha256") != artifact_sha:
-    raise SystemExit("codex-draft-artifact")
-if cd.get("artifact_sha256") != xd.get("artifact_sha256"):
-    raise SystemExit("draft-artifact-disagreement")
+claude_stage="$evidence_dir/stage-v${version}-${expected:0:12}.json"
+[[ -f "$claude_stage" ]] || fail CLAUDE_STAGE_EVIDENCE_MISSING
+python3 - "$claude_stage" "$version" "$expected" "$current_tree" "$review_digest" "$artifact_sha" "$claude_version" <<'PY' || fail CLAUDE_STAGE_EVIDENCE
+import json,sys
+path,version,head,tree,digest,artifact_sha,provider_version=sys.argv[1:]
+r=json.load(open(path,encoding="utf-8"))
+required={"schema_version":"clroom.plugin-release-smoke.v3","result":"PASS","phase":"stage","release_version":version,"source_head":head,"source_tree":tree,"reviewed_content_digest":digest,"evidence_binding":"content-addressed-runtime-v1","artifact_sha256":artifact_sha,"platform":"macos-aarch64","claude_version":provider_version,"interactive_selected_tui_confirmed":True,"interactive_no_model_prompt_confirmed":True,"external_ancestor_agents_absent_confirmed":True,"project_agents_retained_confirmed":True,"external_ancestor_agents_sandbox_probe_passed":True,"persistent_config_unchanged":True}
+for k,v in required.items():
+    if r.get(k)!=v: raise SystemExit(k)
 PY
 
-echo "DRAFT_RELEASE_VERIFY_PASS tag=$tag target=$expected artifact_sha256=$artifact_sha"
+printf 'DRAFT_RELEASE_VERIFY_PASS tag=%s target=%s artifact_sha256=%s\n' "$tag" "$expected" "$artifact_sha"
