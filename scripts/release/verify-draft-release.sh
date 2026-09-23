@@ -35,6 +35,32 @@ PY
 immutable_enabled=$(gh api "repos/$repository/immutable-releases" --jq .enabled 2>/dev/null)   || fail "IMMUTABLE_RELEASE_POLICY_UNVERIFIED"
 [[ "$immutable_enabled" == true ]] || fail "IMMUTABLE_RELEASE_POLICY_DISABLED"
 
+ruleset_tmp=$(mktemp "${TMPDIR:-/tmp}/clroom-draft-rulesets.XXXXXX") || fail "RULESET_TMP"
+gh api "repos/$repository/rulesets" >"$ruleset_tmp" || fail "RULESET_READ"
+python3 - "$ruleset_tmp" "$repository" <<'PY' || fail "TAG_RULESET_WEAKENED"
+import json, subprocess, sys
+path, repository = sys.argv[1:]
+items = json.load(open(path, encoding="utf-8"))
+for item in items:
+    if item.get("target") != "tag" or item.get("enforcement") != "active":
+        continue
+    detail = json.loads(subprocess.check_output(
+        ["gh", "api", f"repos/{repository}/rulesets/{item['id']}"], text=True
+    ))
+    refs = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
+    rules = {rule.get("type") for rule in detail.get("rules", [])}
+    if (
+        "refs/tags/v*" in refs
+        and {"update", "deletion"} <= rules
+        and not detail.get("bypass_actors")
+        and detail.get("current_user_can_bypass") in (None, "never")
+    ):
+        print("TAG_RULESET_PREPUBLISH_PASS")
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+rm -f -- "$ruleset_tmp"
+
 git fetch --quiet --force origin "refs/tags/$tag:refs/tags/$tag" || fail "TAG_FETCH"
 [[ "$(git cat-file -t "refs/tags/$tag")" == tag ]] || fail "ANNOTATED_TAG_REQUIRED"
 [[ "$(git rev-parse "refs/tags/$tag^{}")" == "$expected" ]] || fail "TAG_TARGET_MISMATCH"
