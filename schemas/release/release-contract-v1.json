@@ -101,7 +101,8 @@
         "packaging/**",
         "install.sh",
         "schemas/release/**",
-        "reports/release/**"
+        "reports/release/**",
+        "scripts/check-public-boundary.sh"
       ]
     },
     {
