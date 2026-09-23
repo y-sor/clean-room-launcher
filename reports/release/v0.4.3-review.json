@@ -362,6 +362,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The unpublished v0.4.2 tag was created before every technically reproducible release blocker had closed. The post-tag Codex Draft job then attempted to read the repository immutable-releases policy with an Actions token that cannot satisfy that administration endpoint, creating a deterministic late blocker after the protected tag already existed.",
       "durable_control": "PRETAG_BLOCKER_CLOSURE now stages and qualifies exact future shipping bytes before tag; Owner-authenticated local tag gating verifies repository immutable-release policy and required accepted-main workflows; post-tag workflow is statically forbidden from build/test/provider/runtime/npm-latest/repository-admin/full-release-contract/default-branch checks and only performs tag-bound attestation plus byte-exact Draft promotion/reconciliation."
+    },
+    {
+      "id": "pretag-stage-release-contract-was-unauthenticated",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The first exact-PR pre-tag staging run provisioned the pinned Codex 0.156.1 / Claude 2.1.280 canaries successfully, then stage-release.sh invoked the canonical release-contract checker without an authenticated GitHub token. The checker hit the unauthenticated REST rate limit and blocked before building shipping bytes.",
+      "durable_control": "The exact-byte staging workflow now passes the workflow-scoped GITHUB_TOKEN explicitly. The canonical checker also resolves authentication from GITHUB_TOKEN, then GH_TOKEN, then an existing gh auth token for local Owner boundaries, while remaining able to use unauthenticated public reads when no authenticated transport exists. Gate-contract coverage requires the stage step token so CI cannot silently regress."
     }
   ],
   "artifact_capability_gates": [
@@ -431,5 +437,5 @@
       "action-time staged-byte immutability check: deterministic fingerprint of all already-verified local pre-tag stage files is captured before tag construction and must remain identical inside the final mutable guard immediately before the single protected tag push"
     ]
   },
-  "reviewed_content_digest": "1f3c2ad62bc32609570b5e564cbf7a341f0a633da59fa4898859d31f890ec23b"
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
 }
