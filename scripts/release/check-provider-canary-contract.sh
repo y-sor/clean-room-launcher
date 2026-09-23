@@ -57,6 +57,12 @@ for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) a
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_SMOKE_MISSING:$needle"
 done
+for needle in   'PROVIDER_REGISTRY_FREEZE_REUSED=YES'   'if [[ "$phase" == "rehearse" ]]; then'
+do
+  grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_FREEZE_CONTRACT:$needle"
+done
+grep -Fq -- '"plugin_id": "frontend-design@claude-plugins-official"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_PLUGIN_IDENTITY"
+
 for smoke in "$codex_smoke" "$claude_smoke"; do
   for forbidden in     'IMMUTABLE_RELEASE_POLICY'     'gh release '     'gh attestation '     '"$phase" == "draft"'
   do
@@ -85,7 +91,7 @@ do
   grep -Fq -- "$needle" "$codex_rehearsal_resolver" || fail "CODEX_REHEARSAL_RESOLVER_CONTRACT:$needle"
 done
 
-for needle in   'pretag-stage:'   'Stage exact accepted-main release bytes'   'bash scripts/release/stage-release.sh "$GITHUB_SHA" "$RUNNER_TEMP/pretag-stage"'   'pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.sha }}'   'pretag-attestation-rehearsal:'   'Rehearse attestation mechanism before tag'   'PRETAG_ATTESTATION_REHEARSAL_PASS'
+for needle in   'pretag-stage:'   'Rehearse/stage exact release bytes'   'source_sha="${{ github.event.pull_request.head.sha || github.sha }}"'   'bash scripts/release/stage-release.sh "$source_sha" "$RUNNER_TEMP/pretag-stage"'   'pretag-stage-v${{ needs.release-readiness.outputs.version }}-${{ github.event.pull_request.head.sha || github.sha }}'   'pretag-attestation-rehearsal:'   'Rehearse attestation mechanism before tag'   'PRETAG_ATTESTATION_REHEARSAL_PASS'
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "PRETAG_WORKFLOW_MISSING:$needle"
 done
@@ -98,7 +104,7 @@ do
   grep -Fq -- "$needle" "$pretag_resolver" || fail "PRETAG_RESOLVER_CONTRACT:$needle"
 done
 
-for needle in   'resolve-pretag-stage.sh'   'verify-pretag-stage.py'   'verify-claude-stage-evidence.py'   'IMMUTABLE_RELEASE_POLICY_PASS'   'ensure_release_absent ACTION_TIME'   'ensure_remote_tag_absent ACTION_TIME'   'verify_tag_ruleset'   'PRETAG_STAGE_BINDING'   'CLAUDE_STAGE_EVIDENCE'
+for needle in   'resolve-pretag-stage.sh'   'verify-pretag-stage.py'   'verify-claude-stage-evidence.py'   'IMMUTABLE_RELEASE_POLICY_PASS'   'ensure_release_absent ACTION_TIME'   'ensure_remote_tag_absent ACTION_TIME'   'verify_required_main_workflows ACTION_TIME'   'verify_tag_ruleset'   'PRETAG_STAGE_BINDING'   'PRETAG_STAGE_BINDING_ACTION_TIME'   'CLAUDE_STAGE_EVIDENCE'
 do
   grep -Fq -- "$needle" "$tag_helper" || fail "TAG_PRETAG_CLOSURE_MISSING:$needle"
 done
