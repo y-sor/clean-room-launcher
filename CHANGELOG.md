@@ -7,6 +7,19 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-09-23
+
+### Fixed
+
+- Repair the unpublished v0.4.3 release-harness incident where the tag workflow directly executed a tracked non-executable stage resolver and failed on Ubuntu before Draft creation.
+- Add a repository-wide workflow script invocation contract that rejects direct execution of non-executable tracked shell helpers and carries executable negative fixtures.
+- Rehearse the exact post-tag stage resolver invocation on accepted-main Ubuntu against the current run's already-staged bytes before any protected tag can be authorized.
+
+### Security
+
+- Preserve the protected unpublished v0.4.3 tag as immutable incident evidence; v0.4.4 requires a newly reviewed, staged, runtime-qualified and attested candidate rather than moving or manually promoting the failed tag.
+- Post-tag promotion remains build-free and provider-runtime-free; the repair closes invocation/file-mode parity before the irreversible boundary instead of adding a post-tag workaround.
+
 ## [0.4.3] - 2026-09-23
 
 ### Changed
