@@ -181,7 +181,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-stage-release:
+  stage-release:
     name: Stage exact shipping bytes before tag
     needs: release-readiness
     if: github.event_name == 'push' && needs.release-readiness.outputs.lifecycle == 'ACTIVE_CANDIDATE'
