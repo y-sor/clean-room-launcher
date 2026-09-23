@@ -114,7 +114,7 @@ def check(root: Path) -> list[str]:
         "needs: [harness-contract, target-matrix, docs-discovery, qualified-target-lanes]" in required,
         "CI_REQUIRED_TOPOLOGY",
     )
-    require(errors, "if: always()" in required, "CI_REQUIRED_ALWAYS")
+    require(errors, "always()" in required, "CI_REQUIRED_ALWAYS")
 
     release_jobs = job_blocks(release_candidate)
     eligibility = release_jobs.get("release-eligibility", "")
