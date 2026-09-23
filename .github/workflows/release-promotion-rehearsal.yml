@@ -2,17 +2,13 @@ name: Release promotion rehearsal
 
 on:
   workflow_call:
-    inputs:
-      source_sha:
-        required: true
-        type: string
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: release-promotion-rehearsal-${{ inputs.source_sha }}
+  group: release-promotion-rehearsal-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -24,14 +20,14 @@ jobs:
       - name: Check out exact accepted main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.source_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Resolve exact accepted pre-tag stage with tag-path invocation
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ inputs.source_sha }}
+          SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
