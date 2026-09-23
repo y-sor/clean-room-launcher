@@ -87,7 +87,6 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/resolve-codex-rehearsal-evidence.sh \
     scripts/release/resolve-release-stage.sh \
     scripts/release/verify-draft-release.sh \
-    scripts/release/resolve-release-stage.sh \
     scripts/release/readiness.sh \
     install.sh || fail "SHELLCHECK"
 else
@@ -105,7 +104,6 @@ else
     scripts/release/resolve-codex-rehearsal-evidence.sh \
     scripts/release/resolve-release-stage.sh \
     scripts/release/verify-draft-release.sh \
-    scripts/release/resolve-release-stage.sh \
     scripts/release/readiness.sh || fail "SHELL_SYNTAX"
   sh -n install.sh || fail "INSTALLER_SHELL_SYNTAX"
 fi
