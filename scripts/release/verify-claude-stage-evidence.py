@@ -12,6 +12,7 @@ def main() -> int:
     parser.add_argument("--reviewed-content-digest", required=True)
     parser.add_argument("--artifact-sha256", required=True)
     parser.add_argument("--claude-version", required=True)
+    parser.add_argument("--expected-provider-sha256", required=True)
     args = parser.parse_args()
 
     with open(args.evidence, encoding="utf-8") as handle:
@@ -47,6 +48,8 @@ def main() -> int:
             raise SystemExit(f"CLAUDE_STAGE_EVIDENCE_BLOCKED:{key}")
     if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("claude_provider_sha256", ""))):
         raise SystemExit("CLAUDE_STAGE_EVIDENCE_BLOCKED:provider_sha")
+    if record.get("claude_provider_sha256") != args.expected_provider_sha256:
+        raise SystemExit("CLAUDE_STAGE_EVIDENCE_BLOCKED:provider_bytes")
     if not record.get("plugin_id"):
         raise SystemExit("CLAUDE_STAGE_EVIDENCE_BLOCKED:plugin_id")
     print(
