@@ -1,40 +1,37 @@
 name: Release promotion rehearsal
 
 on:
-  workflow_run:
-    workflows:
-      - Release candidate readiness
-    types:
-      - completed
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: release-promotion-rehearsal-${{ github.event.workflow_run.head_sha }}
+  group: release-promotion-rehearsal-${{ inputs.source_sha }}
   cancel-in-progress: true
 
 jobs:
   prepare-rehearsal:
     name: Rehearse exact post-tag prepare path
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out exact accepted main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.source_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Resolve exact accepted pre-tag stage with tag-path invocation
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
         shell: bash
         run: |
           set -euo pipefail
