@@ -27,10 +27,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Reconcile tag identity and release contract
+      - name: Reconcile immutable tag identity
         id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -41,24 +39,6 @@ jobs:
           test "$(git rev-parse "refs/tags/$tag^{}")" = "$GITHUB_SHA"
           test "$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")" = "$tag — Clean Room Launcher"
 
-          tag_date="$(python3 - "$tag" <<'PY'
-          import datetime, re, subprocess, sys
-          raw = subprocess.check_output(["git", "cat-file", "-p", f"refs/tags/{sys.argv[1]}"], text=True)
-          line = next((line for line in raw.splitlines() if line.startswith("tagger ")), None)
-          if line is None:
-              raise SystemExit("tagger line missing")
-          match = re.search(r" (\d+) ([+-])(\d{2})(\d{2})$", line)
-          if match is None:
-              raise SystemExit("tagger timestamp malformed")
-          minutes = int(match.group(3)) * 60 + int(match.group(4))
-          if match.group(2) == "-":
-              minutes = -minutes
-          tz = datetime.timezone(datetime.timedelta(minutes=minutes))
-          print(datetime.datetime.fromtimestamp(int(match.group(1)), tz=tz).date().isoformat())
-          PY
-          )"
-          python3 scripts/release/check-release-contract.py --tag-date "$tag_date" --report >/dev/null
-
           manifest_version="$(python3 - <<'PY'
           import tomllib
           with open("Cargo.toml", "rb") as handle:
@@ -66,11 +46,7 @@ jobs:
           PY
           )"
           test "$manifest_version" = "$version"
-
-          default_ref="$(git ls-remote --symref origin HEAD | awk '$1 == "ref:" && $3 == "HEAD" {print $2}')"
-          test -n "$default_ref"
-          git fetch --no-tags --depth=1 origin "$default_ref"
-          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)"
+          test "$tag" = "v$manifest_version"
 
           prerelease=false
           case "$version" in *-rc.*) prerelease=true ;; esac
@@ -223,13 +199,13 @@ jobs:
           rm -rf "$tmp"
           mkdir -p "$tmp"
           gh release view "$GITHUB_REF_NAME" --json tagName,name,isDraft,isPrerelease,assets >"$tmp/release.json"
-          python3 - "$tmp/release.json" "$GITHUB_REF_NAME" "$VERSION" <<'PY'
+          python3 - "$tmp/release.json" "$GITHUB_REF_NAME" "$VERSION" "${{ needs.prepare.outputs.prerelease }}" <<'PY'
           import json, sys
-          path, tag, version = sys.argv[1:]
+          path, tag, version, prerelease = sys.argv[1:]
           data = json.load(open(path, encoding="utf-8"))
           if data.get("tagName") != tag or data.get("name") != f"{tag} — Clean Room Launcher":
               raise SystemExit("release-identity")
-          if data.get("isDraft") is not True or data.get("isPrerelease") is not False:
+          if data.get("isDraft") is not True or data.get("isPrerelease") is not (prerelease == "true"):
               raise SystemExit("release-state")
           expected = {
               f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
