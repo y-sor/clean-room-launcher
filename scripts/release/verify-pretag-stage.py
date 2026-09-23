@@ -8,7 +8,7 @@ from pathlib import Path
 SCHEMA = "clroom.pretag-stage.v1"
 REQUIRED_CLOSURE = {
     "release_contract",
-    "accepted_main_ci",
+    "release_readiness",
     "exact_shipping_archive",
     "generic_provider_qualification",
     "codex_exact_archive_runtime",
