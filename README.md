@@ -235,7 +235,7 @@ update, remove, or refresh Codex plugins or marketplaces.
 While this selection is active, raw Codex config/plugin controls such as
 `-c`, `--config`, `--profile`, `--enable`, `--disable`, and
 `--plugin` are refused before provider birth. The exact v0.4.3 qualification
-target for this path is Codex CLI `0.156.0` on macOS Apple Silicon. A plugin
+target for this path is Codex CLI `0.156.1` on macOS Apple Silicon. A plugin
 whose effective MCP surface includes the app-owned `codex_app` server is
 host-required and fails closed for standalone CLROOM activation; configuration
 visibility is not treated as proof that app-hosted tools exist.
@@ -392,9 +392,9 @@ The qualified macOS provider paths for this source tree are:
 
 | Coding agent and launch path | Platform | Status |
 |---|---|---|
-| Codex CLI 0.156.0 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.156.0 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.156.0 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
+| Codex CLI 0.156.1 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.156.1 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.156.1 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
 | Claude Code CLI 2.1.280 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
 | Claude Code CLI 2.1.280 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
 | Claude Code CLI `-p` response-output semantics | macOS / Apple Silicon | Not independently qualified |
