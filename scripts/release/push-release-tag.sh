@@ -161,17 +161,18 @@ import json, sys
 path, expected = sys.argv[1:]
 data = json.load(open(path, encoding="utf-8"))
 required = {
-    ".github/workflows/ci.yml": "CI",
-    ".github/workflows/codeql.yml": "CodeQL",
-    ".github/workflows/fuzz.yml": "Fuzz smoke",
-    ".github/workflows/release-candidate.yml": "Release candidate readiness",
+    ".github/workflows/ci.yml": ("CI", "push"),
+    ".github/workflows/codeql.yml": ("CodeQL", "push"),
+    ".github/workflows/fuzz.yml": ("Fuzz smoke", "push"),
+    ".github/workflows/release-candidate.yml": ("Release candidate readiness", "push"),
+    ".github/workflows/release-promotion-rehearsal.yml": ("Release promotion rehearsal", "workflow_run"),
 }
-for workflow_path, workflow_name in required.items():
+for workflow_path, (workflow_name, workflow_event) in required.items():
     matches = [
         run for run in data.get("workflow_runs", [])
         if run.get("path") == workflow_path
         and run.get("name") == workflow_name
-        and run.get("event") == "push"
+        and run.get("event") == workflow_event
         and run.get("head_branch") == "main"
         and run.get("head_sha") == expected
     ]
