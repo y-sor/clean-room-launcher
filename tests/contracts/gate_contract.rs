@@ -69,8 +69,8 @@ fn accepted_main_stage_qualifies_exact_archive_before_tag() {
     }
     assert_eq!(stage.matches("scripts/release/qualify-real-provider.sh").count(), 2);
     assert_eq!(stage.matches("scripts/release/verify-qualification.py").count(), 2);
-    assert!(candidate.contains("Stage exact accepted-main release bytes"));
-    assert!(candidate.contains("pretag-stage-v§{{ needs.release-readiness.outputs.version }}-§{{ github.sha }}"));
+    assert!(candidate.contains("Rehearse/stage exact release bytes"));
+    assert!(candidate.contains("pretag-stage-v§{{ needs.release-readiness.outputs.version }}-§{{ github.event.pull_request.head.sha || github.sha }}"));
     assert!(candidate.contains(
         "./scripts/release/provision-provider-canaries.sh \"$RUNNER_TEMP/clroom-providers\" \"$GITHUB_ENV\""
     ));
@@ -335,7 +335,8 @@ fn tag_date_binding_is_monotonic_not_exact_day_equality() {
     assert!(checker.contains("RELEASE_CONTRACT_SELF_TEST_FAIL_CHANGELOG_FUTURE_DECLARATION"));
     assert!(checker.contains("RELEASE_CONTRACT_BLOCKED:CANDIDATE_NOT_ADVANCED"));
     assert!(helper.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
-    assert!(workflow.contains(r#"check-release-contract.py --tag-date "$tag_date""#));
+    assert!(!workflow.contains("check-release-contract.py"));
+    assert!(!workflow.contains("git ls-remote --symref origin HEAD"));
     assert!(!helper.contains("grep -Fxq \"## [$version] - $tag_date\" CHANGELOG.md"));
 }
 
@@ -432,6 +433,7 @@ fn tag_push_requires_complete_stage_then_refreshes_only_mutable_state() {
         "LOCAL_HEAD_DRIFT_ACTION_TIME",
         "ensure_remote_tag_absent ACTION_TIME",
         "ensure_release_absent ACTION_TIME",
+        "verify_required_main_workflows ACTION_TIME",
         "verify_tag_ruleset",
         "verify_immutable_policy ACTION_TIME",
         "check-release-contract.py --tag-date \"$tag_date\" --report",
@@ -591,7 +593,7 @@ fn codex_release_evidence_uses_actions_before_tag_not_owner_or_draft_runtime() {
     assert!(candidate.contains("Rehearse Codex runtime on exact PR candidate"));
     assert!(candidate.contains("local-codex-plugin-activation-smoke.sh rehearse"));
     assert!(candidate.contains("Upload Codex pre-merge rehearsal evidence"));
-    assert!(candidate.contains("Stage exact accepted-main release bytes"));
+    assert!(candidate.contains("Rehearse/stage exact release bytes"));
     assert!(stage.contains("local-codex-plugin-activation-smoke.sh stage"));
     assert!(resolver.contains(r#""event": "push""#));
     assert!(resolver.contains(r#""head_branch": "main""#));
