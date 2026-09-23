@@ -14,9 +14,24 @@ permissions:
   contents: read
 
 jobs:
+  harness-contract:
+    name: Validate harness contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run harness contract self-tests
+        run: |
+          python3 scripts/release/check-harness-contract.py --self-test
+          python3 scripts/release/stage-binding.py --self-test
+      - name: Validate repository harness topology
+        run: python3 scripts/release/check-harness-contract.py
   target-matrix:
     name: Validate packaging target matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +59,7 @@ jobs:
   docs-discovery:
     name: Validate docs discovery assets
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -125,6 +141,7 @@ jobs:
             runner: macos-14
             rust_target: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -132,3 +149,24 @@ jobs:
       - run: cargo test --locked --all-targets --target "${{ matrix.rust_target }}"
       - name: Build shipped binaries without warnings
         run: RUSTFLAGS='-D warnings' cargo build --locked --release --bins --target "${{ matrix.rust_target }}"
+
+  required:
+    name: Required
+    needs: [harness-contract, target-matrix, docs-discovery, qualified-target-lanes]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require complete CI topology
+        env:
+          HARNESS: ${{ needs.harness-contract.result }}
+          TARGET: ${{ needs.target-matrix.result }}
+          DOCS: ${{ needs.docs-discovery.result }}
+          QUALIFIED: ${{ needs.qualified-target-lanes.result }}
+        run: |
+          set -euo pipefail
+          test "$HARNESS" = success
+          test "$TARGET" = success
+          test "$DOCS" = success
+          test "$QUALIFIED" = success
+          echo "CI_REQUIRED_PASS"
