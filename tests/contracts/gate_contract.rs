@@ -604,6 +604,11 @@ fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
     assert!(guard.contains(r#"parsed[1] != "push""#));
     assert!(guard.contains(r#""tags-ignore" in filters"#));
     assert!(guard.contains(r#""branches-ignore" not in filters"#));
+    assert!(guard.contains("WORKFLOW_TAG_TRIGGER_SELF_TEST_PASS"));
+    assert!(guard.contains("WORKFLOW_TAG_TRIGGER_SELF_TEST_SAFE"));
+    assert!(guard.contains("WORKFLOW_TAG_TRIGGER_SELF_TEST_UNSAFE"));
+    assert!(guard.contains("on: [push, pull_request]"));
+    assert!(guard.contains("push: { branches: [main] }"));
 }
 
 #[test]
