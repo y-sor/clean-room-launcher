@@ -291,8 +291,8 @@ fn draft_release_verdict_reconciles_pretag_bytes_and_promotion_only() {
         "resolve-pretag-stage.sh",
         "verify-pretag-stage.py",
         "verify-claude-stage-evidence.py",
-        "\"name\": \"Release\"",
-        "\"event\": \"push\"",
+        'run.get("name") == "Release"',
+        'run.get("event") == "push"',
         "DRAFT_BYTE_RECONCILIATION",
         "DRAFT_RELEASE_VERIFY_PASS",
         "immutable-releases",
@@ -556,7 +556,6 @@ fn release_contract_enforces_public_doc_version_coherence() {
 }
 
 #[test]
-#[test]
 fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
     let guard =
         std::fs::read_to_string("scripts/release/check-post-tag-contract.sh").unwrap();
@@ -567,6 +566,7 @@ fn post_tag_contract_is_allowlisted_not_only_blacklisted() {
     assert!(guard.contains("scripts/release/provider-pins.sh"));
 }
 
+#[test]
 fn release_runtime_rehearsal_moves_left_and_exact_shipping_bytes_close_before_tag() {
     let claude =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
@@ -631,7 +631,7 @@ fn codex_release_evidence_uses_actions_before_tag_not_owner_or_draft_runtime() {
         r#""codex_pretag_stage_transport": "github_actions_macos_accepted_main_exact_archive""#
     ));
     assert!(contract.contains(r#""ambient_local_codex_release_input": "forbidden""#));
-    assert!(release_docs.contains("Canonical Codex pre-merge and exact-stage evidence"));
+    assert!(release_docs.contains("Codex pre-merge and exact-stage evidence"));
 }
 
 #[test]
