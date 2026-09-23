@@ -27,8 +27,8 @@ def normalized(path: str) -> str:
     return path[2:] if path.startswith("./") else path
 
 def needs_exec(line: str, path_start: int) -> bool:
-    prefix = line[:path_start].rstrip()
-    if not prefix:
+    prefix = line[:path_start]
+    if not prefix.strip():
         return True
     # YAML's scalar marker is not part of the shell command.
     prefix = re.sub(r"^\s*run:\s*", "", prefix)
@@ -79,6 +79,7 @@ run: |
         "run: bash scripts/release/nonexec.sh arg",
         "run: sh scripts/release/nonexec.sh arg",
         "run: python3 scripts/release/tool.py arg",
+        '  lifecycle="$(python3 scripts/release/tool.py arg)"',
         "run: scripts/release/exec.sh arg",
         "  source scripts/release/nonexec.sh",
     ):
