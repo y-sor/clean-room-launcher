@@ -29,6 +29,7 @@ use clroom::catalog::selection::SelectionRequest;
 use clroom::adapters::codex::{
     activation::{self as codex_activation, ActivationError as CodexActivationError},
     isolation::{IsolationError, IsolationInputs, plan_with_skills},
+    mcp::{self as codex_mcp, ActivationError as CodexMcpActivationError},
 };
 
 pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode {
@@ -268,15 +269,24 @@ fn launch_isolated_codex(
         }
     };
     let invocation = launch_contract::classify_codex_invocation(&provider_args);
-    let activation = if resource_request.is_empty() {
+    if !resource_request.is_empty()
+        && invocation != launch_contract::CodexInvocation::Interactive
+    {
+        return Err(
+            "CLROOM_RESOURCE_NOT_SELECTABLE: Codex resource activation is qualified only for interactive launch; continue locally"
+                .to_owned(),
+        );
+    }
+    let mcp_activation = codex_mcp::plan(
+        &inputs.codex_home,
+        resource_request,
+        &identity,
+        pass_env,
+    )
+    .map_err(codex_mcp_activation_error_message)?;
+    let activation = if resource_request.is_empty() || mcp_activation.is_some() {
         None
     } else {
-        if invocation != launch_contract::CodexInvocation::Interactive {
-            return Err(
-                "CLROOM_RESOURCE_NOT_SELECTABLE: v0.4.2 Codex whole-plugin activation is qualified only for interactive launch; continue locally"
-                    .to_owned(),
-            );
-        }
         codex_activation::plan(&home, &inputs.codex_home, resource_request, &identity)
             .map_err(codex_activation_error_message)?
     };
@@ -284,6 +294,11 @@ fn launch_isolated_codex(
         activation
             .revalidate(&home, &inputs.codex_home)
             .map_err(codex_activation_error_message)?;
+    }
+    if let Some(mcp_activation) = mcp_activation.as_ref() {
+        mcp_activation
+            .revalidate()
+            .map_err(codex_mcp_activation_error_message)?;
     }
     let state = if invocation == launch_contract::CodexInvocation::Interactive {
         Some(process::prepare_codex_state(
@@ -304,6 +319,21 @@ fn launch_isolated_codex(
                 .provider_config_args()
                 .map_err(codex_activation_error_message)?,
         );
+    }
+    if let Some(mcp_activation) = mcp_activation.as_ref() {
+        mcp_activation
+            .revalidate()
+            .map_err(codex_mcp_activation_error_message)?;
+        let state = state
+            .as_ref()
+            .ok_or_else(|| "CLROOM_CODEX_MCP_PREFLIGHT_FAILED: clean Codex state is unavailable; continue locally".to_owned())?;
+        process::preflight_codex_mcp_layers(
+            &plan,
+            &identity,
+            state,
+            mcp_activation,
+        )?;
+        contract.add_codex_mcp_activation(&mcp_activation.provider_config_args());
     }
     if std::io::stderr().is_terminal() {
         let feature_state = screen::PlaqueFeatureState::from_provider_args(&provider_args);
@@ -327,6 +357,7 @@ fn launch_isolated_codex(
         &inputs.codex_home,
         state.as_ref(),
         activation.as_ref(),
+        mcp_activation.as_ref(),
     )
 }
 
@@ -627,6 +658,47 @@ fn codex_activation_error_message(error: CodexActivationError) -> String {
             "{}: selected Codex plugin is unavailable or unqualified; continue locally",
             selection.code()
         ),
+    }
+}
+
+fn codex_mcp_activation_error_message(error: CodexMcpActivationError) -> String {
+    match error {
+        CodexMcpActivationError::ProviderTupleNotQualified => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for standalone MCP activation; continue locally".to_owned()
+        }
+        CodexMcpActivationError::MultipleMcp => {
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: first standalone MCP slice admits one exact Codex MCP server per launch".to_owned()
+        }
+        CodexMcpActivationError::MixedSelection => {
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: standalone MCP and whole-plugin selection cannot be combined in this slice".to_owned()
+        }
+        CodexMcpActivationError::UnsupportedRequest => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: use one exact --with=mcp:<id>; standalone MCP exclusions are unavailable in this slice".to_owned()
+        }
+        CodexMcpActivationError::UnknownMcp | CodexMcpActivationError::InvalidSource => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: selected Codex MCP source is unavailable or invalid; continue locally".to_owned()
+        }
+        CodexMcpActivationError::LiteralEnvironment => {
+            "CLROOM_MCP_SECRET_MATERIAL_REFUSED: literal MCP environment values are not admitted; use an env_vars reference plus --pass-env=NAME".to_owned()
+        }
+        CodexMcpActivationError::UnadmittedEnvironment(name) => {
+            format!("CLROOM_ENV_SELECTOR_REQUIRED: selected MCP references {name}; admit it explicitly with --pass-env={name}")
+        }
+        CodexMcpActivationError::UnsupportedEnvironmentReference => {
+            "CLROOM_MCP_ENV_REFERENCE_REFUSED: first standalone MCP slice admits only plain environment-variable names".to_owned()
+        }
+        CodexMcpActivationError::UnsupportedField(_) => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: selected MCP uses fields outside the first reference-only stdio contract; continue locally".to_owned()
+        }
+        CodexMcpActivationError::InvalidIdentityField => {
+            "CLROOM_MCP_IDENTITY_FIELD_REFUSED: MCP command/args/cwd are invalid or contain environment interpolation".to_owned()
+        }
+        CodexMcpActivationError::RelativeWorkingDirectory => {
+            "CLROOM_MCP_CWD_REFUSED: first standalone MCP slice requires an absolute cwd".to_owned()
+        }
+        CodexMcpActivationError::StateChanged => {
+            "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before launch; retry".to_owned()
+        }
     }
 }
 
