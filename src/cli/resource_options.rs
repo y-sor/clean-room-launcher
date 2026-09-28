@@ -87,14 +87,21 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .iter()
         .chain(request.excludes.iter())
         .any(|target| match target {
-            SelectionTarget::Exact { kind, .. } => *kind != ResourceKind::Plugin,
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::Plugin => false,
+            SelectionTarget::Exact { kind, .. }
+                if provider == Provider::Codex && *kind == ResourceKind::McpServer =>
+            {
+                false
+            }
+            SelectionTarget::Exact { .. } => true,
             SelectionTarget::All => false,
         });
     if unsupported_exact {
-        return Err(
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available in v0.4.x; continue locally"
-                .to_owned(),
-        );
+        return Err(match provider {
+            Provider::Codex => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin or standalone MCP selection is available in v0.4.x; continue locally",
+            Provider::Claude => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available in v0.4.x; continue locally",
+        }
+        .to_owned());
     }
 
     if !request.is_empty() && raw_plugin_activation {
@@ -192,11 +199,6 @@ mod tests {
     fn unsupported_resource_kinds_and_all_remain_closed_in_v0_4_x() {
         for (provider, selector, code) in [
             (
-                Provider::Codex,
-                "--without=mcp:local-tools",
-                "CLROOM_RESOURCE_NOT_SELECTABLE:",
-            ),
-            (
                 Provider::Claude,
                 "--without=mcp:local-tools",
                 "CLROOM_RESOURCE_NOT_SELECTABLE:",
@@ -215,6 +217,24 @@ mod tests {
             prepare(Provider::Claude, &strings(&["--with=all"])).unwrap_err();
         assert!(all_error.contains("unavailable in v0.4.x"), "{all_error}");
         assert!(!all_error.contains("unavailable in v0.4.0"), "{all_error}");
+    }
+
+    #[test]
+    fn codex_exact_mcp_is_preserved_as_structured_selection() {
+        let prepared = prepare(
+            Provider::Codex,
+            &strings(&["--with=mcp:local-tools", "--model", "gpt-5"]),
+        )
+        .unwrap();
+
+        assert_eq!(
+            prepared.request.includes.iter().collect::<Vec<_>>(),
+            vec![&SelectionTarget::Exact {
+                kind: ResourceKind::McpServer,
+                id: "local-tools".to_owned(),
+            }]
+        );
+        assert_eq!(prepared.provider_args, strings(&["--model", "gpt-5"]));
     }
 
     #[test]

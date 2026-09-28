@@ -177,6 +177,19 @@ impl LaunchContract {
         }
     }
 
+    pub fn add_codex_mcp_activation(&mut self, activation_args: &[String]) {
+        if self.provider != Provider::Codex || activation_args.is_empty() {
+            return;
+        }
+        let insert_at = CODEX_CLEAN_DEFAULTS.len();
+        self.argv
+            .splice(insert_at..insert_at, activation_args.iter().cloned());
+        self.boundary = BoundaryState::Expanded;
+        if !self.boundary_controls.contains(&"mcp") {
+            self.boundary_controls.push("mcp");
+        }
+    }
+
     pub fn add_claude_plugin_activation(&mut self, activation_args: &[String]) {
         if self.provider != Provider::Claude || activation_args.is_empty() {
             return;
@@ -433,6 +446,24 @@ mod tests {
         );
         assert_eq!(contract.boundary, BoundaryState::Expanded);
         assert!(contract.boundary_controls.contains(&"plugin"));
+    }
+
+    #[test]
+    fn codex_owned_mcp_activation_is_inserted_as_expanded_boundary() {
+        let mut contract = LaunchContract::codex(&[]);
+        contract.add_codex_mcp_activation(&[
+            "-c".to_owned(),
+            "synthetic_mcp_override=true".to_owned(),
+        ]);
+
+        assert!(
+            contract
+                .argv
+                .windows(2)
+                .any(|pair| pair[0] == "-c" && pair[1] == "synthetic_mcp_override=true")
+        );
+        assert_eq!(contract.boundary, BoundaryState::Expanded);
+        assert!(contract.boundary_controls.contains(&"mcp"));
     }
 
     #[test]
