@@ -563,7 +563,12 @@ def provider_modes_in_tree(root_pid, provider):
         if not fixture.process_uses_provider(pid, str(provider)):
             continue
         argv = fixture.process_argv(pid)
-        modes.add("app-server" if "app-server" in argv[1:] else "interactive")
+        if "--version" in argv[1:] or "-V" in argv[1:]:
+            modes.add("version")
+        elif "app-server" in argv[1:]:
+            modes.add("app-server")
+        else:
+            modes.add("interactive")
     return sorted(modes)
 
 
@@ -581,28 +586,17 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
     )
     timed_out = False
     modes_seen = set()
-    if label == "project_sibling_layer":
-        deadline = time.monotonic() + 15
-        while proc.poll() is None and time.monotonic() < deadline:
-            modes_seen.update(provider_modes_in_tree(proc.pid, provider))
-            time.sleep(0.1)
-        if proc.poll() is None:
-            timed_out = True
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except (ProcessLookupError, PermissionError):
-                proc.kill()
-        _, stderr = proc.communicate(timeout=5)
-    else:
+    deadline = time.monotonic() + 15
+    while proc.poll() is None and time.monotonic() < deadline:
+        modes_seen.update(provider_modes_in_tree(proc.pid, provider))
+        time.sleep(0.1)
+    if proc.poll() is None:
+        timed_out = True
         try:
-            _, stderr = proc.communicate(timeout=15)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except (ProcessLookupError, PermissionError):
-                proc.kill()
-            _, stderr = proc.communicate(timeout=5)
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            proc.kill()
+    _, stderr = proc.communicate(timeout=5)
     modes_seen = sorted(modes_seen)
     markers = sorted(set(re.findall(r"CLROOM_[A-Z0-9_]+", stderr or "")))
     if timed_out or proc.returncode == 0 or expected_marker not in (stderr or ""):
