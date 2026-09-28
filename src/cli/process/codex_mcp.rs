@@ -9,7 +9,7 @@ use clroom::adapters::{
 use serde_json::{Value, json};
 use std::{
     io::{BufRead, BufReader, Write},
-    path::{Path, PathBuf},
+    path::Path,
     process::{Child, Command, Stdio},
     sync::mpsc::{self, Receiver, RecvTimeoutError},
     thread,
@@ -55,7 +55,7 @@ fn run_protocol(child: &mut Child, project: &Path) -> Result<(), String> {
     let mut stdin = child.stdin.take().ok_or_else(preflight_failed)?;
     let stdout = child.stdout.take().ok_or_else(preflight_failed)?;
     let (sender, receiver) = mpsc::channel::<Value>();
-    let reader = thread::spawn(move || {
+    let _reader = thread::spawn(move || {
         let mut reader = BufReader::new(stdout);
         let mut line = String::new();
         loop {
@@ -108,7 +108,6 @@ fn run_protocol(child: &mut Child, project: &Path) -> Result<(), String> {
     let config = receive_result(&receiver, deadline, 2)?;
     drop(stdin);
     drop(receiver);
-    let _ = reader.join();
 
     validate_layers(&config)
 }
