@@ -394,7 +394,7 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
     pty_tail = bytearray()
     reaped = False
     wait_status = None
-    deadline = time.monotonic() + 45
+    deadline = time.monotonic() + 90
 
     def drain():
         while True:
