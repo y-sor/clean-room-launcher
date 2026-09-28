@@ -7,8 +7,10 @@ use crate::{
     },
     core::inventory::sha256_hex,
 };
+use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, Visitor};
 use std::{
     collections::BTreeSet,
+    fmt,
     fs::{self, File},
     io::Read,
     path::{Path, PathBuf},
@@ -102,17 +104,7 @@ pub fn plan(
     let source_path = ambient_codex_home.join("config.toml");
     let source = read_source(&source_path)?;
     let source_digest = sha256_hex(source.as_bytes());
-    let document = source
-        .parse::<toml::Table>()
-        .map_err(|_| ActivationError::InvalidSource)?;
-    let servers = document
-        .get("mcp_servers")
-        .and_then(toml::Value::as_table)
-        .ok_or(ActivationError::UnknownMcp)?;
-    let server = servers
-        .get(&id)
-        .and_then(toml::Value::as_table)
-        .ok_or(ActivationError::UnknownMcp)?;
+    let server = selected_server(&source, &id)?.ok_or(ActivationError::UnknownMcp)?;
 
     for key in server.keys() {
         if !matches!(key.as_str(), "command" | "args" | "env_vars" | "cwd") {
@@ -193,6 +185,103 @@ pub fn plan(
         env_vars,
         cwd,
     }))
+}
+
+
+fn selected_server(source: &str, selected_id: &str) -> Result<Option<toml::Table>, ActivationError> {
+    RootSeed { selected_id }
+        .deserialize(toml::de::Deserializer::new(source))
+        .map_err(|_| ActivationError::InvalidSource)
+}
+
+struct RootSeed<'a> {
+    selected_id: &'a str,
+}
+
+impl<'de> DeserializeSeed<'de> for RootSeed<'_> {
+    type Value = Option<toml::Table>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(RootVisitor {
+            selected_id: self.selected_id,
+        })
+    }
+}
+
+struct RootVisitor<'a> {
+    selected_id: &'a str,
+}
+
+impl<'de> Visitor<'de> for RootVisitor<'_> {
+    type Value = Option<toml::Table>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a Codex config table")
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut selected = None;
+        while let Some(key) = map.next_key::<String>()? {
+            if key == "mcp_servers" {
+                selected = map.next_value_seed(McpServersSeed {
+                    selected_id: self.selected_id,
+                })?;
+            } else {
+                map.next_value::<IgnoredAny>()?;
+            }
+        }
+        Ok(selected)
+    }
+}
+
+struct McpServersSeed<'a> {
+    selected_id: &'a str,
+}
+
+impl<'de> DeserializeSeed<'de> for McpServersSeed<'_> {
+    type Value = Option<toml::Table>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(McpServersVisitor {
+            selected_id: self.selected_id,
+        })
+    }
+}
+
+struct McpServersVisitor<'a> {
+    selected_id: &'a str,
+}
+
+impl<'de> Visitor<'de> for McpServersVisitor<'_> {
+    type Value = Option<toml::Table>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("an MCP server table")
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut selected = None;
+        while let Some(key) = map.next_key::<String>()? {
+            if key == self.selected_id {
+                selected = Some(map.next_value::<toml::Table>()?);
+            } else {
+                map.next_value::<IgnoredAny>()?;
+            }
+        }
+        Ok(selected)
+    }
 }
 
 fn selected_mcp(request: &SelectionRequest) -> Result<Option<String>, ActivationError> {
@@ -389,6 +478,28 @@ cwd = "/tmp"
         assert!(args[1].contains(r#""docs""#));
         assert!(args[1].contains("DOCS_TOKEN"));
         assert!(!args[1].contains("secret"));
+        cleanup(&root);
+    }
+
+    #[test]
+    fn unrelated_mcp_values_are_not_selected() {
+        let (root, identity) = fixture(
+            r#"[mcp_servers.sibling]
+command = "sibling-mcp"
+env = { SECRET = "must-not-be-selected" }
+http_headers = { Authorization = "literal" }
+
+[mcp_servers.docs]
+command = "docs-mcp"
+"#,
+        );
+        let plan = plan(&root.join(".codex"), &request("mcp:docs"), &identity, &[])
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(plan.id(), "docs");
+        assert!(!plan.provider_config_args()[1].contains("must-not-be-selected"));
+        assert!(!plan.provider_config_args()[1].contains("Authorization"));
         cleanup(&root);
     }
 
