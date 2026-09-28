@@ -183,7 +183,7 @@ fn load_definition(
         .and_then(toml::Value::as_table)
         .ok_or(ActivationError::UnknownServer)?;
 
-    let allowed = BTreeSet::from(["command", "args", "env_vars", "cwd", "enabled"]);
+    let allowed = BTreeSet::from(["command", "args", "env", "env_vars", "cwd", "enabled", "url"]);
     if server.keys().any(|key| !allowed.contains(key.as_str())) {
         return Err(ActivationError::UnsupportedField);
     }
@@ -289,7 +289,8 @@ fn read_stable_regular_file(path: &Path) -> Result<Vec<u8>, ActivationError> {
         return Err(ActivationError::InvalidSource);
     }
     let mut bytes = Vec::with_capacity(before.len() as usize);
-    file.take(MAX_CONFIG_BYTES + 1)
+    (&mut file)
+        .take(MAX_CONFIG_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|_| ActivationError::InvalidSource)?;
     if bytes.len() as u64 > MAX_CONFIG_BYTES {
@@ -423,7 +424,7 @@ env = { TOKEN = "secret" }
         );
         assert_eq!(
             plan_for_source(&root, &request, &[]),
-            Err(ActivationError::UnsupportedField)
+            Err(ActivationError::LiteralEnvironment)
         );
         cleanup(&root);
 

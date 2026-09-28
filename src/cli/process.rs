@@ -12,6 +12,7 @@ use clroom::adapters::claude::{
 use clroom::adapters::codex::{
     activation::{self as codex_activation, PluginActivationPlan},
     isolation::{IsolationInputs, IsolationPlan, plan_with_skills},
+    mcp_activation::McpActivationPlan,
 };
 use clroom::adapters::{
     identity::{ProviderIdentity, resolve_identity, revalidate_identity},
@@ -20,6 +21,7 @@ use clroom::adapters::{
 use clroom::contracts::adapter::parse_declaration;
 
 use super::launch_contract::{CodexInvocation, LaunchContract, classify_codex_invocation};
+mod codex_mcp;
 mod codex_state;
 pub(super) use codex_state::CodexState;
 
@@ -361,6 +363,7 @@ pub fn launch_isolated_codex(
     ambient_codex_home: &Path,
     state: Option<&CodexState>,
     plugin_activation: Option<&PluginActivationPlan>,
+    mcp_activation: Option<&McpActivationPlan>,
 ) -> Result<ExitCode, String> {
     let sandbox = Path::new("/usr/bin/sandbox-exec");
     if !fs::metadata(sandbox).is_ok_and(|metadata| metadata.is_file()) {
@@ -391,6 +394,16 @@ pub fn launch_isolated_codex(
             state,
             plugin_activation,
         )?;
+        if let Some(activation) = mcp_activation {
+            let state = state.ok_or_else(|| "CLROOM_CODEX_MCP_SHADOW_STATE_MISSING".to_owned())?;
+            activation
+                .revalidate(requested_names)
+                .map_err(codex_mcp_activation_error)?;
+            codex_mcp::preflight_layers(plan, identity, state, &plan.project)?;
+            activation
+                .revalidate(requested_names)
+                .map_err(codex_mcp_activation_error)?;
+        }
         revalidate_launch_identity(identity)?;
         Err(isolated_launch_error(command.exec()))
     }
@@ -402,6 +415,16 @@ pub fn launch_isolated_codex(
             state,
             plugin_activation,
         )?;
+        if let Some(activation) = mcp_activation {
+            let state = state.ok_or_else(|| "CLROOM_CODEX_MCP_SHADOW_STATE_MISSING".to_owned())?;
+            activation
+                .revalidate(requested_names)
+                .map_err(codex_mcp_activation_error)?;
+            codex_mcp::preflight_layers(plan, identity, state, &plan.project)?;
+            activation
+                .revalidate(requested_names)
+                .map_err(codex_mcp_activation_error)?;
+        }
         revalidate_launch_identity(identity)?;
         let status = command.status().map_err(isolated_launch_error)?;
         Ok(ExitCode::from(status.code().unwrap_or(1) as u8))
@@ -422,6 +445,24 @@ fn revalidate_codex_plugin_activation(
         .map_err(codex_plugin_activation_error)?;
     let state = state.ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_MISSING".to_owned())?;
     codex_state::verify_plugin_projection(&state.shadow_home, activation)
+}
+
+
+fn codex_mcp_activation_error(
+    error: clroom::adapters::codex::mcp_activation::ActivationError,
+) -> String {
+    use clroom::adapters::codex::mcp_activation::ActivationError;
+    match error {
+        ActivationError::StateChanged => {
+            "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP server changed before launch; retry"
+                .to_owned()
+        }
+        ActivationError::EnvironmentNotAdmitted => {
+            "CLROOM_MCP_ENV_NOT_ADMITTED: every selected MCP environment reference requires explicit --pass-env=NAME"
+                .to_owned()
+        }
+        _ => "CLROOM_RESOURCE_NOT_SELECTABLE: selected Codex MCP server is unavailable or outside the qualified standalone stdio contract; continue locally".to_owned(),
+    }
 }
 
 fn codex_plugin_activation_error(error: codex_activation::ActivationError) -> String {
