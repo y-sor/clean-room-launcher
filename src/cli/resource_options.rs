@@ -87,12 +87,56 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .iter()
         .chain(request.excludes.iter())
         .any(|target| match target {
-            SelectionTarget::Exact { kind, .. } => *kind != ResourceKind::Plugin,
+            SelectionTarget::Exact { kind, .. } => {
+                *kind != ResourceKind::Plugin
+                    && !(provider == Provider::Codex && *kind == ResourceKind::McpServer)
+            }
             SelectionTarget::All => false,
         });
     if unsupported_exact {
         return Err(
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available in v0.4.x; continue locally"
+            "CLROOM_RESOURCE_NOT_SELECTABLE: requested resource kind is not qualified for this provider; continue locally"
+                .to_owned(),
+        );
+    }
+
+    let codex_mcp_includes = request.includes.iter().filter(|target| {
+        matches!(
+            target,
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::McpServer
+        )
+    }).count();
+    let codex_mcp_excludes = request.excludes.iter().any(|target| {
+        matches!(
+            target,
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::McpServer
+        )
+    });
+    let plugin_targets = request
+        .includes
+        .iter()
+        .chain(request.excludes.iter())
+        .any(|target| {
+            matches!(
+                target,
+                SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::Plugin
+            )
+        });
+    if codex_mcp_excludes {
+        return Err(
+            "CLROOM_RESOURCE_NOT_SELECTABLE: standalone MCP exclusion is unavailable in this slice; continue locally"
+                .to_owned(),
+        );
+    }
+    if codex_mcp_includes > 1 {
+        return Err(
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: one exact Codex MCP server is admitted per launch"
+                .to_owned(),
+        );
+    }
+    if codex_mcp_includes != 0 && plugin_targets {
+        return Err(
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: standalone MCP and whole-plugin selection cannot be combined in this slice"
                 .to_owned(),
         );
     }
@@ -198,7 +242,7 @@ mod tests {
             ),
             (
                 Provider::Claude,
-                "--without=mcp:local-tools",
+                "--with=mcp:local-tools",
                 "CLROOM_RESOURCE_NOT_SELECTABLE:",
             ),
             (
@@ -215,6 +259,40 @@ mod tests {
             prepare(Provider::Claude, &strings(&["--with=all"])).unwrap_err();
         assert!(all_error.contains("unavailable in v0.4.x"), "{all_error}");
         assert!(!all_error.contains("unavailable in v0.4.0"), "{all_error}");
+    }
+
+    #[test]
+    fn codex_exact_mcp_is_preserved_and_mixing_is_refused() {
+        let prepared = prepare(
+            Provider::Codex,
+            &strings(&["--with=mcp:local-tools", "--model", "gpt-5"]),
+        )
+        .unwrap();
+        assert_eq!(
+            prepared.request.includes.iter().collect::<Vec<_>>(),
+            vec![&SelectionTarget::Exact {
+                kind: ResourceKind::McpServer,
+                id: "local-tools".to_owned(),
+            }]
+        );
+        assert_eq!(prepared.provider_args, strings(&["--model", "gpt-5"]));
+
+        let mixed = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=mcp:local-tools",
+                "--with=plugin:codex-app-tools@openai-bundled",
+            ]),
+        )
+        .unwrap_err();
+        assert!(mixed.starts_with("CLROOM_RESOURCE_ACTIVATION_CONFLICT:"));
+
+        let multi = prepare(
+            Provider::Codex,
+            &strings(&["--with=mcp:one,two"]),
+        )
+        .unwrap_err();
+        assert!(multi.starts_with("CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4:"));
     }
 
     #[test]

@@ -164,6 +164,19 @@ impl LaunchContract {
         }
     }
 
+    pub fn add_codex_mcp_activation(&mut self, activation_args: &[String]) {
+        if self.provider != Provider::Codex || activation_args.is_empty() {
+            return;
+        }
+        let insert_at = CODEX_CLEAN_DEFAULTS.len();
+        self.argv
+            .splice(insert_at..insert_at, activation_args.iter().cloned());
+        self.boundary = BoundaryState::Expanded;
+        if !self.boundary_controls.contains(&"mcp") {
+            self.boundary_controls.push("mcp");
+        }
+    }
+
     pub fn add_codex_plugin_activation(&mut self, activation_args: &[String]) {
         if self.provider != Provider::Codex || activation_args.is_empty() {
             return;
@@ -401,6 +414,22 @@ mod tests {
                 .windows(2)
                 .any(|pair| { pair[0] == "-c" && pair[1] == "features.plugins=false" })
         );
+    }
+
+    #[test]
+    fn codex_owned_mcp_activation_is_session_only_and_marks_boundary() {
+        let mut contract = LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]);
+        contract.add_codex_mcp_activation(&[
+            "-c".to_owned(),
+            "mcp_servers={\"fixture\"={command=\"/usr/bin/true\"}}".to_owned(),
+        ]);
+        assert!(
+            contract.argv.windows(2).any(|pair| {
+                pair[0] == "-c" && pair[1].starts_with("mcp_servers=")
+            })
+        );
+        assert_eq!(contract.boundary, BoundaryState::Expanded);
+        assert!(contract.boundary_controls.contains(&"mcp"));
     }
 
     #[test]
