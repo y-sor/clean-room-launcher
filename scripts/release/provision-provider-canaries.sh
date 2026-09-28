@@ -6,6 +6,11 @@ fail() {
   exit 1
 }
 
+mode=current-all
+if [[ ${1:-} == --codex-only-frozen ]]; then
+  mode=codex-only-frozen
+  shift
+fi
 [[ $# -eq 2 ]] || fail "USAGE"
 provider_root=$1
 env_file=$2
@@ -21,7 +26,11 @@ command -v shasum >/dev/null 2>&1 || fail "SHASUM_REQUIRED"
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 # shellcheck source=provider-pins.sh
 source "$root/scripts/release/provider-pins.sh"
-bash "$root/scripts/release/check-provider-pins.sh"
+if [[ "$mode" == codex-only-frozen ]]; then
+  bash "$root/scripts/release/check-provider-pins.sh" --frozen-codex
+else
+  bash "$root/scripts/release/check-provider-pins.sh"
+fi
 
 rm -rf "$provider_root"
 mkdir -p "$provider_root/packs"
@@ -111,19 +120,23 @@ codex_platform_archive=$(pack_and_verify \
   "@openai/codex@$CODEX_VERSION-darwin-arm64" \
   "openai-codex-$CODEX_VERSION-darwin-arm64.tgz" \
   "$CODEX_PLATFORM_SHA512")
-claude_archive=$(pack_and_verify \
-  "@anthropic-ai/claude-code@$CLAUDE_VERSION" \
-  "anthropic-ai-claude-code-$CLAUDE_VERSION.tgz" \
-  "$CLAUDE_SHA512")
-claude_platform_archive=$(pack_and_verify \
-  "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" \
-  "anthropic-ai-claude-code-darwin-arm64-$CLAUDE_VERSION.tgz" \
-  "$CLAUDE_PLATFORM_SHA512")
+if [[ "$mode" == current-all ]]; then
+  claude_archive=$(pack_and_verify \
+    "@anthropic-ai/claude-code@$CLAUDE_VERSION" \
+    "anthropic-ai-claude-code-$CLAUDE_VERSION.tgz" \
+    "$CLAUDE_SHA512")
+  claude_platform_archive=$(pack_and_verify \
+    "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" \
+    "anthropic-ai-claude-code-darwin-arm64-$CLAUDE_VERSION.tgz" \
+    "$CLAUDE_PLATFORM_SHA512")
+fi
 
 safe_extract "$codex_archive" "$provider_root/codex"
 safe_extract "$codex_platform_archive" "$provider_root/codex-platform"
-safe_extract "$claude_archive" "$provider_root/claude"
-safe_extract "$claude_platform_archive" "$provider_root/claude-platform"
+if [[ "$mode" == current-all ]]; then
+  safe_extract "$claude_archive" "$provider_root/claude"
+  safe_extract "$claude_platform_archive" "$provider_root/claude-platform"
+fi
 
 codex_root="$provider_root/codex/package"
 claude_root="$provider_root/claude/package"
@@ -140,6 +153,16 @@ codex_native_sha256=$(shasum -a 256 "$codex_native" | awk '{print $1}')
 [[ "$codex_native_sha256" == "$CODEX_NATIVE_SHA256" ]] || fail "CODEX_NATIVE_DIGEST_MISMATCH"
 
 codex_bin=$(resolve_bin "$codex_root" codex) || fail "CODEX_BIN_INVALID"
+chmod 0755 "$codex_bin"
+[[ -x "$codex_native" ]] || fail "CODEX_NATIVE_NOT_EXECUTABLE"
+[[ -x "$codex_bin" ]] || fail "CODEX_BIN_NOT_EXECUTABLE"
+if [[ "$mode" == codex-only-frozen ]]; then
+  printf 'CLROOM_PROVIDER_CODEX=%s\n' "$codex_native" >> "$env_file"
+  printf 'CLROOM_PROVIDER_CODEX_VERSION=%s\n' "$CODEX_VERSION" >> "$env_file"
+  printf 'CLROOM_PROVIDER_CODEX_SHA256=%s\n' "$CODEX_NATIVE_SHA256" >> "$env_file"
+  printf 'PROVIDER_CANARY_PASS mode=codex-only-frozen codex=%s\n' "$CODEX_VERSION"
+  exit 0
+fi
 claude_bin=$(resolve_bin "$claude_root" claude) || fail "CLAUDE_BIN_INVALID"
 claude_platform_root="$provider_root/claude-platform/package"
 claude_native="$claude_platform_root/claude"

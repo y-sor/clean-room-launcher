@@ -170,7 +170,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./scripts/release/provision-provider-canaries.sh "$RUNNER_TEMP/clroom-standalone-providers" "$GITHUB_ENV"
+          ./scripts/release/provision-provider-canaries.sh --codex-only-frozen "$RUNNER_TEMP/clroom-standalone-providers" "$GITHUB_ENV"
       - name: Run canonical fail-closed gate
         env:
           GITHUB_TOKEN: ${{ github.token }}

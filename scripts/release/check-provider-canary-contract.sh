@@ -41,12 +41,12 @@ source "$pins"
 [[ "$CLAUDE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "CLAUDE_VERSION"
 [[ "$CODEX_NATIVE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fail "CODEX_NATIVE_SHA256"
 
-for needle in   "verify_latest '@openai/codex' \"\$CODEX_VERSION\""   "verify_latest '@anthropic-ai/claude-code' \"\$CLAUDE_VERSION\""   'verify_integrity "@openai/codex@$CODEX_VERSION"'   'verify_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64"'   'verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION"'   'verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION"'   'PROVIDER_PIN_CHECK_PASS'
+for needle in   '--frozen-codex'   "verify_latest '@openai/codex' \"\$CODEX_VERSION\""   "verify_latest '@anthropic-ai/claude-code' \"\$CLAUDE_VERSION\""   'verify_integrity "@openai/codex@$CODEX_VERSION"'   'verify_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64"'   'verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION"'   'verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION"'   'PROVIDER_PIN_CHECK_PASS'
 do
   grep -Fq -- "$needle" "$pin_checker" || fail "LATEST_OR_INTEGRITY_GATE_MISSING"
 done
 
-for needle in   'source "$root/scripts/release/provider-pins.sh"'   'bash "$root/scripts/release/check-provider-pins.sh"'   'aarch64-apple-darwin/bin/codex'   'codex_native_sha256=$(shasum -a 256 "$codex_native"'   'CODEX_NATIVE_DIGEST_MISMATCH'   'claude_native="$claude_platform_root/claude"'   'cmp -s "$claude_native" "$claude_canary"'   'CLROOM_PROVIDER_CODEX=%s\n'   'CLROOM_PROVIDER_CLAUDE=%s\n'   'CLROOM_PROVIDER_CODEX_VERSION=%s\n'   'CLROOM_PROVIDER_CODEX_SHA256=%s\n'   'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n'
+for needle in   '--codex-only-frozen'   'check-provider-pins.sh" --frozen-codex'   'source "$root/scripts/release/provider-pins.sh"'   'bash "$root/scripts/release/check-provider-pins.sh"'   'aarch64-apple-darwin/bin/codex'   'codex_native_sha256=$(shasum -a 256 "$codex_native"'   'CODEX_NATIVE_DIGEST_MISMATCH'   'claude_native="$claude_platform_root/claude"'   'cmp -s "$claude_native" "$claude_canary"'   'CLROOM_PROVIDER_CODEX=%s\n'   'CLROOM_PROVIDER_CLAUDE=%s\n'   'CLROOM_PROVIDER_CODEX_VERSION=%s\n'   'CLROOM_PROVIDER_CODEX_SHA256=%s\n'   'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n'
 do
   grep -Fq -- "$needle" "$provisioner" || fail "PIN_OR_LAYOUT_MISSING"
 done
@@ -88,7 +88,7 @@ for needle in   'Rehearse Codex runtime on exact PR candidate'   'GITHUB_TOKEN: 
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_PREMERGE_WORKFLOW_MISSING:$needle"
 done
-for needle in   'Provision pinned Codex for standalone MCP rehearsal'   'Rehearse standalone Codex MCP on exact PR candidate'   'rehearse-codex-standalone-mcp.py'   '--expected-provider-sha256 "$CLROOM_PROVIDER_CODEX_SHA256"'   'Upload standalone Codex MCP rehearsal evidence'
+for needle in   'Provision pinned Codex for standalone MCP rehearsal'   'provision-provider-canaries.sh --codex-only-frozen'   'Rehearse standalone Codex MCP on exact PR candidate'   'rehearse-codex-standalone-mcp.py'   '--expected-provider-sha256 "$CLROOM_PROVIDER_CODEX_SHA256"'   'Upload standalone Codex MCP rehearsal evidence'
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_STANDALONE_MCP_WORKFLOW_MISSING:$needle"
 done
