@@ -659,6 +659,42 @@ command = "other-mcp"
         cleanup(&root);
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn symlink_source_is_refused() {
+        use std::os::unix::fs::symlink;
+
+        let (root, identity) = fixture(
+            r#"[mcp_servers.docs]
+command = "docs-mcp"
+"#,
+        );
+        let config = root.join(".codex/config.toml");
+        let real = root.join("real-config.toml");
+        fs::rename(&config, &real).unwrap();
+        symlink(&real, &config).unwrap();
+        assert_eq!(
+            plan(&root.join(".codex"), &request("mcp:docs"), &identity, &[]),
+            Err(ActivationError::InvalidSource)
+        );
+        cleanup(&root);
+    }
+
+    #[test]
+    fn oversized_source_is_refused() {
+        let (root, identity) = fixture("");
+        fs::write(
+            root.join(".codex/config.toml"),
+            vec![b'a'; super::MAX_CONFIG_BYTES as usize + 1],
+        )
+        .unwrap();
+        assert_eq!(
+            plan(&root.join(".codex"), &request("mcp:docs"), &identity, &[]),
+            Err(ActivationError::InvalidSource)
+        );
+        cleanup(&root);
+    }
+
     #[test]
     fn source_change_after_planning_is_refused() {
         let (root, identity) = fixture(

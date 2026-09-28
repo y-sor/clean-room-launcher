@@ -28,9 +28,9 @@ This table is deliberately conservative.
 | Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config`; exact qualification target is 0.156.1 | Current-release qualification canary |
 | Codex | v0.4.4 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one installed standalone-capable bundle into a private shadow PluginStore | Exact real-provider E2E on Codex CLI 0.156.1 / macOS Apple Silicon |
 | Codex | v0.4.4 host-required plugin surface | App-owned `codex_app` MCP is classified `PLUGIN_HOST_REQUIRED` instead of being treated as standalone-capable | Negative qualification plus real standalone MCP fixture evidence |
-| Codex | current-source standalone MCP selector | One exact root-user `mcp:<id>`, stdio only, interactive launch only | Implementation candidate; final exact-candidate rehearsal pending |
-| Codex | standalone MCP environment | Literal values refused; each plain `env_vars` name also requires explicit `--pass-env=NAME` | Focused negative tests; exact provider canary pending |
-| Codex | ambient MCP siblings | Preflight requires selected `SessionFlags` MCP and refuses enabled non-session MCP layers before provider birth | Source-level fail-closed contract; exact provider negative rehearsal pending |
+| Codex | current-source standalone MCP selector | One exact root-user `mcp:<id>`, stdio only, interactive launch only | Exact-candidate macOS provider rehearsal required before acceptance |
+| Codex | standalone MCP environment | Literal values refused; each plain `env_vars` name also requires explicit `--pass-env=NAME` | Focused negatives plus exact-provider rehearsal required before acceptance |
+| Codex | ambient MCP siblings | Preflight requires selected `SessionFlags` MCP and refuses enabled non-session MCP layers before provider birth | Fail-closed source tests plus exact-provider negative rehearsal required before acceptance |
 | Claude Code | standalone MCP selector | Not qualified; fails closed | Claude synthetic registration feasibility blocked on 2.1.280 |
 | Codex | project instruction chain | Retained | Confirmed from current CLROOM source |
 | Codex | unselected personal-global skill contents | Known personal-global skill roots restricted | Confirmed from current CLROOM source |

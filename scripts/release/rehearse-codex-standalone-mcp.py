@@ -74,6 +74,7 @@ log_path = sys.argv[2]
 def log(method):
     with open(log_path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps({
+            "pid": os.getpid(),
             "method": method,
             "allowed_canary_present": "CLROOM_MCP_ALLOWED" in os.environ,
             "blocked_canary_present": "CLROOM_MCP_BLOCKED" in os.environ,
@@ -191,7 +192,7 @@ def child_env(home, provider):
     }
 
 
-def read_observation(path):
+def read_observation(path, allowed_pids=None):
     try:
         lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
@@ -202,7 +203,12 @@ def read_observation(path):
             record = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(record, dict) and isinstance(record.get("method"), str):
+        if (
+            isinstance(record, dict)
+            and isinstance(record.get("method"), str)
+            and isinstance(record.get("pid"), int)
+            and (allowed_pids is None or record["pid"] in allowed_pids)
+        ):
             records.append(record)
     methods = {record["method"] for record in records}
     relevant = [record for record in records if record["method"] in {"__birth__", "initialize", "tools/list"}]
@@ -279,7 +285,7 @@ def process_snapshot(root_pid, provider, server, selected_log):
                 selected_servers.add(pid)
                 owned.add(pid)
 
-    linked = False
+    linked_servers = set()
     for server_pid in selected_servers:
         current = server_pid
         seen = set()
@@ -287,13 +293,11 @@ def process_snapshot(root_pid, provider, server, selected_log):
             seen.add(current)
             parent = processes[current][0]
             if parent in interactive:
-                linked = True
+                linked_servers.add(server_pid)
                 break
             current = parent
-        if linked:
-            break
 
-    return bool(interactive), linked, owned
+    return bool(interactive), linked_servers, owned
 
 
 def ensure_task_processes_closed(pids, provider, server):
@@ -352,7 +356,7 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
     os.set_blocking(fd, False)
     provider_seen = False
     interactive_provider_seen = False
-    interactive_mcp_linked = False
+    interactive_server_pids = set()
     owned_pids = set()
     pty_tail = bytearray()
     reaped = False
@@ -383,20 +387,22 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
             reaped = True
             break
         provider_seen = provider_seen or fixture.provider_in_tree(pid, str(provider))
-        interactive_now, linked_now, owned_now = process_snapshot(
+        interactive_now, linked_pids_now, owned_now = process_snapshot(
             pid, provider, server, selected_log
         )
         interactive_provider_seen = interactive_provider_seen or interactive_now
-        interactive_mcp_linked = interactive_mcp_linked or linked_now
+        interactive_server_pids.update(linked_pids_now)
         owned_pids.update(owned_now)
-        observed = read_observation(selected_log)
+        observed = read_observation(selected_log, interactive_server_pids)
         if (
             provider_seen
             and interactive_provider_seen
-            and interactive_mcp_linked
+            and interactive_server_pids
             and observed["fixture_birth"]
             and observed["initialize"]
             and observed["tools_list"]
+            and observed["allowed_canary_present"]
+            and not observed["blocked_canary_present"]
         ):
             break
         time.sleep(0.05)
@@ -418,11 +424,11 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
                 reaped = True
                 break
             provider_seen = provider_seen or fixture.provider_in_tree(pid, str(provider))
-            interactive_now, linked_now, owned_now = process_snapshot(
+            interactive_now, linked_pids_now, owned_now = process_snapshot(
                 pid, provider, server, selected_log
             )
             interactive_provider_seen = interactive_provider_seen or interactive_now
-            interactive_mcp_linked = interactive_mcp_linked or linked_now
+            interactive_server_pids.update(linked_pids_now)
             owned_pids.update(owned_now)
             time.sleep(0.05)
     if not reaped:
@@ -440,13 +446,13 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
     except OSError:
         pass
 
-    observed = read_observation(selected_log)
+    observed = read_observation(selected_log, interactive_server_pids)
     sibling_absent = not sibling_log.exists()
     lifecycle_closed = ensure_task_processes_closed(owned_pids, provider, server)
     if not (
         provider_seen
         and interactive_provider_seen
-        and interactive_mcp_linked
+        and bool(interactive_server_pids)
         and lifecycle_closed
         and observed["fixture_birth"]
         and observed["initialize"]
@@ -478,7 +484,7 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
         fail(
             "positive runtime evidence incomplete "
             f"(provider_seen={provider_seen}, interactive_provider_seen={interactive_provider_seen}, "
-            f"interactive_mcp_linked={interactive_mcp_linked}, lifecycle_closed={lifecycle_closed}, "
+            f"interactive_server_pid_count={len(interactive_server_pids)}, lifecycle_closed={lifecycle_closed}, "
             f"observed={observed}, sibling_absent={sibling_absent}, "
             f"{exit_detail}, pty_tail={diagnostic!r})"
         )
@@ -486,6 +492,7 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
         "provider_birth": True,
         "interactive_provider_birth": True,
         "selected_mcp_under_interactive_provider": True,
+        "selected_mcp_protocol_pid_correlated": True,
         "provider_state_lifecycle_closed": True,
         "selected_fixture_birth": True,
         "initialize": True,

@@ -139,8 +139,8 @@ to exist in `SessionFlags` and refuses any enabled non-session MCP layer. The
 ambient selected source is digest-bound and re-read before the main provider
 launch.
 
-This path is still a candidate until its exact PR bytes pass the required macOS
-real-provider rehearsal. Claude standalone MCP is not part of this slice.
+Acceptance of this path requires its exact current PR bytes to pass the required
+macOS real-provider rehearsal. Claude standalone MCP is not part of this slice.
 
 ## Is CLROOM a way around managed Codex controls?
 
