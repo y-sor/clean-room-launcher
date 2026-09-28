@@ -630,10 +630,11 @@ def rehearse(args):
         codex_home = home / ".codex"
         selected_log = home / "selected.jsonl"
         sibling_log = home / "sibling.jsonl"
-        server = install_server(codex_home, selected_log, sibling_log)
+        fixture.ensure_synthetic_auth(codex_home)
         fixture.seed_synthetic_project_trust(
             str(candidate), "clroom", str(project), str(home), child_env(home, provider)
         )
+        server = install_server(codex_home, selected_log, sibling_log)
 
         source_digest_before = sha256_file(codex_home / "config.toml")
 
