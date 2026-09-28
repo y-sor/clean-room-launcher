@@ -531,8 +531,15 @@ command = "other-mcp"
             Err(ActivationError::UnsupportedRequest)
         );
 
-        let mut wrong = identity.clone();
-        wrong.version = (0, 158, 0);
+        let wrong = ProviderIdentity {
+            provider_id: identity.provider_id.clone(),
+            real_executable: identity.real_executable.clone(),
+            artifact_digest: identity.artifact_digest.clone(),
+            version: (0, 158, 0),
+            os: identity.os.clone(),
+            arch: identity.arch.clone(),
+            interpreter: identity.interpreter.clone(),
+        };
         assert_eq!(
             plan(&root.join(".codex"), &request("mcp:docs"), &wrong, &[]),
             Err(ActivationError::ProviderTupleNotQualified)
