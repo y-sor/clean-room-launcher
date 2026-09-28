@@ -16,6 +16,7 @@ command -v npm >/dev/null 2>&1 || fail "NPM_REQUIRED"
 command -v openssl >/dev/null 2>&1 || fail "OPENSSL_REQUIRED"
 command -v python3 >/dev/null 2>&1 || fail "PYTHON_REQUIRED"
 command -v cmp >/dev/null 2>&1 || fail "CMP_REQUIRED"
+command -v shasum >/dev/null 2>&1 || fail "SHASUM_REQUIRED"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 # shellcheck source=provider-pins.sh
@@ -135,6 +136,8 @@ rmdir "$provider_root/codex-platform"
 codex_native="$platform_alias/vendor/aarch64-apple-darwin/bin/codex"
 [[ -f "$codex_native" ]] || fail "CODEX_NATIVE_MISSING"
 chmod 0755 "$codex_native"
+codex_native_sha256=$(shasum -a 256 "$codex_native" | awk '{print $1}')
+[[ "$codex_native_sha256" == "$CODEX_NATIVE_SHA256" ]] || fail "CODEX_NATIVE_DIGEST_MISMATCH"
 
 codex_bin=$(resolve_bin "$codex_root" codex) || fail "CODEX_BIN_INVALID"
 claude_bin=$(resolve_bin "$claude_root" claude) || fail "CLAUDE_BIN_INVALID"
@@ -163,5 +166,6 @@ cmp -s "$claude_native" "$claude_canary" || fail "CLAUDE_CANARY_COPY_MISMATCH"
 printf 'CLROOM_PROVIDER_CODEX=%s\n' "$codex_native" >> "$env_file"
 printf 'CLROOM_PROVIDER_CLAUDE=%s\n' "$claude_canary" >> "$env_file"
 printf 'CLROOM_PROVIDER_CODEX_VERSION=%s\n' "$CODEX_VERSION" >> "$env_file"
+printf 'CLROOM_PROVIDER_CODEX_SHA256=%s\n' "$CODEX_NATIVE_SHA256" >> "$env_file"
 printf 'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n' "$CLAUDE_VERSION" >> "$env_file"
 printf 'PROVIDER_CANARY_PASS codex=%s claude=%s\n' "$CODEX_VERSION" "$CLAUDE_VERSION"

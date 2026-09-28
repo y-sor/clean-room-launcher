@@ -9,6 +9,7 @@ pin_checker="$root/scripts/release/check-provider-pins.sh"
 codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
 claude_smoke="$root/scripts/release/local-plugin-activation-smoke.sh"
 codex_mcp_fixture="$root/scripts/release/codex-mcp-fixture.py"
+codex_standalone_mcp="$root/scripts/release/rehearse-codex-standalone-mcp.py"
 tag_helper="$root/scripts/release/push-release-tag.sh"
 codex_rehearsal_resolver="$root/scripts/release/resolve-codex-rehearsal-evidence.sh"
 pretag_resolver="$root/scripts/release/resolve-pretag-stage.sh"
@@ -25,12 +26,12 @@ fail() {
   exit 1
 }
 
-for file in   "$provisioner" "$qualifier" "$pins" "$pin_checker"   "$codex_smoke" "$claude_smoke" "$codex_mcp_fixture"   "$tag_helper" "$codex_rehearsal_resolver" "$pretag_resolver"   "$stage_release" "$stage_verifier" "$claude_stage_verifier"   "$post_tag_contract" "$release_candidate" "$release" "$ci"
+for file in   "$provisioner" "$qualifier" "$pins" "$pin_checker"   "$codex_smoke" "$claude_smoke" "$codex_mcp_fixture" "$codex_standalone_mcp"   "$tag_helper" "$codex_rehearsal_resolver" "$pretag_resolver"   "$stage_release" "$stage_verifier" "$claude_stage_verifier"   "$post_tag_contract" "$release_candidate" "$release" "$ci"
 do
   [[ -f "$file" ]] || fail "FILE_MISSING:$(basename "$file")"
 done
 
-for needle in   'CODEX_VERSION='   'CLAUDE_VERSION='   'CODEX_SHA512='   'CODEX_PLATFORM_SHA512='   'CLAUDE_SHA512='   'CLAUDE_PLATFORM_SHA512='
+for needle in   'CODEX_VERSION='   'CLAUDE_VERSION='   'CODEX_SHA512='   'CODEX_PLATFORM_SHA512='   'CODEX_NATIVE_SHA256='   'CLAUDE_SHA512='   'CLAUDE_PLATFORM_SHA512='
 do
   grep -Fq -- "$needle" "$pins" || fail "PIN_MISSING:$needle"
 done
@@ -38,13 +39,14 @@ done
 source "$pins"
 [[ "$CODEX_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "CODEX_VERSION"
 [[ "$CLAUDE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "CLAUDE_VERSION"
+[[ "$CODEX_NATIVE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fail "CODEX_NATIVE_SHA256"
 
 for needle in   "verify_latest '@openai/codex' \"\$CODEX_VERSION\""   "verify_latest '@anthropic-ai/claude-code' \"\$CLAUDE_VERSION\""   'verify_integrity "@openai/codex@$CODEX_VERSION"'   'verify_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64"'   'verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION"'   'verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION"'   'PROVIDER_PIN_CHECK_PASS'
 do
   grep -Fq -- "$needle" "$pin_checker" || fail "LATEST_OR_INTEGRITY_GATE_MISSING"
 done
 
-for needle in   'source "$root/scripts/release/provider-pins.sh"'   'bash "$root/scripts/release/check-provider-pins.sh"'   'aarch64-apple-darwin/bin/codex'   'claude_native="$claude_platform_root/claude"'   'cmp -s "$claude_native" "$claude_canary"'   'CLROOM_PROVIDER_CODEX=%s\n'   'CLROOM_PROVIDER_CLAUDE=%s\n'   'CLROOM_PROVIDER_CODEX_VERSION=%s\n'   'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n'
+for needle in   'source "$root/scripts/release/provider-pins.sh"'   'bash "$root/scripts/release/check-provider-pins.sh"'   'aarch64-apple-darwin/bin/codex'   'codex_native_sha256=$(shasum -a 256 "$codex_native"'   'CODEX_NATIVE_DIGEST_MISMATCH'   'claude_native="$claude_platform_root/claude"'   'cmp -s "$claude_native" "$claude_canary"'   'CLROOM_PROVIDER_CODEX=%s\n'   'CLROOM_PROVIDER_CLAUDE=%s\n'   'CLROOM_PROVIDER_CODEX_VERSION=%s\n'   'CLROOM_PROVIDER_CODEX_SHA256=%s\n'   'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n'
 do
   grep -Fq -- "$needle" "$provisioner" || fail "PIN_OR_LAYOUT_MISSING"
 done
@@ -85,6 +87,14 @@ done
 for needle in   'Rehearse Codex runtime on exact PR candidate'   'GITHUB_TOKEN: ${{ github.token }}'   'local-codex-plugin-activation-smoke.sh rehearse'   '--fixture-standalone-mcp'   'Upload Codex pre-merge rehearsal evidence'
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_PREMERGE_WORKFLOW_MISSING:$needle"
+done
+for needle in   'Provision pinned Codex for standalone MCP rehearsal'   'Rehearse standalone Codex MCP on exact PR candidate'   'rehearse-codex-standalone-mcp.py'   '--expected-provider-sha256 "$CLROOM_PROVIDER_CODEX_SHA256"'   'Upload standalone Codex MCP rehearsal evidence'
+do
+  grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_STANDALONE_MCP_WORKFLOW_MISSING:$needle"
+done
+for needle in   'clroom.codex-standalone-mcp-rehearsal.v1'   'provider_tool_call": "NOT_SAFE_WITHOUT_PROMPT"'   'synthetic_auth_only": True'   'ambient_provider_state_unchanged": True'   'CLROOM_MCP_SECRET_MATERIAL_REFUSED'   'CLROOM_ENV_SELECTOR_REQUIRED'   'CLROOM_CODEX_MCP_LAYER_CONFLICT'
+do
+  grep -Fq -- "$needle" "$codex_standalone_mcp" || fail "CODEX_STANDALONE_MCP_FIXTURE_MISSING:$needle"
 done
 for needle in   'Release candidate readiness'   '.github/workflows/release-candidate.yml'   'event": "pull_request"'   'conclusion": "success"'   'candidate_tree'   'SUCCESSFUL_PR_RUN_WITH_MATCHING_TREE_NOT_FOUND'
 do
@@ -145,6 +155,7 @@ for raw in sys.argv[1:]:
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 PY
 python3 "$codex_mcp_fixture" --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
+python3 "$codex_standalone_mcp" --self-test || fail "CODEX_STANDALONE_MCP_REHEARSAL_SELF_TEST"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-provider-contract.XXXXXX")
