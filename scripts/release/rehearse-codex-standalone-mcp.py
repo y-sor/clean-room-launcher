@@ -626,6 +626,86 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
     return "PASS"
 
 
+def source_mutation_probe(candidate, project, home, provider, selected_log, sibling_log):
+    unlink(selected_log)
+    unlink(sibling_log)
+    codex_home = pathlib.Path(home).resolve() / ".codex"
+    config = codex_home / "config.toml"
+    original = config.read_text(encoding="utf-8")
+    preflight_root = codex_home / ".clroom-clean-state-v2"
+    proc = subprocess.Popen(
+        [
+            str(candidate), "codex",
+            f"--with=mcp:{MCP_NAME}",
+            f"--pass-env={ALLOWED_ENV}",
+            "--no-alt-screen",
+        ],
+        cwd=project,
+        env=child_env(home, provider),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    preflight_seen = False
+    modes_seen = set()
+    mutated = False
+    timed_out = False
+    stderr = ""
+    try:
+        deadline = time.monotonic() + 60
+        while proc.poll() is None and time.monotonic() < deadline:
+            modes_seen.update(provider_modes_in_tree(proc.pid, provider))
+            if preflight_root.is_dir() and any(
+                path.name.startswith(".mcp-preflight-")
+                for path in preflight_root.iterdir()
+            ):
+                preflight_seen = True
+                private_write(config, original + "# clroom synthetic source mutation\n")
+                mutated = True
+                break
+            time.sleep(0.02)
+        if not mutated and proc.poll() is None:
+            timed_out = True
+        if mutated and proc.poll() is None:
+            exit_deadline = time.monotonic() + 30
+            while proc.poll() is None and time.monotonic() < exit_deadline:
+                modes_seen.update(provider_modes_in_tree(proc.pid, provider))
+                time.sleep(0.05)
+            if proc.poll() is None:
+                timed_out = True
+        if proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                proc.kill()
+        _, stderr = proc.communicate(timeout=5)
+    finally:
+        private_write(config, original)
+
+    markers = sorted(set(re.findall(r"CLROOM_[A-Z0-9_]+", stderr or "")))
+    modes_seen = sorted(modes_seen)
+    selected = read_observation(selected_log)
+    sibling = read_observation(sibling_log)
+    if (
+        timed_out
+        or not preflight_seen
+        or not mutated
+        or proc.returncode == 0
+        or "CLROOM_RESOURCE_STATE_CHANGED" not in (stderr or "")
+        or selected_log.exists()
+        or sibling_log.exists()
+        or "interactive" in modes_seen
+    ):
+        fail(
+            "source_mutation did not fail closed "
+            f"(status={proc.returncode}, timeout={timed_out}, preflight_seen={preflight_seen}, "
+            f"mutated={mutated}, markers={markers}, provider_modes_seen={modes_seen}, "
+            f"selected={selected}, sibling={sibling})"
+        )
+    return "PASS"
+
+
 def direct_provider_layer_probe(provider, project, home, server, selected_log):
     shadow_home = pathlib.Path(home).resolve() / ".codex" / ".clroom-clean-state-v2" / "home"
     ambient_auth = pathlib.Path(home).resolve() / ".codex" / "auth.json"
@@ -901,7 +981,11 @@ def rehearse(args):
             "CLROOM_CODEX_MCP_LAYER_CONFLICT", selected_log, sibling_log,
         )
         shutil.rmtree(project_codex)
-        negatives["source_mutation"] = "LOCKED_TEST_COVERAGE"
+
+        write_config(codex_home, server, selected_log, sibling_log, include_sibling=False)
+        negatives["source_mutation"] = source_mutation_probe(
+            candidate, project, home, provider, selected_log, sibling_log
+        )
 
         write_config(codex_home, server, selected_log, sibling_log)
         source_digest_before_positive = sha256_file(codex_home / "config.toml")
