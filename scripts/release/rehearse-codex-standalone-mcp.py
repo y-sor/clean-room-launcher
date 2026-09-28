@@ -583,6 +583,118 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
     return "PASS"
 
 
+def direct_provider_layer_probe(provider, project, home, server, selected_log):
+    shadow_home = pathlib.Path(home).resolve() / ".codex" / ".clroom-clean-state-v2" / "home"
+    ambient_auth = pathlib.Path(home).resolve() / ".codex" / "auth.json"
+    shadow_auth = shadow_home / "auth.json"
+    if not shadow_auth.exists():
+        os.symlink(ambient_auth.resolve(), shadow_auth)
+    sqlite_home = pathlib.Path(home).resolve() / "direct-layer-probe-sqlite"
+    sqlite_home.mkdir(mode=0o700)
+    override = (
+        "mcp_servers={"
+        + toml_string(MCP_NAME)
+        + "={command="
+        + toml_string(str(server.resolve()))
+        + ",args=["
+        + toml_string("--log")
+        + ","
+        + toml_string(str(selected_log.resolve()))
+        + "],env_vars=["
+        + toml_string(ALLOWED_ENV)
+        + "]}}"
+    )
+    env = child_env(home, provider)
+    env["CODEX_HOME"] = str(shadow_home)
+    env["CODEX_SQLITE_HOME"] = str(sqlite_home)
+    proc = subprocess.Popen(
+        [str(provider), "-c", override, "app-server"],
+        cwd=project,
+        env=env,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+
+    def request(message, expected_id):
+        assert proc.stdin is not None
+        assert proc.stdout is not None
+        proc.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
+        proc.stdin.flush()
+        import selectors
+        selector = selectors.DefaultSelector()
+        selector.register(proc.stdout, selectors.EVENT_READ)
+        deadline = time.monotonic() + 8
+        try:
+            while time.monotonic() < deadline:
+                events = selector.select(max(0, deadline - time.monotonic()))
+                if not events:
+                    break
+                line = proc.stdout.readline()
+                if not line:
+                    break
+                payload = json.loads(line)
+                if payload.get("id") == expected_id:
+                    return payload
+        finally:
+            selector.close()
+        fail(f"direct provider layer probe timed out waiting for id={expected_id}")
+
+    try:
+        init = request({
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "clientInfo": {
+                    "name": "clroom-standalone-mcp-diagnostic",
+                    "title": "CLROOM standalone MCP diagnostic",
+                    "version": "1.0.0",
+                },
+                "capabilities": {"experimentalApi": True},
+            },
+        }, 1)
+        if init.get("error") is not None or not isinstance(init.get("result"), dict):
+            fail("direct provider layer probe initialize failed")
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps({"method": "initialized"}, separators=(",", ":")) + "\n")
+        proc.stdin.write(json.dumps({
+            "id": 2,
+            "method": "config/read",
+            "params": {"includeLayers": True, "cwd": str(pathlib.Path(project).resolve())},
+        }, separators=(",", ":")) + "\n")
+        proc.stdin.flush()
+        response = request({"method": "__clroom_noop__"}, 2)
+        result = response.get("result")
+        layers = result.get("layers") if isinstance(result, dict) else None
+        if not isinstance(layers, list):
+            fail("direct provider layer probe returned no layers")
+        summary = []
+        for layer in layers:
+            if not isinstance(layer, dict):
+                continue
+            name = layer.get("name")
+            kind = name.get("type") if isinstance(name, dict) else None
+            config = layer.get("config")
+            summary.append({
+                "kind": kind,
+                "disabled": layer.get("disabledReason") is not None,
+                "mcp": isinstance(config, dict) and "mcp_servers" in config,
+            })
+        return summary
+    finally:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        shutil.rmtree(sqlite_home, ignore_errors=True)
+
+
 def protocol_tool_call(server, home):
     env = {"PATH": "/usr/bin:/bin", "HOME": str(home), "TMPDIR": str(home / "tmp")}
     proc = subprocess.Popen(
@@ -738,6 +850,8 @@ def rehearse(args):
                 "",
             ]),
         )
+        layer_summary = direct_provider_layer_probe(provider, project, home, server, selected_log)
+        print("CODEX_STANDALONE_MCP_LAYER_DIAGNOSTIC " + json.dumps(layer_summary, sort_keys=True))
         negatives["project_sibling_layer"] = negative_probe(
             "project_sibling_layer", candidate, project, home, provider,
             [f"--with=mcp:{MCP_NAME}", f"--pass-env={ALLOWED_ENV}", "--no-alt-screen"],
