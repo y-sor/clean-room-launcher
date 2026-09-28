@@ -536,6 +536,37 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
     }
 
 
+def provider_modes_in_tree(root_pid, provider):
+    try:
+        rows = subprocess.check_output(["/bin/ps", "-axo", "pid=,ppid=,pgid="], text=True)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    processes = {}
+    for row in rows.splitlines():
+        fields = row.split()
+        if len(fields) != 3:
+            continue
+        try:
+            processes[int(fields[0])] = (int(fields[1]), int(fields[2]))
+        except ValueError:
+            continue
+    descendants = {root_pid}
+    changed = True
+    while changed:
+        changed = False
+        for child, (parent, _group) in processes.items():
+            if parent in descendants and child not in descendants:
+                descendants.add(child)
+                changed = True
+    modes = set()
+    for pid in descendants:
+        if not fixture.process_uses_provider(pid, str(provider)):
+            continue
+        argv = fixture.process_argv(pid)
+        modes.add("app-server" if "app-server" in argv[1:] else "interactive")
+    return sorted(modes)
+
+
 def negative_probe(label, candidate, project, home, provider, args, expected_marker, selected_log, sibling_log):
     unlink(selected_log)
     unlink(sibling_log)
@@ -549,6 +580,10 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
         start_new_session=True,
     )
     timed_out = False
+    modes_seen = []
+    if label == "project_sibling_layer":
+        time.sleep(1.0)
+        modes_seen = provider_modes_in_tree(proc.pid, provider)
     try:
         _, stderr = proc.communicate(timeout=15)
     except subprocess.TimeoutExpired:
@@ -575,7 +610,7 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
         fail(
             f"{label} did not fail closed "
             f"(status={proc.returncode}, timeout={timed_out}, markers={markers}, "
-            f"provider_seen={fixture.provider_in_tree(proc.pid, str(provider))}, "
+            f"provider_modes_seen={modes_seen}, "
             f"selected={selected}, sibling={sibling}, stderr_tail={diagnostic!r})"
         )
     if selected_log.exists() or sibling_log.exists():
