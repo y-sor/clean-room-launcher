@@ -103,10 +103,9 @@ pub fn plan(
     let source = read_source(&source_path)?;
     let source_digest = sha256_hex(source.as_bytes());
     let document = source
-        .parse::<toml::Value>()
+        .parse::<toml::Table>()
         .map_err(|_| ActivationError::InvalidSource)?;
-    let root = document.as_table().ok_or(ActivationError::InvalidSource)?;
-    let servers = root
+    let servers = document
         .get("mcp_servers")
         .and_then(toml::Value::as_table)
         .ok_or(ActivationError::UnknownMcp)?;
@@ -247,7 +246,7 @@ fn read_source(path: &Path) -> Result<String, ActivationError> {
 
     let mut file = File::open(path).map_err(|_| ActivationError::InvalidSource)?;
     let handle_before = file.metadata().map_err(|_| ActivationError::InvalidSource)?;
-    if !same_file_identity(&path_before, &handle_before) {
+    if !same_file_state(&path_before, &handle_before) {
         return Err(ActivationError::InvalidSource);
     }
 
@@ -264,24 +263,13 @@ fn read_source(path: &Path) -> Result<String, ActivationError> {
     let path_after = fs::symlink_metadata(path).map_err(|_| ActivationError::StateChanged)?;
     if path_after.file_type().is_symlink()
         || !same_file_state(&handle_before, &handle_after)
-        || !same_file_identity(&handle_after, &path_after)
+        || !same_file_state(&handle_after, &path_after)
         || handle_after.len() != bytes.len() as u64
     {
         return Err(ActivationError::StateChanged);
     }
 
     String::from_utf8(bytes).map_err(|_| ActivationError::InvalidSource)
-}
-
-#[cfg(unix)]
-fn same_file_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
-    use std::os::unix::fs::MetadataExt;
-    left.dev() == right.dev() && left.ino() == right.ino() && left.len() == right.len()
-}
-
-#[cfg(not(unix))]
-fn same_file_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
-    left.len() == right.len()
 }
 
 #[cfg(unix)]
