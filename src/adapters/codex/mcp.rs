@@ -189,8 +189,10 @@ pub fn plan(
 
 
 fn selected_server(source: &str, selected_id: &str) -> Result<Option<toml::Table>, ActivationError> {
+    let deserializer =
+        toml::de::Deserializer::parse(source).map_err(|_| ActivationError::InvalidSource)?;
     RootSeed { selected_id }
-        .deserialize(toml::de::Deserializer::new(source))
+        .deserialize(deserializer)
         .map_err(|_| ActivationError::InvalidSource)
 }
 
