@@ -192,6 +192,39 @@ def child_env(home, provider):
     }
 
 
+def seed_synthetic_project_trust(project, home):
+    project = pathlib.Path(project).resolve()
+    shadow_home = pathlib.Path(home).resolve() / ".codex" / ".clroom-clean-state-v2" / "home"
+    shadow_home.mkdir(parents=True, exist_ok=True)
+    shadow_home.chmod(0o700)
+
+    marker = shadow_home / ".clroom-state-v2"
+    if marker.exists() or marker.is_symlink():
+        metadata = marker.lstat()
+        if marker.is_symlink() or not marker.is_file():
+            fail("CLROOM Codex shadow ownership marker invalid")
+        if metadata.st_mode & 0o077 or marker.read_text(encoding="utf-8") != "clroom-state-v2\n":
+            fail("CLROOM Codex shadow ownership marker invalid")
+    else:
+        private_write(marker, "clroom-state-v2\n")
+
+    config = shadow_home / "config.toml"
+    if config.exists() and config.is_symlink():
+        fail("synthetic Codex shadow config must not be a symlink")
+    existing = config.read_text(encoding="utf-8") if config.exists() else ""
+    project_key = json.dumps(str(project), ensure_ascii=False)
+    header = f"[projects.{project_key}]"
+    table = f'{header}\ntrust_level = "trusted"\n'
+    if header in existing:
+        if 'trust_level = "trusted"' not in existing[existing.index(header):]:
+            fail("synthetic Codex project trust already has conflicting state")
+        return
+    body = existing.rstrip()
+    if body:
+        body += "\n\n"
+    private_write(config, body + table)
+
+
 def read_observation(path, allowed_pids=None):
     try:
         lines = pathlib.Path(path).read_text(encoding="utf-8").splitlines()
@@ -631,9 +664,7 @@ def rehearse(args):
         selected_log = home / "selected.jsonl"
         sibling_log = home / "sibling.jsonl"
         fixture.ensure_synthetic_auth(codex_home)
-        fixture.seed_synthetic_project_trust(
-            str(candidate), "clroom", str(project), str(home), child_env(home, provider)
-        )
+        seed_synthetic_project_trust(project, home)
         server = install_server(codex_home, selected_log, sibling_log)
 
         source_digest_before = sha256_file(codex_home / "config.toml")
