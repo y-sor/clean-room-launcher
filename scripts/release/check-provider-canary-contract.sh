@@ -92,7 +92,7 @@ for needle in   'Provision pinned Codex for standalone MCP rehearsal'   'provisi
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_STANDALONE_MCP_WORKFLOW_MISSING:$needle"
 done
-for needle in   'clroom.codex-standalone-mcp-rehearsal.v1'   'provider_tool_call": "NOT_SAFE_WITHOUT_PROMPT"'   'synthetic_auth_only": True'   'ambient_provider_state_unchanged": True'   'CLROOM_MCP_SECRET_MATERIAL_REFUSED'   'CLROOM_ENV_SELECTOR_REQUIRED'   'CLROOM_CODEX_MCP_LAYER_CONFLICT'
+for needle in   'clroom.codex-standalone-mcp-rehearsal.v1'   'provider_tool_call": "NOT_SAFE_WITHOUT_PROMPT"'   'synthetic_auth_only": True'   'selected_mcp_under_interactive_provider": True'   'provider_state_lifecycle_closed": True'   'synthetic_source_config_unchanged": True'   'ambient_provider_state_unchanged": True'   'CLROOM_MCP_SECRET_MATERIAL_REFUSED'   'CLROOM_ENV_SELECTOR_REQUIRED'   'CLROOM_CODEX_MCP_LAYER_CONFLICT'
 do
   grep -Fq -- "$needle" "$codex_standalone_mcp" || fail "CODEX_STANDALONE_MCP_FIXTURE_MISSING:$needle"
 done

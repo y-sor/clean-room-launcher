@@ -222,7 +222,116 @@ def unlink(path):
         pass
 
 
-def positive_probe(candidate, project, home, provider, selected_log, sibling_log):
+
+def process_snapshot(root_pid, provider, server, selected_log):
+    try:
+        rows = subprocess.check_output(
+            ["/bin/ps", "-axo", "pid=,ppid=,pgid="], text=True
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False, False, set()
+    processes = {}
+    for row in rows.splitlines():
+        fields = row.split()
+        if len(fields) != 3:
+            continue
+        try:
+            processes[int(fields[0])] = (int(fields[1]), int(fields[2]))
+        except ValueError:
+            continue
+
+    descendants = {root_pid}
+    changed = True
+    while changed:
+        changed = False
+        for child, (parent, _group) in processes.items():
+            if parent in descendants and child not in descendants:
+                descendants.add(child)
+                changed = True
+
+    group = processes.get(root_pid, (None, root_pid))[1]
+    descendants.update(
+        pid for pid, (_parent, process_group) in processes.items()
+        if process_group == group
+    )
+
+    provider = str(pathlib.Path(provider).resolve())
+    server = str(pathlib.Path(server).resolve())
+    selected_log = str(pathlib.Path(selected_log).resolve())
+    interactive = set()
+    selected_servers = set()
+    owned = set()
+
+    for pid in descendants:
+        argv = fixture.process_argv(pid)
+        if fixture.process_uses_provider(pid, provider):
+            owned.add(pid)
+            if "app-server" not in argv[1:]:
+                interactive.add(pid)
+        if argv:
+            normalized = [
+                os.path.realpath(argument)
+                if argument and os.path.isabs(argument)
+                else argument
+                for argument in argv
+            ]
+            if server in normalized and selected_log in normalized:
+                selected_servers.add(pid)
+                owned.add(pid)
+
+    linked = False
+    for server_pid in selected_servers:
+        current = server_pid
+        seen = set()
+        while current in processes and current not in seen:
+            seen.add(current)
+            parent = processes[current][0]
+            if parent in interactive:
+                linked = True
+                break
+            current = parent
+        if linked:
+            break
+
+    return bool(interactive), linked, owned
+
+
+def ensure_task_processes_closed(pids, provider, server):
+    provider = str(pathlib.Path(provider).resolve())
+    server = str(pathlib.Path(server).resolve())
+
+    def still_owned(pid):
+        if fixture.process_uses_provider(pid, provider):
+            return True
+        argv = fixture.process_argv(pid)
+        if not argv:
+            return False
+        normalized = [
+            os.path.realpath(argument)
+            if argument and os.path.isabs(argument)
+            else argument
+            for argument in argv
+        ]
+        return server in normalized
+
+    deadline = time.monotonic() + 2.0
+    remaining = {pid for pid in pids if still_owned(pid)}
+    while remaining and time.monotonic() < deadline:
+        time.sleep(0.05)
+        remaining = {pid for pid in remaining if still_owned(pid)}
+    if remaining:
+        for pid in remaining:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+        time.sleep(0.1)
+        remaining = {pid for pid in remaining if still_owned(pid)}
+    if remaining:
+        fail("task-owned Codex/MCP process lifecycle did not close")
+    return True
+
+def positive_probe(candidate, project, home, provider, server, selected_log, sibling_log):
     unlink(selected_log)
     unlink(sibling_log)
     env = child_env(home, provider)
@@ -242,6 +351,9 @@ def positive_probe(candidate, project, home, provider, selected_log, sibling_log
 
     os.set_blocking(fd, False)
     provider_seen = False
+    interactive_provider_seen = False
+    interactive_mcp_linked = False
+    owned_pids = set()
     pty_tail = bytearray()
     reaped = False
     wait_status = None
@@ -271,8 +383,21 @@ def positive_probe(candidate, project, home, provider, selected_log, sibling_log
             reaped = True
             break
         provider_seen = provider_seen or fixture.provider_in_tree(pid, str(provider))
+        interactive_now, linked_now, owned_now = process_snapshot(
+            pid, provider, server, selected_log
+        )
+        interactive_provider_seen = interactive_provider_seen or interactive_now
+        interactive_mcp_linked = interactive_mcp_linked or linked_now
+        owned_pids.update(owned_now)
         observed = read_observation(selected_log)
-        if provider_seen and observed["fixture_birth"] and observed["initialize"] and observed["tools_list"]:
+        if (
+            provider_seen
+            and interactive_provider_seen
+            and interactive_mcp_linked
+            and observed["fixture_birth"]
+            and observed["initialize"]
+            and observed["tools_list"]
+        ):
             break
         time.sleep(0.05)
 
@@ -293,6 +418,12 @@ def positive_probe(candidate, project, home, provider, selected_log, sibling_log
                 reaped = True
                 break
             provider_seen = provider_seen or fixture.provider_in_tree(pid, str(provider))
+            interactive_now, linked_now, owned_now = process_snapshot(
+                pid, provider, server, selected_log
+            )
+            interactive_provider_seen = interactive_provider_seen or interactive_now
+            interactive_mcp_linked = interactive_mcp_linked or linked_now
+            owned_pids.update(owned_now)
             time.sleep(0.05)
     if not reaped:
         try:
@@ -311,8 +442,12 @@ def positive_probe(candidate, project, home, provider, selected_log, sibling_log
 
     observed = read_observation(selected_log)
     sibling_absent = not sibling_log.exists()
+    lifecycle_closed = ensure_task_processes_closed(owned_pids, provider, server)
     if not (
         provider_seen
+        and interactive_provider_seen
+        and interactive_mcp_linked
+        and lifecycle_closed
         and observed["fixture_birth"]
         and observed["initialize"]
         and observed["tools_list"]
@@ -342,11 +477,16 @@ def positive_probe(candidate, project, home, provider, selected_log, sibling_log
             exit_detail = f"wait_status={wait_status}"
         fail(
             "positive runtime evidence incomplete "
-            f"(provider_seen={provider_seen}, observed={observed}, sibling_absent={sibling_absent}, "
+            f"(provider_seen={provider_seen}, interactive_provider_seen={interactive_provider_seen}, "
+            f"interactive_mcp_linked={interactive_mcp_linked}, lifecycle_closed={lifecycle_closed}, "
+            f"observed={observed}, sibling_absent={sibling_absent}, "
             f"{exit_detail}, pty_tail={diagnostic!r})"
         )
     return {
         "provider_birth": True,
+        "interactive_provider_birth": True,
+        "selected_mcp_under_interactive_provider": True,
+        "provider_state_lifecycle_closed": True,
         "selected_fixture_birth": True,
         "initialize": True,
         "tools_list": True,
@@ -485,8 +625,15 @@ def rehearse(args):
         sibling_log = home / "sibling.jsonl"
         server = install_server(codex_home, selected_log, sibling_log)
 
-        positive = positive_probe(candidate, project, home, provider, selected_log, sibling_log)
-        protocol_tool_call(server, home)
+        source_digest_before = sha256_file(codex_home / "config.toml")
+
+        # Fail-closed cases run before any successful interactive provider session so
+        # a forcibly-stopped TUI cannot contaminate their result.
+        negatives["unadmitted_env"] = negative_probe(
+            "unadmitted_env", candidate, project, home, provider,
+            [f"--with=mcp:{MCP_NAME}", "--no-alt-screen"],
+            "CLROOM_ENV_SELECTOR_REQUIRED", selected_log, sibling_log,
+        )
 
         write_config(codex_home, server, selected_log, sibling_log, literal_env=True, include_sibling=False)
         negatives["literal_env"] = negative_probe(
@@ -496,11 +643,6 @@ def rehearse(args):
         )
 
         write_config(codex_home, server, selected_log, sibling_log)
-        negatives["unadmitted_env"] = negative_probe(
-            "unadmitted_env", candidate, project, home, provider,
-            [f"--with=mcp:{MCP_NAME}", "--no-alt-screen"],
-            "CLROOM_ENV_SELECTOR_REQUIRED", selected_log, sibling_log,
-        )
         negatives["provider_subcommand"] = negative_probe(
             "provider_subcommand", candidate, project, home, provider,
             [f"--with=mcp:{MCP_NAME}", f"--pass-env={ALLOWED_ENV}", "app-server"],
@@ -523,6 +665,9 @@ def rehearse(args):
             "CLROOM_RESOURCE_ACTIVATION_CONFLICT", selected_log, sibling_log,
         )
 
+        fixture.seed_synthetic_project_trust(
+            str(candidate), "clroom", str(project), str(home), child_env(home, provider)
+        )
         project_codex = project / ".codex"
         project_codex.mkdir(mode=0o700)
         private_write(
@@ -541,6 +686,16 @@ def rehearse(args):
         )
         shutil.rmtree(project_codex)
         negatives["source_mutation"] = "LOCKED_TEST_COVERAGE"
+
+        write_config(codex_home, server, selected_log, sibling_log)
+        source_digest_before_positive = sha256_file(codex_home / "config.toml")
+        positive = positive_probe(
+            candidate, project, home, provider, server, selected_log, sibling_log
+        )
+        source_digest_after_positive = sha256_file(codex_home / "config.toml")
+        if source_digest_after_positive != source_digest_before_positive:
+            fail("synthetic ambient Codex config changed during positive rehearsal")
+        protocol_tool_call(server, home)
     finally:
         if home.exists() and not home.is_symlink():
             shutil.rmtree(home)
@@ -567,6 +722,7 @@ def rehearse(args):
         "negative_cases": negatives,
         "clean_before_absent": True,
         "clean_after_absent": True,
+        "synthetic_source_config_unchanged": True,
         "ambient_provider_state_unchanged": True,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
