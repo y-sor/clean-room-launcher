@@ -372,7 +372,7 @@ def positive_probe(candidate, project, home, provider, server, selected_log, sib
     unlink(selected_log)
     unlink(sibling_log)
     env = child_env(home, provider)
-    fixture.seed_synthetic_project_trust(str(candidate), "clroom", str(project), str(home), env)
+    seed_synthetic_project_trust(project, home)
 
     pid, fd = pty.fork()
     if pid == 0:
