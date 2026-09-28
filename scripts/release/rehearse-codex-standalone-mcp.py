@@ -660,6 +660,9 @@ def rehearse(args):
         home.mkdir(parents=True, mode=0o700)
         project = home / "project"
         project.mkdir(mode=0o700)
+        git_dir = project / ".git"
+        git_dir.mkdir(mode=0o700)
+        private_write(git_dir / "HEAD", "ref: refs/heads/main\n")
         codex_home = home / ".codex"
         selected_log = home / "selected.jsonl"
         sibling_log = home / "sibling.jsonl"
