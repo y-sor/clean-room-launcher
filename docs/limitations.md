@@ -27,8 +27,17 @@ permalink: /limitations.html
   agents, LSP servers, background monitors, plugin executables, or plugin
   settings may still be observed by inventory but fail closed for activation.
   This avoids reopening broader ambient provider state.
-- Multi-plugin selection, component-level filtering, standalone MCP resource
-  selection, presets, and `--with=all` are not qualified by this slice.
+- The v0.4.4 release did not qualify standalone MCP resource selection. The
+  current source candidate adds only one exact root-user Codex stdio MCP server
+  per interactive launch, subject to exact-candidate macOS rehearsal. Multiple
+  MCP servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working
+  directories, project/local restore, Claude standalone MCP, component-level
+  filtering, presets, and `--with=all` remain outside this slice.
+- The candidate standalone Codex MCP path refuses literal environment values
+  and identity-field interpolation. Every referenced environment-variable name
+  also requires explicit `--pass-env=NAME`. It fails closed if an active
+  non-session Codex config layer contributes MCP servers rather than attempting
+  to override or bypass that layer.
 - The protection is a narrow macOS filesystem denylist, not a VM, container,
   network sandbox or complete home-directory isolation.
 - A provider may visibly warn that reading a blocked global instruction is not

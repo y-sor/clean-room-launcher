@@ -9,7 +9,8 @@ use crate::{
 };
 use std::{
     collections::BTreeSet,
-    fs,
+    fs::{self, File},
+    io::Read,
     path::{Path, PathBuf},
 };
 
@@ -236,15 +237,39 @@ fn selected_mcp(request: &SelectionRequest) -> Result<Option<String>, Activation
 }
 
 fn read_source(path: &Path) -> Result<String, ActivationError> {
-    let before = fs::symlink_metadata(path).map_err(|_| ActivationError::InvalidSource)?;
-    if before.file_type().is_symlink() || !before.is_file() || before.len() > MAX_CONFIG_BYTES {
+    let path_before = fs::symlink_metadata(path).map_err(|_| ActivationError::InvalidSource)?;
+    if path_before.file_type().is_symlink()
+        || !path_before.is_file()
+        || path_before.len() > MAX_CONFIG_BYTES
+    {
         return Err(ActivationError::InvalidSource);
     }
-    let bytes = fs::read(path).map_err(|_| ActivationError::InvalidSource)?;
-    let after = fs::symlink_metadata(path).map_err(|_| ActivationError::InvalidSource)?;
-    if !same_file_state(&before, &after) || bytes.len() as u64 != after.len() {
+
+    let mut file = File::open(path).map_err(|_| ActivationError::InvalidSource)?;
+    let handle_before = file.metadata().map_err(|_| ActivationError::InvalidSource)?;
+    if !same_file_state(&path_before, &handle_before) {
         return Err(ActivationError::InvalidSource);
     }
+
+    let mut bytes = Vec::with_capacity(handle_before.len() as usize);
+    (&mut file)
+        .take(MAX_CONFIG_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| ActivationError::InvalidSource)?;
+    if bytes.len() as u64 > MAX_CONFIG_BYTES {
+        return Err(ActivationError::InvalidSource);
+    }
+
+    let handle_after = file.metadata().map_err(|_| ActivationError::InvalidSource)?;
+    let path_after = fs::symlink_metadata(path).map_err(|_| ActivationError::StateChanged)?;
+    if path_after.file_type().is_symlink()
+        || !same_file_state(&handle_before, &handle_after)
+        || !same_file_state(&handle_after, &path_after)
+        || handle_after.len() != bytes.len() as u64
+    {
+        return Err(ActivationError::StateChanged);
+    }
+
     String::from_utf8(bytes).map_err(|_| ActivationError::InvalidSource)
 }
 
