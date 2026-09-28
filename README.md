@@ -240,6 +240,31 @@ whose effective MCP surface includes the app-owned `codex_app` server is
 host-required and fails closed for standalone CLROOM activation; configuration
 visibility is not treated as proof that app-hosted tools exist.
 
+The current source candidate also adds a deliberately narrower standalone Codex
+MCP selector for interactive launches:
+
+```sh
+clroom codex --with=mcp:my-server
+clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
+```
+
+This path selects exactly one root-user `mcp_servers.<id>` entry from the
+normal Codex `config.toml`, supports stdio transport only, and never copies the
+ambient config wholesale. Literal MCP environment values are refused. Every
+`env_vars` reference must also be admitted explicitly with
+`--pass-env=NAME`. Before the real Codex process starts, CLROOM performs a
+no-model provider-native config-layer check and refuses the launch if an active
+project, system, enterprise, or legacy-managed layer contributes any ambient MCP
+server. The selected definition is passed only as a session-layer override and
+is revalidated again immediately before provider birth.
+
+This candidate does not support multiple standalone MCP servers, HTTP/SSE/
+WebSocket transports, OAuth or helper-based authentication, project/local MCP
+restore, standalone MCP exclusions, mixing standalone MCP with whole-plugin
+selection, or `--with=all`. Claude standalone MCP remains unqualified and
+fails closed. Final support status remains contingent on exact-candidate macOS
+provider rehearsal before GPT acceptance.
+
 ### Claude Code
 
 Start Claude Code with the same clean launch:
