@@ -560,9 +560,12 @@ def provider_modes_in_tree(root_pid, provider):
                 changed = True
     modes = set()
     for pid in descendants:
+        argv = fixture.process_argv(pid)
+        process_path = fixture.process_path(pid)
+        if process_path == "/usr/bin/sandbox-exec" or (argv and argv[0] == "/usr/bin/sandbox-exec"):
+            modes.add("sandbox-exec")
         if not fixture.process_uses_provider(pid, str(provider)):
             continue
-        argv = fixture.process_argv(pid)
         if "--version" in argv[1:] or "-V" in argv[1:]:
             modes.add("version")
         elif "app-server" in argv[1:]:
