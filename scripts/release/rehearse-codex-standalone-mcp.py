@@ -589,7 +589,7 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
     )
     timed_out = False
     modes_seen = set()
-    deadline = time.monotonic() + 15
+    deadline = time.monotonic() + 30
     while proc.poll() is None and time.monotonic() < deadline:
         modes_seen.update(provider_modes_in_tree(proc.pid, provider))
         time.sleep(0.1)
