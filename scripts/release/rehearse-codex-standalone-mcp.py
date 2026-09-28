@@ -631,6 +631,9 @@ def rehearse(args):
         selected_log = home / "selected.jsonl"
         sibling_log = home / "sibling.jsonl"
         server = install_server(codex_home, selected_log, sibling_log)
+        fixture.seed_synthetic_project_trust(
+            str(candidate), "clroom", str(project), str(home), child_env(home, provider)
+        )
 
         source_digest_before = sha256_file(codex_home / "config.toml")
 
@@ -672,9 +675,6 @@ def rehearse(args):
             "CLROOM_RESOURCE_ACTIVATION_CONFLICT", selected_log, sibling_log,
         )
 
-        fixture.seed_synthetic_project_trust(
-            str(candidate), "clroom", str(project), str(home), child_env(home, provider)
-        )
         project_codex = project / ".codex"
         project_codex.mkdir(mode=0o700)
         private_write(
