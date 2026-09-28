@@ -560,7 +560,24 @@ def negative_probe(label, candidate, project, home, provider, args, expected_mar
         _, stderr = proc.communicate(timeout=5)
     markers = sorted(set(re.findall(r"CLROOM_[A-Z0-9_]+", stderr or "")))
     if timed_out or proc.returncode == 0 or expected_marker not in (stderr or ""):
-        fail(f"{label} did not fail closed (status={proc.returncode}, timeout={timed_out}, markers={markers})")
+        selected = read_observation(selected_log)
+        sibling = read_observation(sibling_log)
+        diagnostic = re.sub(r"\\x1b\\[[0-?]*[ -/]*[@-~]", "", stderr or "").strip()
+        for value, replacement in [
+            (str(home), "<HOME>"),
+            (str(project), "<PROJECT>"),
+            (str(provider), "<PROVIDER>"),
+            (str(candidate), "<CANDIDATE>"),
+        ]:
+            diagnostic = diagnostic.replace(value, replacement)
+        if len(diagnostic) > 2048:
+            diagnostic = diagnostic[-2048:]
+        fail(
+            f"{label} did not fail closed "
+            f"(status={proc.returncode}, timeout={timed_out}, markers={markers}, "
+            f"provider_seen={fixture.provider_in_tree(proc.pid, str(provider))}, "
+            f"selected={selected}, sibling={sibling}, stderr_tail={diagnostic!r})"
+        )
     if selected_log.exists() or sibling_log.exists():
         fail(f"{label} reached MCP fixture runtime")
     return "PASS"
