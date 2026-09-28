@@ -284,6 +284,12 @@ fn launch_isolated_codex(
         pass_env,
     )
     .map_err(codex_mcp_activation_error_message)?;
+    if mcp_activation.is_some() && !launch_contract::codex_top_level_interactive(provider_args) {
+        return Err(
+            "CLROOM_RESOURCE_NOT_SELECTABLE: standalone Codex MCP activation is qualified only for top-level interactive launch; provider subcommands are refused"
+                .to_owned(),
+        );
+    }
     let activation = if resource_request.is_empty() || mcp_activation.is_some() {
         None
     } else {
