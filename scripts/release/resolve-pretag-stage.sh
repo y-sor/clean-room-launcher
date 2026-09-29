@@ -44,32 +44,78 @@ PY
 [[ -s "$tmp/candidates" ]] || fail "ARTIFACT_NOT_FOUND"
 successful_runs="$tmp/successful-runs"
 : >"$successful_runs"
+
+current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"
+if [[ -n "$current_run_id" ]]; then
+  [[ "$current_run_id" =~ ^[0-9]+$ ]] || fail "CURRENT_RUN_ID"
+  [[ "${GITHUB_ACTIONS:-}" == "true" ]] || fail "CURRENT_RUN_NOT_ACTIONS"
+  [[ "${GITHUB_RUN_ID:-}" == "$current_run_id" ]] || fail "CURRENT_RUN_ID_MISMATCH"
+  [[ "${GITHUB_EVENT_NAME:-}" == "push" ]] || fail "CURRENT_RUN_EVENT"
+  [[ "${GITHUB_REF:-}" == "refs/heads/main" ]] || fail "CURRENT_RUN_REF"
+  [[ "${GITHUB_SHA:-}" == "$expected" ]] || fail "CURRENT_RUN_SHA"
+  [[ "${GITHUB_REPOSITORY:-}" == "$repository" ]] || fail "CURRENT_RUN_REPOSITORY"
+fi
+
 while read -r artifact_id run_id artifact_head; do
   [[ -n "$artifact_id" && -n "$run_id" ]] || continue
   [[ "$artifact_head" == "$expected" ]] || continue
-  if ! gh api "repos/$repository/actions/runs/$run_id" >"$tmp/run.json"; then
+  if ! gh api "repos/$repository/actions/runs/$run_id" >"$tmp/run-$run_id.json"; then
     continue
   fi
-  if python3 - "$tmp/run.json" "$expected" <<'PY'
+
+  run_mode=$(python3 - "$tmp/run-$run_id.json" "$expected" "$current_run_id" <<'PY'
 import json, sys
-path, expected = sys.argv[1:]
+path, expected, current_run_id = sys.argv[1:]
 run = json.load(open(path, encoding="utf-8"))
-required = {
+base = {
     "name": "Release candidate readiness",
     "event": "push",
-    "status": "completed",
-    "conclusion": "success",
     "path": ".github/workflows/release-candidate.yml",
     "head_branch": "main",
     "head_sha": expected,
 }
-for key, value in required.items():
+for key, value in base.items():
     if run.get(key) != value:
         raise SystemExit(1)
+if run.get("status") == "completed" and run.get("conclusion") == "success":
+    print("completed")
+    raise SystemExit(0)
+if (
+    current_run_id
+    and str(run.get("id")) == current_run_id
+    and run.get("status") == "in_progress"
+    and run.get("conclusion") is None
+):
+    print("current")
+    raise SystemExit(0)
+raise SystemExit(1)
 PY
-  then
-    printf '%s\n' "$run_id" >>"$successful_runs"
+  ) || continue
+
+  if [[ "$run_mode" == "current" ]]; then
+    gh api -X GET "repos/$repository/actions/runs/$run_id/jobs" -f per_page=100 >"$tmp/jobs-$run_id.json" \
+      || fail "CURRENT_RUN_JOBS:$run_id"
+    python3 - "$tmp/jobs-$run_id.json" <<'PY' || fail "CURRENT_RUN_UPSTREAM_NOT_COMPLETE:$run_id"
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+required = {
+    "Release eligibility and harness seal",
+    "CLROOM release readiness",
+    "Rehearse/stage exact release bytes",
+    "Rehearse attestation mechanism before tag",
+}
+jobs = data.get("jobs", [])
+for name in required:
+    matches = [job for job in jobs if job.get("name") == name]
+    if len(matches) != 1:
+        raise SystemExit(1)
+    job = matches[0]
+    if job.get("status") != "completed" or job.get("conclusion") != "success":
+        raise SystemExit(1)
+PY
   fi
+
+  printf '%s\n' "$run_id" >>"$successful_runs"
 done <"$tmp/candidates"
 [[ -s "$successful_runs" ]] || fail "SUCCESSFUL_MAIN_STAGE_RUN_NOT_FOUND"
 
