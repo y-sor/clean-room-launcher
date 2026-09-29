@@ -31,7 +31,7 @@
       "evidence": [
         "The post-v0.4.4 delta retains release/promotion trust-boundary and gate-topology hardening, adds the standalone MCP macOS rehearsal to PR readiness, repairs its source-mutation synchronization, and keeps the grouped CodeQL family update atomic at v4.38.2.",
         "Release eligibility continues to run cheap contract/harness checks before expensive provider and artifact lanes.",
-        "ACTIVE_CANDIDATE readiness exposed that post-v0.4.4 hardening had incorrectly removed the Python CycloneDX schema verifier as unused: exact provider qualification and artifact validation passed, then supply-chain metadata generation failed before schema validation because Python jsonschema was absent. v0.4.5 restores the previously accepted exact jsonschema 4.26.0 verifier in a task-owned venv only for ACTIVE_CANDIDATE and the harness contract now requires the pinned verifier to exist before canonical readiness."
+        "ACTIVE_CANDIDATE readiness exposed that post-v0.4.4 hardening had incorrectly removed the Python CycloneDX schema verifier as unused: exact provider qualification and artifact validation passed, then supply-chain metadata generation failed because Python jsonschema was absent. v0.4.5 restores that verifier in a task-owned venv and freezes its Python 3.14 wheel closure with exact versions and SHA-256 hashes under pip --require-hashes/--only-binary before canonical readiness."
       ]
     },
     "release": {
@@ -97,7 +97,7 @@
       "id": "active-candidate-supply-chain-verifier-was-misclassified-unused",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "POST_PUBLISH readiness can stay green while candidate-only CycloneDX schema validation depends on a Python verifier that is missing from the runner, allowing a release train to discover the missing tool only after expensive provider qualification.",
-      "durable_control": "Release-candidate workflow provisions the previously accepted exact jsonschema 4.26.0 verifier in a private venv only for ACTIVE_CANDIDATE before canonical readiness, and check-harness-contract.py plus its negative self-test reject missing, stale or misordered verifier provisioning."
+      "durable_control": "Release-candidate workflow provisions the CycloneDX validator in a private venv only for ACTIVE_CANDIDATE, requires Python 3.14, and installs the complete attrs/jsonschema/jsonschema-specifications/referencing/rpds-py wheel closure at exact versions with reviewed SHA-256 hashes using --require-hashes and --only-binary. Harness self-tests reject missing, stale, unhashed or misordered provisioning."
     }
   ],
   "artifact_capability_gates": [
@@ -143,7 +143,7 @@
       "accepted-main exact-shipping-byte standalone MCP requalification before protected tag creation",
       "provider-pin movement invalidates standalone MCP, whole-plugin, lifecycle and ambient-input evidence",
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
-      "ACTIVE_CANDIDATE supply-chain metadata validation provisions exact jsonschema 4.26.0 before canonical readiness and harness self-tests reject missing/stale provisioning"
+      "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning"
     ]
   },
   "reviewed_content_digest": "1e3e74975dc49835d632b8be339c0f00c4bb5c6e0d04b6881729431e1bdd6f2c"
