@@ -85,7 +85,8 @@
       "patterns": [
         "Cargo.toml",
         "Cargo.lock",
-        "deny.toml"
+        "deny.toml",
+        ".github/dependabot.yml"
       ]
     },
     {
