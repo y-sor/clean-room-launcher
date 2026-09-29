@@ -146,12 +146,13 @@ printf '%s\n' 'repository instructions' >"$probe_repository/AGENTS.md"
 printf '%s\n' 'repository hidden instructions' >"$probe_repository/.claude/AGENTS.md"
 printf '%s\n' 'nested instructions' >"$probe_project/AGENTS.md"
 printf '%s\n' 'nested hidden instructions' >"$probe_project/.claude/AGENTS.md"
-cat >"$probe_bin/claude" <<'SH'
-#!/bin/sh
-if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then
-  printf '2.1.280\n'
-  exit 0
-fi
+synthetic_claude_version=$CLAUDE_VERSION
+{
+  printf '%s\n' '#!/bin/sh'
+  printf '%s\n' 'if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then'
+  printf "  printf '%%s\\\\n' '%s'\n" "$synthetic_claude_version"
+  printf '%s\n' '  exit 0' 'fi'
+  cat <<'SH'
 for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.claude/AGENTS.md"; do
   /bin/cat "$path" >/dev/null 2>&1 && exit 100
 done
@@ -162,6 +163,7 @@ done
 printf '%s\n' executed >"$TMPDIR/provider-executed" || exit 105
 exit 0
 SH
+} >"$probe_bin/claude"
 chmod 0700 "$probe_bin/claude"
 if ! (
   cd "$probe_project"
@@ -179,9 +181,6 @@ fi
 agents_boundary_probe=true
 echo "AGENTS_BOUNDARY_PROVIDER_EXECUTED=PASS"
 echo "AGENTS_BOUNDARY_SANDBOX_PROBE=PASS"
-
-registry="$HOME/.claude/plugins/installed_plugins.json"
-[[ -f "$registry" ]] || fail "PLUGIN_REGISTRY_MISSING"
 
 fingerprint() {
 python3 <<'PY'
@@ -247,108 +246,17 @@ if not qualified:
 print("PLUGIN_INFO_PREFLIGHT=PASS")
 PY
 
-set +e
-"$clroom" claude -p --output-format stream-json --verbose "Reply exactly UNUSED."   >"$tmp/clean.jsonl" 2>"$tmp/clean.err"
-clean_rc=$?
-"$clroom" claude --with="plugin:$plugin_id" -p --output-format stream-json --verbose   "Reply exactly UNUSED." >"$tmp/selected.jsonl" 2>"$tmp/selected.err"
-selected_rc=$?
-set -e
-
+plugin_info_preflight=true
 after=$(fingerprint)
 [[ "$before" == "$after" ]] || fail "PERSISTENT_CONFIG_CHANGED"
 
-python3 - "$registry" "$plugin_id" "$tmp/info.json" "$tmp/clean.jsonl" "$tmp/selected.jsonl" <<'PY'   || fail "AUTOMATED_PLUGIN_E2E"
-import json, os, sys
-registry_path, plugin_id, info_path, clean_path, selected_path=sys.argv[1:]
-
-registry=json.load(open(registry_path,encoding="utf-8"))
-installed=registry.get("plugins",{})
-
-def roots_for(pid):
-    roots=[]
-    for record in installed.get(pid,[]) if isinstance(installed.get(pid,[]),list) else []:
-        if isinstance(record,dict):
-            path=record.get("installPath")
-            if isinstance(path,str) and os.path.isdir(path):
-                roots.append(os.path.realpath(path))
-    return sorted(set(roots))
-
-if len(roots_for(plugin_id)) != 1:
-    raise SystemExit("plugin-root-not-exact")
-
-info=json.load(open(info_path,encoding="utf-8"))
-entries=info.get("native_entries") or []
-if len(entries) != 1:
-    raise SystemExit("info-entry-count")
-entry=entries[0]
-native=entry.get("native") or {}
-kinds=sorted({
-    item.get("kind")
-    for item in (entry.get("effective_components") or [])
-    if isinstance(item,dict)
-})
-if not (
-    native.get("id")==plugin_id
-    and entry.get("installation")=="installed"
-    and entry.get("selection")=="selectable"
-    and entry.get("qualification")=="qualified"
-    and entry.get("activation_policy")=="atomic_bundle"
-    and not (entry.get("conflicts") or [])
-    and kinds==["skill"]
-):
-    raise SystemExit("plugin-not-qualified-skill-only")
-
-def read_init(path):
-    init=None
-    with open(path,encoding="utf-8") as handle:
-        for raw in handle:
-            try: obj=json.loads(raw)
-            except Exception: continue
-            if obj.get("type")=="system" and obj.get("subtype")=="init":
-                init=obj
-    return init
-
-clean=read_init(clean_path)
-selected=read_init(selected_path)
-if clean is None or selected is None:
-    raise SystemExit("missing-system-init")
-
-def matches(plugin,pid):
-    name=pid.rsplit("@",1)[0]
-    roots=roots_for(pid)
-    if isinstance(plugin,str):
-        return plugin in (pid,name) or pid in plugin or (
-            os.path.isabs(plugin) and os.path.realpath(plugin) in roots
-        )
-    if not isinstance(plugin,dict):
-        return False
-    for key in ("name","id","plugin_id","source"):
-        value=plugin.get(key)
-        if isinstance(value,str) and (value in (pid,name) or pid in value):
-            return True
-    path=plugin.get("path")
-    return isinstance(path,str) and os.path.isabs(path) and os.path.realpath(path) in roots
-
-clean_plugins=clean.get("plugins") or []
-selected_plugins=selected.get("plugins") or []
-if any(matches(p,plugin_id) for p in clean_plugins):
-    raise SystemExit("target-present-in-clean")
-if not any(matches(p,plugin_id) for p in selected_plugins):
-    raise SystemExit("target-absent-in-selected")
-if selected.get("plugin_errors"):
-    raise SystemExit("selected-plugin-errors")
-
-for pid in installed:
-    if pid==plugin_id: continue
-    clean_has=any(matches(p,pid) for p in clean_plugins)
-    selected_has=any(matches(p,pid) for p in selected_plugins)
-    if selected_has and not clean_has:
-        raise SystemExit("new-sibling-plugin:"+pid)
-
-print("AUTOMATED_PLUGIN_E2E=PASS")
-PY
-
 interactive=false
+clean_tui=false
+clean_target_plugin_absent=false
+selected_target_plugin_visible=false
+no_new_sibling_plugins=false
+selected_plugin_errors_absent=false
+no_model_prompt=false
 external_ancestor_agents_absent=false
 project_agents_retained=false
 if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
@@ -357,7 +265,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   tui_workspace="$tmp/real-tui-workspace"
   tui_repository="$tui_workspace/repo"
   tui_project="$tui_repository/nested"
-  mkdir -p     "$tui_workspace/.claude"     "$tui_repository/.claude"     "$tui_project/.claude"
+  mkdir -p \
+    "$tui_workspace/.claude" \
+    "$tui_repository/.claude" \
+    "$tui_project/.claude"
   printf '%s\n' 'external TUI probe instruction' >"$tui_workspace/AGENTS.md"
   printf '%s\n' 'external hidden TUI probe instruction' >"$tui_workspace/.claude/AGENTS.md"
   printf '%s\n' 'gitdir: synthetic-worktree' >"$tui_repository/.git"
@@ -367,28 +278,80 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   printf '%s\n' 'nested hidden TUI probe instruction' >"$tui_project/.claude/AGENTS.md"
 
   echo
-  echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
+  echo "=== INTERACTIVE CLEAN TUI ==="
   echo "Do not send a model prompt."
   echo "This TUI runs in a task-owned synthetic nested Git project."
+  echo "Confirm the target plugin skill is absent from autocomplete."
+  echo "Do not press Enter while autocomplete/search text remains in the composer."
+  echo "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
+  echo "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
+  echo
+  (
+    cd "$tui_project"
+    "$clroom" claude
+  ) || fail "CLEAN_TUI_EXIT"
+  printf 'Clean TUI opened normally [y/N]: '
+  read -r clean_answer
+  [[ "$clean_answer" == "y" || "$clean_answer" == "Y" ]] || fail "CLEAN_TUI_NOT_CONFIRMED"
+  printf 'Target plugin skill was absent in clean autocomplete [y/N]: '
+  read -r clean_target_answer
+  [[ "$clean_target_answer" == "y" || "$clean_target_answer" == "Y" ]] \
+    || fail "CLEAN_TARGET_PLUGIN_PRESENT"
+  printf 'Clean composer was cleared and TUI exited with Ctrl+D without submitting input [y/N]: '
+  read -r clean_safe_exit_answer
+  [[ "$clean_safe_exit_answer" == "y" || "$clean_safe_exit_answer" == "Y" ]] \
+    || fail "CLEAN_SAFE_EXIT_NOT_CONFIRMED"
+  clean_tui=true
+  clean_target_plugin_absent=true
+
+  echo
+  echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
+  echo "Do not send a model prompt."
+  echo "This TUI runs in the same task-owned synthetic nested Git project."
   echo "Confirm the selected plugin skill is visible in autocomplete."
+  echo "Confirm no additional sibling plugin became newly visible."
+  echo "Confirm no plugin load errors are shown."
   echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
   echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
-  echo "Exit normally with /exit."
+  echo "Do not press Enter while autocomplete/search text remains in the composer."
+  echo "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
+  echo "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
   echo
   (
     cd "$tui_project"
     "$clroom" claude --with="plugin:$plugin_id"
   ) || fail "SELECTED_TUI_EXIT"
-  printf 'TUI opened normally and selected plugin skill was visible [y/N]: '
-  read -r answer
-  [[ "$answer" == "y" || "$answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
+  printf 'Selected TUI opened normally and selected plugin skill was visible [y/N]: '
+  read -r selected_answer
+  [[ "$selected_answer" == "y" || "$selected_answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
+  printf 'No additional sibling plugin became newly visible [y/N]: '
+  read -r sibling_answer
+  [[ "$sibling_answer" == "y" || "$sibling_answer" == "Y" ]] || fail "NEW_SIBLING_PLUGIN_NOT_CONFIRMED"
+  printf 'No plugin load errors were shown [y/N]: '
+  read -r plugin_errors_answer
+  [[ "$plugin_errors_answer" == "y" || "$plugin_errors_answer" == "Y" ]] || fail "PLUGIN_ERRORS_NOT_CONFIRMED"
   printf 'Repo/nested project AGENTS.md was reported as loaded [y/N]: '
   read -r project_agents_answer
-  [[ "$project_agents_answer" == "y" || "$project_agents_answer" == "Y" ]]     || fail "PROJECT_AGENTS_NOT_CONFIRMED"
+  [[ "$project_agents_answer" == "y" || "$project_agents_answer" == "Y" ]] \
+    || fail "PROJECT_AGENTS_NOT_CONFIRMED"
   printf 'No AGENTS.md above the synthetic Git project was reported as loaded [y/N]: '
   read -r agents_answer
-  [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]]     || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
+  [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] \
+    || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
+  printf 'Selected composer was cleared and TUI exited with Ctrl+D without submitting input [y/N]: '
+  read -r selected_safe_exit_answer
+  [[ "$selected_safe_exit_answer" == "y" || "$selected_safe_exit_answer" == "Y" ]] \
+    || fail "SELECTED_SAFE_EXIT_NOT_CONFIRMED"
+  printf 'No model prompt was sent in either TUI [y/N]: '
+  read -r no_prompt_answer
+  [[ "$no_prompt_answer" == "y" || "$no_prompt_answer" == "Y" ]] \
+    || fail "NO_MODEL_PROMPT_NOT_CONFIRMED"
+
   interactive=true
+  selected_target_plugin_visible=true
+  no_new_sibling_plugins=true
+  selected_plugin_errors_absent=true
+  no_model_prompt=true
   project_agents_retained=true
   external_ancestor_agents_absent=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_INTERACTIVE"
@@ -404,13 +367,20 @@ mkdir -p "$evidence_dir"
 if [[ "$phase" == "rehearse" ]]; then evidence_key=${reviewed_content_digest:0:12}; else evidence_key=${source_head:0:12}; fi
 evidence="$evidence_dir/${phase}-v${version}-${evidence_key}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$reviewed_content_digest" "$artifact_sha" \
-  "$plugin_id" "$clean_rc" "$selected_rc" "$interactive" "$external_ancestor_agents_absent" \
-  "$project_agents_retained" "$agents_boundary_probe" "$claude_version_output" \
-  "$claude_version" "$claude_provider_sha" <<'PY'
+  "$plugin_id" "$plugin_info_preflight" "$clean_tui" "$clean_target_plugin_absent" "$interactive" \
+  "$selected_target_plugin_visible" "$no_new_sibling_plugins" "$selected_plugin_errors_absent" \
+  "$no_model_prompt" "$external_ancestor_agents_absent" "$project_agents_retained" "$agents_boundary_probe" \
+  "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
-output,phase,version,source,source_tree,reviewed_content_digest,artifact_sha,plugin_id,clean_rc,selected_rc,interactive,external_ancestor_agents_absent,project_agents_retained,agents_boundary_probe,claude_version_output,claude_version,claude_provider_sha=sys.argv[1:]
+(
+    output, phase, version, source, source_tree, reviewed_content_digest, artifact_sha,
+    plugin_id, plugin_info_preflight, clean_tui, clean_target_plugin_absent, interactive,
+    selected_target_plugin_visible, no_new_sibling_plugins, selected_plugin_errors_absent,
+    no_model_prompt, external_ancestor_agents_absent, project_agents_retained,
+    agents_boundary_probe, claude_version_output, claude_version, claude_provider_sha,
+) = sys.argv[1:]
 record={
-  "schema_version":"clroom.plugin-release-smoke.v3",
+  "schema_version":"clroom.plugin-release-smoke.v4",
   "result":"PASS",
   "phase":phase,
   "release_version":version,
@@ -424,21 +394,19 @@ record={
   "claude_version":claude_version,
   "claude_provider_sha256":claude_provider_sha,
   "plugin_id":plugin_id,
-  "clean_system_init":True,
-  "selected_system_init":True,
-  "clean_target_plugin":False,
-  "selected_target_plugin":True,
-  "new_sibling_plugins":0,
-  "selected_plugin_errors":0,
+  "plugin_info_preflight_passed":plugin_info_preflight=="true",
+  "clean_tui_confirmed":clean_tui=="true",
+  "clean_target_plugin_absent_confirmed":clean_target_plugin_absent=="true",
+  "selected_tui_confirmed":interactive=="true",
+  "selected_target_plugin_visible_confirmed":selected_target_plugin_visible=="true",
+  "no_new_sibling_plugins_confirmed":no_new_sibling_plugins=="true",
+  "selected_plugin_errors_absent_confirmed":selected_plugin_errors_absent=="true",
   "persistent_config_unchanged":True,
-  "interactive_selected_tui_confirmed": interactive=="true",
-  "automated_probe_prompt_supplied":True,
-  "interactive_no_model_prompt_confirmed": interactive=="true",
-  "external_ancestor_agents_absent_confirmed": external_ancestor_agents_absent=="true",
-  "project_agents_retained_confirmed": project_agents_retained=="true",
-  "external_ancestor_agents_sandbox_probe_passed": agents_boundary_probe=="true",
-  "clean_provider_rc":int(clean_rc),
-  "selected_provider_rc":int(selected_rc),
+  "automated_probe_prompt_supplied":False,
+  "interactive_no_model_prompt_confirmed":no_model_prompt=="true",
+  "external_ancestor_agents_absent_confirmed":external_ancestor_agents_absent=="true",
+  "project_agents_retained_confirmed":project_agents_retained=="true",
+  "external_ancestor_agents_sandbox_probe_passed":agents_boundary_probe=="true",
   "observed_at_utc":datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z"),
 }
 with open(output,"w",encoding="utf-8") as f:
@@ -453,7 +421,6 @@ echo "SOURCE_TREE=$source_tree"
 echo "REVIEWED_CONTENT_DIGEST=$reviewed_content_digest"
 echo "ARTIFACT_SHA256=$artifact_sha"
 echo "PLUGIN_ID=$plugin_id"
-echo "CLEAN_PROVIDER_RC=$clean_rc"
-echo "SELECTED_PROVIDER_RC=$selected_rc"
+echo "MODEL_PROMPT_SENT=NO"
 echo "PERSISTENT_CONFIG_UNCHANGED=YES"
 echo "EVIDENCE_FILE=${evidence#$root/}"

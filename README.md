@@ -121,7 +121,7 @@ summary of the active filesystem restrictions:
 - developer instructions and notifications are cleared by default.
 
 ```text
-╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.4 ─────────╮
+╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.5 ─────────╮
 ║░░░░░║⠒│                               │
 ║░░░░░║⠒│     Global AGENTS.md  off     │
 ║░░░░░║⠒│     Global skills    3 on     │
@@ -217,7 +217,7 @@ clroom codex --help
 clroom codex --version
 ```
 
-The v0.4.4 source can also admit exactly one already-installed whole Codex
+The v0.4.5 source can also admit exactly one already-installed whole Codex
 plugin for one interactive launch:
 
 ```sh
@@ -234,14 +234,14 @@ update, remove, or refresh Codex plugins or marketplaces.
 
 While this selection is active, raw Codex config/plugin controls such as
 `-c`, `--config`, `--profile`, `--enable`, `--disable`, and
-`--plugin` are refused before provider birth. The exact v0.4.4 qualification
-target for this path is Codex CLI `0.156.1` on macOS Apple Silicon. A plugin
+`--plugin` are refused before provider birth. The exact v0.4.5 qualification
+target for this path is Codex CLI `0.159.0` on macOS Apple Silicon. A plugin
 whose effective MCP surface includes the app-owned `codex_app` server is
 host-required and fails closed for standalone CLROOM activation; configuration
 visibility is not treated as proof that app-hosted tools exist.
 
-The current source candidate also adds a deliberately narrower standalone Codex
-MCP selector for interactive launches:
+v0.4.5 also adds a deliberately narrower standalone Codex MCP selector for
+interactive launches:
 
 ```sh
 clroom codex --with=mcp:my-server
@@ -261,12 +261,12 @@ project, system, enterprise, or legacy-managed layer contributes another MCP
 surface. Raw configuration values are discarded during this check. The selected
 ambient source is digest-bound and revalidated again before provider birth.
 
-This candidate does not support multiple standalone MCP servers, HTTP/SSE/
+This path does not support multiple standalone MCP servers, HTTP/SSE/
 WebSocket transports, OAuth or helper-based authentication, project/local MCP
 restore, standalone MCP exclusions, mixing standalone MCP with whole-plugin
 selection, or `--with=all`. Claude standalone MCP remains unqualified and
-fails closed. Final support status remains contingent on exact-candidate macOS
-provider rehearsal before GPT acceptance.
+fails closed. The exact v0.4.5 qualification target for this path is Codex CLI `0.159.0`
+on macOS Apple Silicon.
 
 ### Claude Code
 
@@ -284,7 +284,7 @@ global skills for this launch with the same skill choice:
 clroom claude --skill-set=my-skill,@my-skill-set
 ```
 
-The v0.4.4 source can also admit exactly one already-installed whole Claude
+The v0.4.5 source can also admit exactly one already-installed whole Claude
 plugin for one launch:
 
 ```sh
@@ -301,7 +301,7 @@ launch, and asks Claude to load it for this session. Raw Claude
 resource selection.
 
 This whole-plugin path is currently an exact macOS Apple Silicon qualification
-target for Claude Code `2.1.280`. v0.4.x deliberately qualifies a narrower
+target for Claude Code `2.1.284`. v0.4.x deliberately qualifies a narrower
 subset of Claude's plugin format: the installed provider-native ID must have a matching
 `.claude-plugin/plugin.json` identity, and the observed effective components
 must come only from the default one-level `skills/<name>/SKILL.md` layout.
@@ -312,7 +312,7 @@ activation-qualified in v0.4.x. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-v0.4.4 targets Claude Code `2.1.280` for both ordinary clean launch and the
+v0.4.5 targets Claude Code `2.1.284` for both ordinary clean launch and the
 whole-plugin activation path. Codex whole-plugin activation is separately
 qualified through its own shadow-PluginStore mechanism. Standalone MCP
 selection, `--with=all`, multi-plugin selection, and component-level plugin
@@ -420,11 +420,12 @@ The qualified macOS provider paths for this source tree are:
 
 | Coding agent and launch path | Platform | Status |
 |---|---|---|
-| Codex CLI 0.156.1 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.156.1 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.156.1 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
-| Claude Code CLI 2.1.280 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Claude Code CLI 2.1.280 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
+| Codex CLI 0.159.0 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.159.0 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.159.0 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
+| Codex CLI 0.159.0 — `clroom codex --with=mcp:<id>` | macOS / Apple Silicon | Exact one-stdio-MCP activation qualification target |
+| Claude Code CLI 2.1.284 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Claude Code CLI 2.1.284 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
 | Claude Code CLI `-p` response-output semantics | macOS / Apple Silicon | Not independently qualified |
 
 Linux and Windows are `NOT_QUALIFIED`. Intel macOS, Homebrew, crates.io,
@@ -525,14 +526,14 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.4.4` on macOS Apple Silicon. See the
+This source tree is prepared for `v0.4.5` on macOS Apple Silicon. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
 for publication status and downloadable artifacts. Real-provider qualification
 is bound to the exact behavior-specific provider versions above. The macOS
 archive is unsigned and unnotarized.
 
 It supports the documented Codex interactive and exec clean paths, the bounded
-v0.4.4 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
+v0.4.5 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
 and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
 Apple Silicon paths.
 

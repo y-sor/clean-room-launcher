@@ -150,7 +150,7 @@ codex_native="$platform_alias/vendor/aarch64-apple-darwin/bin/codex"
 [[ -f "$codex_native" ]] || fail "CODEX_NATIVE_MISSING"
 chmod 0755 "$codex_native"
 codex_native_sha256=$(shasum -a 256 "$codex_native" | awk '{print $1}')
-[[ "$codex_native_sha256" == "$CODEX_NATIVE_SHA256" ]] || fail "CODEX_NATIVE_DIGEST_MISMATCH"
+[[ "$codex_native_sha256" == "$CODEX_NATIVE_SHA256" ]] || fail "CODEX_NATIVE_DIGEST_MISMATCH expected=$CODEX_NATIVE_SHA256 actual=$codex_native_sha256"
 
 codex_bin=$(resolve_bin "$codex_root" codex) || fail "CODEX_BIN_INVALID"
 chmod 0755 "$codex_bin"

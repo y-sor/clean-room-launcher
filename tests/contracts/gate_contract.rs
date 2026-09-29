@@ -524,20 +524,30 @@ fn release_review_boundary_is_content_addressed_and_squash_stable() {
 }
 
 #[test]
-fn claude_release_smoke_rejects_unqualified_plugin_before_model_probe() {
+fn claude_release_smoke_is_prompt_free_and_preflights_before_tty() {
     let source =
         std::fs::read_to_string("scripts/release/local-plugin-activation-smoke.sh").unwrap();
 
     let preflight = source
         .find("PLUGIN_INFO_PREFLIGHT")
         .expect("Claude release smoke must have a qualification preflight");
-    let model_probe = source
-        .find("Reply exactly UNUSED.")
-        .expect("Claude release smoke automated provider probe must remain explicit");
+    let clean_tty = source
+        .find("=== INTERACTIVE CLEAN TUI ===")
+        .expect("Claude release smoke must retain clean human-TTY evidence");
+    let selected_tty = source
+        .find("=== INTERACTIVE SELECTED-PLUGIN TUI ===")
+        .expect("Claude release smoke must retain selected human-TTY evidence");
 
     assert!(
-        preflight < model_probe,
-        "plugin qualification must fail closed before any automated model prompt"
+        preflight < clean_tty && clean_tty < selected_tty,
+        "plugin qualification must fail closed before prompt-free clean/selected TTY evidence"
+    );
+    assert!(
+        !source.contains("Reply exactly UNUSED.")
+            && !source.contains("--output-format stream-json")
+            && source.contains("No model prompt was sent in either TUI")
+            && source.contains("MODEL_PROMPT_SENT=NO"),
+        "release rehearsal must not send or encode an automated model prompt"
     );
     assert!(
         source.contains("PLUGIN_INFO_PREFLIGHT_BLOCKED")

@@ -68,9 +68,9 @@ CLROOM preflights this capability and injects the flag for its qualified
 selected-skill inventory. Interactive Codex uses the same existing isolation
 path without that exec-only flag.
 
-## v0.4.4: select one installed whole plugin
+## v0.4.5: select one installed whole plugin
 
-The v0.4.4 source adds one bounded Codex whole-plugin selector for the
+The v0.4.5 source adds one bounded Codex whole-plugin selector for the
 interactive launch path:
 
 ```sh
@@ -94,7 +94,7 @@ Raw Codex configuration/plugin controls such as `-c`, `--config`,
 `--profile`, `--enable`, `--disable`, and `--plugin` are refused while a
 CLROOM plugin selection is active, so there is only one activation authority.
 
-The exact v0.4.4 qualification target is Codex CLI `0.156.1` on macOS Apple
+The exact v0.4.5 qualification target is Codex CLI `0.159.0` on macOS Apple
 Silicon. Release qualification uses a task-owned standalone MCP plugin fixture
 with the real provider and requires provider startup, MCP `initialize`,
 `tools/list` with at least one tool, and a real fixture tool call; `mcp list`
@@ -104,14 +104,13 @@ rather than emulating the Codex Desktop host. Evidence remains bound to exact
 candidate and provider bytes. The ordinary parser/runtime minimum remains
 `0.147.0+`.
 
-This slice does not add multi-plugin selection, standalone MCP restore,
-`--with=all`, component-level plugin surgery, persistent Codex configuration
-mutation, or marketplace installation/update behavior.
+This whole-plugin path does not add multi-plugin selection, `--with=all`,
+component-level plugin surgery, persistent Codex configuration mutation, or
+marketplace installation/update behavior.
 
-## Current source candidate: one standalone stdio MCP server
+## v0.4.5: select one standalone stdio MCP server
 
-After the v0.4.4 whole-plugin release, the current source candidate adds a
-separate bounded standalone MCP path:
+v0.4.5 adds a separate bounded standalone MCP path:
 
 ```sh
 clroom codex --with=mcp:my-server
@@ -139,8 +138,9 @@ to exist in `SessionFlags` and refuses any enabled non-session MCP layer. The
 ambient selected source is digest-bound and re-read before the main provider
 launch.
 
-Acceptance of this path requires its exact current PR bytes to pass the required
-macOS real-provider rehearsal. Claude standalone MCP is not part of this slice.
+Release qualification for this path requires exact-candidate macOS real-provider
+rehearsal against pinned Codex CLI `0.159.0`. Claude standalone MCP is not part
+of this slice.
 
 ## Is CLROOM a way around managed Codex controls?
 

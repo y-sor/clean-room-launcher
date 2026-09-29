@@ -643,16 +643,16 @@ fn claude_isolation_error_message(_: ClaudeIsolationError) -> String {
 fn codex_activation_error_message(error: CodexActivationError) -> String {
     match error {
         CodexActivationError::ProviderTupleNotQualified => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for v0.4.2 plugin activation; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for whole-plugin activation; continue locally".to_owned()
         }
         CodexActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.2 admits one exact Codex plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Codex plugin per launch".to_owned()
         }
         CodexActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
         }
         CodexActivationError::UnsupportedRequest => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available in v0.4.2; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available for this request; continue locally".to_owned()
         }
         CodexActivationError::InvalidSource => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: selected Codex plugin source is invalid; continue locally".to_owned()
@@ -711,16 +711,16 @@ fn codex_mcp_activation_error_message(error: CodexMcpActivationError) -> String 
 fn claude_activation_error_message(error: ClaudeActivationError) -> String {
     match error {
         ClaudeActivationError::ProviderTupleNotQualified => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Claude version/platform is not qualified for v0.4.0 plugin activation; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: installed Claude version/platform is not qualified for whole-plugin activation; continue locally".to_owned()
         }
         ClaudeActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: v0.4.0 admits one exact Claude plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Claude plugin per launch".to_owned()
         }
         ClaudeActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Claude plugin changed before launch; retry".to_owned()
         }
         ClaudeActivationError::UnsupportedRequest => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Claude whole-plugin selection is available in v0.4.0; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Claude whole-plugin selection is available for this request; continue locally".to_owned()
         }
         ClaudeActivationError::Selection(selection) => format!(
             "{}: selected Claude plugin is unavailable or unqualified; continue locally",

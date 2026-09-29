@@ -55,7 +55,7 @@ for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) a
 do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_STAGE_SMOKE_MISSING:$needle"
 done
-for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v3"'   'interactive_selected_tui_confirmed'
+for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v4"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_SMOKE_MISSING:$needle"
 done
@@ -64,6 +64,8 @@ do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_FREEZE_CONTRACT:$needle"
 done
 grep -Fq -- '"plugin_id": "frontend-design@claude-plugins-official"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_PLUGIN_IDENTITY"
+grep -Fq -- '"schema_version": "clroom.plugin-release-smoke.v4"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V4"
+grep -Fq -- '"automated_probe_prompt_supplied": False' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE"
 
 for smoke in "$codex_smoke" "$claude_smoke"; do
   for forbidden in     'IMMUTABLE_RELEASE_POLICY'     'gh release '     'gh attestation '     '"$phase" == "draft"'
@@ -83,6 +85,12 @@ for needle in   'PROJECT_AGENTS_NOT_CONFIRMED'   'EXTERNAL_ANCESTOR_AGENTS_NOT_C
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_TUI_BOUNDARY_MISSING:$needle"
 done
+
+grep -Fq -- 'synthetic_claude_version=$CLAUDE_VERSION' "$claude_smoke" \
+  || fail "CLAUDE_SYNTHETIC_VERSION_NOT_PIN_BOUND"
+if grep -Fq -- "printf '2.1.280" "$claude_smoke"; then
+  fail "CLAUDE_SYNTHETIC_VERSION_STALE_LITERAL"
+fi
 
 for needle in   'Rehearse Codex runtime on exact PR candidate'   'GITHUB_TOKEN: ${{ github.token }}'   'local-codex-plugin-activation-smoke.sh rehearse'   '--fixture-standalone-mcp'   'Upload Codex pre-merge rehearsal evidence'
 do

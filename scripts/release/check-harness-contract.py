@@ -74,6 +74,142 @@ def require(errors: list[str], condition: bool, code: str) -> None:
         errors.append(code)
 
 
+
+
+def validate_supply_chain_verifier_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    step = "name: Provision pinned Python supply-chain verifier"
+    readiness = "name: Run canonical fail-closed gate"
+    start = text.find(step)
+    end = text.find(readiness)
+    require(errors, start >= 0, "SUPPLY_CHAIN_VERIFIER_STEP_MISSING")
+    require(errors, end >= 0 and start >= 0 and start < end, "SUPPLY_CHAIN_VERIFIER_ORDER")
+    if start >= 0:
+        block = text[start:end if end >= 0 else len(text)]
+        require(
+            errors,
+            "if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'" in block,
+            "SUPPLY_CHAIN_VERIFIER_ACTIVE_ONLY",
+        )
+        require(
+            errors,
+            'verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"' in block,
+            "SUPPLY_CHAIN_VERIFIER_PRIVATE_VENV",
+        )
+        require(errors, "python3 -m venv" in block, "SUPPLY_CHAIN_VERIFIER_VENV")
+        require(
+            errors,
+            "sys.version_info[:2] != (3, 14)" in block,
+            "SUPPLY_CHAIN_VERIFIER_PYTHON_PIN",
+        )
+        verifier_requirements = {
+            "attrs==26.1.0": "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309",
+            "jsonschema==4.26.0": "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce",
+            "jsonschema-specifications==2025.9.1": "98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe",
+            "referencing==0.37.0": "381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231",
+            "rpds-py==2026.6.3": "d7469697dce35be237db177d42e2a2ee26e6dcc5fc052078a6fefabd288c6edd",
+        }
+        for package, digest in verifier_requirements.items():
+            require(
+                errors,
+                f"{package} --hash=sha256:{digest}" in block,
+                "SUPPLY_CHAIN_VERIFIER_REQUIREMENT:" + package,
+            )
+        require(errors, "--only-binary=:all:" in block, "SUPPLY_CHAIN_VERIFIER_BINARY_ONLY")
+        require(errors, "--require-hashes" in block, "SUPPLY_CHAIN_VERIFIER_REQUIRE_HASHES")
+        require(
+            errors,
+            'echo "$verifier_root/bin" >> "$GITHUB_PATH"' in block,
+            "SUPPLY_CHAIN_VERIFIER_PATH",
+        )
+        require(
+            errors,
+            '"rpds-py": "2026.6.3"' in block and '"jsonschema": "4.26.0"' in block,
+            "SUPPLY_CHAIN_VERIFIER_CLOSURE_CHECK",
+        )
+    return errors
+
+
+
+
+def claude_prompt_mode_present(text: str) -> bool:
+    for line in text.splitlines():
+        tokens = line.replace('"', "").replace("'", "").split()
+        for index, token in enumerate(tokens[:-1]):
+            if token == "$clroom" and tokens[index + 1] == "claude":
+                if any(item in {"-p", "--print"} for item in tokens[index + 2 :]):
+                    return True
+    return False
+
+def validate_claude_release_smoke_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    require(
+        errors,
+        '"schema_version":"clroom.plugin-release-smoke.v4"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCHEMA_V4",
+    )
+    require(
+        errors,
+        '"automated_probe_prompt_supplied":False' in text,
+        "CLAUDE_RELEASE_SMOKE_PROMPT_EVIDENCE_FALSE",
+    )
+    require(
+        errors,
+        '"clean_tui_confirmed":clean_tui=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_TTY",
+    )
+    require(
+        errors,
+        '"selected_tui_confirmed":interactive=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_TTY",
+    )
+    require(
+        errors,
+        "No model prompt was sent in either TUI" in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_NO_PROMPT_CONFIRMATION",
+    )
+    require(
+        errors,
+        "Do not press Enter while autocomplete/search text remains in the composer." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_NO_ENTER",
+    )
+    require(
+        errors,
+        "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CLEAR",
+    )
+    require(
+        errors,
+        "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CTRL_D",
+    )
+    require(
+        errors,
+        "Clean composer was cleared and TUI exited with Ctrl+D without submitting input" in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_SAFE_EXIT_CONFIRMATION",
+    )
+    require(
+        errors,
+        "Selected composer was cleared and TUI exited with Ctrl+D without submitting input" in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_SAFE_EXIT_CONFIRMATION",
+    )
+    require(
+        errors,
+        "Exit normally with /exit." not in text,
+        "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT",
+    )
+    require(
+        errors,
+        not claude_prompt_mode_present(text),
+        "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN",
+    )
+    require(
+        errors,
+        "--output-format stream-json" not in text,
+        "CLAUDE_RELEASE_SMOKE_PRINT_MODE_FORBIDDEN",
+    )
+    return errors
+
 def check(root: Path) -> list[str]:
     errors: list[str] = []
 
@@ -92,8 +228,21 @@ def check(root: Path) -> list[str]:
     )
 
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
-    require(errors, "jsonschema==" not in release_candidate, "UNUSED_JSONSCHEMA_PROVISIONING")
-    require(errors, "clroom-supply-chain-verifier" not in release_candidate, "UNUSED_PYPI_VERIFIER")
+    errors.extend(validate_supply_chain_verifier_contract(release_candidate))
+
+    claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
+    errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
+    claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
+    require(
+        errors,
+        '"schema_version": "clroom.plugin-release-smoke.v4"' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V4",
+    )
+    require(
+        errors,
+        '"automated_probe_prompt_supplied": False' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE",
+    )
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
@@ -212,6 +361,69 @@ def self_test() -> None:
     missing = [("init", sha_a, "4.38.0"), ("analyze", sha_a, "4.38.0")]
     if not any(item.startswith("CODEQL_FAMILY_MISSING:") for item in validate_codeql_records(missing)):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:MISSING_CODEQL")
+    verifier_fixture = """
+      - name: Provision pinned Python supply-chain verifier
+        if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        run: |
+          verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"
+          python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] != (3, 14) else 0)'
+          attrs==26.1.0 --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+          jsonschema==4.26.0 --hash=sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce
+          jsonschema-specifications==2025.9.1 --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe
+          referencing==0.37.0 --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231
+          rpds-py==2026.6.3 --hash=sha256:d7469697dce35be237db177d42e2a2ee26e6dcc5fc052078a6fefabd288c6edd
+          python3 -m venv "$verifier_root"
+          "$verifier_root/bin/python" -m pip install --only-binary=:all: --require-hashes -r requirements.txt
+          echo "$verifier_root/bin" >> "$GITHUB_PATH"
+          expected = {"jsonschema": "4.26.0", "rpds-py": "2026.6.3"}
+      - name: Run canonical fail-closed gate
+    """
+    if validate_supply_chain_verifier_contract(verifier_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_CLEAN")
+    stale_verifier = verifier_fixture.replace("jsonschema==4.26.0", "jsonschema==4.25.1")
+    if not any(
+        error.startswith("SUPPLY_CHAIN_VERIFIER_REQUIREMENT:jsonschema==4.26.0")
+        for error in validate_supply_chain_verifier_contract(stale_verifier)
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_STALE")
+    unhashed_verifier = verifier_fixture.replace("--require-hashes", "--no-require-hashes")
+    if "SUPPLY_CHAIN_VERIFIER_REQUIRE_HASHES" not in validate_supply_chain_verifier_contract(unhashed_verifier):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_UNHASHED")
+    missing_verifier = verifier_fixture.replace("Provision pinned Python supply-chain verifier", "Provision removed verifier")
+    if "SUPPLY_CHAIN_VERIFIER_STEP_MISSING" not in validate_supply_chain_verifier_contract(missing_verifier):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_MISSING")
+    claude_smoke_fixture = """
+"$clroom" claude
+"$clroom" claude --with="plugin:$plugin_id"
+"No model prompt was sent in either TUI"
+"schema_version":"clroom.plugin-release-smoke.v4"
+"automated_probe_prompt_supplied":False
+"clean_tui_confirmed":clean_tui=="true"
+"selected_tui_confirmed":interactive=="true"
+"Do not press Enter while autocomplete/search text remains in the composer."
+"Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
+"Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
+"Clean composer was cleared and TUI exited with Ctrl+D without submitting input"
+"Selected composer was cleared and TUI exited with Ctrl+D without submitting input"
+"""
+    if validate_claude_release_smoke_contract(claude_smoke_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
+    prompt_smokes = [
+        claude_smoke_fixture + '\n"$clroom" claude -p "UNUSED"\n',
+        claude_smoke_fixture + '\n"$clroom" claude --with="plugin:$plugin_id" --print "UNUSED"\n',
+    ]
+    for prompt_smoke in prompt_smokes:
+        if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
+            raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
+    unsafe_exit_smoke = claude_smoke_fixture + '\n"Exit normally with /exit."\n'
+    if "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT" not in validate_claude_release_smoke_contract(unsafe_exit_smoke):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_UNSAFE_EXIT_NOT_REJECTED")
+    missing_clear_smoke = claude_smoke_fixture.replace(
+        '"Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."\n',
+        "",
+    )
+    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CLEAR" not in validate_claude_release_smoke_contract(missing_clear_smoke):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SAFE_EXIT_CLEAR_NOT_REQUIRED")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 
