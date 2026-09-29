@@ -282,7 +282,9 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Do not send a model prompt."
   echo "This TUI runs in a task-owned synthetic nested Git project."
   echo "Confirm the target plugin skill is absent from autocomplete."
-  echo "Exit normally with /exit."
+  echo "Do not press Enter while autocomplete/search text remains in the composer."
+  echo "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
+  echo "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
   echo
   (
     cd "$tui_project"
@@ -295,6 +297,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   read -r clean_target_answer
   [[ "$clean_target_answer" == "y" || "$clean_target_answer" == "Y" ]] \
     || fail "CLEAN_TARGET_PLUGIN_PRESENT"
+  printf 'Clean composer was cleared and TUI exited with Ctrl+D without submitting input [y/N]: '
+  read -r clean_safe_exit_answer
+  [[ "$clean_safe_exit_answer" == "y" || "$clean_safe_exit_answer" == "Y" ]] \
+    || fail "CLEAN_SAFE_EXIT_NOT_CONFIRMED"
   clean_tui=true
   clean_target_plugin_absent=true
 
@@ -307,7 +313,9 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Confirm no plugin load errors are shown."
   echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
   echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
-  echo "Exit normally with /exit."
+  echo "Do not press Enter while autocomplete/search text remains in the composer."
+  echo "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
+  echo "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
   echo
   (
     cd "$tui_project"
@@ -330,6 +338,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   read -r agents_answer
   [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] \
     || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
+  printf 'Selected composer was cleared and TUI exited with Ctrl+D without submitting input [y/N]: '
+  read -r selected_safe_exit_answer
+  [[ "$selected_safe_exit_answer" == "y" || "$selected_safe_exit_answer" == "Y" ]] \
+    || fail "SELECTED_SAFE_EXIT_NOT_CONFIRMED"
   printf 'No model prompt was sent in either TUI [y/N]: '
   read -r no_prompt_answer
   [[ "$no_prompt_answer" == "y" || "$no_prompt_answer" == "Y" ]] \
