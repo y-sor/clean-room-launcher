@@ -115,6 +115,17 @@ jobs:
             exit 1
           fi
           grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_ACTION_PIN' "$output"
+      - name: Provision pinned Python supply-chain verifier
+        if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        shell: bash
+        run: |
+          set -euo pipefail
+          verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"
+          python3 -m venv "$verifier_root"
+          "$verifier_root/bin/python" -m pip install --disable-pip-version-check --no-input \
+            "jsonschema==4.26.0"
+          echo "$verifier_root/bin" >> "$GITHUB_PATH"
+          test "$("$verifier_root/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("jsonschema"))')" = "4.26.0"
       - name: Install cargo-deny 0.20.2 verification tool
         shell: bash
         run: |

@@ -30,7 +30,8 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "The post-v0.4.4 delta retains release/promotion trust-boundary and gate-topology hardening, adds the standalone MCP macOS rehearsal to PR readiness, repairs its source-mutation synchronization, and keeps the grouped CodeQL family update atomic at v4.38.2.",
-        "Release eligibility continues to run cheap contract/harness checks before expensive provider and artifact lanes."
+        "Release eligibility continues to run cheap contract/harness checks before expensive provider and artifact lanes.",
+        "ACTIVE_CANDIDATE readiness exposed that post-v0.4.4 hardening had incorrectly removed the Python CycloneDX schema verifier as unused: exact provider qualification and artifact validation passed, then supply-chain metadata generation failed before schema validation because Python jsonschema was absent. v0.4.5 restores the previously accepted exact jsonschema 4.26.0 verifier in a task-owned venv only for ACTIVE_CANDIDATE and the harness contract now requires the pinned verifier to exist before canonical readiness."
       ]
     },
     "release": {
@@ -91,6 +92,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "A provider pin refresh can leave the synthetic Claude AGENTS-boundary probe reporting the previous exact provider version, causing the mandatory pre-merge human-TTY rehearsal to fail before the boundary assertions execute.",
       "durable_control": "The synthetic Claude probe derives its --version response from canonical CLAUDE_VERSION in provider-pins.sh, and provider-canary contract coverage requires that binding while rejecting the stale 2.1.280 literal."
+    },
+    {
+      "id": "active-candidate-supply-chain-verifier-was-misclassified-unused",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "POST_PUBLISH readiness can stay green while candidate-only CycloneDX schema validation depends on a Python verifier that is missing from the runner, allowing a release train to discover the missing tool only after expensive provider qualification.",
+      "durable_control": "Release-candidate workflow provisions the previously accepted exact jsonschema 4.26.0 verifier in a private venv only for ACTIVE_CANDIDATE before canonical readiness, and check-harness-contract.py plus its negative self-test reject missing, stale or misordered verifier provisioning."
     }
   ],
   "artifact_capability_gates": [
@@ -135,7 +142,8 @@
       "event-driven source-mutation oracle on the task-owned macOS preflight creation seam",
       "accepted-main exact-shipping-byte standalone MCP requalification before protected tag creation",
       "provider-pin movement invalidates standalone MCP, whole-plugin, lifecycle and ambient-input evidence",
-      "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage"
+      "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
+      "ACTIVE_CANDIDATE supply-chain metadata validation provisions exact jsonschema 4.26.0 before canonical readiness and harness self-tests reject missing/stale provisioning"
     ]
   },
   "reviewed_content_digest": "081a47380cb26ced3c4711f6a8093aa3af238b23483b58d0885d300cfce3bc1b"

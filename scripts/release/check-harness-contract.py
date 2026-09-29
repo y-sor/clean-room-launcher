@@ -74,6 +74,43 @@ def require(errors: list[str], condition: bool, code: str) -> None:
         errors.append(code)
 
 
+
+
+def validate_supply_chain_verifier_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    step = "name: Provision pinned Python supply-chain verifier"
+    readiness = "name: Run canonical fail-closed gate"
+    start = text.find(step)
+    end = text.find(readiness)
+    require(errors, start >= 0, "SUPPLY_CHAIN_VERIFIER_STEP_MISSING")
+    require(errors, end >= 0 and start >= 0 and start < end, "SUPPLY_CHAIN_VERIFIER_ORDER")
+    if start >= 0:
+        block = text[start:end if end >= 0 else len(text)]
+        require(
+            errors,
+            "if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'" in block,
+            "SUPPLY_CHAIN_VERIFIER_ACTIVE_ONLY",
+        )
+        require(
+            errors,
+            'verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"' in block,
+            "SUPPLY_CHAIN_VERIFIER_PRIVATE_VENV",
+        )
+        require(errors, "python3 -m venv" in block, "SUPPLY_CHAIN_VERIFIER_VENV")
+        require(errors, '"jsonschema==4.26.0"' in block, "SUPPLY_CHAIN_VERIFIER_JSONSCHEMA_PIN")
+        require(
+            errors,
+            'echo "$verifier_root/bin" >> "$GITHUB_PATH"' in block,
+            "SUPPLY_CHAIN_VERIFIER_PATH",
+        )
+        require(
+            errors,
+            'importlib.metadata.version("jsonschema")' in block,
+            "SUPPLY_CHAIN_VERIFIER_VERSION_CHECK",
+        )
+    return errors
+
+
 def check(root: Path) -> list[str]:
     errors: list[str] = []
 
@@ -92,8 +129,7 @@ def check(root: Path) -> list[str]:
     )
 
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
-    require(errors, "jsonschema==" not in release_candidate, "UNUSED_JSONSCHEMA_PROVISIONING")
-    require(errors, "clroom-supply-chain-verifier" not in release_candidate, "UNUSED_PYPI_VERIFIER")
+    errors.extend(validate_supply_chain_verifier_contract(release_candidate))
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
@@ -212,6 +248,25 @@ def self_test() -> None:
     missing = [("init", sha_a, "4.38.0"), ("analyze", sha_a, "4.38.0")]
     if not any(item.startswith("CODEQL_FAMILY_MISSING:") for item in validate_codeql_records(missing)):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:MISSING_CODEQL")
+    verifier_fixture = """
+      - name: Provision pinned Python supply-chain verifier
+        if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        run: |
+          verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"
+          python3 -m venv "$verifier_root"
+          "$verifier_root/bin/python" -m pip install "jsonschema==4.26.0"
+          echo "$verifier_root/bin" >> "$GITHUB_PATH"
+          test "$("$verifier_root/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("jsonschema"))')" = "4.26.0"
+      - name: Run canonical fail-closed gate
+    """
+    if validate_supply_chain_verifier_contract(verifier_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_CLEAN")
+    stale_verifier = verifier_fixture.replace("jsonschema==4.26.0", "jsonschema==4.25.1")
+    if "SUPPLY_CHAIN_VERIFIER_JSONSCHEMA_PIN" not in validate_supply_chain_verifier_contract(stale_verifier):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_STALE")
+    missing_verifier = verifier_fixture.replace("Provision pinned Python supply-chain verifier", "Provision removed verifier")
+    if "SUPPLY_CHAIN_VERIFIER_STEP_MISSING" not in validate_supply_chain_verifier_contract(missing_verifier):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_MISSING")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 
