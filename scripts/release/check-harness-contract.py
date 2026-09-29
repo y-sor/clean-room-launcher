@@ -131,6 +131,16 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
 
 
 
+
+def claude_prompt_mode_present(text: str) -> bool:
+    for line in text.splitlines():
+        tokens = line.replace('"', "").replace("'", "").split()
+        for index, token in enumerate(tokens[:-1]):
+            if token == "$clroom" and tokens[index + 1] == "claude":
+                if any(item in {"-p", "--print"} for item in tokens[index + 2 :]):
+                    return True
+    return False
+
 def validate_claude_release_smoke_contract(text: str) -> list[str]:
     errors: list[str] = []
     require(
@@ -160,10 +170,7 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
-        re.search(
-            r'["$]clroom"?\\s+claude\\b[^\\n]*\\s(?:-p|--print)(?:\\s|$)',
-            text,
-        ) is None,
+        not claude_prompt_mode_present(text),
         "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN",
     )
     require(
