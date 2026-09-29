@@ -84,6 +84,12 @@ do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_TUI_BOUNDARY_MISSING:$needle"
 done
 
+grep -Fq -- 'synthetic_claude_version=$CLAUDE_VERSION' "$claude_smoke" \
+  || fail "CLAUDE_SYNTHETIC_VERSION_NOT_PIN_BOUND"
+if grep -Fq -- "printf '2.1.280" "$claude_smoke"; then
+  fail "CLAUDE_SYNTHETIC_VERSION_STALE_LITERAL"
+fi
+
 for needle in   'Rehearse Codex runtime on exact PR candidate'   'GITHUB_TOKEN: ${{ github.token }}'   'local-codex-plugin-activation-smoke.sh rehearse'   '--fixture-standalone-mcp'   'Upload Codex pre-merge rehearsal evidence'
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_PREMERGE_WORKFLOW_MISSING:$needle"

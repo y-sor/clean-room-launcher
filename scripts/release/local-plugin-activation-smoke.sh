@@ -146,12 +146,13 @@ printf '%s\n' 'repository instructions' >"$probe_repository/AGENTS.md"
 printf '%s\n' 'repository hidden instructions' >"$probe_repository/.claude/AGENTS.md"
 printf '%s\n' 'nested instructions' >"$probe_project/AGENTS.md"
 printf '%s\n' 'nested hidden instructions' >"$probe_project/.claude/AGENTS.md"
-cat >"$probe_bin/claude" <<'SH'
-#!/bin/sh
-if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then
-  printf '2.1.280\n'
-  exit 0
-fi
+synthetic_claude_version=$CLAUDE_VERSION
+{
+  printf '%s\n' '#!/bin/sh'
+  printf '%s\n' 'if [ "$#" -eq 1 ] && [ "${1:-}" = "--version" ]; then'
+  printf "  printf '%%s\\\\n' '%s'\n" "$synthetic_claude_version"
+  printf '%s\n' '  exit 0' 'fi'
+  cat <<'SH'
 for path in "$HOME/AGENTS.md" "$HOME/workspace/AGENTS.md" "$HOME/workspace/.claude/AGENTS.md"; do
   /bin/cat "$path" >/dev/null 2>&1 && exit 100
 done
@@ -162,6 +163,7 @@ done
 printf '%s\n' executed >"$TMPDIR/provider-executed" || exit 105
 exit 0
 SH
+} >"$probe_bin/claude"
 chmod 0700 "$probe_bin/claude"
 if ! (
   cd "$probe_project"

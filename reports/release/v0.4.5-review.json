@@ -14,7 +14,8 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Standalone Codex MCP has a dedicated exact-PR macOS real-provider rehearsal requiring provider startup, MCP initialize/tools-list, an independent fixture tools/call, sibling/environment/layer negatives, source-mutation refusal, and task-owned process lifecycle closure.",
-        "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100."
+        "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100.",
+        "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns."
       ]
     },
     "dependencies": {
@@ -84,6 +85,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "A change to dependency-update grouping could alter how security-sensitive GitHub Actions dependencies are proposed while remaining outside release delta classification.",
       "durable_control": "Release Contract v1 classifies .github/dependabot.yml in the dependencies domain, and its self-test includes that path so future dependency automation changes require an explicit whole-release disposition."
+    },
+    {
+      "id": "claude-boundary-probe-provider-version-drift",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A provider pin refresh can leave the synthetic Claude AGENTS-boundary probe reporting the previous exact provider version, causing the mandatory pre-merge human-TTY rehearsal to fail before the boundary assertions execute.",
+      "durable_control": "The synthetic Claude probe derives its --version response from canonical CLAUDE_VERSION in provider-pins.sh, and provider-canary contract coverage requires that binding while rejecting the stale 2.1.280 literal."
     }
   ],
   "artifact_capability_gates": [
