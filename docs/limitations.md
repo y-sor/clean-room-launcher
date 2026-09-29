@@ -8,13 +8,13 @@ permalink: /limitations.html
 - Distributed macOS release artifacts are unsigned and unnotarized;
   qualification is limited to the documented macOS Apple Silicon release path.
 - Only macOS on Apple Silicon is supported. The minimum accepted versions are
-  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.4 exact
-  qualification targets are Codex `0.156.1` and Claude Code `2.1.280`.
+  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.5 exact
+  qualification targets are Codex `0.158.0` and Claude Code `2.1.284`.
   Release qualification fails closed if either stable provider version moves
   before tagging.
-- The v0.4.4 whole-plugin selector admits at most one already-installed
-  provider-native plugin per launch. Codex `0.156.1` uses an exact private
-  shadow-PluginStore projection for the interactive path; Claude Code `2.1.280`
+- The v0.4.5 whole-plugin selector admits at most one already-installed
+  provider-native plugin per launch. Codex `0.158.0` uses an exact private
+  shadow-PluginStore projection for the interactive path; Claude Code `2.1.284`
   uses its separately qualified session-only plugin-directory path. Other
   provider tuples fail closed for activation. Codex plugins whose effective MCP
   surface includes the app-owned `codex_app` server are `HOST_REQUIRED` and
@@ -27,13 +27,12 @@ permalink: /limitations.html
   agents, LSP servers, background monitors, plugin executables, or plugin
   settings may still be observed by inventory but fail closed for activation.
   This avoids reopening broader ambient provider state.
-- The v0.4.4 release did not qualify standalone MCP resource selection. The
-  current source candidate adds only one exact root-user Codex stdio MCP server
-  per interactive launch, subject to exact-candidate macOS rehearsal. Multiple
+- v0.4.5 adds only one exact root-user Codex stdio MCP server per interactive
+  launch, subject to exact-candidate macOS rehearsal. Multiple
   MCP servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working
   directories, project/local restore, Claude standalone MCP, component-level
   filtering, presets, and `--with=all` remain outside this slice.
-- The candidate standalone Codex MCP path refuses literal environment values
+- The standalone Codex MCP path refuses literal environment values
   and identity-field interpolation. Every referenced environment-variable name
   also requires explicit `--pass-env=NAME`. It fails closed if an active
   non-session Codex config layer contributes MCP servers rather than attempting

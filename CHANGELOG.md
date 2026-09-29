@@ -7,6 +7,51 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-09-29
+
+### Added
+
+- Added bounded standalone Codex MCP selection for one exact root-user
+  `mcp_servers.<id>` stdio server per interactive launch. Literal MCP
+  environment values are refused, every `env_vars` name requires matching
+  `--pass-env=NAME` admission, active non-session MCP layers fail closed, and
+  the selected ambient source is digest-bound and revalidated before provider
+  birth.
+- Added an exact-candidate macOS real-provider rehearsal for standalone MCP
+  activation, including MCP `initialize`/`tools/list`, an independent fixture
+  `tools/call`, sibling/environment negatives, source-mutation refusal, and
+  task-owned provider/MCP lifecycle closure.
+
+### Changed
+
+- Advances the v0.4.5 release-qualification targets to Codex `0.158.0` and
+  Claude Code `2.1.284`; canonical registry integrity and exact provider-byte
+  evidence remain mandatory before release acceptance.
+- Expands the public Release Contract so standalone Codex MCP qualification is a
+  durable pre-merge and accepted-main exact-byte blocker rather than PR-local
+  evidence.
+- Removes patch-version-coupled Codex plugin diagnostic prose while preserving
+  existing machine-readable error markers.
+- Keeps the post-v0.4.4 CodeQL family update atomic at v4.38.2 and preserves the
+  hardened release/promotion trust-boundary and gate-topology checks added on
+  main before this candidate.
+
+### Dependencies
+
+- The post-v0.4.4 runtime adds exact `toml 1.1.6` parsing for bounded Codex MCP
+  configuration, with its locked transitive TOML parsing/serialization closure.
+  v0.4.5 stabilization introduces no additional runtime or build dependency.
+
+### Security
+
+- Standalone MCP parsing retains only the selected bounded fields, refuses
+  literal secret material and unknown security-sensitive transport/auth fields,
+  and performs provider-native `config/read` layer preflight before the real
+  interactive provider starts.
+- The standalone-MCP source-mutation rehearsal is event-driven on macOS so the
+  TOCTOU negative fails on the actual preflight creation seam instead of a
+  polling race.
+
 ## [0.4.4] - 2026-09-23
 
 ### Fixed

@@ -1,0 +1,126 @@
+{
+  "schema_version": "clroom.release-review.v2",
+  "release": "v0.4.5",
+  "baseline_release": "v0.4.4",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Post-v0.4.4 main adds one exact root-user Codex stdio MCP selective-restore path with source fingerprinting, action-time revalidation, explicit environment-name admission, provider-native config-layer preflight, and fail-closed conflict handling; v0.4.5 also removes patch-version-coupled human diagnostic prose without changing error markers.",
+        "The existing clean and whole-plugin launch contracts remain bounded; this candidate adds no multi-resource, remote/OAuth MCP, Claude standalone MCP, Agent Plugins activation, or --with=all authority."
+      ]
+    },
+    "tests": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Standalone Codex MCP has a dedicated exact-PR macOS real-provider rehearsal requiring provider startup, MCP initialize/tools-list, an independent fixture tools/call, sibling/environment/layer negatives, source-mutation refusal, and task-owned process lifecycle closure.",
+        "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "The post-v0.4.4 delta adds exact toml 1.1.6 with locked serde_spanned/toml_datetime/toml_parser/toml_writer/winnow closure to parse bounded Codex MCP configuration; the release-stabilization candidate adds no further runtime or build dependency.",
+        "Dependency Review, cargo-deny policy, locked builds/tests, SBOM generation, and exact release-byte staging remain required."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The post-v0.4.4 delta retains release/promotion trust-boundary and gate-topology hardening, adds the standalone MCP macOS rehearsal to PR readiness, repairs its source-mutation synchronization, and keeps the grouped CodeQL family update atomic at v4.38.2.",
+        "Release eligibility continues to run cheap contract/harness checks before expensive provider and artifact lanes."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
+        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.158.0 and Claude Code 2.1.284, with registry integrity and native-byte identity still required before acceptance."
+      ]
+    },
+    "public_claims": {
+      "decision": "COVERED",
+      "evidence": [
+        "Current README, provider matrix, provider guides, limitations and security source-contract claims advance to v0.4.5 and the exact provider targets while keeping unsupported transports, Claude standalone MCP, extra platforms, signing and notarization unclaimed.",
+        "Standalone MCP wording no longer describes already-accepted source behavior as an unaccepted PR candidate; publication status remains separately owned by GitHub Releases."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "standalone-mcp-configuration-visible-without-runtime-proof",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A selected MCP declaration can be visible to Codex while the real provider/server runtime still fails or exposes no usable tools.",
+      "durable_control": "Exact-PR and accepted-main qualification require the pinned real Codex provider to reach MCP initialize and tools/list for a task-owned standalone fixture, plus an independent successful fixture tools/call; configuration visibility alone is insufficient."
+    },
+    {
+      "id": "standalone-mcp-source-mutates-after-selection",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Ambient Codex MCP configuration can change after planning/preflight and otherwise authorize a different command or environment reference.",
+      "durable_control": "The selected source is digest-bound and revalidated before provider birth; the macOS rehearsal mutates the source on the task-owned preflight creation event and requires CLROOM_RESOURCE_STATE_CHANGED before interactive provider/MCP runtime."
+    },
+    {
+      "id": "standalone-mcp-secret-or-sibling-authority-expansion",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Literal environment material, unadmitted env names, another active MCP layer, multiple MCPs, or whole-plugin mixing could silently widen the selected launch.",
+      "durable_control": "Literal env values and unadmitted env names fail closed; provider-native config/read requires the selected SessionFlags MCP and no active non-session MCP layer; multi-MCP and plugin+MCP selections fail before provider birth."
+    },
+    {
+      "id": "codex-shared-daemon-could-cross-launch-boundary",
+      "decision": "COVERED",
+      "failure_mode": "A provider shared background server could outlive one CLROOM launch and decouple runtime authority from the current clean/selective process boundary.",
+      "durable_control": "For Codex 0.158.0 the current CLROOM clean -c override set is outside upstream daemon-compatible overrides, forcing embedded mode; exact provider/MCP rehearsal also requires interactive-provider process correlation and task-owned lifecycle closure. Every provider pin move requires fresh qualification."
+    },
+    {
+      "id": "security-sensitive-toml-parser-dependency-added",
+      "decision": "COVERED",
+      "failure_mode": "Adding a parser for ambient Codex MCP config expands supply-chain input and could tempt pass-through of unreviewed fields.",
+      "durable_control": "The dependency is exact-pinned and locked, existing dependency/SBOM gates remain active, and the parser retains only the selected bounded MCP fields while refusing unknown security-sensitive material instead of generic TOML pass-through."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "codex-whole-plugin-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Requalify exact v0.4.5 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.158.0, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
+    },
+    {
+      "id": "codex-standalone-mcp-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Exercise exact v0.4.5 PR-candidate bytes with pinned Codex 0.158.0; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
+    },
+    {
+      "id": "codex-provider-capabilities",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Build the exact future shipping v0.4.5 archive once from accepted main and requalify clean, whole-plugin and standalone-MCP Codex capabilities against the frozen exact provider inputs before tag creation; post-tag provider runtime is forbidden."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Requalify exact v0.4.5 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.284, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.5 archive with pinned Claude Code 2.1.284 and bind evidence to accepted source/tree/review/archive identity."
+    },
+    {
+      "id": "promotion-prepare-execution-parity",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Rehearse the exact accepted-stage resolver invocation on Ubuntu against the accepted source/stage before the protected tag gate."
+    }
+  ],
+  "product_outcome": "Ship v0.4.5 as a bounded delivery of the accepted post-v0.4.4 main: make one exact root-user Codex stdio MCP selectable for one interactive launch, preserve existing clean and whole-plugin contracts, requalify current provider versions, and reconcile release-contract/public/runtime truth without adding broader activation authority.",
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "Standalone Codex MCP adds a new command/environment/config-layer/runtime trust boundary after v0.4.4. The implementation already introduced a dedicated exact-PR real-provider rehearsal and accepted-main stage coverage; v0.4.5 promotes those checks into the durable public Release Contract and re-runs them for the refreshed provider tuple.",
+    "promoted_controls": [
+      "standalone Codex MCP exact-PR macOS real-provider rehearsal bound to exact candidate/provider bytes",
+      "standalone MCP fail-closed negative matrix for literal/unadmitted environment, provider subcommands, multi-MCP, plugin+MCP, non-session MCP layers and source mutation",
+      "event-driven source-mutation oracle on the task-owned macOS preflight creation seam",
+      "accepted-main exact-shipping-byte standalone MCP requalification before protected tag creation",
+      "provider-pin movement invalidates standalone MCP, whole-plugin, lifecycle and ambient-input evidence"
+    ]
+  },
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+}

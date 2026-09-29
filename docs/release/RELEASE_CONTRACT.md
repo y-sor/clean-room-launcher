@@ -198,6 +198,27 @@ For whole-plugin activation:
    manifest, tag-bound attestations, successful promotion workflow and preserved
    Claude stage evidence. It performs no rebuild or provider/runtime rerun.
 
+For standalone Codex MCP activation:
+
+1. **Pre-merge exact-provider rehearsal:** the exact PR candidate runs on macOS
+   Apple Silicon against the pinned Codex provider. The selected root-user stdio
+   MCP must reach provider startup, MCP `initialize` and `tools/list` without a
+   model prompt; an independent fixture `tools/call` proves non-empty tool
+   semantics. Evidence binds the exact candidate and provider bytes.
+2. **Fail-closed negative closure:** literal MCP environment values, missing
+   `--pass-env` admission, provider-subcommand use, multiple standalone MCP
+   selections, standalone-MCP/whole-plugin mixing, active non-session MCP
+   layers, and selected-source mutation must all fail before an interactive
+   provider/MCP runtime is admitted. The source-mutation oracle uses the
+   task-owned preflight creation seam rather than timing-only polling.
+3. **Accepted-main exact-byte staging:** after merge identity is known, the same
+   standalone-MCP capability is requalified against the exact future shipping
+   archive and frozen pinned provider inputs before a protected tag can be
+   created. Post-tag provider/runtime qualification remains forbidden.
+4. **Provider-move invalidation:** changing the exact Codex provider tuple
+   invalidates standalone-MCP runtime evidence and requires the pre-merge and
+   accepted-main qualification paths to run again.
+
 ## Stateful provider lifecycle closure
 
 A first successful provider startup is not sufficient evidence for a supported
@@ -230,7 +251,7 @@ surfaces without changing CLROOM itself. Startup/version/byte checks alone are
 therefore insufficient for a clean-launch claim.
 
 For every newly pinned provider tuple, release qualification must re-prove the
-ambient input classes CLROOM claims to suppress. For Claude Code 2.1.280 the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.284 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
 through ancestor directories. For Git projects, CLROOM uses the nearest real
 (non-symlink) `.git` file or directory as the project instruction boundary;
