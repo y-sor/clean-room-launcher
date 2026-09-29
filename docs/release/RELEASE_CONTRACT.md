@@ -106,9 +106,18 @@ non-executable direct invocation fails before provider provisioning.
 After accepted-main staging completes, a separate Ubuntu
 `Release promotion rehearsal` workflow resolves the exact accepted stage using
 the same explicit `bash scripts/release/resolve-pretag-stage.sh` invocation used
-by the tag-triggered Release workflow. The protected tag helper requires this
+by the tag-triggered Release workflow. Because this rehearsal runs inside the
+same accepted-main workflow run that produced the stage, it may opt the resolver
+into that exact current run only through `CLROOM_PRETAG_CURRENT_RUN_ID`. The
+resolver then independently requires GitHub Actions, the same run id, trusted
+`push` on `refs/heads/main`, the exact source SHA/repository, and completed
+success for eligibility, readiness, exact-byte staging and pre-tag attestation
+before downloading the artifact. The tag-triggered Release workflow is forbidden
+from setting this exception and continues to accept only a fully
+`completed/success` accepted-main run. The protected tag helper requires the
 exact-source rehearsal to have completed successfully. This closes runner OS,
-Git file-mode and shell invocation parity before the irreversible tag boundary.
+Git file-mode and shell invocation parity before the irreversible tag boundary
+without weakening post-tag stage selection.
 
 Claude remains the one genuine local human-TTY boundary. Before tag creation,
 the Owner runs the Claude stage smoke against the exact staged archive, not a
@@ -368,7 +377,7 @@ does not grant merge, tag, or publish permission.
 ## Declared automation-chain topology
 
 `AUTOMATION_CHAIN_RELEASE_CANDIDATE_TO_PROMOTION_REHEARSAL`
-The only automatic continuation from accepted-main `Release candidate readiness` into promotion preparation is a local reusable `workflow_call`. The caller is restricted to trusted `push` runs on `refs/heads/main` in `ACTIVE_CANDIDATE`, passes the exact `github.sha`, and closes the promotion rehearsal inside the same release-candidate run. Privileged `workflow_run` checkout chains are forbidden. The reusable workflow carries only `contents: read` and `actions: read` and performs no publication.
+The only automatic continuation from accepted-main `Release candidate readiness` into promotion preparation is a local reusable `workflow_call`. The caller is restricted to trusted `push` runs on `refs/heads/main` in `ACTIVE_CANDIDATE`, passes the exact `github.sha`, and closes the promotion rehearsal inside the same release-candidate run. That rehearsal alone binds `CLROOM_PRETAG_CURRENT_RUN_ID` to `github.run_id`; the resolver accepts it only after independently proving exact run/repository/ref/SHA identity and PASS of the upstream release jobs. The tag workflow never receives this binding and remains completed-run-only. Privileged `workflow_run` checkout chains are forbidden. The reusable workflow carries only `contents: read` and `actions: read` and performs no publication.
 
 `AUTOMATION_CHAIN_TAG_TO_DRAFT`
 A protected `v*` tag triggers the `Release` workflow. That workflow may bind attestations and create or refresh a GitHub Draft Release from already accepted bytes. It must not rebuild, requalify providers, mutate repository settings, move the tag, or publish the Draft.
