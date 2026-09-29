@@ -133,7 +133,11 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
 
 
 def validate_pretag_current_run_contract(
-    resolver: str, promotion: str, release: str
+    resolver: str,
+    admission: str,
+    promotion: str,
+    release: str,
+    release_candidate: str,
 ) -> list[str]:
     errors: list[str] = []
     require(
@@ -146,6 +150,11 @@ def validate_pretag_current_run_contract(
         "CLROOM_PRETAG_CURRENT_RUN_ID" not in release,
         "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN",
     )
+    require(
+        errors,
+        "python3 scripts/release/pretag-run-admission.py --self-test" in release_candidate,
+        "PRETAG_CURRENT_RUN_SELF_TEST_EARLY",
+    )
     required_resolver_markers = {
         "PRETAG_CURRENT_RUN_ID_INPUT": 'current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"',
         "PRETAG_CURRENT_RUN_ACTIONS": '[[ "${GITHUB_ACTIONS:-}" == "true" ]]',
@@ -154,24 +163,30 @@ def validate_pretag_current_run_contract(
         "PRETAG_CURRENT_RUN_REF": '[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]',
         "PRETAG_CURRENT_RUN_SHA": '[[ "${GITHUB_SHA:-}" == "$expected" ]]',
         "PRETAG_CURRENT_RUN_REPOSITORY": '[[ "${GITHUB_REPOSITORY:-}" == "$repository" ]]',
-        "PRETAG_CURRENT_RUN_IN_PROGRESS_ONLY": 'run.get("status") == "in_progress"',
-        "PRETAG_CURRENT_RUN_NO_CONCLUSION": 'run.get("conclusion") is None',
-        "PRETAG_COMPLETED_RUN_STILL_REQUIRED": 'run.get("status") == "completed" and run.get("conclusion") == "success"',
+        "PRETAG_CURRENT_RUN_HELPER": "pretag-run-admission.py",
+        "PRETAG_CURRENT_RUN_RUN_JSON": '--run-json "$tmp/run-$run_id.json"',
+        "PRETAG_CURRENT_RUN_BINDING_ARG": 'run_args+=(--current-run-id "$current_run_id")',
+        "PRETAG_CURRENT_RUN_JOBS_JSON": '--jobs-json "$tmp/jobs-$run_id.json"',
     }
     for code, marker in required_resolver_markers.items():
         require(errors, marker in resolver, code)
+
+    required_admission_markers = {
+        "PRETAG_CURRENT_RUN_IN_PROGRESS_ONLY": 'run.get("status") != "in_progress"',
+        "PRETAG_CURRENT_RUN_NO_CONCLUSION": 'run.get("conclusion") is not None',
+        "PRETAG_COMPLETED_RUN_STILL_REQUIRED": 'run.get("status") == "completed" and run.get("conclusion") == "success"',
+        "PRETAG_CURRENT_RUN_JOB_STATUS": 'job.get("status") != "completed" or job.get("conclusion") != "success"',
+        "PRETAG_CURRENT_RUN_SELF_TEST": "PRETAG_RUN_ADMISSION_SELF_TEST_PASS",
+    }
+    for code, marker in required_admission_markers.items():
+        require(errors, marker in admission, code)
     for name in (
         "Release eligibility and harness seal",
         "CLROOM release readiness",
         "Rehearse/stage exact release bytes",
         "Rehearse attestation mechanism before tag",
     ):
-        require(errors, name in resolver, "PRETAG_CURRENT_RUN_UPSTREAM_JOB:" + name)
-    require(
-        errors,
-        'job.get("status") != "completed" or job.get("conclusion") != "success"' in resolver,
-        "PRETAG_CURRENT_RUN_UPSTREAM_SUCCESS",
-    )
+        require(errors, name in admission, "PRETAG_CURRENT_RUN_UPSTREAM_JOB:" + name)
     return errors
 
 
@@ -381,7 +396,12 @@ def check(root: Path) -> list[str]:
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
 
     resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
-    errors.extend(validate_pretag_current_run_contract(resolver, promotion, release))
+    admission = read(root, "scripts/release/pretag-run-admission.py")
+    errors.extend(
+        validate_pretag_current_run_contract(
+            resolver, admission, promotion, release, release_candidate
+        )
+    )
 
     for path, text in workflow_text.items():
         require(errors, re.search(r"(?m)^concurrency:\s*$", text) is not None, f"WORKFLOW_CONCURRENCY:{path}")
@@ -446,43 +466,76 @@ current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"
 [[ "${GITHUB_REF:-}" == "refs/heads/main" ]]
 [[ "${GITHUB_SHA:-}" == "$expected" ]]
 [[ "${GITHUB_REPOSITORY:-}" == "$repository" ]]
+pretag-run-admission.py
+--run-json "$tmp/run-$run_id.json"
+run_args+=(--current-run-id "$current_run_id")
+--jobs-json "$tmp/jobs-$run_id.json"
+"""
+    admission_fixture = """
 run.get("status") == "completed" and run.get("conclusion") == "success"
-run.get("status") == "in_progress"
-run.get("conclusion") is None
+run.get("status") != "in_progress"
+run.get("conclusion") is not None
 Release eligibility and harness seal
 CLROOM release readiness
 Rehearse/stage exact release bytes
 Rehearse attestation mechanism before tag
 job.get("status") != "completed" or job.get("conclusion") != "success"
+PRETAG_RUN_ADMISSION_SELF_TEST_PASS
 """
     promotion_fixture = "CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}"
     release_fixture = 'tags:\n      - "v*"'
+    candidate_fixture = "python3 scripts/release/pretag-run-admission.py --self-test"
     if validate_pretag_current_run_contract(
-        resolver_fixture, promotion_fixture, release_fixture
+        resolver_fixture,
+        admission_fixture,
+        promotion_fixture,
+        release_fixture,
+        candidate_fixture,
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_CLEAN")
-    missing_upstream = resolver_fixture.replace(
+    missing_upstream = admission_fixture.replace(
         "Rehearse attestation mechanism before tag", "missing attestation"
     )
     if not any(
         error.startswith("PRETAG_CURRENT_RUN_UPSTREAM_JOB:")
         for error in validate_pretag_current_run_contract(
-            missing_upstream, promotion_fixture, release_fixture
+            resolver_fixture,
+            missing_upstream,
+            promotion_fixture,
+            release_fixture,
+            candidate_fixture,
         )
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_UPSTREAM")
     tag_exception = release_fixture + "\nCLROOM_PRETAG_CURRENT_RUN_ID\n"
     if "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN" not in validate_pretag_current_run_contract(
-        resolver_fixture, promotion_fixture, tag_exception
+        resolver_fixture,
+        admission_fixture,
+        promotion_fixture,
+        tag_exception,
+        candidate_fixture,
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_TAG_PATH")
     weak_identity = resolver_fixture.replace(
         '[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]', ""
     )
     if "PRETAG_CURRENT_RUN_REF" not in validate_pretag_current_run_contract(
-        weak_identity, promotion_fixture, release_fixture
+        weak_identity,
+        admission_fixture,
+        promotion_fixture,
+        release_fixture,
+        candidate_fixture,
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_IDENTITY")
+    missing_behavioral_self_test = candidate_fixture.replace("--self-test", "--report")
+    if "PRETAG_CURRENT_RUN_SELF_TEST_EARLY" not in validate_pretag_current_run_contract(
+        resolver_fixture,
+        admission_fixture,
+        promotion_fixture,
+        release_fixture,
+        missing_behavioral_self_test,
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_SELF_TEST")
     claude_smoke_fixture = """
 "$clroom" claude
 "$clroom" claude --with="plugin:$plugin_id"
