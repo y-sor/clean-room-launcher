@@ -121,11 +121,36 @@ jobs:
         run: |
           set -euo pipefail
           verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"
+          requirements="$RUNNER_TEMP/clroom-supply-chain-verifier-requirements.txt"
+          python3 - <<'PY'
+          import sys
+          if sys.version_info[:2] != (3, 14):
+              raise SystemExit(f"unsupported supply-chain verifier Python: {sys.version_info.major}.{sys.version_info.minor}")
+          PY
+          cat >"$requirements" <<'REQ'
+          attrs==26.1.0 --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+          jsonschema==4.26.0 --hash=sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce
+          jsonschema-specifications==2025.9.1 --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe
+          referencing==0.37.0 --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231
+          rpds-py==2026.6.3 --hash=sha256:d7469697dce35be237db177d42e2a2ee26e6dcc5fc052078a6fefabd288c6edd
+          REQ
           python3 -m venv "$verifier_root"
           "$verifier_root/bin/python" -m pip install --disable-pip-version-check --no-input \
-            "jsonschema==4.26.0"
+            --only-binary=:all: --require-hashes -r "$requirements"
           echo "$verifier_root/bin" >> "$GITHUB_PATH"
-          test "$("$verifier_root/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("jsonschema"))')" = "4.26.0"
+          "$verifier_root/bin/python" - <<'PY'
+          import importlib.metadata
+          expected = {
+              "attrs": "26.1.0",
+              "jsonschema": "4.26.0",
+              "jsonschema-specifications": "2025.9.1",
+              "referencing": "0.37.0",
+              "rpds-py": "2026.6.3",
+          }
+          actual = {name: importlib.metadata.version(name) for name in expected}
+          if actual != expected:
+              raise SystemExit(f"supply-chain verifier closure mismatch: {actual!r}")
+          PY
       - name: Install cargo-deny 0.20.2 verification tool
         shell: bash
         run: |
