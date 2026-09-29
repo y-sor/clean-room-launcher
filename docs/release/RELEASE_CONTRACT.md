@@ -114,8 +114,11 @@ resolver then independently requires GitHub Actions, the same run id, trusted
 success for eligibility, readiness, exact-byte staging and pre-tag attestation
 before downloading the artifact. The tag-triggered Release workflow is forbidden
 from setting this exception and continues to accept only a fully
-`completed/success` accepted-main run. The protected tag helper requires the
-exact-source rehearsal to have completed successfully. This closes runner OS,
+`completed/success` accepted-main run. A deterministic admission self-test
+covers completed-run acceptance, current-run acceptance, wrong event/SHA,
+missing binding, failed completed runs, and missing/failed upstream jobs in the
+cheap eligibility lane before provider provisioning. The protected tag helper
+requires the exact-source rehearsal to have completed successfully. This closes runner OS,
 Git file-mode and shell invocation parity before the irreversible tag boundary
 without weakening post-tag stage selection.
 
