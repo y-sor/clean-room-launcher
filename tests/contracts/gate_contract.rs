@@ -662,6 +662,10 @@ fn codex_release_evidence_uses_actions_before_tag_not_owner_or_draft_runtime() {
     let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     let stage = std::fs::read_to_string("scripts/release/stage-release.sh").unwrap();
     let resolver = std::fs::read_to_string("scripts/release/resolve-pretag-stage.sh").unwrap();
+    let admission =
+        std::fs::read_to_string("scripts/release/pretag-run-admission.py").unwrap();
+    let promotion =
+        std::fs::read_to_string(".github/workflows/release-promotion-rehearsal.yml").unwrap();
     let contract =
         std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
     let release_docs =
@@ -672,9 +676,17 @@ fn codex_release_evidence_uses_actions_before_tag_not_owner_or_draft_runtime() {
     assert!(candidate.contains("Upload Codex pre-merge rehearsal evidence"));
     assert!(candidate.contains("Rehearse/stage exact release bytes"));
     assert!(stage.contains("local-codex-plugin-activation-smoke.sh stage"));
-    assert!(resolver.contains(r#""event": "push""#));
-    assert!(resolver.contains(r#""head_branch": "main""#));
+    assert!(resolver.contains("pretag-run-admission.py"));
     assert!(resolver.contains("SUCCESSFUL_MAIN_STAGE_RUN_NOT_FOUND"));
+    assert!(admission.contains(r#""event": "push""#));
+    assert!(admission.contains(r#""head_branch": "main""#));
+    assert!(admission.contains(r#""head_sha": expected_sha"#));
+    assert!(admission.contains(r#"run.get("status") == "completed""#));
+    assert!(admission.contains(r#"run.get("status") != "in_progress""#));
+    assert!(admission.contains("Rehearse/stage exact release bytes"));
+    assert!(admission.contains("Rehearse attestation mechanism before tag"));
+    assert!(promotion.contains("CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}"));
+    assert!(!release.contains("CLROOM_PRETAG_CURRENT_RUN_ID"));
 
     assert!(!release.contains("local-codex-plugin-activation-smoke.sh"));
     assert!(!release.contains("verify-codex-draft:"));
