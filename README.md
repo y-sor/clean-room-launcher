@@ -265,8 +265,8 @@ This path does not support multiple standalone MCP servers, HTTP/SSE/
 WebSocket transports, OAuth or helper-based authentication, project/local MCP
 restore, standalone MCP exclusions, mixing standalone MCP with whole-plugin
 selection, or `--with=all`. Claude standalone MCP remains unqualified and
-fails closed. The exact v0.4.5 qualification target for this path is Codex CLI
-`0.158.0` on macOS Apple Silicon.
+fails closed. The exact v0.4.5 qualification target for this path is Codex CLI `0.158.0`
+on macOS Apple Silicon.
 
 ### Claude Code
 
