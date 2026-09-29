@@ -170,6 +170,36 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
+        "Do not press Enter while autocomplete/search text remains in the composer." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_NO_ENTER",
+    )
+    require(
+        errors,
+        "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CLEAR",
+    )
+    require(
+        errors,
+        "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CTRL_D",
+    )
+    require(
+        errors,
+        "Clean composer was cleared and TUI exited with Ctrl+D without submitting input" in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_SAFE_EXIT_CONFIRMATION",
+    )
+    require(
+        errors,
+        "Selected composer was cleared and TUI exited with Ctrl+D without submitting input" in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_SAFE_EXIT_CONFIRMATION",
+    )
+    require(
+        errors,
+        "Exit normally with /exit." not in text,
+        "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT",
+    )
+    require(
+        errors,
         not claude_prompt_mode_present(text),
         "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN",
     )
@@ -370,6 +400,11 @@ def self_test() -> None:
 "automated_probe_prompt_supplied":False
 "clean_tui_confirmed":clean_tui=="true"
 "selected_tui_confirmed":interactive=="true"
+"Do not press Enter while autocomplete/search text remains in the composer."
+"Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
+"Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
+"Clean composer was cleared and TUI exited with Ctrl+D without submitting input"
+"Selected composer was cleared and TUI exited with Ctrl+D without submitting input"
 """
     if validate_claude_release_smoke_contract(claude_smoke_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
@@ -380,6 +415,15 @@ def self_test() -> None:
     for prompt_smoke in prompt_smokes:
         if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
             raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
+    unsafe_exit_smoke = claude_smoke_fixture + '\n"Exit normally with /exit."\n'
+    if "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT" not in validate_claude_release_smoke_contract(unsafe_exit_smoke):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_UNSAFE_EXIT_NOT_REJECTED")
+    missing_clear_smoke = claude_smoke_fixture.replace(
+        '"Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."\n',
+        "",
+    )
+    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CLEAR" not in validate_claude_release_smoke_contract(missing_clear_smoke):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SAFE_EXIT_CLEAR_NOT_REQUIRED")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 
