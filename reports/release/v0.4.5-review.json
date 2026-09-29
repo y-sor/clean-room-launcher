@@ -36,7 +36,8 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
-        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.158.0 and Claude Code 2.1.284, with registry integrity and native-byte identity still required before acceptance."
+        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.159.0 and Claude Code 2.1.284, with registry integrity and native-byte identity still required before acceptance.",
+        "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state."
       ]
     },
     "public_claims": {
@@ -70,7 +71,7 @@
       "id": "codex-shared-daemon-could-cross-launch-boundary",
       "decision": "COVERED",
       "failure_mode": "A provider shared background server could outlive one CLROOM launch and decouple runtime authority from the current clean/selective process boundary.",
-      "durable_control": "For Codex 0.158.0 the current CLROOM clean -c override set is outside upstream daemon-compatible overrides, forcing embedded mode; exact provider/MCP rehearsal also requires interactive-provider process correlation and task-owned lifecycle closure. Every provider pin move requires fresh qualification."
+      "durable_control": "For Codex 0.159.0 the current CLROOM clean -c override set is outside upstream daemon-compatible overrides, forcing embedded mode; exact provider/MCP rehearsal also requires interactive-provider process correlation and task-owned lifecycle closure. Every provider pin move requires fresh qualification."
     },
     {
       "id": "security-sensitive-toml-parser-dependency-added",
@@ -89,12 +90,12 @@
     {
       "id": "codex-whole-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.5 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.158.0, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
+      "requirement": "Requalify exact v0.4.5 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.159.0, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
     },
     {
       "id": "codex-standalone-mcp-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Exercise exact v0.4.5 PR-candidate bytes with pinned Codex 0.158.0; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
+      "requirement": "Exercise exact v0.4.5 PR-candidate bytes with pinned Codex 0.159.0; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
     },
     {
       "id": "codex-provider-capabilities",
@@ -130,5 +131,5 @@
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage"
     ]
   },
-  "reviewed_content_digest": "afb4969670885ba88008d62b2ef5645695be331382244b668173c64391004e69"
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
 }

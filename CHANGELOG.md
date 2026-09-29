@@ -24,7 +24,7 @@ Semantic Versioning after the first public release.
 
 ### Changed
 
-- Advances the v0.4.5 release-qualification targets to Codex `0.158.0` and
+- Advances the v0.4.5 release-qualification targets to Codex `0.159.0` and
   Claude Code `2.1.284`; canonical registry integrity and exact provider-byte
   evidence remain mandatory before release acceptance.
 - Expands the public Release Contract so standalone Codex MCP qualification is a
