@@ -146,5 +146,5 @@
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning"
     ]
   },
-  "reviewed_content_digest": "1e3e74975dc49835d632b8be339c0f00c4bb5c6e0d04b6881729431e1bdd6f2c"
+  "reviewed_content_digest": "166ae346f9a5c06bfbe0d4d51071ff64a40a16b1e130ad3edc51e93e33453409"
 }
