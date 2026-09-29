@@ -97,7 +97,26 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
             "SUPPLY_CHAIN_VERIFIER_PRIVATE_VENV",
         )
         require(errors, "python3 -m venv" in block, "SUPPLY_CHAIN_VERIFIER_VENV")
-        require(errors, '"jsonschema==4.26.0"' in block, "SUPPLY_CHAIN_VERIFIER_JSONSCHEMA_PIN")
+        require(
+            errors,
+            "sys.version_info[:2] != (3, 14)" in block,
+            "SUPPLY_CHAIN_VERIFIER_PYTHON_PIN",
+        )
+        verifier_requirements = {
+            "attrs==26.1.0": "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309",
+            "jsonschema==4.26.0": "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce",
+            "jsonschema-specifications==2025.9.1": "98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe",
+            "referencing==0.37.0": "381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231",
+            "rpds-py==2026.6.3": "d7469697dce35be237db177d42e2a2ee26e6dcc5fc052078a6fefabd288c6edd",
+        }
+        for package, digest in verifier_requirements.items():
+            require(
+                errors,
+                f"{package} --hash=sha256:{digest}" in block,
+                "SUPPLY_CHAIN_VERIFIER_REQUIREMENT:" + package,
+            )
+        require(errors, "--only-binary=:all:" in block, "SUPPLY_CHAIN_VERIFIER_BINARY_ONLY")
+        require(errors, "--require-hashes" in block, "SUPPLY_CHAIN_VERIFIER_REQUIRE_HASHES")
         require(
             errors,
             'echo "$verifier_root/bin" >> "$GITHUB_PATH"' in block,
@@ -105,8 +124,8 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
         )
         require(
             errors,
-            'importlib.metadata.version("jsonschema")' in block,
-            "SUPPLY_CHAIN_VERIFIER_VERSION_CHECK",
+            '"rpds-py": "2026.6.3"' in block and '"jsonschema": "4.26.0"' in block,
+            "SUPPLY_CHAIN_VERIFIER_CLOSURE_CHECK",
         )
     return errors
 
@@ -253,17 +272,29 @@ def self_test() -> None:
         if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
         run: |
           verifier_root="$RUNNER_TEMP/clroom-supply-chain-verifier"
+          python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] != (3, 14) else 0)'
+          attrs==26.1.0 --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+          jsonschema==4.26.0 --hash=sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce
+          jsonschema-specifications==2025.9.1 --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe
+          referencing==0.37.0 --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231
+          rpds-py==2026.6.3 --hash=sha256:d7469697dce35be237db177d42e2a2ee26e6dcc5fc052078a6fefabd288c6edd
           python3 -m venv "$verifier_root"
-          "$verifier_root/bin/python" -m pip install "jsonschema==4.26.0"
+          "$verifier_root/bin/python" -m pip install --only-binary=:all: --require-hashes -r requirements.txt
           echo "$verifier_root/bin" >> "$GITHUB_PATH"
-          test "$("$verifier_root/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("jsonschema"))')" = "4.26.0"
+          expected = {"jsonschema": "4.26.0", "rpds-py": "2026.6.3"}
       - name: Run canonical fail-closed gate
     """
     if validate_supply_chain_verifier_contract(verifier_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_CLEAN")
     stale_verifier = verifier_fixture.replace("jsonschema==4.26.0", "jsonschema==4.25.1")
-    if "SUPPLY_CHAIN_VERIFIER_JSONSCHEMA_PIN" not in validate_supply_chain_verifier_contract(stale_verifier):
+    if not any(
+        error.startswith("SUPPLY_CHAIN_VERIFIER_REQUIREMENT:jsonschema==4.26.0")
+        for error in validate_supply_chain_verifier_contract(stale_verifier)
+    ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_STALE")
+    unhashed_verifier = verifier_fixture.replace("--require-hashes", "--no-require-hashes")
+    if "SUPPLY_CHAIN_VERIFIER_REQUIRE_HASHES" not in validate_supply_chain_verifier_contract(unhashed_verifier):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_UNHASHED")
     missing_verifier = verifier_fixture.replace("Provision pinned Python supply-chain verifier", "Provision removed verifier")
     if "SUPPLY_CHAIN_VERIFIER_STEP_MISSING" not in validate_supply_chain_verifier_contract(missing_verifier):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_MISSING")
