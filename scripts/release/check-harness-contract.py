@@ -160,7 +160,7 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
-        re.search(r'["$]clroom"?\\s+claude\\s+-p(?:\\s|$)', text) is None,
+        re.search(r'["$]clroom"?\s+claude\s+-p(?:\s|$)', text) is None,
         "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN",
     )
     require(
