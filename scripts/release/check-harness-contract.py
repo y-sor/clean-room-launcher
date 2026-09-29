@@ -160,7 +160,10 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
-        re.search(r'["$]clroom"?\s+claude\s+-p(?:\s|$)', text) is None,
+        re.search(
+            r'["$]clroom"?\\s+claude\\b[^\\n]*\\s(?:-p|--print)(?:\\s|$)',
+            text,
+        ) is None,
         "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN",
     )
     require(
@@ -192,6 +195,17 @@ def check(root: Path) -> list[str]:
 
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
+    claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
+    require(
+        errors,
+        '"schema_version": "clroom.plugin-release-smoke.v4"' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V4",
+    )
+    require(
+        errors,
+        '"automated_probe_prompt_supplied": False' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE",
+    )
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
@@ -352,9 +366,13 @@ def self_test() -> None:
 """
     if validate_claude_release_smoke_contract(claude_smoke_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
-    prompt_smoke = claude_smoke_fixture + '\n"$clroom" claude -p "UNUSED"\n'
-    if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
+    prompt_smokes = [
+        claude_smoke_fixture + '\n"$clroom" claude -p "UNUSED"\n',
+        claude_smoke_fixture + '\n"$clroom" claude --with="plugin:$plugin_id" --print "UNUSED"\n',
+    ]
+    for prompt_smoke in prompt_smokes:
+        if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
+            raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 
