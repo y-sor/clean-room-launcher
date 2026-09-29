@@ -8,6 +8,7 @@ import os
 import pathlib
 import pty
 import re
+import select
 import shutil
 import signal
 import struct
@@ -633,6 +634,27 @@ def source_mutation_probe(candidate, project, home, provider, selected_log, sibl
     config = codex_home / "config.toml"
     original = config.read_text(encoding="utf-8")
     preflight_root = codex_home / ".clroom-clean-state-v2"
+    if sys.platform != "darwin" or not hasattr(select, "kqueue"):
+        fail("source_mutation requires macOS vnode synchronization")
+    if not preflight_root.is_dir():
+        fail("source_mutation preflight root unavailable before probe")
+    if any(path.name.startswith(".mcp-preflight-") for path in preflight_root.iterdir()):
+        fail("source_mutation found stale preflight state before probe")
+
+    watch_fd = os.open(preflight_root, os.O_RDONLY)
+    watcher = select.kqueue()
+    watcher.control(
+        [
+            select.kevent(
+                watch_fd,
+                filter=select.KQ_FILTER_VNODE,
+                flags=select.KQ_EV_ADD | select.KQ_EV_ENABLE | select.KQ_EV_CLEAR,
+                fflags=select.KQ_NOTE_WRITE,
+            )
+        ],
+        0,
+        0,
+    )
     proc = subprocess.Popen(
         [
             str(candidate), "codex",
@@ -656,15 +678,18 @@ def source_mutation_probe(candidate, project, home, provider, selected_log, sibl
         deadline = time.monotonic() + 60
         while proc.poll() is None and time.monotonic() < deadline:
             modes_seen.update(provider_modes_in_tree(proc.pid, provider))
-            if preflight_root.is_dir() and any(
-                path.name.startswith(".mcp-preflight-")
-                for path in preflight_root.iterdir()
-            ):
+            remaining = max(0.0, deadline - time.monotonic())
+            events = watcher.control(None, 1, min(0.25, remaining))
+            if events:
+                # The watched directory is stable before launch. CLROOM creates its
+                # task-owned .mcp-preflight-* child only after source revalidation
+                # and immediately before provider preflight. A vnode directory-write
+                # event therefore gives the harness an event-driven TOCTOU seam
+                # instead of racing a short-lived directory with polling.
                 preflight_seen = True
                 private_write(config, original + "# clroom synthetic source mutation\n")
                 mutated = True
                 break
-            time.sleep(0.02)
         if not mutated and proc.poll() is None:
             timed_out = True
         if mutated and proc.poll() is None:
@@ -681,6 +706,8 @@ def source_mutation_probe(candidate, project, home, provider, selected_log, sibl
                 proc.kill()
         _, stderr = proc.communicate(timeout=5)
     finally:
+        watcher.close()
+        os.close(watch_fd)
         private_write(config, original)
 
     markers = sorted(set(re.findall(r"CLROOM_[A-Z0-9_]+", stderr or "")))
