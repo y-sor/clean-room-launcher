@@ -6,6 +6,13 @@ fail() {
   exit 1
 }
 
+mode=current-all
+if [[ ${1:-} == --frozen-codex ]]; then
+  mode=frozen-codex
+  shift
+fi
+[[ $# -eq 0 ]] || fail "USAGE"
+
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 # shellcheck source=provider-pins.sh
 source "$root/scripts/release/provider-pins.sh"
@@ -32,13 +39,21 @@ verify_integrity() {
   fi
 }
 
-verify_latest '@openai/codex' "$CODEX_VERSION"
-verify_latest '@anthropic-ai/claude-code' "$CLAUDE_VERSION"
-verify_latest '@anthropic-ai/claude-code-darwin-arm64' "$CLAUDE_VERSION"
+if [[ "$mode" == current-all ]]; then
+  verify_latest '@openai/codex' "$CODEX_VERSION"
+  verify_latest '@anthropic-ai/claude-code' "$CLAUDE_VERSION"
+  verify_latest '@anthropic-ai/claude-code-darwin-arm64' "$CLAUDE_VERSION"
+fi
 verify_integrity "@openai/codex@$CODEX_VERSION" "$CODEX_SHA512"
 verify_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64" "$CODEX_PLATFORM_SHA512"
-verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION" "$CLAUDE_SHA512"
-verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" "$CLAUDE_PLATFORM_SHA512"
+if [[ "$mode" == current-all ]]; then
+  verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION" "$CLAUDE_SHA512"
+  verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" "$CLAUDE_PLATFORM_SHA512"
+fi
 
 [[ $mismatch -eq 0 ]] || fail "PIN_REGISTRY_MISMATCH"
-printf 'PROVIDER_PIN_CHECK_PASS codex=%s claude=%s\n' "$CODEX_VERSION" "$CLAUDE_VERSION"
+printf 'PROVIDER_PIN_CHECK_PASS mode=%s codex=%s' "$mode" "$CODEX_VERSION"
+if [[ "$mode" == current-all ]]; then
+  printf ' claude=%s' "$CLAUDE_VERSION"
+fi
+printf '\n'

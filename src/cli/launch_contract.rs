@@ -64,6 +64,48 @@ pub(crate) fn classify_codex_invocation(args: &[String]) -> CodexInvocation {
     }
 }
 
+const CODEX_NON_TOP_LEVEL_COMMANDS: &[&str] = &[
+    "agents",
+    "tcp-tunnel",
+    "exec",
+    "e",
+    "review",
+    "login",
+    "logout",
+    "mcp",
+    "plugin",
+    "app-server",
+    "remote-control",
+    "app",
+    "completion",
+    "update",
+    "doctor",
+    "sandbox",
+    "debug",
+    "execpolicy",
+    "apply",
+    "a",
+    "resume",
+    "queue",
+    "archive",
+    "delete",
+    "migrate-rollouts",
+    "unarchive",
+    "fork",
+    "cloud",
+    "cloud-tasks",
+    "responses-api-proxy",
+    "stdio-to-uds",
+    "exec-server",
+    "features",
+];
+
+pub(crate) fn codex_top_level_interactive(args: &[String]) -> bool {
+    args.iter()
+        .take_while(|argument| argument.as_str() != "--")
+        .all(|argument| !CODEX_NON_TOP_LEVEL_COMMANDS.contains(&argument.as_str()))
+}
+
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BoundaryState {
@@ -174,6 +216,19 @@ impl LaunchContract {
         self.boundary = BoundaryState::Expanded;
         if !self.boundary_controls.contains(&"plugin") {
             self.boundary_controls.push("plugin");
+        }
+    }
+
+    pub fn add_codex_mcp_activation(&mut self, activation_args: &[String]) {
+        if self.provider != Provider::Codex || activation_args.is_empty() {
+            return;
+        }
+        let insert_at = CODEX_CLEAN_DEFAULTS.len();
+        self.argv
+            .splice(insert_at..insert_at, activation_args.iter().cloned());
+        self.boundary = BoundaryState::Expanded;
+        if !self.boundary_controls.contains(&"mcp") {
+            self.boundary_controls.push("mcp");
         }
     }
 
@@ -361,6 +416,28 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    fn standalone_mcp_top_level_guard_refuses_provider_subcommands() {
+        for args in [
+            vec!["mcp".to_owned(), "remove".to_owned(), "fixture".to_owned()],
+            vec!["--model".to_owned(), "gpt-5".to_owned(), "logout".to_owned()],
+            vec!["app-server".to_owned()],
+            vec!["resume".to_owned(), "--last".to_owned()],
+            vec!["e".to_owned(), "echo".to_owned()],
+        ] {
+            assert!(!super::codex_top_level_interactive(&args), "{args:?}");
+        }
+        assert!(super::codex_top_level_interactive(&[
+            "--model".to_owned(),
+            "gpt-5".to_owned(),
+            "fix the tests".to_owned(),
+        ]));
+        assert!(super::codex_top_level_interactive(&[
+            "--".to_owned(),
+            "mcp".to_owned(),
+        ]));
+    }
+
+    #[test]
     fn normal_codex_launch_keeps_plugins_apps_and_hooks_disabled() {
         let contract = LaunchContract::codex(&[]);
 
@@ -433,6 +510,24 @@ mod tests {
         );
         assert_eq!(contract.boundary, BoundaryState::Expanded);
         assert!(contract.boundary_controls.contains(&"plugin"));
+    }
+
+    #[test]
+    fn codex_owned_mcp_activation_is_inserted_as_expanded_boundary() {
+        let mut contract = LaunchContract::codex(&[]);
+        contract.add_codex_mcp_activation(&[
+            "-c".to_owned(),
+            "synthetic_mcp_override=true".to_owned(),
+        ]);
+
+        assert!(
+            contract
+                .argv
+                .windows(2)
+                .any(|pair| pair[0] == "-c" && pair[1] == "synthetic_mcp_override=true")
+        );
+        assert_eq!(contract.boundary, BoundaryState::Expanded);
+        assert!(contract.boundary_controls.contains(&"mcp"));
     }
 
     #[test]

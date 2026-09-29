@@ -1,9 +1,13 @@
 use std::{
     env,
     ffi::OsString,
-    fs, io,
+    fs,
+    io::{self, BufRead, BufReader, Write},
     path::{Path, PathBuf},
-    process::{Command, ExitCode, Stdio},
+    process::{ChildStdin, Command, ExitCode, Stdio},
+    sync::mpsc,
+    thread,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use clroom::adapters::claude::{
@@ -12,6 +16,7 @@ use clroom::adapters::claude::{
 use clroom::adapters::codex::{
     activation::{self as codex_activation, PluginActivationPlan},
     isolation::{IsolationInputs, IsolationPlan, plan_with_skills},
+    mcp::McpActivationPlan,
 };
 use clroom::adapters::{
     identity::{ProviderIdentity, resolve_identity, revalidate_identity},
@@ -21,6 +26,7 @@ use clroom::contracts::adapter::parse_declaration;
 
 use super::launch_contract::{CodexInvocation, LaunchContract, classify_codex_invocation};
 mod codex_state;
+mod mcp_preflight;
 pub(super) use codex_state::CodexState;
 
 pub(super) fn prepare_codex_state(
@@ -35,6 +41,199 @@ pub(super) fn prepare_codex_state(
         selected_global_skill_paths,
         plugin_activation,
     )
+}
+
+const CODEX_MCP_PREFLIGHT_TIMEOUT: Duration = Duration::from_secs(5);
+const CODEX_MCP_PREFLIGHT_MAX_FRAMES: usize = 64;
+const CODEX_MCP_PREFLIGHT_MAX_FRAME_BYTES: usize = 1024 * 1024;
+
+pub(super) fn preflight_codex_mcp_layers(
+    plan: &IsolationPlan,
+    identity: &ProviderIdentity,
+    state: &CodexState,
+    activation: &McpActivationPlan,
+) -> Result<(), String> {
+    activation
+        .revalidate()
+        .map_err(|_| "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before preflight; retry".to_owned())?;
+    revalidate_launch_identity(identity)?;
+
+    let project = plan
+        .project
+        .to_str()
+        .ok_or_else(mcp_preflight::failed)?
+        .to_owned();
+    let sandbox = Path::new("/usr/bin/sandbox-exec");
+    if !sandbox.is_file() {
+        return Err(mcp_preflight::failed());
+    }
+
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| mcp_preflight::failed())?
+        .as_nanos();
+    let sqlite_home = state.root.join(format!(
+        ".mcp-preflight-{}-{nonce}",
+        std::process::id()
+    ));
+    create_private_preflight_dir(&sqlite_home)?;
+
+    let mut contract = LaunchContract::codex(&[]);
+    contract.add_codex_mcp_activation(&activation.provider_config_args());
+    contract.argv.push("app-server".to_owned());
+
+    let mut command = Command::new(sandbox);
+    apply_parent_environment(&mut command, ProviderEnvironment::Codex, &[]);
+    command
+        .arg("-p")
+        .arg(&plan.profile)
+        .arg("--")
+        .arg(&identity.real_executable)
+        .env(INTERNAL_PROVIDER_CHAIN_GUARD, "1")
+        .env("CODEX_HOME", &state.shadow_home)
+        .env("CODEX_SQLITE_HOME", &sqlite_home)
+        .args(&contract.argv)
+        .current_dir(&plan.project)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(_) => {
+            let _ = fs::remove_dir_all(&sqlite_home);
+            return Err(mcp_preflight::failed());
+        }
+    };
+
+    let result = (|| {
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(mcp_preflight::failed)?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(mcp_preflight::failed)?;
+        let (tx, rx) = mpsc::channel::<Result<mcp_preflight::ProbeEnvelope, ()>>();
+        let _reader = thread::spawn(move || {
+            let mut reader = BufReader::new(stdout);
+            for _ in 0..CODEX_MCP_PREFLIGHT_MAX_FRAMES {
+                let mut line = String::new();
+                let Ok(bytes) = reader.read_line(&mut line) else {
+                    let _ = tx.send(Err(()));
+                    return;
+                };
+                if bytes == 0 || line.len() > CODEX_MCP_PREFLIGHT_MAX_FRAME_BYTES {
+                    let _ = tx.send(Err(()));
+                    return;
+                }
+                match serde_json::from_str::<mcp_preflight::ProbeEnvelope>(&line) {
+                    Ok(envelope) if envelope.id.is_some() => {
+                        if tx.send(Ok(envelope)).is_err() {
+                            return;
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(_) => {
+                        let _ = tx.send(Err(()));
+                        return;
+                    }
+                }
+            }
+            let _ = tx.send(Err(()));
+        });
+
+        write_probe_message(
+            &mut stdin,
+            &serde_json::json!({
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "clientInfo": {
+                        "name": "clroom-mcp-preflight",
+                        "title": "CLROOM MCP preflight",
+                        "version": env!("CARGO_PKG_VERSION")
+                    },
+                    "capabilities": {
+                        "experimentalApi": true
+                    }
+                }
+            }),
+        )?;
+        let initialize = wait_probe_response(&rx, 1)?;
+        if initialize.error.is_some() || initialize.result.is_none() {
+            return Err(mcp_preflight::failed());
+        }
+
+        write_probe_message(&mut stdin, &serde_json::json!({"method": "initialized"}))?;
+        write_probe_message(
+            &mut stdin,
+            &serde_json::json!({
+                "id": 2,
+                "method": "config/read",
+                "params": {
+                    "includeLayers": true,
+                    "cwd": project
+                }
+            }),
+        )?;
+        let config = wait_probe_response(&rx, 2)?;
+        let decision = mcp_preflight::evaluate(config);
+        drop(stdin);
+        decision
+    })();
+
+    let _ = child.kill();
+    let _ = child.wait();
+    if fs::remove_dir_all(&sqlite_home).is_err() {
+        return Err(
+            "CLROOM_CODEX_MCP_PREFLIGHT_CLEANUP_FAILED: temporary Codex preflight state could not be removed; stop and inspect locally"
+                .to_owned(),
+        );
+    }
+    result
+}
+
+fn create_private_preflight_dir(path: &Path) -> Result<(), String> {
+    if fs::symlink_metadata(path).is_ok() {
+        return Err(mcp_preflight::failed());
+    }
+    fs::create_dir(path).map_err(|_| mcp_preflight::failed())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+            .map_err(|_| mcp_preflight::failed())?;
+    }
+    Ok(())
+}
+
+fn write_probe_message(stdin: &mut ChildStdin, value: &serde_json::Value) -> Result<(), String> {
+    serde_json::to_writer(&mut *stdin, value).map_err(|_| mcp_preflight::failed())?;
+    stdin
+        .write_all(b"\n")
+        .and_then(|_| stdin.flush())
+        .map_err(|_| mcp_preflight::failed())
+}
+
+fn wait_probe_response(
+    rx: &mpsc::Receiver<Result<mcp_preflight::ProbeEnvelope, ()>>,
+    expected_id: i64,
+) -> Result<mcp_preflight::ProbeEnvelope, String> {
+    let deadline = Instant::now() + CODEX_MCP_PREFLIGHT_TIMEOUT;
+    loop {
+        let remaining = deadline
+            .checked_duration_since(Instant::now())
+            .ok_or_else(mcp_preflight::failed)?;
+        let envelope = rx
+            .recv_timeout(remaining)
+            .map_err(|_| mcp_preflight::failed())?
+            .map_err(|_| mcp_preflight::failed())?;
+        if envelope.id == Some(expected_id) {
+            return Ok(envelope);
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -361,6 +560,7 @@ pub fn launch_isolated_codex(
     ambient_codex_home: &Path,
     state: Option<&CodexState>,
     plugin_activation: Option<&PluginActivationPlan>,
+    mcp_activation: Option<&McpActivationPlan>,
 ) -> Result<ExitCode, String> {
     let sandbox = Path::new("/usr/bin/sandbox-exec");
     if !fs::metadata(sandbox).is_ok_and(|metadata| metadata.is_file()) {
@@ -391,6 +591,7 @@ pub fn launch_isolated_codex(
             state,
             plugin_activation,
         )?;
+        revalidate_codex_mcp_activation(mcp_activation)?;
         revalidate_launch_identity(identity)?;
         Err(isolated_launch_error(command.exec()))
     }
@@ -402,6 +603,7 @@ pub fn launch_isolated_codex(
             state,
             plugin_activation,
         )?;
+        revalidate_codex_mcp_activation(mcp_activation)?;
         revalidate_launch_identity(identity)?;
         let status = command.status().map_err(isolated_launch_error)?;
         Ok(ExitCode::from(status.code().unwrap_or(1) as u8))
@@ -422,6 +624,17 @@ fn revalidate_codex_plugin_activation(
         .map_err(codex_plugin_activation_error)?;
     let state = state.ok_or_else(|| "CLROOM_CODEX_PLUGIN_PROJECTION_MISSING".to_owned())?;
     codex_state::verify_plugin_projection(&state.shadow_home, activation)
+}
+
+fn revalidate_codex_mcp_activation(
+    activation: Option<&McpActivationPlan>,
+) -> Result<(), String> {
+    let Some(activation) = activation else {
+        return Ok(());
+    };
+    activation
+        .revalidate()
+        .map_err(|_| "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before launch; retry".to_owned())
 }
 
 fn codex_plugin_activation_error(error: codex_activation::ActivationError) -> String {

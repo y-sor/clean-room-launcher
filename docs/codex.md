@@ -108,6 +108,40 @@ This slice does not add multi-plugin selection, standalone MCP restore,
 `--with=all`, component-level plugin surgery, persistent Codex configuration
 mutation, or marketplace installation/update behavior.
 
+## Current source candidate: one standalone stdio MCP server
+
+After the v0.4.4 whole-plugin release, the current source candidate adds a
+separate bounded standalone MCP path:
+
+```sh
+clroom codex --with=mcp:my-server
+clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
+```
+
+The selector resolves exactly one root-user `mcp_servers.<id>` entry from the
+ambient Codex `config.toml`. It accepts only stdio definitions with a command,
+string arguments, an optional absolute `cwd`, and plain environment-variable
+name references. Literal `env` values, structured/remote environment sources,
+HTTP transports, OAuth/helper fields, interpolation in identity fields, extra
+security-sensitive fields, multiple MCP selectors, and MCP/plugin mixing fail
+closed.
+
+Environment references are two-keyed: the MCP definition must name the variable,
+and the same name must be explicitly admitted with `--pass-env=NAME`. CLROOM
+never stores or prints the value.
+
+The selected definition becomes only a session-layer Codex override; the
+ambient file is not copied or rewritten. Immediately before provider birth,
+CLROOM starts a no-model Codex app-server preflight with a private temporary
+SQLite home and asks `config/read` for the active layers. The probe retains only
+layer kind, disabled state, and MCP-key presence. It requires the selected MCP
+to exist in `SessionFlags` and refuses any enabled non-session MCP layer. The
+ambient selected source is digest-bound and re-read before the main provider
+launch.
+
+Acceptance of this path requires its exact current PR bytes to pass the required
+macOS real-provider rehearsal. Claude standalone MCP is not part of this slice.
+
 ## Is CLROOM a way around managed Codex controls?
 
 No.
