@@ -17,7 +17,8 @@
         "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100.",
         "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns.",
         "The Claude release smoke no longer uses print-mode/model-prompt calls to obtain system-init evidence: machine info preflight proves exact qualified skill-only selection, while clean and selected human-TTY observations prove target absence/presence, sibling/plugin-error closure and the AGENTS boundary without sending a model prompt.",
-        "Claude TTY rehearsal now fail-closes autocomplete inspection: Enter is forbidden while search text remains, the operator must clear the composer with Ctrl+C, visibly confirm it is empty, and exit with Ctrl+D; slash-command /exit is rejected by the harness contract because residual autocomplete text can otherwise concatenate into an attempted prompt."
+        "Claude TTY rehearsal now fail-closes autocomplete inspection: Enter is forbidden while search text remains, the operator must clear the composer with Ctrl+C, visibly confirm it is empty, and exit with Ctrl+D; slash-command /exit is rejected by the harness contract because residual autocomplete text can otherwise concatenate into an attempted prompt.",
+        "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only."
       ]
     },
     "dependencies": {
@@ -112,6 +113,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "During prompt-free Claude TTY inspection, residual autocomplete text can remain in the composer and concatenate with /exit, initiating an inference attempt and making no-model-prompt evidence ambiguous even when provider usage is zero.",
       "durable_control": "The canonical smoke now forbids Enter during autocomplete inspection, requires Ctrl+C to clear the composer plus visible empty-state confirmation, exits only with Ctrl+D, and treats /exit or any attempted inference as invalid evidence; harness self-tests reject removal of this safe-exit sequence."
+    },
+    {
+      "id": "promotion-rehearsal-current-run-selection-deadlock",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The accepted-main promotion rehearsal executes inside the same Release candidate readiness run that produced the pre-tag stage, while the shared resolver previously accepted only fully completed/success workflow runs; this made the rehearsal deterministically unable to select its own already-successful stage artifact.",
+      "durable_control": "The resolver has a narrowly scoped current-run mode bound only by CLROOM_PRETAG_CURRENT_RUN_ID. It requires the same GitHub Actions run id, push/main/exact repository+SHA identity, and completed-success eligibility/readiness/stage/attestation jobs before artifact selection. The tag workflow is machine-checked to forbid this exception and still resolves only fully completed/success accepted-main runs."
     }
   ],
   "artifact_capability_gates": [
@@ -159,7 +166,8 @@
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
       "prompt-free Claude release rehearsal schema v4 with clean/selected human-TTY evidence and harness rejection of Claude print-mode model prompts",
-      "prompt-safe Claude TTY autocomplete exit contract: no Enter with search text, Ctrl+C clear plus visible empty composer, Ctrl+D exit, and harness rejection of /exit-based rehearsal"
+      "prompt-safe Claude TTY autocomplete exit contract: no Enter with search text, Ctrl+C clear plus visible empty composer, Ctrl+D exit, and harness rejection of /exit-based rehearsal",
+      "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only"
     ]
   },
   "reviewed_content_digest": "82e331383ca83b8ab4a2239e83b47daeb0592586d8e40c043aadb28b4757e6b3"
