@@ -130,6 +130,46 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
     return errors
 
 
+
+def validate_claude_release_smoke_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    require(
+        errors,
+        '"schema_version":"clroom.plugin-release-smoke.v4"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCHEMA_V4",
+    )
+    require(
+        errors,
+        '"automated_probe_prompt_supplied":False' in text,
+        "CLAUDE_RELEASE_SMOKE_PROMPT_EVIDENCE_FALSE",
+    )
+    require(
+        errors,
+        '"clean_tui_confirmed":clean_tui=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_TTY",
+    )
+    require(
+        errors,
+        '"selected_tui_confirmed":interactive=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_TTY",
+    )
+    require(
+        errors,
+        "No model prompt was sent in either TUI" in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_NO_PROMPT_CONFIRMATION",
+    )
+    require(
+        errors,
+        re.search(r'["$]clroom"?\\s+claude\\s+-p(?:\\s|$)', text) is None,
+        "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN",
+    )
+    require(
+        errors,
+        "--output-format stream-json" not in text,
+        "CLAUDE_RELEASE_SMOKE_PRINT_MODE_FORBIDDEN",
+    )
+    return errors
+
 def check(root: Path) -> list[str]:
     errors: list[str] = []
 
@@ -149,6 +189,9 @@ def check(root: Path) -> list[str]:
 
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
     errors.extend(validate_supply_chain_verifier_contract(release_candidate))
+
+    claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
+    errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
@@ -298,6 +341,20 @@ def self_test() -> None:
     missing_verifier = verifier_fixture.replace("Provision pinned Python supply-chain verifier", "Provision removed verifier")
     if "SUPPLY_CHAIN_VERIFIER_STEP_MISSING" not in validate_supply_chain_verifier_contract(missing_verifier):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_MISSING")
+    claude_smoke_fixture = """
+"$clroom" claude
+"$clroom" claude --with="plugin:$plugin_id"
+"No model prompt was sent in either TUI"
+"schema_version":"clroom.plugin-release-smoke.v4"
+"automated_probe_prompt_supplied":False
+"clean_tui_confirmed":clean_tui=="true"
+"selected_tui_confirmed":interactive=="true"
+"""
+    if validate_claude_release_smoke_contract(claude_smoke_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
+    prompt_smoke = claude_smoke_fixture + '\n"$clroom" claude -p "UNUSED"\n'
+    if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 

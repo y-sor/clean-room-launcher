@@ -175,7 +175,11 @@ For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
    Claude runs locally because its selected-plugin TUI requires a genuine human
-   terminal confirmation; its evidence stays outside the tracked tree. Codex runs
+   terminal confirmation; its evidence stays outside the tracked tree. The local
+   Claude smoke sends no model prompt: machine preflight proves the exact
+   skill-only selection is qualified, then a human observes the target skill
+   absent in a clean TUI and present in the selected TUI, with no newly admitted
+   sibling plugin or plugin-load error. Codex runs
    automatically in the macOS Release-candidate workflow and proves the real MCP
    runtime plus post-runtime clean-state closure. This catches product/runtime
    failures at the earliest candidate boundary.

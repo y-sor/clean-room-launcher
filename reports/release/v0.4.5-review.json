@@ -15,7 +15,8 @@
       "evidence": [
         "Standalone Codex MCP has a dedicated exact-PR macOS real-provider rehearsal requiring provider startup, MCP initialize/tools-list, an independent fixture tools/call, sibling/environment/layer negatives, source-mutation refusal, and task-owned process lifecycle closure.",
         "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100.",
-        "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns."
+        "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns.",
+        "The Claude release smoke no longer uses print-mode/model-prompt calls to obtain system-init evidence: machine info preflight proves exact qualified skill-only selection, while clean and selected human-TTY observations prove target absence/presence, sibling/plugin-error closure and the AGENTS boundary without sending a model prompt."
       ]
     },
     "dependencies": {
@@ -98,6 +99,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "POST_PUBLISH readiness can stay green while candidate-only CycloneDX schema validation depends on a Python verifier that is missing from the runner, allowing a release train to discover the missing tool only after expensive provider qualification.",
       "durable_control": "Release-candidate workflow provisions the CycloneDX validator in a private venv only for ACTIVE_CANDIDATE, requires Python 3.14, and installs the complete attrs/jsonschema/jsonschema-specifications/referencing/rpds-py wheel closure at exact versions with reviewed SHA-256 hashes using --require-hashes and --only-binary. Harness self-tests reject missing, stale, unhashed or misordered provisioning."
+    },
+    {
+      "id": "claude-release-rehearsal-prompt-escape",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The canonical Claude release smoke claimed no-model-prompt evidence while also invoking Claude print mode with a model prompt to collect automated system-init records.",
+      "durable_control": "Release smoke evidence schema v4 removes prompt-mode runtime calls, requires prompt-free clean and selected human-TTY confirmations plus machine plugin-info preflight, and the harness contract self-test rejects reintroduction of Claude -p/stream-json prompt-mode evidence."
     }
   ],
   "artifact_capability_gates": [
@@ -143,7 +150,8 @@
       "accepted-main exact-shipping-byte standalone MCP requalification before protected tag creation",
       "provider-pin movement invalidates standalone MCP, whole-plugin, lifecycle and ambient-input evidence",
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
-      "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning"
+      "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
+      "prompt-free Claude release rehearsal schema v4 with clean/selected human-TTY evidence and harness rejection of Claude print-mode model prompts"
     ]
   },
   "reviewed_content_digest": "166ae346f9a5c06bfbe0d4d51071ff64a40a16b1e130ad3edc51e93e33453409"
