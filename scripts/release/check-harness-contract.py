@@ -132,6 +132,49 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
 
 
 
+def validate_pretag_current_run_contract(
+    resolver: str, promotion: str, release: str
+) -> list[str]:
+    errors: list[str] = []
+    require(
+        errors,
+        "CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}" in promotion,
+        "PRETAG_CURRENT_RUN_PROMOTION_BINDING",
+    )
+    require(
+        errors,
+        "CLROOM_PRETAG_CURRENT_RUN_ID" not in release,
+        "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN",
+    )
+    required_resolver_markers = {
+        "PRETAG_CURRENT_RUN_ID_INPUT": 'current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"',
+        "PRETAG_CURRENT_RUN_ACTIONS": '[[ "${GITHUB_ACTIONS:-}" == "true" ]]',
+        "PRETAG_CURRENT_RUN_ID_MATCH": '[[ "${GITHUB_RUN_ID:-}" == "$current_run_id" ]]',
+        "PRETAG_CURRENT_RUN_EVENT": '[[ "${GITHUB_EVENT_NAME:-}" == "push" ]]',
+        "PRETAG_CURRENT_RUN_REF": '[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]',
+        "PRETAG_CURRENT_RUN_SHA": '[[ "${GITHUB_SHA:-}" == "$expected" ]]',
+        "PRETAG_CURRENT_RUN_REPOSITORY": '[[ "${GITHUB_REPOSITORY:-}" == "$repository" ]]',
+        "PRETAG_CURRENT_RUN_IN_PROGRESS_ONLY": 'run.get("status") == "in_progress"',
+        "PRETAG_CURRENT_RUN_NO_CONCLUSION": 'run.get("conclusion") is None',
+        "PRETAG_COMPLETED_RUN_STILL_REQUIRED": 'run.get("status") == "completed" and run.get("conclusion") == "success"',
+    }
+    for code, marker in required_resolver_markers.items():
+        require(errors, marker in resolver, code)
+    for name in (
+        "Release eligibility and harness seal",
+        "CLROOM release readiness",
+        "Rehearse/stage exact release bytes",
+        "Rehearse attestation mechanism before tag",
+    ):
+        require(errors, name in resolver, "PRETAG_CURRENT_RUN_UPSTREAM_JOB:" + name)
+    require(
+        errors,
+        'job.get("status") != "completed" or job.get("conclusion") != "success"' in resolver,
+        "PRETAG_CURRENT_RUN_UPSTREAM_SUCCESS",
+    )
+    return errors
+
+
 def claude_prompt_mode_present(text: str) -> bool:
     for line in text.splitlines():
         tokens = line.replace('"', "").replace("'", "").split()
@@ -337,6 +380,9 @@ def check(root: Path) -> list[str]:
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
 
+    resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
+    errors.extend(validate_pretag_current_run_contract(resolver, promotion, release))
+
     for path, text in workflow_text.items():
         require(errors, re.search(r"(?m)^concurrency:\s*$", text) is not None, f"WORKFLOW_CONCURRENCY:{path}")
         blocks = job_blocks(text)
@@ -392,6 +438,51 @@ def self_test() -> None:
     missing_verifier = verifier_fixture.replace("Provision pinned Python supply-chain verifier", "Provision removed verifier")
     if "SUPPLY_CHAIN_VERIFIER_STEP_MISSING" not in validate_supply_chain_verifier_contract(missing_verifier):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_MISSING")
+    resolver_fixture = """
+current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"
+[[ "${GITHUB_ACTIONS:-}" == "true" ]]
+[[ "${GITHUB_RUN_ID:-}" == "$current_run_id" ]]
+[[ "${GITHUB_EVENT_NAME:-}" == "push" ]]
+[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]
+[[ "${GITHUB_SHA:-}" == "$expected" ]]
+[[ "${GITHUB_REPOSITORY:-}" == "$repository" ]]
+run.get("status") == "completed" and run.get("conclusion") == "success"
+run.get("status") == "in_progress"
+run.get("conclusion") is None
+Release eligibility and harness seal
+CLROOM release readiness
+Rehearse/stage exact release bytes
+Rehearse attestation mechanism before tag
+job.get("status") != "completed" or job.get("conclusion") != "success"
+"""
+    promotion_fixture = "CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}"
+    release_fixture = 'tags:\n      - "v*"'
+    if validate_pretag_current_run_contract(
+        resolver_fixture, promotion_fixture, release_fixture
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_CLEAN")
+    missing_upstream = resolver_fixture.replace(
+        "Rehearse attestation mechanism before tag", "missing attestation"
+    )
+    if not any(
+        error.startswith("PRETAG_CURRENT_RUN_UPSTREAM_JOB:")
+        for error in validate_pretag_current_run_contract(
+            missing_upstream, promotion_fixture, release_fixture
+        )
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_UPSTREAM")
+    tag_exception = release_fixture + "\nCLROOM_PRETAG_CURRENT_RUN_ID\n"
+    if "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN" not in validate_pretag_current_run_contract(
+        resolver_fixture, promotion_fixture, tag_exception
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_TAG_PATH")
+    weak_identity = resolver_fixture.replace(
+        '[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]', ""
+    )
+    if "PRETAG_CURRENT_RUN_REF" not in validate_pretag_current_run_contract(
+        weak_identity, promotion_fixture, release_fixture
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_IDENTITY")
     claude_smoke_fixture = """
 "$clroom" claude
 "$clroom" claude --with="plugin:$plugin_id"
