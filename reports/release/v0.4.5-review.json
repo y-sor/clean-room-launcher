@@ -170,5 +170,5 @@
       "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning"
     ]
   },
-  "reviewed_content_digest": "45c5bd4733bb83d94113e3ee850f99c9c44617be357852ded1349ee9fcd6cf92"
+  "reviewed_content_digest": "00987f03165b6dac19ab1ebdacb3d46dc471c05a4057f51ccef219d0f93911a8"
 }
