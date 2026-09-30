@@ -19,7 +19,8 @@
         "The Claude release smoke no longer uses print-mode/model-prompt calls to obtain system-init evidence: machine info preflight proves exact qualified skill-only selection, while clean and selected human-TTY observations prove target absence/presence, sibling/plugin-error closure and the AGENTS boundary without sending a model prompt.",
         "Claude TTY rehearsal now fail-closes autocomplete inspection: Enter is forbidden while search text remains, the operator must clear the composer with Ctrl+C, visibly confirm it is empty, and exit with Ctrl+D; slash-command /exit is rejected by the harness contract because residual autocomplete text can otherwise concatenate into an attempted prompt.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
-        "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission."
+        "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
+        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple."
       ]
     },
     "dependencies": {
@@ -126,6 +127,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "After the Codex qualification target moved from 0.159.0 to 0.159.2, standalone-MCP semantic tests still constructed a hard-coded 0.159.0 ProviderIdentity and failed at ProviderTupleNotQualified before exercising the intended parser/admission assertions.",
       "durable_control": "The shared MCP test fixture now binds version to provider_inventory::CODEX_CLEAN_EXACT; wrong-tuple behavior remains covered by its dedicated negative test."
+    },
+    {
+      "id": "provider-info-json-exact-target-drift",
+      "decision": "COVERED",
+      "failure_mode": "Provider pin movement updated the canonical Claude exact target while the CLI info integration assertion still expected the previous patch version, causing the full locked suite to fail after provider integrity had already passed.",
+      "durable_control": "The integration assertion is updated alongside the current exact target; full locked tests remain mandatory after every provider pin movement."
     }
   ],
   "artifact_capability_gates": [
