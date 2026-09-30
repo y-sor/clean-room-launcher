@@ -384,6 +384,11 @@ def check(root: Path) -> list[str]:
         text=True,
         check=False,
     )
+    if supervisor_self_test.returncode != 0:
+        if supervisor_self_test.stdout:
+            print(supervisor_self_test.stdout, end="", file=sys.stderr)
+        if supervisor_self_test.stderr:
+            print(supervisor_self_test.stderr, end="", file=sys.stderr)
     require(
         errors,
         supervisor_self_test.returncode == 0
