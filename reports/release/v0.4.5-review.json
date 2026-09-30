@@ -150,7 +150,7 @@
     },
     {
       "id": "claude-release-rehearsal-physical-terminal-state-ownership",
-      "decision": "HARNESS_DIAGNOSE_BEFORE_RETRY",
+      "decision": "FOLLOW_UP",
       "failure_mode": "After removing human control chords, the real iTerm rehearsal still failed before probe injection with HUMAN_BYTES_FORWARDED=0 while shell-visible CSI O FocusOut events and a delayed DA1 payload appeared around teardown. A local Codex handoff could not inspect the physical session because its shell exposed a synthetic TERM=dumb PTY and macOS denied read-only iTerm inspection, so physical terminal-emulator state remained UNKNOWN.",
       "durable_control": "No further Claude/provider retry is allowed until a checked-in provider-free diagnostic runs directly on the Owner's physical /dev/tty. The diagnostic is query-only: it records allowlisted terminal identity, termios state, DECRQM states for focus/mouse/alternate-screen/bracketed-paste/application modes, Kitty flags, DA1/DA2 responses, raw hex and read chunk boundaries, then proves termios restoration. Its parser has positive/negative self-tests and CI contract coverage. The resulting evidence determines whether the harness must snapshot/restore terminal-emulator modes or address a different physical-TTY invariant before another provider observation."
     }
