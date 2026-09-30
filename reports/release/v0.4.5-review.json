@@ -21,7 +21,8 @@
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
         "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
-        "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority."
+        "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
+        "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced."
       ]
     },
     "dependencies": {
@@ -193,5 +194,5 @@
       "Claude real-provider TUI precondition contract: clean/selected observation runs from the exact candidate checkout; AGENTS boundary remains machine-owned; synthetic fresh-workspace TUI and human AGENTS rechecking are regression-forbidden."
     ]
   },
-  "reviewed_content_digest": "927cf1031b30d3864b8b80aab5bd97052679b7380463eecf1594312e29ac6468"
+  "reviewed_content_digest": "c00efdadf41ccab77499ea5e17b2760a93009e576ace1084220222130cfba94c"
 }

@@ -90,9 +90,15 @@ do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_RUNTIME_CONTRACT_MISSING:$needle"
 done
 
-for needle in   'PROJECT_AGENTS_NOT_CONFIRMED'   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS'   'interactive_no_model_prompt_confirmed'   'project_agents_retained_confirmed'   'external_ancestor_agents_absent_confirmed'   'claude-tty-supervisor.py'   'CLEAN_TUI_SUPERVISOR'   'SELECTED_TUI_SUPERVISOR'
+for needle in   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS'   'external_ancestor_agents_absent=$agents_boundary_probe'   'project_agents_retained=$agents_boundary_probe'   'The AGENTS boundary is already machine-proved; human work is autocomplete observation only.'   'interactive_no_model_prompt_confirmed'   'project_agents_retained_confirmed'   'external_ancestor_agents_absent_confirmed'   'claude-tty-supervisor.py'   'CLEAN_TUI_SUPERVISOR'   'SELECTED_TUI_SUPERVISOR'
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_TUI_BOUNDARY_MISSING:$needle"
+done
+for forbidden in   'PROJECT_AGENTS_NOT_CONFIRMED'   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'
+do
+  if grep -Fq -- "$forbidden" "$claude_smoke"; then
+    fail "CLAUDE_TUI_HUMAN_AGENTS_RECHECK_FORBIDDEN:$forbidden"
+  fi
 done
 
 grep -Fq -- 'synthetic_claude_version=$CLAUDE_VERSION' "$claude_smoke" \
