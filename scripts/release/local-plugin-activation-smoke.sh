@@ -410,6 +410,7 @@ record={
   "clean_tui_confirmed":clean_tui=="true",
   "clean_tui_supervised":clean_tui_supervised=="true",
   "selected_tui_supervised":selected_tui_supervised=="true",
+  "interactive_human_bytes_forwarded":False,
   "interactive_submit_bytes_blocked_by_supervisor":True,
   "interactive_harness_owned_teardown":True,
   "clean_target_plugin_absent_confirmed":clean_target_plugin_absent=="true",
