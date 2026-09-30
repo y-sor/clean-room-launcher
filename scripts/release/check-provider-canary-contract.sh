@@ -8,6 +8,7 @@ pins="$root/scripts/release/provider-pins.sh"
 pin_checker="$root/scripts/release/check-provider-pins.sh"
 codex_smoke="$root/scripts/release/local-codex-plugin-activation-smoke.sh"
 claude_smoke="$root/scripts/release/local-plugin-activation-smoke.sh"
+claude_tty_supervisor="$root/scripts/release/claude-tty-supervisor.py"
 codex_mcp_fixture="$root/scripts/release/codex-mcp-fixture.py"
 codex_standalone_mcp="$root/scripts/release/rehearse-codex-standalone-mcp.py"
 tag_helper="$root/scripts/release/push-release-tag.sh"
@@ -27,7 +28,7 @@ fail() {
   exit 1
 }
 
-for file in   "$provisioner" "$qualifier" "$pins" "$pin_checker"   "$codex_smoke" "$claude_smoke" "$codex_mcp_fixture" "$codex_standalone_mcp"   "$tag_helper" "$codex_rehearsal_resolver" "$pretag_resolver" "$pretag_admission"   "$stage_release" "$stage_verifier" "$claude_stage_verifier"   "$post_tag_contract" "$release_candidate" "$release" "$ci"
+for file in   "$provisioner" "$qualifier" "$pins" "$pin_checker"   "$codex_smoke" "$claude_smoke" "$claude_tty_supervisor" "$codex_mcp_fixture" "$codex_standalone_mcp"   "$tag_helper" "$codex_rehearsal_resolver" "$pretag_resolver" "$pretag_admission"   "$stage_release" "$stage_verifier" "$claude_stage_verifier"   "$post_tag_contract" "$release_candidate" "$release" "$ci"
 do
   [[ -f "$file" ]] || fail "FILE_MISSING:$(basename "$file")"
 done
@@ -56,7 +57,7 @@ for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) a
 do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_STAGE_SMOKE_MISSING:$needle"
 done
-for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v4"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'
+for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v5"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_tui_supervised'   'selected_tui_supervised'   'interactive_submit_bytes_blocked_by_supervisor'   'interactive_harness_owned_teardown'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_SMOKE_MISSING:$needle"
 done
@@ -65,8 +66,12 @@ do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_FREEZE_CONTRACT:$needle"
 done
 grep -Fq -- '"plugin_id": "frontend-design@claude-plugins-official"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_PLUGIN_IDENTITY"
-grep -Fq -- '"schema_version": "clroom.plugin-release-smoke.v4"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V4"
+grep -Fq -- '"schema_version": "clroom.plugin-release-smoke.v5"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5"
 grep -Fq -- '"automated_probe_prompt_supplied": False' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE"
+for needle in   '"clean_tui_supervised": True'   '"selected_tui_supervised": True'   '"interactive_submit_bytes_blocked_by_supervisor": True'   '"interactive_harness_owned_teardown": True'
+do
+  grep -Fq -- "$needle" "$claude_stage_verifier" || fail "CLAUDE_STAGE_SUPERVISOR_EVIDENCE:$needle"
+done
 
 for smoke in "$codex_smoke" "$claude_smoke"; do
   for forbidden in     'IMMUTABLE_RELEASE_POLICY'     'gh release '     'gh attestation '     '"$phase" == "draft"'
@@ -82,7 +87,7 @@ do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_RUNTIME_CONTRACT_MISSING:$needle"
 done
 
-for needle in   'PROJECT_AGENTS_NOT_CONFIRMED'   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS'   'interactive_no_model_prompt_confirmed'   'project_agents_retained_confirmed'   'external_ancestor_agents_absent_confirmed'
+for needle in   'PROJECT_AGENTS_NOT_CONFIRMED'   'EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED'   'AGENTS_BOUNDARY_SANDBOX_PROBE=PASS'   'interactive_no_model_prompt_confirmed'   'project_agents_retained_confirmed'   'external_ancestor_agents_absent_confirmed'   'claude-tty-supervisor.py'   'CLEAN_TUI_SUPERVISOR'   'SELECTED_TUI_SUPERVISOR'
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_TUI_BOUNDARY_MISSING:$needle"
 done
@@ -164,12 +169,13 @@ for script in   "$provisioner" "$pin_checker" "$pins" "$codex_smoke" "$claude_sm
 do
   bash -n "$script" || fail "SHELL_SYNTAX:$(basename "$script")"
 done
-python3 - "$stage_verifier" "$claude_stage_verifier" "$pretag_admission" <<'PY' || fail "PYTHON_SYNTAX"
+python3 - "$stage_verifier" "$claude_stage_verifier" "$pretag_admission" "$claude_tty_supervisor" <<'PY' || fail "PYTHON_SYNTAX"
 import ast, pathlib, sys
 for raw in sys.argv[1:]:
     path = pathlib.Path(raw)
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 PY
+python3 "$claude_tty_supervisor" --self-test || fail "CLAUDE_TTY_SUPERVISOR_SELF_TEST"
 python3 "$pretag_admission" --self-test || fail "PRETAG_RUN_ADMISSION_SELF_TEST"
 python3 "$codex_mcp_fixture" --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 python3 "$codex_standalone_mcp" --self-test || fail "CODEX_STANDALONE_MCP_REHEARSAL_SELF_TEST"
