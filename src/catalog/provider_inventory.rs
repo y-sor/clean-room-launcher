@@ -10,9 +10,9 @@ use crate::catalog::resource::{
 };
 use std::path::{Path, PathBuf};
 
-pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 159, 0);
+pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 159, 2);
 pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 284);
-pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 159, 0);
+pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 159, 2);
 pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 284);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
