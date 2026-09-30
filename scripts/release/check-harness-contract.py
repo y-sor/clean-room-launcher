@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -199,12 +201,40 @@ def claude_prompt_mode_present(text: str) -> bool:
                     return True
     return False
 
+def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    require(errors, "STOP_BYTE = 0x1D" in text, "CLAUDE_TTY_SUPERVISOR_STOP_CHORD")
+    require(errors, "SUBMIT_BYTES = {0x0A, 0x0D}" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_BYTES")
+    require(
+        errors,
+        "FORBIDDEN_PROVIDER_CONTROL_BYTES = {0x03, 0x04, 0x1B}" in text,
+        "CLAUDE_TTY_SUPERVISOR_PROVIDER_CONTROLS",
+    )
+    require(errors, "if value == STOP_BYTE:" in text, "CLAUDE_TTY_SUPERVISOR_STOP_INTERCEPT")
+    require(errors, "if value in SUBMIT_BYTES:" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_INTERCEPT")
+    require(
+        errors,
+        "if value in FORBIDDEN_PROVIDER_CONTROL_BYTES:" in text,
+        "CLAUDE_TTY_SUPERVISOR_PROVIDER_CONTROL_INTERCEPT",
+    )
+    require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
+    require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
+    require(errors, "HARNESS_STOP_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_STOP_EVIDENCE")
+    require(errors, "TASK_PROCESS_GROUP_CLOSED=YES" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
+    require(
+        errors,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in text,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST_MARKER",
+    )
+    return errors
+
+
 def validate_claude_release_smoke_contract(text: str) -> list[str]:
     errors: list[str] = []
     require(
         errors,
-        '"schema_version":"clroom.plugin-release-smoke.v4"' in text,
-        "CLAUDE_RELEASE_SMOKE_SCHEMA_V4",
+        '"schema_version":"clroom.plugin-release-smoke.v5"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCHEMA_V5",
     )
     require(
         errors,
@@ -218,69 +248,74 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
+        '"clean_tui_supervised":clean_tui_supervised=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISED",
+    )
+    require(
+        errors,
+        '"selected_tui_supervised":selected_tui_supervised=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISED",
+    )
+    require(
+        errors,
+        '"interactive_submit_bytes_blocked_by_supervisor":True' in text,
+        "CLAUDE_RELEASE_SMOKE_SUBMIT_BLOCKED",
+    )
+    require(
+        errors,
+        '"interactive_harness_owned_teardown":True' in text,
+        "CLAUDE_RELEASE_SMOKE_HARNESS_TEARDOWN",
+    )
+    require(
+        errors,
         '"selected_tui_confirmed":interactive=="true"' in text,
         "CLAUDE_RELEASE_SMOKE_SELECTED_TTY",
     )
     require(
         errors,
-        "No model prompt was sent in either TUI" in text,
+        "No inference/model response appeared in either TUI" in text,
         "CLAUDE_RELEASE_SMOKE_HUMAN_NO_PROMPT_CONFIRMATION",
     )
     require(
         errors,
-        "Do not press Enter while autocomplete/search text remains in the composer." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_NO_ENTER",
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH",
     )
     require(
         errors,
-        "Before keyboard shortcuts, switch to a Latin/English keyboard layout." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_LATIN_LAYOUT",
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISOR_LAUNCH",
     )
     require(
         errors,
-        "Do not press Escape or attempt to clear the composer; the search fragment may remain visible." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DIRECT_NO_CLEAR",
+        "The release supervisor blocks Enter/CR/LF and provider-owned exit controls." in text,
+        "CLAUDE_RELEASE_SMOKE_SUPERVISOR_INPUT_GUARD",
     )
     require(
         errors,
-        "Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DOUBLE_CTRL_D",
+        "When observation is complete, press Ctrl+] once; the supervisor owns teardown." in text,
+        "CLAUDE_RELEASE_SMOKE_HARNESS_STOP",
     )
     require(
         errors,
-        "Clean TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission" in text,
-        "CLAUDE_RELEASE_SMOKE_CLEAN_SAFE_EXIT_CONFIRMATION",
+        "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE" in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_FINGERPRINT",
     )
     require(
         errors,
-        "Selected TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission" in text,
-        "CLAUDE_RELEASE_SMOKE_SELECTED_SAFE_EXIT_CONFIRMATION",
+        "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE" in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_FINGERPRINT",
     )
-    require(
-        errors,
-        "Press Escape once to dismiss autocomplete, then Escape again to cancel the current input." not in text,
-        "CLAUDE_RELEASE_SMOKE_ESCAPE_CLEAR_FORBIDDEN",
+    forbidden = (
+        "Press Escape once to dismiss autocomplete",
+        "Visually confirm the composer is empty.",
+        "Press Ctrl+C to cancel and clear the composer",
+        "Press Ctrl+D twice within 800 ms",
+        "Then press Ctrl+D to exit",
+        "Exit normally with /exit.",
     )
-    require(
-        errors,
-        "Visually confirm the composer is empty." not in text,
-        "CLAUDE_RELEASE_SMOKE_VISIBLE_EMPTY_FORBIDDEN",
-    )
-    require(
-        errors,
-        "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty." not in text,
-        "CLAUDE_RELEASE_SMOKE_OLD_CTRL_C_CLEAR_FORBIDDEN",
-    )
-    require(
-        errors,
-        "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal." not in text,
-        "CLAUDE_RELEASE_SMOKE_SINGLE_CTRL_D_FORBIDDEN",
-    )
-    require(
-        errors,
-        "Exit normally with /exit." not in text,
-        "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT",
-    )
+    for marker in forbidden:
+        require(errors, marker not in text, "CLAUDE_RELEASE_SMOKE_PROVIDER_EXIT_FORBIDDEN:" + marker)
     require(
         errors,
         not claude_prompt_mode_present(text),
@@ -315,17 +350,39 @@ def check(root: Path) -> list[str]:
 
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
+    claude_tty_supervisor_path = root / "scripts/release/claude-tty-supervisor.py"
+    claude_tty_supervisor = claude_tty_supervisor_path.read_text(encoding="utf-8")
+    errors.extend(validate_claude_tty_supervisor_contract(claude_tty_supervisor))
+    supervisor_self_test = subprocess.run(
+        [sys.executable, str(claude_tty_supervisor_path), "--self-test"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(
+        errors,
+        supervisor_self_test.returncode == 0
+        and "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in supervisor_self_test.stdout,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST",
+    )
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
         errors,
-        '"schema_version": "clroom.plugin-release-smoke.v4"' in claude_stage_verifier,
-        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V4",
+        '"schema_version": "clroom.plugin-release-smoke.v5"' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5",
     )
     require(
         errors,
         '"automated_probe_prompt_supplied": False' in claude_stage_verifier,
         "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE",
     )
+    for marker in (
+        '"clean_tui_supervised": True',
+        '"selected_tui_supervised": True',
+        '"interactive_submit_bytes_blocked_by_supervisor": True',
+        '"interactive_harness_owned_teardown": True',
+    ):
+        require(errors, marker in claude_stage_verifier, "CLAUDE_STAGE_EVIDENCE_SUPERVISOR:" + marker)
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
@@ -562,19 +619,21 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_SELF_TEST")
     claude_smoke_fixture = """
-"$clroom" claude
-"$clroom" claude --with="plugin:$plugin_id"
-"No model prompt was sent in either TUI"
-"schema_version":"clroom.plugin-release-smoke.v4"
+python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude
+python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"
+"No inference/model response appeared in either TUI"
+"schema_version":"clroom.plugin-release-smoke.v5"
 "automated_probe_prompt_supplied":False
 "clean_tui_confirmed":clean_tui=="true"
+"clean_tui_supervised":clean_tui_supervised=="true"
+"selected_tui_supervised":selected_tui_supervised=="true"
+"interactive_submit_bytes_blocked_by_supervisor":True
+"interactive_harness_owned_teardown":True
 "selected_tui_confirmed":interactive=="true"
-"Do not press Enter while autocomplete/search text remains in the composer."
-"Before keyboard shortcuts, switch to a Latin/English keyboard layout."
-"Do not press Escape or attempt to clear the composer; the search fragment may remain visible."
-"Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal."
-"Clean TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission"
-"Selected TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission"
+"The release supervisor blocks Enter/CR/LF and provider-owned exit controls."
+"When observation is complete, press Ctrl+] once; the supervisor owns teardown."
+"PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
+"PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
 """
     if validate_claude_release_smoke_contract(claude_smoke_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
@@ -585,26 +644,27 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
     for prompt_smoke in prompt_smokes:
         if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
             raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
-    unsafe_exit_smoke = claude_smoke_fixture + '\n"Exit normally with /exit."\n'
-    if "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT" not in validate_claude_release_smoke_contract(unsafe_exit_smoke):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_UNSAFE_EXIT_NOT_REJECTED")
-    missing_direct_exit_smoke = claude_smoke_fixture.replace(
-        '"Do not press Escape or attempt to clear the composer; the search fragment may remain visible."\n',
+    for provider_exit in (
+        "Press Escape once to dismiss autocomplete",
+        "Visually confirm the composer is empty.",
+        "Press Ctrl+C to cancel and clear the composer",
+        "Press Ctrl+D twice within 800 ms",
+        "Exit normally with /exit.",
+    ):
+        provider_exit_errors = validate_claude_release_smoke_contract(
+            claude_smoke_fixture + "\n" + provider_exit
+        )
+        if not any(
+            code.startswith("CLAUDE_RELEASE_SMOKE_PROVIDER_EXIT_FORBIDDEN:")
+            for code in provider_exit_errors
+        ):
+            raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROVIDER_EXIT_NOT_REJECTED")
+    missing_supervisor = claude_smoke_fixture.replace(
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude\n',
         "",
     )
-    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DIRECT_NO_CLEAR" not in validate_claude_release_smoke_contract(missing_direct_exit_smoke):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_DIRECT_EXIT_NOT_REQUIRED")
-    escape_clear_smoke = claude_smoke_fixture + '\n"Press Escape once to dismiss autocomplete, then Escape again to cancel the current input."\n"Visually confirm the composer is empty."\n'
-    escape_clear_errors = validate_claude_release_smoke_contract(escape_clear_smoke)
-    if "CLAUDE_RELEASE_SMOKE_ESCAPE_CLEAR_FORBIDDEN" not in escape_clear_errors or "CLAUDE_RELEASE_SMOKE_VISIBLE_EMPTY_FORBIDDEN" not in escape_clear_errors:
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_ESCAPE_CLEAR_NOT_REJECTED")
-    single_ctrl_d_smoke = claude_smoke_fixture.replace(
-        '"Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal."',
-        '"Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."',
-    )
-    single_ctrl_d_errors = validate_claude_release_smoke_contract(single_ctrl_d_smoke)
-    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DOUBLE_CTRL_D" not in single_ctrl_d_errors or "CLAUDE_RELEASE_SMOKE_SINGLE_CTRL_D_FORBIDDEN" not in single_ctrl_d_errors:
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SINGLE_CTRL_D_NOT_REJECTED")
+    if "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH" not in validate_claude_release_smoke_contract(missing_supervisor):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SUPERVISOR_NOT_REQUIRED")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 
