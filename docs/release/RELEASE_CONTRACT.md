@@ -187,21 +187,17 @@ For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
    Claude runs locally because its selected-plugin TUI requires a genuine human
-   terminal confirmation; its evidence stays outside the tracked tree. The local
-   Claude smoke sends no model prompt: machine preflight proves the exact
-   skill-only selection is qualified, then a human observes the target skill
-   absent in a clean TUI and present in the selected TUI, with no newly admitted
-   sibling plugin or plugin-load error. Autocomplete inspection must never press
-   Enter while search text remains in the composer. Before control shortcuts the
-   operator uses a Latin/English keyboard layout and exits directly with Ctrl+D
-   twice within 800 ms. The autocomplete fragment is not cleared or submitted;
-   no visual empty-composer state is required. Slash-command `/exit` and any
-   Escape/clear workaround are forbidden in this rehearsal because only Enter
-   submits the observed composer text; any attempted
-   inference invalidates the run even when provider usage is zero. Codex runs
-   automatically in the macOS Release-candidate workflow and proves the real MCP
-   runtime plus post-runtime clean-state closure. This catches product/runtime
-   failures at the earliest candidate boundary.
+   terminal observation; its evidence stays outside the tracked tree. Machine
+   preflight proves the exact skill-only selection is qualified, then clean and
+   selected Claude sessions run through a task-owned PTY supervisor. The
+   supervisor blocks submit/control input used by provider-owned exit flows,
+   intercepts its own stop chord before Claude, closes the task-owned process
+   group, and returns control to the smoke for persistent-state verification.
+   The human only observes target absence/presence, sibling/plugin-error state
+   and the AGENTS boundary. Any submit attempt or inference invalidates the run.
+   Codex runs automatically in the macOS Release-candidate workflow and proves
+   the real MCP runtime plus post-runtime clean-state closure. This catches
+   product/runtime failures at the earliest candidate boundary.
 2. **Accepted-main exact-byte staging:** after merge identity is known, the
    Release-candidate workflow builds the future shipping archive once and runs
    generic provider qualification plus the Codex whole-plugin runtime against
