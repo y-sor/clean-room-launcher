@@ -193,12 +193,11 @@ For whole-plugin activation:
    absent in a clean TUI and present in the selected TUI, with no newly admitted
    sibling plugin or plugin-load error. Autocomplete inspection must never press
    Enter while search text remains in the composer. Before control shortcuts the
-   operator uses a Latin/English keyboard layout, presses Escape once to dismiss
-   autocomplete and Escape again to cancel the current input, visibly confirms
-   an empty composer, then presses Ctrl+D twice within 800 ms to satisfy Claude's
-   exit-confirmation binding. Slash-command `/exit` is forbidden in this
-   rehearsal because residual autocomplete text could concatenate into a
-   submitted prompt; any attempted
+   operator uses a Latin/English keyboard layout and exits directly with Ctrl+D
+   twice within 800 ms. The autocomplete fragment is not cleared or submitted;
+   no visual empty-composer state is required. Slash-command `/exit` and any
+   Escape/clear workaround are forbidden in this rehearsal because only Enter
+   submits the observed composer text; any attempted
    inference invalidates the run even when provider usage is zero. Codex runs
    automatically in the macOS Release-candidate workflow and proves the real MCP
    runtime plus post-runtime clean-state closure. This catches product/runtime
