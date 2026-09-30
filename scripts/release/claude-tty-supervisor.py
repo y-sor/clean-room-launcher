@@ -54,10 +54,22 @@ def terminate_task_owned_group(pid: int) -> None:
     pgid = os.getpgid(pid)
     if pgid == os.getpgrp():
         raise RuntimeError("child shares supervisor process group")
-    os.killpg(pgid, signal.SIGTERM)
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
     if wait_for_child(pid, TERM_GRACE_SECONDS) is not None:
         return
-    os.killpg(pgid, signal.SIGKILL)
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    if wait_for_child(pid, TERM_GRACE_SECONDS) is not None:
+        return
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
     if wait_for_child(pid, TERM_GRACE_SECONDS) is None:
         raise RuntimeError("child process group did not terminate")
 
@@ -140,6 +152,13 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     stop_seen = True
                     break
 
+        if master_fd >= 0:
+            try:
+                os.close(master_fd)
+            except OSError:
+                pass
+            master_fd = -1
+
         if pid > 0:
             try:
                 terminate_task_owned_group(pid)
@@ -200,15 +219,24 @@ def self_test() -> int:
         else:
             raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:PROBE_CONTROL")
 
-    pid, master_fd = spawn_child(["/bin/sh", "-c", "sleep 30 & wait"])
+    stubborn_child = (
+        "import signal,time; "
+        "signal.signal(signal.SIGHUP, signal.SIG_IGN); "
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        "time.sleep(30)"
+    )
+    pid, master_fd = spawn_child([sys.executable, "-c", stubborn_child])
     try:
-        time.sleep(0.05)
+        time.sleep(0.25)
+        os.close(master_fd)
+        master_fd = -1
         terminate_task_owned_group(pid)
     finally:
-        try:
-            os.close(master_fd)
-        except OSError:
-            pass
+        if master_fd >= 0:
+            try:
+                os.close(master_fd)
+            except OSError:
+                pass
 
     print("CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS")
     return 0

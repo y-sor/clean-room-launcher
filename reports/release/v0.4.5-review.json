@@ -16,8 +16,8 @@
         "Standalone Codex MCP has a dedicated exact-PR macOS real-provider rehearsal requiring provider startup, MCP initialize/tools-list, an independent fixture tools/call, sibling/environment/layer negatives, source-mutation refusal, and task-owned process lifecycle closure.",
         "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100.",
         "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns.",
-        "The Claude release smoke uses no print-mode/model-prompt calls for system-init evidence: machine info preflight proves exact qualified skill-only selection, supervised clean/selected human-TTY observations prove target absence/presence plus sibling/plugin-error and AGENTS-boundary behavior, and schema v5 records supervisor-owned submit blocking and teardown.",
-        "Claude TTY rehearsal now separates human UI observation from provider lifecycle: clean and selected sessions run through a task-owned PTY supervisor; human bytes are never forwarded to Claude, Ctrl+T causes the harness to inject the exact non-submitting autocomplete probe, Ctrl+G ends observation inside the harness, and only the task-owned process group is closed before persistent-state fingerprint verification. Human confirmation is limited to target visibility, sibling/plugin-error state, AGENTS boundary, and absence of inference/model response.",
+        "The Claude release smoke keeps AGENTS-boundary proof machine-owned and limits real-provider human-TTY work to autocomplete semantics; clean and selected observations run from the exact candidate checkout instead of a fresh synthetic TUI path, so unrelated provider workspace-trust UX cannot become a release-evidence dependency.",
+        "Claude TTY rehearsal separates human UI observation from provider lifecycle: human bytes are never forwarded, Ctrl+T injects the exact non-submitting autocomplete probe, Ctrl+G stops at the harness layer, the PTY is closed before task-process-group teardown, and teardown escalates TERM to group/direct-child KILL fallback before persistent-state fingerprint verification. Human confirmation is limited to autocomplete visibility, sibling/plugin-error state, and absence of inference/model response.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
         "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
@@ -133,7 +133,13 @@
       "id": "claude-release-rehearsal-provider-lifecycle-coupling",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Prompt-free Claude UI evidence had become coupled to provider-owned composer/exit behavior even though provider exit semantics are not a shipped CLROOM claim, causing repeated late rehearsal blockers without changing the product invariant.",
-      "durable_control": "Clean and selected Claude observations now run under a task-owned PTY supervisor. Human bytes are never forwarded to Claude: the harness injects the exact non-submitting autocomplete probe on its own chord, intercepts its own stop chord, closes only the task-owned process group, and fingerprints persistent provider state after teardown. Human evidence is limited to UI properties that require observation."
+      "durable_control": "Clean and selected Claude observations run under a task-owned PTY supervisor from the exact candidate checkout. Human bytes are never forwarded; the harness injects only the fixed non-submitting autocomplete probe, intercepts its own stop chord, closes the PTY before bounded TERM/KILL teardown, and fingerprints persistent provider state after teardown. Machine AGENTS-boundary evidence is not re-proved by human UI choreography."
+    },
+    {
+      "id": "claude-release-rehearsal-synthetic-workspace-trust-coupling",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Real-provider human-TTY rehearsal created a fresh synthetic workspace, so Claude could stop at provider workspace-trust UI before autocomplete even though workspace-trust behavior is not a shipped CLROOM claim.",
+      "durable_control": "Real-provider clean/selected observations now run from the exact clean candidate checkout, while AGENTS-boundary isolation remains separately machine-proved. Harness contract self-tests reject reintroduction of the synthetic TUI path or human AGENTS-boundary rechecking; trust/onboarding UI is a fail-closed precondition, never something the operator accepts during release evidence."
     }
   ],
   "artifact_capability_gates": [
@@ -181,10 +187,11 @@
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
       "prompt-free Claude release rehearsal schema v5 with clean/selected supervised human-TTY evidence, machine-recorded submit blocking/harness-owned teardown, and no Claude print-mode model prompts",
-      "Claude TTY evidence ownership contract: human observes provider UI only; no human bytes are forwarded to Claude, the harness injects the fixed autocomplete probe, intercepts its own stop chord, closes only the task-owned process group, and returns control for persistent-state verification",
+      "Claude TTY evidence ownership contract: human observes only autocomplete semantics; no human bytes are forwarded to Claude, the harness injects the fixed non-submitting probe, intercepts its own stop chord, closes the PTY before bounded task-process teardown, and returns control for persistent-state verification.",
       "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning",
-      "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag"
+      "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag",
+      "Claude real-provider TUI precondition contract: clean/selected observation runs from the exact candidate checkout; AGENTS boundary remains machine-owned; synthetic fresh-workspace TUI and human AGENTS rechecking are regression-forbidden."
     ]
   },
-  "reviewed_content_digest": "328c816637062cd36b2923d708b9f8dd81171f8e884f08fe1c0ad108a5b3a01f"
+  "reviewed_content_digest": "927cf1031b30d3864b8b80aab5bd97052679b7380463eecf1594312e29ac6468"
 }

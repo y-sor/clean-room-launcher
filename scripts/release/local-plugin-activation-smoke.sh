@@ -269,38 +269,25 @@ selected_target_plugin_visible=false
 no_new_sibling_plugins=false
 selected_plugin_errors_absent=false
 no_model_prompt=false
-external_ancestor_agents_absent=false
-project_agents_retained=false
+external_ancestor_agents_absent=$agents_boundary_probe
+project_agents_retained=$agents_boundary_probe
 if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
-
-  tui_workspace="$tmp/real-tui-workspace"
-  tui_repository="$tui_workspace/repo"
-  tui_project="$tui_repository/nested"
-  mkdir -p \
-    "$tui_workspace/.claude" \
-    "$tui_repository/.claude" \
-    "$tui_project/.claude"
-  printf '%s\n' 'external TUI probe instruction' >"$tui_workspace/AGENTS.md"
-  printf '%s\n' 'external hidden TUI probe instruction' >"$tui_workspace/.claude/AGENTS.md"
-  printf '%s\n' 'gitdir: synthetic-worktree' >"$tui_repository/.git"
-  printf '%s\n' 'repository TUI probe instruction' >"$tui_repository/AGENTS.md"
-  printf '%s\n' 'repository hidden TUI probe instruction' >"$tui_repository/.claude/AGENTS.md"
-  printf '%s\n' 'nested TUI probe instruction' >"$tui_project/AGENTS.md"
-  printf '%s\n' 'nested hidden TUI probe instruction' >"$tui_project/.claude/AGENTS.md"
 
   echo
   echo "=== INTERACTIVE CLEAN TUI ==="
   echo "Do not send a model prompt."
-  echo "This TUI runs in a task-owned synthetic nested Git project."
+  echo "This TUI runs from the exact candidate checkout."
+  echo "The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
   echo "Confirm the target plugin skill is absent from autocomplete."
+  echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, press Ctrl+G and reject the run."
   echo "Do not type into Claude."
   echo "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
   echo "When observation is complete, press Ctrl+G once; the supervisor owns teardown."
   echo "All other human input is blocked and invalidates the observation."
   echo
   (
-    cd "$tui_project"
+    cd "$root"
     python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
   ) || fail "CLEAN_TUI_SUPERVISOR"
   clean_tui_supervised=true
@@ -318,19 +305,19 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo
   echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
-  echo "This TUI runs in the same task-owned synthetic nested Git project."
+  echo "This TUI runs from the same exact candidate checkout."
+  echo "The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
   echo "Confirm the selected plugin skill is visible in autocomplete."
   echo "Confirm no additional sibling plugin became newly visible."
   echo "Confirm no plugin load errors are shown."
-  echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
-  echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
+  echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, press Ctrl+G and reject the run."
   echo "Do not type into Claude."
   echo "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
   echo "When observation is complete, press Ctrl+G once; the supervisor owns teardown."
   echo "All other human input is blocked and invalidates the observation."
   echo
   (
-    cd "$tui_project"
+    cd "$root"
     python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
   ) || fail "SELECTED_TUI_SUPERVISOR"
   selected_tui_supervised=true
@@ -344,14 +331,6 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   printf 'No plugin load errors were shown [y/N]: '
   read -r plugin_errors_answer
   [[ "$plugin_errors_answer" == "y" || "$plugin_errors_answer" == "Y" ]] || fail "PLUGIN_ERRORS_NOT_CONFIRMED"
-  printf 'Repo/nested project AGENTS.md was reported as loaded [y/N]: '
-  read -r project_agents_answer
-  [[ "$project_agents_answer" == "y" || "$project_agents_answer" == "Y" ]] \
-    || fail "PROJECT_AGENTS_NOT_CONFIRMED"
-  printf 'No AGENTS.md above the synthetic Git project was reported as loaded [y/N]: '
-  read -r agents_answer
-  [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] \
-    || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
   printf 'No inference/model response appeared in either TUI [y/N]: '
   read -r no_prompt_answer
   [[ "$no_prompt_answer" == "y" || "$no_prompt_answer" == "Y" ]] \
@@ -362,8 +341,6 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   no_new_sibling_plugins=true
   selected_plugin_errors_absent=true
   no_model_prompt=true
-  project_agents_retained=true
-  external_ancestor_agents_absent=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_INTERACTIVE"
 fi
 

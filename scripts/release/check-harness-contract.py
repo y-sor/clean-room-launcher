@@ -209,6 +209,13 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_HARNESS_PROBE_INJECTION")
     require(errors, "os.write(master_fd, forwarded)" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_FORWARDING_FORBIDDEN")
     require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
+    require(
+        errors,
+        "os.close(master_fd)" in text and "master_fd = -1\n\n        if pid > 0:" in text,
+        "CLAUDE_TTY_SUPERVISOR_PTY_CLOSE_BEFORE_TEARDOWN",
+    )
+    require(errors, "os.kill(pid, signal.SIGKILL)" in text, "CLAUDE_TTY_SUPERVISOR_DIRECT_KILL_FALLBACK")
+    require(errors, "signal.signal(signal.SIGHUP, signal.SIG_IGN)" in text, "CLAUDE_TTY_SUPERVISOR_STUBBORN_CHILD_SELF_TEST")
     require(errors, "PROBE_INJECTED=" in text, "CLAUDE_TTY_SUPERVISOR_PROBE_EVIDENCE")
     require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
     require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
@@ -284,6 +291,19 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
         errors,
         'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"' in stripped_lines,
         "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISOR_LAUNCH",
+    )
+    require(errors, 'cd "$root"' in stripped_lines, "CLAUDE_RELEASE_SMOKE_EXACT_CHECKOUT_TUI")
+    require(errors, 'cd "$tui_project"' not in stripped_lines, "CLAUDE_RELEASE_SMOKE_SYNTHETIC_TUI_FORBIDDEN")
+    require(
+        errors,
+        "The AGENTS boundary is already machine-proved; human work is autocomplete observation only." in text,
+        "CLAUDE_RELEASE_SMOKE_MACHINE_AGENTS_BOUNDARY",
+    )
+    require(
+        errors,
+        "Repo/nested project AGENTS.md was reported as loaded" not in text
+        and "No AGENTS.md above the synthetic Git project was reported as loaded" not in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_AGENTS_RECHECK_FORBIDDEN",
     )
     require(
         errors,
@@ -621,8 +641,11 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_SELF_TEST")
     claude_smoke_fixture = """
+cd "$root"
 python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
+cd "$root"
 python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
+"The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
 "No inference/model response appeared in either TUI"
 "schema_version":"clroom.plugin-release-smoke.v5"
 "automated_probe_prompt_supplied":False
@@ -664,6 +687,12 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_te
             for code in provider_exit_errors
         ):
             raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROVIDER_EXIT_NOT_REJECTED")
+    synthetic_tui = claude_smoke_fixture.replace('cd "$root"\n', 'cd "$tui_project"\n', 1)
+    if "CLAUDE_RELEASE_SMOKE_SYNTHETIC_TUI_FORBIDDEN" not in validate_claude_release_smoke_contract(synthetic_tui):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SYNTHETIC_TUI_NOT_REJECTED")
+    human_agents = claude_smoke_fixture + '\nRepo/nested project AGENTS.md was reported as loaded\n'
+    if "CLAUDE_RELEASE_SMOKE_HUMAN_AGENTS_RECHECK_FORBIDDEN" not in validate_claude_release_smoke_contract(human_agents):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_HUMAN_AGENTS_RECHECK_NOT_REJECTED")
     missing_supervisor = claude_smoke_fixture.replace(
         'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude\n',
         "",
