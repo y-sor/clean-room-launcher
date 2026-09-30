@@ -238,28 +238,33 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
-        "Press Escape once to dismiss autocomplete, then Escape again to cancel the current input." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_ESCAPE_SEQUENCE",
+        "Do not press Escape or attempt to clear the composer; the search fragment may remain visible." in text,
+        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DIRECT_NO_CLEAR",
     )
     require(
         errors,
-        "Visually confirm the composer is empty." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_EMPTY_COMPOSER",
-    )
-    require(
-        errors,
-        "Press Ctrl+D twice within 800 ms to exit. Do not use /exit for this rehearsal." in text,
+        "Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal." in text,
         "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DOUBLE_CTRL_D",
     )
     require(
         errors,
-        "Clean autocomplete was dismissed, input canceled, composer visibly empty, and TUI exited with Ctrl+D twice within 800 ms without submitting input" in text,
+        "Clean TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission" in text,
         "CLAUDE_RELEASE_SMOKE_CLEAN_SAFE_EXIT_CONFIRMATION",
     )
     require(
         errors,
-        "Selected autocomplete was dismissed, input canceled, composer visibly empty, and TUI exited with Ctrl+D twice within 800 ms without submitting input" in text,
+        "Selected TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission" in text,
         "CLAUDE_RELEASE_SMOKE_SELECTED_SAFE_EXIT_CONFIRMATION",
+    )
+    require(
+        errors,
+        "Press Escape once to dismiss autocomplete, then Escape again to cancel the current input." not in text,
+        "CLAUDE_RELEASE_SMOKE_ESCAPE_CLEAR_FORBIDDEN",
+    )
+    require(
+        errors,
+        "Visually confirm the composer is empty." not in text,
+        "CLAUDE_RELEASE_SMOKE_VISIBLE_EMPTY_FORBIDDEN",
     )
     require(
         errors,
@@ -566,11 +571,10 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
 "selected_tui_confirmed":interactive=="true"
 "Do not press Enter while autocomplete/search text remains in the composer."
 "Before keyboard shortcuts, switch to a Latin/English keyboard layout."
-"Press Escape once to dismiss autocomplete, then Escape again to cancel the current input."
-"Visually confirm the composer is empty."
-"Press Ctrl+D twice within 800 ms to exit. Do not use /exit for this rehearsal."
-"Clean autocomplete was dismissed, input canceled, composer visibly empty, and TUI exited with Ctrl+D twice within 800 ms without submitting input"
-"Selected autocomplete was dismissed, input canceled, composer visibly empty, and TUI exited with Ctrl+D twice within 800 ms without submitting input"
+"Do not press Escape or attempt to clear the composer; the search fragment may remain visible."
+"Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal."
+"Clean TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission"
+"Selected TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission"
 """
     if validate_claude_release_smoke_contract(claude_smoke_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
@@ -584,14 +588,18 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
     unsafe_exit_smoke = claude_smoke_fixture + '\n"Exit normally with /exit."\n'
     if "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT" not in validate_claude_release_smoke_contract(unsafe_exit_smoke):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_UNSAFE_EXIT_NOT_REJECTED")
-    missing_escape_smoke = claude_smoke_fixture.replace(
-        '"Press Escape once to dismiss autocomplete, then Escape again to cancel the current input."\n',
+    missing_direct_exit_smoke = claude_smoke_fixture.replace(
+        '"Do not press Escape or attempt to clear the composer; the search fragment may remain visible."\n',
         "",
     )
-    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_ESCAPE_SEQUENCE" not in validate_claude_release_smoke_contract(missing_escape_smoke):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SAFE_EXIT_ESCAPE_NOT_REQUIRED")
+    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_DIRECT_NO_CLEAR" not in validate_claude_release_smoke_contract(missing_direct_exit_smoke):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_DIRECT_EXIT_NOT_REQUIRED")
+    escape_clear_smoke = claude_smoke_fixture + '\n"Press Escape once to dismiss autocomplete, then Escape again to cancel the current input."\n"Visually confirm the composer is empty."\n'
+    escape_clear_errors = validate_claude_release_smoke_contract(escape_clear_smoke)
+    if "CLAUDE_RELEASE_SMOKE_ESCAPE_CLEAR_FORBIDDEN" not in escape_clear_errors or "CLAUDE_RELEASE_SMOKE_VISIBLE_EMPTY_FORBIDDEN" not in escape_clear_errors:
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_ESCAPE_CLEAR_NOT_REJECTED")
     single_ctrl_d_smoke = claude_smoke_fixture.replace(
-        '"Press Ctrl+D twice within 800 ms to exit. Do not use /exit for this rehearsal."',
+        '"Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal."',
         '"Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."',
     )
     single_ctrl_d_errors = validate_claude_release_smoke_contract(single_ctrl_d_smoke)
