@@ -18,7 +18,7 @@ import tty
 INJECT_BYTE = 0x14  # Ctrl+T
 STOP_BYTE = 0x07  # Ctrl+G
 TERM_GRACE_SECONDS = 2.0
-INPUT_BURST_GRACE_SECONDS = 0.02
+INPUT_SEQUENCE_TIMEOUT_SECONDS = 0.5
 CTRL_MODIFIER_BIT = 4
 LOCK_MODIFIER_BITS = 64 | 128
 
@@ -33,7 +33,21 @@ CSI_U_KEY_RE = re.compile(
 )
 
 
-def classify_operator_input(data: bytes) -> tuple[bool, bool, bool, int]:
+def is_supported_sequence_prefix(data: bytes) -> bool:
+    if data == b"\x1b":
+        return True
+    if not data.startswith(b"\x1b["):
+        return False
+    body = data[2:]
+    if not body:
+        return True
+    if body.startswith(b"?"):
+        tail = body[1:]
+        return all(value in b"0123456789;" for value in tail)
+    return all(value in b"0123456789;:" for value in body)
+
+
+def classify_operator_input(data: bytes) -> tuple[bool, bool, bool, int, bool]:
     inject = False
     stop = False
     unexpected = False
@@ -77,34 +91,16 @@ def classify_operator_input(data: bytes) -> tuple[bool, bool, bool, int]:
                     offset = key.end()
                     continue
 
+            if is_supported_sequence_prefix(data[offset:]):
+                return inject, stop, False, terminal_replies, True
+
             unexpected = True
-            offset += 1
-            continue
+            break
 
         unexpected = True
-        offset += 1
+        break
 
-    return inject, stop, unexpected, terminal_replies
-
-
-def read_input_burst(fd: int) -> bytes:
-    data = bytearray(os.read(fd, 4096))
-    if not data:
-        return b""
-    deadline = time.monotonic() + INPUT_BURST_GRACE_SECONDS
-    while len(data) < 65536:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            break
-        readable, _, _ = select.select([fd], [], [], remaining)
-        if fd not in readable:
-            break
-        chunk = os.read(fd, 4096)
-        if not chunk:
-            break
-        data.extend(chunk)
-    return bytes(data)
-
+    return inject, stop, unexpected, terminal_replies, False
 
 def validate_probe_text(value: str) -> bytes:
     raw = value.encode("utf-8")
@@ -248,6 +244,8 @@ def supervise(argv: list[str], probe_text: str) -> int:
     stop_seen = False
     probe_injected = False
     terminal_replies_consumed = 0
+    pending_input = b""
+    pending_since: float | None = None
     blocked_reason: str | None = None
 
     try:
@@ -263,7 +261,16 @@ def supervise(argv: list[str], probe_text: str) -> int:
         )
 
         while True:
-            readable, _, _ = select.select([stdin_fd, master_fd], [], [])
+            timeout = None
+            if pending_input and pending_since is not None:
+                timeout = max(
+                    0.0,
+                    INPUT_SEQUENCE_TIMEOUT_SECONDS - (time.monotonic() - pending_since),
+                )
+            readable, _, _ = select.select([stdin_fd, master_fd], [], [], timeout)
+            if not readable and pending_input:
+                blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
+                break
 
             if master_fd in readable:
                 try:
@@ -278,16 +285,32 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 os.write(stdout_fd, data)
 
             if stdin_fd in readable:
-                data = read_input_burst(stdin_fd)
-                if not data:
+                chunk = os.read(stdin_fd, 4096)
+                if not chunk:
                     blocked_reason = "OPERATOR_TTY_EOF"
                     break
 
-                inject, stop, unexpected, terminal_replies = classify_operator_input(data)
-                terminal_replies_consumed += terminal_replies
+                if not pending_input:
+                    pending_since = time.monotonic()
+                pending_input += chunk
+                inject, stop, unexpected, terminal_replies, incomplete = classify_operator_input(
+                    pending_input
+                )
                 if unexpected:
                     blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
                     break
+                if incomplete:
+                    if (
+                        pending_since is not None
+                        and time.monotonic() - pending_since >= INPUT_SEQUENCE_TIMEOUT_SECONDS
+                    ):
+                        blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
+                        break
+                    continue
+
+                pending_input = b""
+                pending_since = None
+                terminal_replies_consumed += terminal_replies
                 if inject:
                     if probe_injected:
                         blocked_reason = "PROBE_ALREADY_INJECTED"
@@ -346,7 +369,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
 def self_test() -> int:
     def expect_input(
         raw: bytes,
-        expected: tuple[bool, bool, bool, int],
+        expected: tuple[bool, bool, bool, int, bool],
         label: str,
     ) -> None:
         observed = classify_operator_input(raw)
@@ -356,31 +379,38 @@ def self_test() -> int:
                 f"expected={expected}:observed={observed}"
             )
 
-    expect_input(bytes([INJECT_BYTE]), (True, False, False, 0), "LEGACY_INJECT")
-    expect_input(bytes([STOP_BYTE]), (False, True, False, 0), "LEGACY_STOP")
-    expect_input(b"x", (False, False, True, 0), "PRINTABLE")
-    expect_input(b"\r", (False, False, True, 0), "ENTER")
-    expect_input(b"\n", (False, False, True, 0), "NEWLINE")
-    expect_input(b"\x1b[A", (False, False, True, 0), "ARROW")
-    expect_input(b"\x1b", (False, False, True, 0), "ESCAPE")
+    expect_input(bytes([INJECT_BYTE]), (True, False, False, 0, False), "LEGACY_INJECT")
+    expect_input(bytes([STOP_BYTE]), (False, True, False, 0, False), "LEGACY_STOP")
+    expect_input(b"x", (False, False, True, 0, False), "PRINTABLE")
+    expect_input(b"\r", (False, False, True, 0, False), "ENTER")
+    expect_input(b"\n", (False, False, True, 0, False), "NEWLINE")
+    expect_input(b"\x1b[A", (False, False, True, 0, False), "ARROW")
+    expect_input(b"\x1b", (False, False, False, 0, True), "ESCAPE_PREFIX")
 
     kitty_flags = b"\x1b[?0u"
     da1 = b"\x1b[?64;1;2;4;6;17;18;21;22;52c"
-    expect_input(kitty_flags, (False, False, False, 1), "KITTY_FLAGS_REPLY")
-    expect_input(da1, (False, False, False, 1), "DA1_REPLY")
+    expect_input(kitty_flags, (False, False, False, 1, False), "KITTY_FLAGS_REPLY")
+    expect_input(da1, (False, False, False, 1, False), "DA1_REPLY")
+    expect_input(b"\x1b[?", (False, False, False, 0, True), "DA1_PREFIX")
+    expect_input(
+        b"\x1b[?64;1;2;4;6;17",
+        (False, False, False, 0, True),
+        "DA1_FRAGMENT",
+    )
     expect_input(
         kitty_flags + da1 + bytes([INJECT_BYTE]),
-        (True, False, False, 2),
+        (True, False, False, 2, False),
         "REPLIES_PLUS_LEGACY_INJECT",
     )
 
     # Claude Code may enable Kitty keyboard disambiguation on the real terminal.
     # The two harness chords must still work without forwarding those key events.
-    expect_input(b"\x1b[116;5u", (True, False, False, 0), "CSI_U_INJECT")
-    expect_input(b"\x1b[103;5u", (False, True, False, 0), "CSI_U_STOP")
-    expect_input(b"\x1b[116;5:3u", (False, False, False, 0), "CSI_U_RELEASE")
-    expect_input(b"\x1b[120;5u", (False, False, True, 0), "CSI_U_OTHER_CTRL")
-    expect_input(b"\x1b[116;3u", (False, False, True, 0), "CSI_U_ALT_T")
+    expect_input(b"\x1b[116;5u", (True, False, False, 0, False), "CSI_U_INJECT")
+    expect_input(b"\x1b[103;5u", (False, True, False, 0, False), "CSI_U_STOP")
+    expect_input(b"\x1b[116;5:", (False, False, False, 0, True), "CSI_U_FRAGMENT")
+    expect_input(b"\x1b[116;5:3u", (False, False, False, 0, False), "CSI_U_RELEASE")
+    expect_input(b"\x1b[120;5u", (False, False, True, 0, False), "CSI_U_OTHER_CTRL")
+    expect_input(b"\x1b[116;3u", (False, False, True, 0, False), "CSI_U_ALT_T")
 
     if validate_probe_text("/frontend-design") != b"/frontend-design":
         raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:PROBE_TEXT")

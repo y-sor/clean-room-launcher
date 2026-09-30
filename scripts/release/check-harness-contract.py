@@ -215,6 +215,12 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "os.write(master_fd, forwarded)" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_FORWARDING_FORBIDDEN")
     require(errors, "TERMINAL_REPLY_RE" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_FILTER")
     require(errors, "CSI_U_KEY_RE" in text, "CLAUDE_TTY_SUPERVISOR_CSI_U_HARNESS_CHORDS")
+    require(errors, "def is_supported_sequence_prefix(" in text, "CLAUDE_TTY_SUPERVISOR_STREAMING_PREFIX")
+    require(errors, "pending_input = b\"\"" in text, "CLAUDE_TTY_SUPERVISOR_STREAMING_BUFFER")
+    require(errors, "INPUT_SEQUENCE_TIMEOUT_SECONDS" in text, "CLAUDE_TTY_SUPERVISOR_INCOMPLETE_SEQUENCE_TIMEOUT")
+    require(errors, "INPUT_BURST_GRACE_SECONDS" not in text, "CLAUDE_TTY_SUPERVISOR_BURST_TIMEOUT_FORBIDDEN")
+    require(errors, "\"DA1_FRAGMENT\"" in text, "CLAUDE_TTY_SUPERVISOR_FRAGMENTED_DA1_SELF_TEST")
+    require(errors, "\"CSI_U_FRAGMENT\"" in text, "CLAUDE_TTY_SUPERVISOR_FRAGMENTED_CSI_U_SELF_TEST")
     require(errors, "TERMINAL_REPLIES_CONSUMED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_EVIDENCE")
     require(
         errors,
