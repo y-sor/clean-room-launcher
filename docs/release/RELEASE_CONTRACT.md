@@ -192,12 +192,12 @@ For whole-plugin activation:
    smoke self-provisions the same pinned provider tuple from reviewed package
    integrities without re-querying latest, then machine preflight proves the
    exact skill-only selection is qualified. Clean and selected Claude sessions
-   run through a task-owned PTY supervisor. The supervisor blocks submit/control
-   input used by provider-owned exit flows, intercepts its own stop chord before
-   Claude, closes the task-owned process group, and returns control to the smoke
-   for persistent-state verification. The human only observes target
-   absence/presence, sibling/plugin-error state and the AGENTS boundary. Any
-   submit attempt or inference invalidates the run.
+   run through a task-owned PTY supervisor. Human input is not forwarded to
+   Claude: one harness chord injects the exact non-submitting autocomplete probe,
+   another harness chord ends observation, and the supervisor closes only the
+   task-owned process group before persistent-state verification. The human only
+   observes target absence/presence, sibling/plugin-error state and the AGENTS
+   boundary. Any unexpected operator input or inference invalidates the run.
    Codex runs automatically in the macOS Release-candidate workflow and proves
    the real MCP runtime plus post-runtime clean-state closure. This catches
    product/runtime failures at the earliest candidate boundary.
