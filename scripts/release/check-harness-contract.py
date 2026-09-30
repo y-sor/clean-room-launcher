@@ -221,7 +221,9 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "INPUT_BURST_GRACE_SECONDS" not in text, "CLAUDE_TTY_SUPERVISOR_BURST_TIMEOUT_FORBIDDEN")
     require(errors, "\"DA1_FRAGMENT\"" in text, "CLAUDE_TTY_SUPERVISOR_FRAGMENTED_DA1_SELF_TEST")
     require(errors, "\"CSI_U_FRAGMENT\"" in text, "CLAUDE_TTY_SUPERVISOR_FRAGMENTED_CSI_U_SELF_TEST")
-    require(errors, "TERMINAL_REPLIES_CONSUMED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_EVIDENCE")
+    require(errors, "os.write(master_fd, terminal_reply_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_RELAY")
+    require(errors, "TERMINAL_REPLIES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_EVIDENCE")
+    require(errors, "TERMINAL_REPLY_BYTES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_BYTE_EVIDENCE")
     require(
         errors,
         "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_PROTOCOL_FILTER" in text,
