@@ -256,6 +256,7 @@ print("PLUGIN_INFO_PREFLIGHT=PASS")
 PY
 
 plugin_info_preflight=true
+probe_text="/${plugin_id%%@*}"
 after=$(fingerprint)
 [[ "$before" == "$after" ]] || fail "PERSISTENT_CONFIG_CHANGED"
 
@@ -293,13 +294,14 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Do not send a model prompt."
   echo "This TUI runs in a task-owned synthetic nested Git project."
   echo "Confirm the target plugin skill is absent from autocomplete."
-  echo "Type only the autocomplete search fragment; do not submit it."
-  echo "The release supervisor blocks Enter/CR/LF and provider-owned exit controls."
-  echo "When observation is complete, press Ctrl+] once; the supervisor owns teardown."
+  echo "Do not type into Claude."
+  echo "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
+  echo "When observation is complete, press Ctrl+G once; the supervisor owns teardown."
+  echo "All other human input is blocked and invalidates the observation."
   echo
   (
     cd "$tui_project"
-    python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude
+    python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
   ) || fail "CLEAN_TUI_SUPERVISOR"
   clean_tui_supervised=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
@@ -322,13 +324,14 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Confirm no plugin load errors are shown."
   echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
   echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
-  echo "Type only the autocomplete search fragment; do not submit it."
-  echo "The release supervisor blocks Enter/CR/LF and provider-owned exit controls."
-  echo "When observation is complete, press Ctrl+] once; the supervisor owns teardown."
+  echo "Do not type into Claude."
+  echo "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
+  echo "When observation is complete, press Ctrl+G once; the supervisor owns teardown."
+  echo "All other human input is blocked and invalidates the observation."
   echo
   (
     cd "$tui_project"
-    python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"
+    python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
   ) || fail "SELECTED_TUI_SUPERVISOR"
   selected_tui_supervised=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
