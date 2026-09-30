@@ -7,6 +7,7 @@ import os
 import pty
 import select
 import signal
+import subprocess
 import sys
 import termios
 import time
@@ -40,38 +41,71 @@ def validate_probe_text(value: str) -> bytes:
     return raw
 
 
-def wait_for_child(pid: int, timeout: float) -> tuple[int, int] | None:
+def reap_child_if_exited(pid: int) -> bool:
+    try:
+        waited = os.waitpid(pid, os.WNOHANG)
+    except ChildProcessError:
+        return True
+    return waited != (0, 0)
+
+
+def task_owned_session_processes(session_id: int) -> list[tuple[int, int]]:
+    result = subprocess.run(
+        ["/bin/ps", "-axo", "pid=,sess=,pgid="],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    processes: list[tuple[int, int]] = []
+    for raw in result.stdout.splitlines():
+        fields = raw.split()
+        if len(fields) != 3:
+            continue
+        try:
+            pid, sid, pgid = map(int, fields)
+        except ValueError:
+            continue
+        if sid == session_id:
+            processes.append((pid, pgid))
+    return processes
+
+
+def signal_task_owned_session(session_id: int, sig: signal.Signals) -> None:
+    supervisor_pgid = os.getpgrp()
+    groups = sorted(
+        {
+            pgid
+            for _pid, pgid in task_owned_session_processes(session_id)
+            if pgid > 0 and pgid != supervisor_pgid
+        }
+    )
+    for pgid in groups:
+        try:
+            os.killpg(pgid, sig)
+        except ProcessLookupError:
+            pass
+
+
+def wait_for_session_closed(pid: int, session_id: int, timeout: float) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        waited = os.waitpid(pid, os.WNOHANG)
-        if waited != (0, 0):
-            return waited
+        reap_child_if_exited(pid)
+        if not task_owned_session_processes(session_id):
+            return True
         time.sleep(0.02)
-    return None
+    reap_child_if_exited(pid)
+    return not task_owned_session_processes(session_id)
 
 
-def terminate_task_owned_group(pid: int) -> None:
-    pgid = os.getpgid(pid)
-    if pgid == os.getpgrp():
-        raise RuntimeError("child shares supervisor process group")
-    try:
-        os.killpg(pgid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    if wait_for_child(pid, TERM_GRACE_SECONDS) is not None:
+def terminate_task_owned_session(pid: int, session_id: int) -> None:
+    if session_id == os.getsid(0):
+        raise RuntimeError("child shares supervisor session")
+    signal_task_owned_session(session_id, signal.SIGTERM)
+    if wait_for_session_closed(pid, session_id, TERM_GRACE_SECONDS):
         return
-    try:
-        os.killpg(pgid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    if wait_for_child(pid, TERM_GRACE_SECONDS) is not None:
-        return
-    try:
-        os.kill(pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    if wait_for_child(pid, TERM_GRACE_SECONDS) is None:
-        raise RuntimeError("child process group did not terminate")
+    signal_task_owned_session(session_id, signal.SIGKILL)
+    if not wait_for_session_closed(pid, session_id, TERM_GRACE_SECONDS):
+        raise RuntimeError("task-owned PTY session did not terminate")
 
 
 def spawn_child(argv: list[str]) -> tuple[int, int]:
@@ -107,9 +141,9 @@ def supervise(argv: list[str], probe_text: str) -> int:
 
     try:
         pid, master_fd = spawn_child(argv)
-        child_pgid = os.getpgid(pid)
-        if child_pgid == os.getpgrp():
-            raise RuntimeError("child process group is not task-owned")
+        child_session = os.getsid(pid)
+        if child_session == os.getsid(0):
+            raise RuntimeError("child PTY session is not task-owned")
 
         tty.setraw(stdin_fd)
         os.write(
@@ -161,7 +195,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
 
         if pid > 0:
             try:
-                terminate_task_owned_group(pid)
+                terminate_task_owned_session(pid, child_session)
             except ProcessLookupError:
                 pass
 
@@ -192,7 +226,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
         return 5
 
     print("CLAUDE_TTY_SUPERVISOR=PASS")
-    print("TASK_PROCESS_GROUP_CLOSED=YES")
+    print("TASK_PROCESS_SESSION_CLOSED=YES")
     return 0
 
 
@@ -219,24 +253,43 @@ def self_test() -> int:
         else:
             raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:PROBE_CONTROL")
 
-    stubborn_child = (
-        "import signal,time; "
-        "signal.signal(signal.SIGHUP, signal.SIG_IGN); "
-        "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
-        "time.sleep(30)"
-    )
-    pid, master_fd = spawn_child([sys.executable, "-c", stubborn_child])
+    split_group_child = """
+import os
+import signal
+import time
+
+child = os.fork()
+if child == 0:
+    os.setpgid(0, 0)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    time.sleep(30)
+    raise SystemExit(0)
+
+signal.signal(signal.SIGHUP, signal.SIG_IGN)
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+os.waitpid(child, 0)
+"""
+    pid, master_fd = spawn_child([sys.executable, "-c", split_group_child])
     try:
-        time.sleep(0.25)
-        os.close(master_fd)
-        master_fd = -1
-        terminate_task_owned_group(pid)
+        session_id = os.getsid(pid)
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            groups = {pgid for _pid, pgid in task_owned_session_processes(session_id)}
+            if len(groups) >= 2:
+                break
+            time.sleep(0.02)
+        else:
+            raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SPLIT_PROCESS_GROUP")
+
+        terminate_task_owned_session(pid, session_id)
+        if task_owned_session_processes(session_id):
+            raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SESSION_RESIDUE")
     finally:
-        if master_fd >= 0:
-            try:
-                os.close(master_fd)
-            except OSError:
-                pass
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
 
     print("CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS")
     return 0

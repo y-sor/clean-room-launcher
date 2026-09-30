@@ -209,18 +209,21 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_HARNESS_PROBE_INJECTION")
     require(errors, "os.write(master_fd, forwarded)" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_FORWARDING_FORBIDDEN")
     require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
+    require(errors, "def task_owned_session_processes(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_INVENTORY")
+    require(errors, "def terminate_task_owned_session(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_TEARDOWN")
     require(
         errors,
         "os.close(master_fd)" in text and "master_fd = -1\n\n        if pid > 0:" in text,
         "CLAUDE_TTY_SUPERVISOR_PTY_CLOSE_BEFORE_TEARDOWN",
     )
-    require(errors, "os.kill(pid, signal.SIGKILL)" in text, "CLAUDE_TTY_SUPERVISOR_DIRECT_KILL_FALLBACK")
-    require(errors, "signal.signal(signal.SIGHUP, signal.SIG_IGN)" in text, "CLAUDE_TTY_SUPERVISOR_STUBBORN_CHILD_SELF_TEST")
+    require(errors, '["/bin/ps", "-axo", "pid=,sess=,pgid="]' in text, "CLAUDE_TTY_SUPERVISOR_SESSION_ENUMERATION")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SPLIT_PROCESS_GROUP" in text, "CLAUDE_TTY_SUPERVISOR_SPLIT_GROUP_SELF_TEST")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SESSION_RESIDUE" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_RESIDUE_SELF_TEST")
     require(errors, "PROBE_INJECTED=" in text, "CLAUDE_TTY_SUPERVISOR_PROBE_EVIDENCE")
     require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
     require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
     require(errors, "HARNESS_STOP_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_STOP_EVIDENCE")
-    require(errors, "TASK_PROCESS_GROUP_CLOSED=YES" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
+    require(errors, "TASK_PROCESS_SESSION_CLOSED=YES" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
     require(
         errors,
         "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in text,
