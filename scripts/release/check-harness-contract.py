@@ -419,6 +419,39 @@ def check(root: Path) -> list[str]:
         and "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in supervisor_self_test.stdout,
         "CLAUDE_TTY_SUPERVISOR_SELF_TEST",
     )
+    terminal_diagnostic_path = root / "scripts/release/terminal-state-diagnostic.py"
+    require(errors, terminal_diagnostic_path.is_file(), "TERMINAL_STATE_DIAGNOSTIC_MISSING")
+    terminal_diagnostic = terminal_diagnostic_path.read_text(encoding="utf-8")
+    for marker in (
+        'SCHEMA_VERSION = "clroom.terminal-state-diagnostic.v1"',
+        'os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)',
+        '"focus_reporting"',
+        '"bracketed_paste"',
+        'b"\\x1b[?u"',
+        '"termios_restored"',
+        '"chunks"',
+        '"unexpected_hex"',
+        '"TERMINAL_PREFLIGHT_SUMMARY "',
+    ):
+        require(errors, marker in terminal_diagnostic, "TERMINAL_STATE_DIAGNOSTIC_CONTRACT:" + marker)
+    require(errors, 'query.endswith((b"h", b"l"))' in terminal_diagnostic, "TERMINAL_STATE_DIAGNOSTIC_QUERY_ONLY")
+    terminal_diagnostic_self_test = subprocess.run(
+        [sys.executable, str(terminal_diagnostic_path), "--self-test"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if terminal_diagnostic_self_test.returncode != 0:
+        if terminal_diagnostic_self_test.stdout:
+            print(terminal_diagnostic_self_test.stdout, end="", file=sys.stderr)
+        if terminal_diagnostic_self_test.stderr:
+            print(terminal_diagnostic_self_test.stderr, end="", file=sys.stderr)
+    require(
+        errors,
+        terminal_diagnostic_self_test.returncode == 0
+        and "TERMINAL_STATE_DIAGNOSTIC_SELF_TEST_PASS" in terminal_diagnostic_self_test.stdout,
+        "TERMINAL_STATE_DIAGNOSTIC_SELF_TEST",
+    )
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
         errors,

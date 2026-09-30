@@ -147,6 +147,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Prompt-free Claude UI evidence repeatedly coupled Owner control chords to the same stdin stream Claude uses for terminal capability replies. Real iTerm/Claude traffic can include multiple response classes (DA1/DA2, Kitty flags, DECRPM, cursor position, OSC colors and XTVERSION), fragmented across reads; using human Ctrl+T/Ctrl+G on that multiplexed stream created avoidable false UNEXPECTED_OPERATOR_INPUT failures before the fixed autocomplete probe.",
       "durable_control": "The harness no longer requires any human control action inside Claude. The supervisor waits for a pinned normal-composer readiness marker, injects the fixed non-submitting autocomplete probe automatically, holds a bounded observation window, and owns teardown. Human work is visual observation only. Real-terminal stdin is parsed solely as machine terminal-response traffic, with streaming support for the Claude terminal-query response classes and exact relay back to the provider PTY; any human key byte fails closed. Self-tests reject Ctrl+T/Ctrl+G and other human input, cover fragmented terminal responses, and preserve zero submit bytes plus task-owned teardown."
+    },
+    {
+      "id": "claude-release-rehearsal-physical-terminal-state-ownership",
+      "decision": "HARNESS_DIAGNOSE_BEFORE_RETRY",
+      "failure_mode": "After removing human control chords, the real iTerm rehearsal still failed before probe injection with HUMAN_BYTES_FORWARDED=0 while shell-visible CSI O FocusOut events and a delayed DA1 payload appeared around teardown. A local Codex handoff could not inspect the physical session because its shell exposed a synthetic TERM=dumb PTY and macOS denied read-only iTerm inspection, so physical terminal-emulator state remained UNKNOWN.",
+      "durable_control": "No further Claude/provider retry is allowed until a checked-in provider-free diagnostic runs directly on the Owner's physical /dev/tty. The diagnostic is query-only: it records allowlisted terminal identity, termios state, DECRQM states for focus/mouse/alternate-screen/bracketed-paste/application modes, Kitty flags, DA1/DA2 responses, raw hex and read chunk boundaries, then proves termios restoration. Its parser has positive/negative self-tests and CI contract coverage. The resulting evidence determines whether the harness must snapshot/restore terminal-emulator modes or address a different physical-TTY invariant before another provider observation."
     }
   ],
   "artifact_capability_gates": [
