@@ -51,7 +51,7 @@ def reap_child_if_exited(pid: int) -> bool:
 
 def task_owned_session_processes(session_id: int) -> list[tuple[int, int]]:
     result = subprocess.run(
-        ["/bin/ps", "-axo", "pid=,sess=,pgid="],
+        ["/bin/ps", "-axo", "pid=,pgid="],
         check=True,
         capture_output=True,
         text=True,
@@ -59,11 +59,15 @@ def task_owned_session_processes(session_id: int) -> list[tuple[int, int]]:
     processes: list[tuple[int, int]] = []
     for raw in result.stdout.splitlines():
         fields = raw.split()
-        if len(fields) != 3:
+        if len(fields) != 2:
             continue
         try:
-            pid, sid, pgid = map(int, fields)
+            pid, pgid = map(int, fields)
         except ValueError:
+            continue
+        try:
+            sid = os.getsid(pid)
+        except (ProcessLookupError, PermissionError):
             continue
         if sid == session_id:
             processes.append((pid, pgid))

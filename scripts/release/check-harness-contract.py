@@ -216,7 +216,8 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
         "os.close(master_fd)" in text and "master_fd = -1\n\n        if pid > 0:" in text,
         "CLAUDE_TTY_SUPERVISOR_PTY_CLOSE_BEFORE_TEARDOWN",
     )
-    require(errors, '["/bin/ps", "-axo", "pid=,sess=,pgid="]' in text, "CLAUDE_TTY_SUPERVISOR_SESSION_ENUMERATION")
+    require(errors, '["/bin/ps", "-axo", "pid=,pgid="]' in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_ENUMERATION")
+    require(errors, "sid = os.getsid(pid)" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_ID_LOOKUP")
     require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SPLIT_PROCESS_GROUP" in text, "CLAUDE_TTY_SUPERVISOR_SPLIT_GROUP_SELF_TEST")
     require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SESSION_RESIDUE" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_RESIDUE_SELF_TEST")
     require(errors, "PROBE_INJECTED=" in text, "CLAUDE_TTY_SUPERVISOR_PROBE_EVIDENCE")
