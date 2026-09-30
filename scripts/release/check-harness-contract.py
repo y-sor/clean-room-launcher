@@ -203,32 +203,33 @@ def claude_prompt_mode_present(text: str) -> bool:
 
 def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     errors: list[str] = []
-    require(errors, "INJECT_BYTE = 0x14" in text, "CLAUDE_TTY_SUPERVISOR_INJECT_CHORD")
-    require(errors, "STOP_BYTE = 0x07" in text, "CLAUDE_TTY_SUPERVISOR_STOP_CHORD")
+    require(errors, "INJECT_BYTE" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INJECT_CHORD_FORBIDDEN")
+    require(errors, "STOP_BYTE" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_STOP_CHORD_FORBIDDEN")
+    require(errors, "CSI_U_KEY_RE" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_KEY_PROTOCOL_FORBIDDEN")
     require(errors, "def validate_probe_text(" in text, "CLAUDE_TTY_SUPERVISOR_FIXED_PROBE_VALIDATION")
     require(errors, "pty.fork()" not in text, "CLAUDE_TTY_SUPERVISOR_PLATFORM_FORKPTY_FORBIDDEN")
     require(errors, "pty.openpty()" in text, "CLAUDE_TTY_SUPERVISOR_OPENPTY")
     require(errors, "os.setsid()" in text, "CLAUDE_TTY_SUPERVISOR_EXPLICIT_SESSION")
     require(errors, "termios.TIOCSCTTY" in text, "CLAUDE_TTY_SUPERVISOR_CONTROLLING_TTY")
     require(errors, "ready_read, ready_write = os.pipe()" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_READY_HANDSHAKE")
-    require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_HARNESS_PROBE_INJECTION")
-    require(errors, "os.write(master_fd, forwarded)" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_FORWARDING_FORBIDDEN")
-    require(errors, "TERMINAL_REPLY_RE" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_FILTER")
-    require(errors, "CSI_U_KEY_RE" in text, "CLAUDE_TTY_SUPERVISOR_CSI_U_HARNESS_CHORDS")
-    require(errors, "def is_supported_sequence_prefix(" in text, "CLAUDE_TTY_SUPERVISOR_STREAMING_PREFIX")
+    require(errors, "READY_MARKER = b\"manual mode on\"" in text, "CLAUDE_TTY_SUPERVISOR_COMPOSER_READY_MARKER")
+    require(errors, "OBSERVATION_WINDOW_SECONDS" in text, "CLAUDE_TTY_SUPERVISOR_BOUNDED_OBSERVATION")
+    require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_AUTOMATIC_PROBE")
+    require(errors, "def terminal_response_length(" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_PARSER")
+    require(errors, "def classify_terminal_input(" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_INPUT_CLASSIFIER")
     require(errors, "pending_input = b\"\"" in text, "CLAUDE_TTY_SUPERVISOR_STREAMING_BUFFER")
     require(errors, "INPUT_SEQUENCE_TIMEOUT_SECONDS" in text, "CLAUDE_TTY_SUPERVISOR_INCOMPLETE_SEQUENCE_TIMEOUT")
-    require(errors, "INPUT_BURST_GRACE_SECONDS" not in text, "CLAUDE_TTY_SUPERVISOR_BURST_TIMEOUT_FORBIDDEN")
-    require(errors, "\"DA1_FRAGMENT\"" in text, "CLAUDE_TTY_SUPERVISOR_FRAGMENTED_DA1_SELF_TEST")
-    require(errors, "\"CSI_U_FRAGMENT\"" in text, "CLAUDE_TTY_SUPERVISOR_FRAGMENTED_CSI_U_SELF_TEST")
-    require(errors, "os.write(master_fd, terminal_reply_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_RELAY")
-    require(errors, "TERMINAL_REPLIES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_EVIDENCE")
-    require(errors, "TERMINAL_REPLY_BYTES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_BYTE_EVIDENCE")
-    require(
-        errors,
-        "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_PROTOCOL_FILTER" in text,
-        "CLAUDE_TTY_SUPERVISOR_TERMINAL_PROTOCOL_SELF_TEST",
-    )
+    require(errors, "os.write(master_fd, response_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_RELAY")
+    require(errors, "TERMINAL_RESPONSES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_EVIDENCE")
+    require(errors, "TERMINAL_RESPONSE_BYTES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_BYTE_EVIDENCE")
+    require(errors, "COMPOSER_READY_SEEN=" in text, "CLAUDE_TTY_SUPERVISOR_READY_EVIDENCE")
+    require(errors, "OBSERVATION_WINDOW_COMPLETED=" in text, "CLAUDE_TTY_SUPERVISOR_OBSERVATION_EVIDENCE")
+    require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
+    require(errors, "HUMAN_CONTROL_ACTIONS_REQUIRED=0" in text, "CLAUDE_TTY_SUPERVISOR_ZERO_HUMAN_ACTION_EVIDENCE")
+    require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
+    require(errors, "HARNESS_STOP_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_STOP_EVIDENCE")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:HUMAN_INPUT_ACCEPTED" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_NEGATIVE_TEST")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_PROTOCOL_FILTER" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_PROTOCOL_SELF_TEST")
     require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
     require(errors, "def task_owned_session_processes(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_INVENTORY")
     require(errors, "def terminate_task_owned_session(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_TEARDOWN")
@@ -241,10 +242,6 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "sid = os.getsid(pid)" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_ID_LOOKUP")
     require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SPLIT_PROCESS_GROUP" in text, "CLAUDE_TTY_SUPERVISOR_SPLIT_GROUP_SELF_TEST")
     require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SESSION_RESIDUE" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_RESIDUE_SELF_TEST")
-    require(errors, "PROBE_INJECTED=" in text, "CLAUDE_TTY_SUPERVISOR_PROBE_EVIDENCE")
-    require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
-    require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
-    require(errors, "HARNESS_STOP_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_STOP_EVIDENCE")
     require(errors, "TASK_PROCESS_SESSION_CLOSED=YES" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
     require(
         errors,
@@ -252,8 +249,6 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
         "CLAUDE_TTY_SUPERVISOR_SELF_TEST_MARKER",
     )
     return errors
-
-
 def validate_claude_release_smoke_contract(text: str) -> list[str]:
     errors: list[str] = []
     stripped_lines = {line.strip() for line in text.splitlines()}
@@ -333,14 +328,20 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     require(
         errors,
         "Do not type into Claude." in text
-        and "All other human input is blocked and invalidates the observation." in text,
+        and "Human work is observation only; no keypresses are required." in text,
         "CLAUDE_RELEASE_SMOKE_SUPERVISOR_INPUT_GUARD",
     )
     require(
         errors,
-        "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe." in text
-        and "When observation is complete, press Ctrl+G once; the supervisor owns teardown." in text,
-        "CLAUDE_RELEASE_SMOKE_HARNESS_STOP",
+        "injects the exact non-submitting probe automatically" in text
+        and "bounded observation window" in text
+        and "then owns teardown" in text,
+        "CLAUDE_RELEASE_SMOKE_AUTOMATIC_OBSERVATION",
+    )
+    require(
+        errors,
+        "Press Ctrl+T" not in text and "Press Ctrl+G" not in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_CONTROL_ACTIONS_FORBIDDEN",
     )
     require(
         errors,
@@ -356,6 +357,8 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
         "Press Escape once to dismiss autocomplete",
         "Visually confirm the composer is empty.",
         "Press Ctrl+C to cancel and clear the composer",
+        "Press Ctrl+T",
+        "Press Ctrl+G",
         "Press Ctrl+D twice within 800 ms",
         "Then press Ctrl+D to exit",
         "Exit normally with /exit.",
@@ -687,9 +690,8 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_te
 "interactive_harness_owned_teardown":True
 "selected_tui_confirmed":interactive=="true"
 "Do not type into Claude."
-"Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
-"When observation is complete, press Ctrl+G once; the supervisor owns teardown."
-"All other human input is blocked and invalidates the observation."
+"The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
+"Human work is observation only; no keypresses are required."
 "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
 "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
 """

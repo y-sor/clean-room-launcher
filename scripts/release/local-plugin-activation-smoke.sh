@@ -280,11 +280,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "This TUI runs from the exact candidate checkout."
   echo "The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
   echo "Confirm the target plugin skill is absent from autocomplete."
-  echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, press Ctrl+G and reject the run."
   echo "Do not type into Claude."
-  echo "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
-  echo "When observation is complete, press Ctrl+G once; the supervisor owns teardown."
-  echo "All other human input is blocked and invalidates the observation."
+  echo "The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
+  echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, do not interact; the harness fails closed."
+  echo "Human work is observation only; no keypresses are required."
   echo
   (
     cd "$root"
@@ -310,11 +309,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Confirm the selected plugin skill is visible in autocomplete."
   echo "Confirm no additional sibling plugin became newly visible."
   echo "Confirm no plugin load errors are shown."
-  echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, press Ctrl+G and reject the run."
   echo "Do not type into Claude."
-  echo "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
-  echo "When observation is complete, press Ctrl+G once; the supervisor owns teardown."
-  echo "All other human input is blocked and invalidates the observation."
+  echo "The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
+  echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, do not interact; the harness fails closed."
+  echo "Human work is observation only; no keypresses are required."
   echo
   (
     cd "$root"
