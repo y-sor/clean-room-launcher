@@ -545,7 +545,8 @@ fn claude_release_smoke_is_prompt_free_and_preflights_before_tty() {
     assert!(
         !source.contains("Reply exactly UNUSED.")
             && !source.contains("--output-format stream-json")
-            && source.contains("No model prompt was sent in either TUI")
+            && source.contains("No inference/model response appeared in either TUI")
+            && source.contains("claude-tty-supervisor.py")
             && source.contains("MODEL_PROMPT_SENT=NO"),
         "release rehearsal must not send or encode an automated model prompt"
     );
