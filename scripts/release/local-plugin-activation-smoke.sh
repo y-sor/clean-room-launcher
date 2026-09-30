@@ -40,21 +40,40 @@ cd "$root"
 
 [[ "$(uname -s)" == "Darwin" ]] || fail "MACOS_REQUIRED"
 [[ "$(uname -m)" == "arm64" ]] || fail "APPLE_SILICON_REQUIRED"
-for name in git cargo python3 claude npm shasum tar; do
+for name in git cargo python3 npm shasum tar; do
   command -v "$name" >/dev/null 2>&1 || fail "COMMAND_MISSING:$name"
 done
 [[ -z "$(git status --porcelain)" ]] || fail "WORKTREE_NOT_CLEAN"
 
-# shellcheck source=provider-pins.sh
-source "$root/scripts/release/provider-pins.sh"
+version=$(python3 - <<'PY'
+import tomllib
+with open("Cargo.toml", "rb") as handle:
+    print(tomllib.load(handle)["package"]["version"])
+PY
+)
+head=$(git rev-parse HEAD)
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-plugin-release-smoke.XXXXXX")
+trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
+
+# The exact PR machine rehearsal (and accepted-main stage for phase=stage)
+# owns mutable provider-latest resolution. Human TTY evidence reuses the exact
+# pinned tuple and independently verifies exact package/native bytes.
+provider_root="$tmp/providers"
+provider_env="$tmp/provider.env"
+: >"$provider_env"
+bash "$root/scripts/release/provision-provider-canaries.sh" --all-frozen "$provider_root" "$provider_env" \
+  || fail "PROVIDER_CANARY"
+# shellcheck disable=SC1090
+source "$provider_env"
+export PATH="$provider_root/bin:$PATH"
 if [[ "$phase" == "rehearse" ]]; then
-  bash "$root/scripts/release/check-provider-pins.sh" || fail "PROVIDER_PINS"
+  echo "PROVIDER_PR_TUPLE_FREEZE_REUSED=YES"
 else
-  # Accepted-main staging already froze registry freshness/integrity. The stage
-  # TTY validates the pinned provider/version against the exact staged archive
-  # without making a second mutable npm-latest decision.
   echo "PROVIDER_REGISTRY_FREEZE_REUSED=YES"
 fi
+
+# shellcheck source=provider-pins.sh
+source "$root/scripts/release/provider-pins.sh"
 claude_executable=$(command -v claude)
 claude_version_output=$(claude --version 2>&1 | head -1) || fail "CLAUDE_VERSION"
 claude_version=$(python3 - "$claude_version_output" <<'PY'
@@ -68,16 +87,6 @@ PY
 [[ "$claude_version" == "$CLAUDE_VERSION" ]] || fail "CLAUDE_NOT_CURRENT_STABLE"
 claude_provider_sha=$(shasum -a 256 "$claude_executable" | awk '{print $1}')
 [[ "$claude_provider_sha" =~ ^[0-9a-f]{64}$ ]] || fail "CLAUDE_PROVIDER_SHA256"
-
-version=$(python3 - <<'PY'
-import tomllib
-with open("Cargo.toml", "rb") as handle:
-    print(tomllib.load(handle)["package"]["version"])
-PY
-)
-head=$(git rev-parse HEAD)
-tmp=$(mktemp -d "${TMPDIR:-/tmp}/clroom-plugin-release-smoke.XXXXXX")
-trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 
 artifact=
 source_head="$head"
