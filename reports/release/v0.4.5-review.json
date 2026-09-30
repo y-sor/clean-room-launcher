@@ -141,6 +141,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Real-provider human-TTY rehearsal created a fresh synthetic workspace, so Claude could stop at provider workspace-trust UI before autocomplete even though workspace-trust behavior is not a shipped CLROOM claim.",
       "durable_control": "Real-provider clean/selected observations now run from the exact clean candidate checkout, while AGENTS-boundary isolation remains separately machine-proved. Harness contract self-tests reject reintroduction of the synthetic TUI path or human AGENTS-boundary rechecking; trust/onboarding UI is a fail-closed precondition, never something the operator accepts during release evidence."
+    },
+    {
+      "id": "claude-release-rehearsal-terminal-protocol-coupling",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The prompt-free Claude TTY supervisor treated every byte arriving from the real terminal as operator input. Claude's terminal capability queries cause iTerm2 to emit Kitty keyboard-mode and DA1 replies on that same input stream, and Kitty keyboard disambiguation can encode the two allowed harness chords as CSI-u key events; the result was a false UNEXPECTED_OPERATOR_INPUT blocker before the autocomplete probe.",
+      "durable_control": "The supervisor now consumes only the narrowly recognized terminal capability reply grammar at the harness boundary and never forwards those replies to Claude. Ctrl+T/Ctrl+G remain the only accepted human actions and are recognized in both legacy control-byte and Kitty CSI-u encodings, including harmless release/repeat events for those exact chords; every other printable, escape, arrow or CSI-u key remains fail-closed. The supervisor self-test covers the observed iTerm2 Kitty-flags and DA1 replies plus negative operator-input cases."
     }
   ],
   "artifact_capability_gates": [

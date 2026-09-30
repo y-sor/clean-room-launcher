@@ -213,6 +213,14 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "ready_read, ready_write = os.pipe()" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_READY_HANDSHAKE")
     require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_HARNESS_PROBE_INJECTION")
     require(errors, "os.write(master_fd, forwarded)" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_FORWARDING_FORBIDDEN")
+    require(errors, "TERMINAL_REPLY_RE" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_FILTER")
+    require(errors, "CSI_U_KEY_RE" in text, "CLAUDE_TTY_SUPERVISOR_CSI_U_HARNESS_CHORDS")
+    require(errors, "TERMINAL_REPLIES_CONSUMED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_REPLY_EVIDENCE")
+    require(
+        errors,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_PROTOCOL_FILTER" in text,
+        "CLAUDE_TTY_SUPERVISOR_TERMINAL_PROTOCOL_SELF_TEST",
+    )
     require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
     require(errors, "def task_owned_session_processes(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_INVENTORY")
     require(errors, "def terminate_task_owned_session(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_TEARDOWN")
