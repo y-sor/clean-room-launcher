@@ -17,7 +17,7 @@
         "The source-mutation negative now synchronizes on the macOS vnode write event for the task-owned preflight seam, replacing the polling race exposed after #100.",
         "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns.",
         "The Claude release smoke no longer uses print-mode/model-prompt calls to obtain system-init evidence: machine info preflight proves exact qualified skill-only selection, while clean and selected human-TTY observations prove target absence/presence, sibling/plugin-error closure and the AGENTS boundary without sending a model prompt.",
-        "Claude TTY rehearsal now fail-closes autocomplete inspection against the documented Claude input/exit bindings: Enter is forbidden while search text remains; the operator uses a Latin/English keyboard layout, presses Escape to dismiss autocomplete and Escape again to cancel the current input, visibly confirms an empty composer, then presses Ctrl+D twice within 800 ms. Slash-command /exit and the obsolete single-Ctrl+D sequence are rejected by the harness contract.",
+        "Claude TTY rehearsal now fail-closes autocomplete inspection without relying on unobservable composer UI state: Enter is forbidden while search text remains; the operator uses a Latin/English keyboard layout and exits directly with Ctrl+D twice within 800 ms. The autocomplete fragment may remain visible and is never submitted. Slash-command /exit, Escape/clear workarounds, visible-empty requirements, and obsolete single-Ctrl+D flows are rejected by the harness contract.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
         "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple."
@@ -114,7 +114,7 @@
       "id": "claude-release-rehearsal-composer-submit-ambiguity",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "During prompt-free Claude TTY inspection, residual autocomplete text can remain in the composer and concatenate with /exit, initiating an inference attempt and making no-model-prompt evidence ambiguous even when provider usage is zero.",
-      "durable_control": "The canonical smoke forbids Enter during autocomplete inspection, uses Escape to dismiss autocomplete and Escape again to cancel the current input, requires visible empty-composer confirmation, then exits only through Claude's double-Ctrl+D confirmation binding within 800 ms. /exit, any attempted inference, and the obsolete single-Ctrl+D flow invalidate or fail the rehearsal."
+      "durable_control": "The canonical smoke forbids Enter during autocomplete inspection and never uses /exit. The observed search fragment may remain in the composer; the operator switches to a Latin/English layout and exits directly with Ctrl+D twice within 800 ms, so no submit action is invoked. Harness self-tests reject Escape/clear, visible-empty, /exit and single-Ctrl+D flows."
     },
     {
       "id": "promotion-rehearsal-current-run-selection-deadlock",
@@ -138,7 +138,13 @@
       "id": "claude-release-rehearsal-single-ctrl-d-exit-contract-drift",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The prompt-safe Claude rehearsal instructed a single Ctrl+D after clearing the composer, but Claude's interactive exit binding requires a second Ctrl+D within 800 ms; the TUI therefore remained open and the human evidence could not complete deterministically.",
-      "durable_control": "The release smoke now follows the documented control sequence: Escape dismisses autocomplete, Escape cancels the current input, the operator confirms an empty composer, and Ctrl+D is pressed twice within 800 ms. Machine contract self-tests reject the prior Ctrl+C/single-Ctrl+D wording."
+      "durable_control": "The release smoke now exits directly from the observed autocomplete state with Ctrl+D twice within 800 ms on a Latin/English layout. It does not require Escape, composer clearing or a visual empty-state signal, and machine contract self-tests reject the prior single-Ctrl+D sequence."
+    },
+    {
+      "id": "claude-release-rehearsal-visible-empty-ui-harness-incident",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A second avoidable late rehearsal escape occurred because the harness made PASS depend on visually observing an empty composer after Escape, but Claude Code may not render an observable composer state after that action. The safety property was therefore coupled to a UI signal that was not guaranteed to exist.",
+      "durable_control": "HARNESS INCIDENT repair removes the UI-dependent empty-composer gate entirely. Human evidence observes autocomplete only; Enter is forbidden, the fragment may remain visible, and exit is performed directly with Claude's double-Ctrl+D binding within 800 ms. Machine self-tests reject reintroduction of Escape/clear or visible-empty requirements."
     }
   ],
   "artifact_capability_gates": [
@@ -186,7 +192,7 @@
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
       "prompt-free Claude release rehearsal schema v4 with clean/selected human-TTY evidence and harness rejection of Claude print-mode model prompts",
-      "prompt-safe Claude TTY autocomplete exit contract: no Enter with search text, Latin/English control-key layout, Escape autocomplete dismiss + Escape input cancel, visible empty composer, double Ctrl+D within 800 ms, and harness rejection of /exit or obsolete single-Ctrl+D rehearsal",
+      "prompt-safe Claude TTY autocomplete exit contract: no Enter with search text, Latin/English control-key layout, no Escape/clear or visible-empty dependency, direct double Ctrl+D within 800 ms, and harness rejection of /exit, Escape/clear, visible-empty and single-Ctrl+D rehearsal",
       "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning"
     ]
   },
