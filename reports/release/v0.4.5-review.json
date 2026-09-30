@@ -18,7 +18,8 @@
         "Claude AGENTS-boundary rehearsal now derives its synthetic provider --version identity from canonical CLAUDE_VERSION rather than a prior hard-coded provider tuple; provider-canary contract coverage fails if that pin binding is removed or the stale 2.1.280 literal returns.",
         "The Claude release smoke no longer uses print-mode/model-prompt calls to obtain system-init evidence: machine info preflight proves exact qualified skill-only selection, while clean and selected human-TTY observations prove target absence/presence, sibling/plugin-error closure and the AGENTS boundary without sending a model prompt.",
         "Claude TTY rehearsal now fail-closes autocomplete inspection: Enter is forbidden while search text remains, the operator must clear the composer with Ctrl+C, visibly confirm it is empty, and exit with Ctrl+D; slash-command /exit is rejected by the harness contract because residual autocomplete text can otherwise concatenate into an attempted prompt.",
-        "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning."
+        "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
+        "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission."
       ]
     },
     "dependencies": {
@@ -119,6 +120,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The accepted-main promotion rehearsal executes inside the same Release candidate readiness run that produced the pre-tag stage, while the shared resolver previously accepted only fully completed/success workflow runs; this made the rehearsal deterministically unable to select its own already-successful stage artifact.",
       "durable_control": "The resolver has a narrowly scoped current-run mode bound only by CLROOM_PRETAG_CURRENT_RUN_ID. It requires the same GitHub Actions run id, push/main/exact repository+SHA identity, and completed-success eligibility/readiness/stage/attestation jobs before artifact selection. The tag workflow is machine-checked to forbid this exception and still resolves only fully completed/success accepted-main runs. The admission classifier has executable positive/negative fixtures and is run in the cheap eligibility lane before expensive provider work. Provider-canary contract validation follows the factored admission helper and runs its self-test, preventing stale static-token assumptions from masking the boundary. Rust gate-contract coverage also follows the factored admission helper and asserts that only the promotion workflow carries the current-run binding."
+    },
+    {
+      "id": "codex-mcp-test-fixture-provider-tuple-drift",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "After the Codex qualification target moved from 0.159.0 to 0.159.2, standalone-MCP semantic tests still constructed a hard-coded 0.159.0 ProviderIdentity and failed at ProviderTupleNotQualified before exercising the intended parser/admission assertions.",
+      "durable_control": "The shared MCP test fixture now binds version to provider_inventory::CODEX_CLEAN_EXACT; wrong-tuple behavior remains covered by its dedicated negative test."
     }
   ],
   "artifact_capability_gates": [
