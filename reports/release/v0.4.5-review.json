@@ -20,7 +20,8 @@
         "Claude TTY rehearsal now separates human UI observation from provider lifecycle: clean and selected sessions run through a task-owned PTY supervisor that blocks submit/provider-exit controls, intercepts a harness-owned stop chord before Claude, closes the task-owned process group, and returns control for persistent-state fingerprint verification. Human confirmation is limited to target visibility, sibling/plugin-error state, AGENTS boundary, and absence of inference/model response.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
-        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple."
+        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
+        "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority."
       ]
     },
     "dependencies": {
@@ -181,7 +182,8 @@
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
       "prompt-free Claude release rehearsal schema v5 with clean/selected supervised human-TTY evidence, machine-recorded submit blocking/harness-owned teardown, and no Claude print-mode model prompts",
       "Claude TTY evidence ownership contract: human observes provider UI only; a task-owned PTY supervisor blocks submit/provider-exit controls, intercepts the harness stop chord, closes the task-owned process group, and returns control for persistent-state verification",
-      "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning"
+      "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning",
+      "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag"
     ]
   },
   "reviewed_content_digest": "88f0e705523a2251d14f419a493b3ed3686f31c7b553328704c0cb6c08323634"
