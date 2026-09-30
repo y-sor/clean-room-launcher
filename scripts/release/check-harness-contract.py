@@ -231,6 +231,7 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
 
 def validate_claude_release_smoke_contract(text: str) -> list[str]:
     errors: list[str] = []
+    stripped_lines = {line.strip() for line in text.splitlines()}
     require(
         errors,
         '"schema_version":"clroom.plugin-release-smoke.v5"' in text,
@@ -278,12 +279,12 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
-        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude' in text,
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude' in stripped_lines,
         "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH",
     )
     require(
         errors,
-        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"' in text,
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"' in stripped_lines,
         "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISOR_LAUNCH",
     )
     require(
