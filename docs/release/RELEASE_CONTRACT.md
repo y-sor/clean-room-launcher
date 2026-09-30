@@ -187,14 +187,17 @@ For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
    Claude runs locally because its selected-plugin TUI requires a genuine human
-   terminal observation; its evidence stays outside the tracked tree. Machine
-   preflight proves the exact skill-only selection is qualified, then clean and
-   selected Claude sessions run through a task-owned PTY supervisor. The
-   supervisor blocks submit/control input used by provider-owned exit flows,
-   intercepts its own stop chord before Claude, closes the task-owned process
-   group, and returns control to the smoke for persistent-state verification.
-   The human only observes target absence/presence, sibling/plugin-error state
-   and the AGENTS boundary. Any submit attempt or inference invalidates the run.
+   terminal observation; its evidence stays outside the tracked tree. The exact
+   PR machine readiness owns mutable provider-latest resolution. The local human
+   smoke self-provisions the same pinned provider tuple from reviewed package
+   integrities without re-querying latest, then machine preflight proves the
+   exact skill-only selection is qualified. Clean and selected Claude sessions
+   run through a task-owned PTY supervisor. The supervisor blocks submit/control
+   input used by provider-owned exit flows, intercepts its own stop chord before
+   Claude, closes the task-owned process group, and returns control to the smoke
+   for persistent-state verification. The human only observes target
+   absence/presence, sibling/plugin-error state and the AGENTS boundary. Any
+   submit attempt or inference invalidates the run.
    Codex runs automatically in the macOS Release-candidate workflow and proves
    the real MCP runtime plus post-runtime clean-state closure. This catches
    product/runtime failures at the earliest candidate boundary.
