@@ -283,8 +283,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "This TUI runs in a task-owned synthetic nested Git project."
   echo "Confirm the target plugin skill is absent from autocomplete."
   echo "Do not press Enter while autocomplete/search text remains in the composer."
-  echo "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
-  echo "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
+  echo "Before keyboard shortcuts, switch to a Latin/English keyboard layout."
+  echo "Press Escape once to dismiss autocomplete, then Escape again to cancel the current input."
+  echo "Visually confirm the composer is empty."
+  echo "Press Ctrl+D twice within 800 ms to exit. Do not use /exit for this rehearsal."
   echo
   (
     cd "$tui_project"
@@ -297,7 +299,7 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   read -r clean_target_answer
   [[ "$clean_target_answer" == "y" || "$clean_target_answer" == "Y" ]] \
     || fail "CLEAN_TARGET_PLUGIN_PRESENT"
-  printf 'Clean composer was cleared and TUI exited with Ctrl+D without submitting input [y/N]: '
+  printf 'Clean autocomplete was dismissed, input canceled, composer visibly empty, and TUI exited with Ctrl+D twice within 800 ms without submitting input [y/N]: '
   read -r clean_safe_exit_answer
   [[ "$clean_safe_exit_answer" == "y" || "$clean_safe_exit_answer" == "Y" ]] \
     || fail "CLEAN_SAFE_EXIT_NOT_CONFIRMED"
@@ -314,8 +316,10 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
   echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
   echo "Do not press Enter while autocomplete/search text remains in the composer."
-  echo "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
-  echo "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
+  echo "Before keyboard shortcuts, switch to a Latin/English keyboard layout."
+  echo "Press Escape once to dismiss autocomplete, then Escape again to cancel the current input."
+  echo "Visually confirm the composer is empty."
+  echo "Press Ctrl+D twice within 800 ms to exit. Do not use /exit for this rehearsal."
   echo
   (
     cd "$tui_project"
@@ -338,7 +342,7 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   read -r agents_answer
   [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] \
     || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
-  printf 'Selected composer was cleared and TUI exited with Ctrl+D without submitting input [y/N]: '
+  printf 'Selected autocomplete was dismissed, input canceled, composer visibly empty, and TUI exited with Ctrl+D twice within 800 ms without submitting input [y/N]: '
   read -r selected_safe_exit_answer
   [[ "$selected_safe_exit_answer" == "y" || "$selected_safe_exit_answer" == "Y" ]] \
     || fail "SELECTED_SAFE_EXIT_NOT_CONFIRMED"
