@@ -252,6 +252,11 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
+        '"interactive_human_bytes_forwarded":False' in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_BYTES_BLOCKED",
+    )
+    require(
+        errors,
         '"interactive_submit_bytes_blocked_by_supervisor":True' in text,
         "CLAUDE_RELEASE_SMOKE_SUBMIT_BLOCKED",
     )
@@ -375,6 +380,7 @@ def check(root: Path) -> list[str]:
     for marker in (
         '"clean_tui_supervised": True',
         '"selected_tui_supervised": True',
+        '"interactive_human_bytes_forwarded": False',
         '"interactive_submit_bytes_blocked_by_supervisor": True',
         '"interactive_harness_owned_teardown": True',
     ):
@@ -623,6 +629,7 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_te
 "clean_tui_confirmed":clean_tui=="true"
 "clean_tui_supervised":clean_tui_supervised=="true"
 "selected_tui_supervised":selected_tui_supervised=="true"
+"interactive_human_bytes_forwarded":False
 "interactive_submit_bytes_blocked_by_supervisor":True
 "interactive_harness_owned_teardown":True
 "selected_tui_confirmed":interactive=="true"
