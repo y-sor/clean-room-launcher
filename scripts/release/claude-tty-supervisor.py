@@ -19,20 +19,41 @@ TERM_GRACE_SECONDS = 2.0
 INPUT_SEQUENCE_TIMEOUT_SECONDS = 0.5
 COMPOSER_READY_TIMEOUT_SECONDS = 20.0
 OBSERVATION_WINDOW_SECONDS = 8.0
+QUERY_TIMEOUT_SECONDS = 0.35
 READY_MARKER = b"manual mode on"
 OUTPUT_TAIL_LIMIT = 131072
 
+PHYSICAL_MODE_IDS = (
+    1,
+    47,
+    66,
+    1000,
+    1002,
+    1003,
+    1004,
+    1006,
+    1007,
+    1047,
+    1049,
+    2004,
+    2026,
+)
+CRITICAL_PHYSICAL_MODES = (1004, 2004)
+
+FOCUS_EVENT_RE = re.compile(rb"\x1b\[[IO]")
 CSI_RESPONSE_PATTERNS = (
+    FOCUS_EVENT_RE,
     re.compile(rb"\x1b\[\?[0-9]+(?:;[0-9]+)*c"),
     re.compile(rb"\x1b\[>[0-9]+(?:;[0-9]+)*c"),
     re.compile(rb"\x1b\[\?[0-9]+u"),
     re.compile(rb"\x1b\[\?[0-9]+;[0-9]+R"),
     re.compile(rb"\x1b\[\?[0-9]+;[0-9]+\$y"),
 )
+KITTY_FLAGS_RE = re.compile(rb"\x1b\[\?([0-9]+)u")
 
 
 def terminal_response_length(data: bytes) -> int:
-    """Return >0 for one complete terminal response, 0 for a valid prefix, -1 otherwise."""
+    """Return >0 for one complete terminal machine input, 0 for a valid prefix, -1 otherwise."""
     if not data or data[0] != 0x1B:
         return -1
     if len(data) == 1:
@@ -81,7 +102,7 @@ def terminal_response_length(data: bytes) -> int:
 
 
 def classify_terminal_input(data: bytes) -> tuple[bool, bool, int, bytes]:
-    """Classify real-terminal stdin as machine responses only; human input is never accepted."""
+    """Allow only terminal-generated machine traffic; human key bytes fail closed."""
     forwarded = bytearray()
     count = 0
     offset = 0
@@ -95,6 +116,148 @@ def classify_terminal_input(data: bytes) -> tuple[bool, bool, int, bytes]:
         count += 1
         offset += length
     return False, False, count, bytes(forwarded)
+
+
+def visible_text(data: bytes) -> bytes:
+    """Best-effort printable TUI stream with ANSI/OSC/DCS controls removed."""
+    out = bytearray()
+    index = 0
+    while index < len(data):
+        value = data[index]
+        if value == 0x1B:
+            if index + 1 >= len(data):
+                break
+            kind = data[index + 1]
+            if kind == ord("["):
+                index += 2
+                while index < len(data):
+                    final = data[index]
+                    index += 1
+                    if 0x40 <= final <= 0x7E:
+                        break
+                continue
+            if kind == ord("]"):
+                index += 2
+                while index < len(data):
+                    if data[index] == 0x07:
+                        index += 1
+                        break
+                    if data[index:index + 2] == b"\x1b\\":
+                        index += 2
+                        break
+                    index += 1
+                continue
+            if kind == ord("P"):
+                index += 2
+                while index < len(data):
+                    if data[index:index + 2] == b"\x1b\\":
+                        index += 2
+                        break
+                    index += 1
+                continue
+            index += 2
+            continue
+        if value in (9, 10, 13):
+            out.append(0x20)
+        elif 0x20 <= value <= 0x7E:
+            out.append(value)
+        index += 1
+    return re.sub(rb"\s+", b" ", bytes(out))
+
+
+def mode_response_re(mode: int) -> re.Pattern[bytes]:
+    return re.compile(rb"\x1b\[\?" + str(mode).encode("ascii") + rb";([0-4])\$y")
+
+
+def read_query_response(
+    stdin_fd: int,
+    expected: re.Pattern[bytes],
+    timeout: float = QUERY_TIMEOUT_SECONDS,
+) -> bytes:
+    payload = bytearray()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        remaining = deadline - time.monotonic()
+        readable, _, _ = select.select([stdin_fd], [], [], max(0.0, remaining))
+        if stdin_fd not in readable:
+            break
+        chunk = os.read(stdin_fd, 4096)
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if expected.search(payload):
+            while True:
+                readable, _, _ = select.select([stdin_fd], [], [], 0)
+                if stdin_fd not in readable:
+                    break
+                extra = os.read(stdin_fd, 4096)
+                if not extra:
+                    break
+                payload.extend(extra)
+            break
+
+    raw = bytes(payload)
+    if raw:
+        unexpected, incomplete, _count, _forwarded = classify_terminal_input(raw)
+        if unexpected or incomplete:
+            raise RuntimeError("physical terminal query mixed with operator input")
+    return raw
+
+
+def query_physical_terminal_state(stdin_fd: int, stdout_fd: int) -> dict[str, object]:
+    modes: dict[int, int | None] = {}
+    for mode in PHYSICAL_MODE_IDS:
+        expected = mode_response_re(mode)
+        os.write(stdout_fd, f"\x1b[?{mode}$p".encode("ascii"))
+        raw = read_query_response(stdin_fd, expected)
+        match = expected.search(raw)
+        modes[mode] = int(match.group(1)) if match else None
+
+    os.write(stdout_fd, b"\x1b[?u")
+    raw = read_query_response(stdin_fd, KITTY_FLAGS_RE)
+    match = KITTY_FLAGS_RE.search(raw)
+    kitty_flags = int(match.group(1)) if match else None
+
+    for critical in CRITICAL_PHYSICAL_MODES:
+        if modes.get(critical) is None:
+            raise RuntimeError(f"physical terminal mode {critical} is not queryable")
+    if kitty_flags is None:
+        raise RuntimeError("physical terminal kitty keyboard flags are not queryable")
+
+    return {"modes": modes, "kitty_flags": kitty_flags}
+
+
+def restore_physical_terminal_state(stdout_fd: int, baseline: dict[str, object]) -> None:
+    modes = baseline["modes"]
+    if not isinstance(modes, dict):
+        raise RuntimeError("invalid physical terminal baseline")
+    for mode, state in modes.items():
+        if state == 1:
+            os.write(stdout_fd, f"\x1b[?{mode}h".encode("ascii"))
+        elif state == 2:
+            os.write(stdout_fd, f"\x1b[?{mode}l".encode("ascii"))
+
+    kitty_flags = baseline["kitty_flags"]
+    if not isinstance(kitty_flags, int):
+        raise RuntimeError("invalid kitty keyboard baseline")
+    os.write(stdout_fd, f"\x1b[={kitty_flags};1u".encode("ascii"))
+
+
+def terminal_state_matches(
+    baseline: dict[str, object],
+    observed: dict[str, object],
+) -> bool:
+    baseline_modes = baseline["modes"]
+    observed_modes = observed["modes"]
+    if not isinstance(baseline_modes, dict) or not isinstance(observed_modes, dict):
+        return False
+    for mode, expected in baseline_modes.items():
+        if expected is None:
+            continue
+        if observed_modes.get(mode) != expected:
+            return False
+    return observed.get("kitty_flags") == baseline.get("kitty_flags")
+
 
 def validate_probe_text(value: str) -> bytes:
     raw = value.encode("utf-8")
@@ -235,11 +398,14 @@ def supervise(argv: list[str], probe_text: str) -> int:
     saved = termios.tcgetattr(stdin_fd)
     pid = -1
     master_fd = -1
+    child_session: int | None = None
+    baseline_state: dict[str, object] | None = None
     probe_injected = False
     composer_ready_seen = False
     observation_window_completed = False
     terminal_responses_forwarded = 0
     terminal_response_bytes_forwarded = 0
+    physical_terminal_state_restored = False
     pending_input = b""
     pending_since: float | None = None
     blocked_reason: str | None = None
@@ -248,12 +414,15 @@ def supervise(argv: list[str], probe_text: str) -> int:
     observation_deadline: float | None = None
 
     try:
+        tty.setraw(stdin_fd)
+        baseline_state = query_physical_terminal_state(stdin_fd, stdout_fd)
+        termios.tcflush(stdin_fd, termios.TCIFLUSH)
+
         pid, master_fd = spawn_child(argv)
         child_session = os.getsid(pid)
         if child_session == os.getsid(0):
             raise RuntimeError("child PTY session is not task-owned")
 
-        tty.setraw(stdin_fd)
         os.write(
             stdout_fd,
             b"\r\n[CLROOM release probe: automatic non-submitting probe; bounded observation window; do not type]\r\n",
@@ -299,7 +468,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 output_tail.extend(data)
                 if len(output_tail) > OUTPUT_TAIL_LIMIT:
                     del output_tail[:-OUTPUT_TAIL_LIMIT]
-                if not probe_injected and READY_MARKER in output_tail:
+                if not probe_injected and READY_MARKER in visible_text(bytes(output_tail)):
                     composer_ready_seen = True
                     os.write(master_fd, probe_bytes)
                     probe_injected = True
@@ -326,6 +495,10 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     terminal_responses_forwarded += response_count
                     terminal_response_bytes_forwarded += len(response_bytes)
 
+    except RuntimeError as exc:
+        if blocked_reason is None:
+            blocked_reason = "PHYSICAL_TERMINAL_STATE:" + str(exc).replace(" ", "_")
+    finally:
         if master_fd >= 0:
             try:
                 os.close(master_fd)
@@ -333,19 +506,31 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 pass
             master_fd = -1
 
-        if pid > 0:
+        if pid > 0 and child_session is not None:
             try:
                 terminate_task_owned_session(pid, child_session)
             except ProcessLookupError:
                 pass
+            except RuntimeError:
+                if blocked_reason is None:
+                    blocked_reason = "TASK_SESSION_TEARDOWN"
 
-    finally:
-        termios.tcsetattr(stdin_fd, termios.TCSADRAIN, saved)
-        if master_fd >= 0:
+        if baseline_state is not None:
             try:
-                os.close(master_fd)
-            except OSError:
-                pass
+                termios.tcflush(stdin_fd, termios.TCIFLUSH)
+                restore_physical_terminal_state(stdout_fd, baseline_state)
+                termios.tcdrain(stdout_fd)
+                termios.tcflush(stdin_fd, termios.TCIFLUSH)
+                observed_state = query_physical_terminal_state(stdin_fd, stdout_fd)
+                if not terminal_state_matches(baseline_state, observed_state):
+                    raise RuntimeError("post-teardown physical terminal state differs from baseline")
+                physical_terminal_state_restored = True
+                termios.tcflush(stdin_fd, termios.TCIFLUSH)
+            except (OSError, RuntimeError):
+                if blocked_reason is None:
+                    blocked_reason = "PHYSICAL_TERMINAL_STATE_RESTORE"
+
+        termios.tcsetattr(stdin_fd, termios.TCSADRAIN, saved)
 
     sys.stdout.write("\n")
     sys.stdout.flush()
@@ -355,6 +540,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
     print(f"OBSERVATION_WINDOW_COMPLETED={'YES' if observation_window_completed else 'NO'}")
     print(f"TERMINAL_RESPONSES_FORWARDED={terminal_responses_forwarded}")
     print(f"TERMINAL_RESPONSE_BYTES_FORWARDED={terminal_response_bytes_forwarded}")
+    print(f"PHYSICAL_TERMINAL_STATE_RESTORED={'YES' if physical_terminal_state_restored else 'NO'}")
     print("HUMAN_BYTES_FORWARDED=0")
     print("HUMAN_CONTROL_ACTIONS_REQUIRED=0")
     print("SUBMIT_BYTES_FORWARDED=0")
@@ -372,6 +558,9 @@ def supervise(argv: list[str], probe_text: str) -> int:
     if not observation_window_completed:
         print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROVIDER_EXITED_BEFORE_OBSERVATION_COMPLETE", file=sys.stderr)
         return 6
+    if not physical_terminal_state_restored:
+        print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PHYSICAL_TERMINAL_STATE_NOT_RESTORED", file=sys.stderr)
+        return 7
 
     print("CLAUDE_TTY_SUPERVISOR=PASS")
     print("TASK_PROCESS_SESSION_CLOSED=YES")
@@ -395,6 +584,8 @@ def self_test() -> int:
     da2 = b"\x1b[>0;95;0c"
     cursor = b"\x1b[?24;80R"
     decrpm = b"\x1b[?2026;1$y"
+    focus_in = b"\x1b[I"
+    focus_out = b"\x1b[O"
     osc10 = b"\x1b]10;rgb:ffff/ffff/ffff\x07"
     osc11 = b"\x1b]11;rgb:0000/0000/0000\x1b\\"
     xtversion = b"\x1bP>|iTerm2 3.6.5\x1b\\"
@@ -405,6 +596,8 @@ def self_test() -> int:
         ("DA2", da2),
         ("CURSOR", cursor),
         ("DECRPM", decrpm),
+        ("FOCUS_IN", focus_in),
+        ("FOCUS_OUT", focus_out),
         ("OSC10", osc10),
         ("OSC11", osc11),
         ("XTVERSION", xtversion),
@@ -412,9 +605,10 @@ def self_test() -> int:
         expect_terminal(raw, (False, False, 1, raw), label)
 
     expect_terminal(da1[:10], (False, True, 0, b""), "DA1_FRAGMENT")
+    expect_terminal(b"\x1b[", (False, True, 0, b""), "FOCUS_FRAGMENT")
     expect_terminal(osc11[:-1], (False, True, 0, b""), "OSC_FRAGMENT")
     expect_terminal(xtversion[:-1], (False, True, 0, b""), "DCS_FRAGMENT")
-    expect_terminal(kitty + da1, (False, False, 2, kitty + da1), "MULTI_RESPONSE")
+    expect_terminal(kitty + focus_out + da1, (False, False, 3, kitty + focus_out + da1), "MULTI_MACHINE_INPUT")
 
     for label, raw in (
         ("PRINTABLE", b"x"),
@@ -429,8 +623,31 @@ def self_test() -> int:
                 f"CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:HUMAN_INPUT_ACCEPTED:{label}"
             )
 
-    if READY_MARKER not in b"status line: manual mode on":
-        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:READY_MARKER")
+    styled_ready = (
+        b"\x1b[2mstatus\x1b[0m: "
+        b"\x1b[33mmanual\x1b[0m mode "
+        b"\x1b[1mon\x1b[0m"
+    )
+    if READY_MARKER not in visible_text(styled_ready):
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:ANSI_READY_MARKER")
+
+    baseline = {
+        "modes": {1: 2, 1004: 2, 2004: 2, 2026: 1},
+        "kitty_flags": 0,
+    }
+    same = {
+        "modes": {1: 2, 1004: 2, 2004: 2, 2026: 1},
+        "kitty_flags": 0,
+    }
+    changed = {
+        "modes": {1: 2, 1004: 1, 2004: 2, 2026: 1},
+        "kitty_flags": 0,
+    }
+    if not terminal_state_matches(baseline, same):
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_STATE_EQUALITY")
+    if terminal_state_matches(baseline, changed):
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_STATE_DRIFT")
+
     if validate_probe_text("/frontend-design") != b"/frontend-design":
         raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:PROBE_TEXT")
     for unsafe in ("", "x\r", "x\n"):

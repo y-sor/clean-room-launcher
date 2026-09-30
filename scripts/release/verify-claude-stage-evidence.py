@@ -36,6 +36,8 @@ def main() -> int:
         "interactive_human_bytes_forwarded": False,
         "interactive_submit_bytes_blocked_by_supervisor": True,
         "interactive_harness_owned_teardown": True,
+        "physical_terminal_preflight_passed": True,
+        "interactive_terminal_state_restored": True,
         "clean_target_plugin_absent_confirmed": True,
         "selected_tui_confirmed": True,
         "selected_target_plugin_visible_confirmed": True,

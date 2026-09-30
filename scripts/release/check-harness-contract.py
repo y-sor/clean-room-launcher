@@ -217,6 +217,11 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_AUTOMATIC_PROBE")
     require(errors, "def terminal_response_length(" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_PARSER")
     require(errors, "def classify_terminal_input(" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_INPUT_CLASSIFIER")
+    require(errors, "FOCUS_EVENT_RE" in text, "CLAUDE_TTY_SUPERVISOR_FOCUS_EVENT_RELAY")
+    require(errors, "def visible_text(" in text, "CLAUDE_TTY_SUPERVISOR_ANSI_NORMALIZED_READINESS")
+    require(errors, "def query_physical_terminal_state(" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_SNAPSHOT")
+    require(errors, "def restore_physical_terminal_state(" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_RESTORE")
+    require(errors, "def terminal_state_matches(" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_VERIFY")
     require(errors, "pending_input = b\"\"" in text, "CLAUDE_TTY_SUPERVISOR_STREAMING_BUFFER")
     require(errors, "INPUT_SEQUENCE_TIMEOUT_SECONDS" in text, "CLAUDE_TTY_SUPERVISOR_INCOMPLETE_SEQUENCE_TIMEOUT")
     require(errors, "os.write(master_fd, response_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_RELAY")
@@ -224,6 +229,7 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "TERMINAL_RESPONSE_BYTES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_BYTE_EVIDENCE")
     require(errors, "COMPOSER_READY_SEEN=" in text, "CLAUDE_TTY_SUPERVISOR_READY_EVIDENCE")
     require(errors, "OBSERVATION_WINDOW_COMPLETED=" in text, "CLAUDE_TTY_SUPERVISOR_OBSERVATION_EVIDENCE")
+    require(errors, "PHYSICAL_TERMINAL_STATE_RESTORED=" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_EVIDENCE")
     require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
     require(errors, "HUMAN_CONTROL_ACTIONS_REQUIRED=0" in text, "CLAUDE_TTY_SUPERVISOR_ZERO_HUMAN_ACTION_EVIDENCE")
     require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
@@ -294,6 +300,16 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
+        '"physical_terminal_preflight_passed":physical_terminal_preflight=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_PHYSICAL_TERMINAL_PREFLIGHT",
+    )
+    require(
+        errors,
+        '"interactive_terminal_state_restored":interactive_terminal_state_restored=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_TERMINAL_STATE_RESTORED",
+    )
+    require(
+        errors,
         '"selected_tui_confirmed":interactive=="true"' in text,
         "CLAUDE_RELEASE_SMOKE_SELECTED_TTY",
     )
@@ -313,6 +329,11 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
         "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISOR_LAUNCH",
     )
     require(errors, 'cd "$root"' in stripped_lines, "CLAUDE_RELEASE_SMOKE_EXACT_CHECKOUT_TUI")
+    require(
+        errors,
+        'python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"' in stripped_lines,
+        "CLAUDE_RELEASE_SMOKE_PHYSICAL_TERMINAL_PREFLIGHT_CALL",
+    )
     require(errors, 'cd "$tui_project"' not in stripped_lines, "CLAUDE_RELEASE_SMOKE_SYNTHETIC_TUI_FORBIDDEN")
     require(
         errors,
@@ -469,6 +490,8 @@ def check(root: Path) -> list[str]:
         '"interactive_human_bytes_forwarded": False',
         '"interactive_submit_bytes_blocked_by_supervisor": True',
         '"interactive_harness_owned_teardown": True',
+        '"physical_terminal_preflight_passed": True',
+        '"interactive_terminal_state_restored": True',
     ):
         require(errors, marker in claude_stage_verifier, "CLAUDE_STAGE_EVIDENCE_SUPERVISOR:" + marker)
 
@@ -712,6 +735,7 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_te
 cd "$root"
 python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
 "The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
+python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"
 "No inference/model response appeared in either TUI"
 "schema_version":"clroom.plugin-release-smoke.v5"
 "automated_probe_prompt_supplied":False
@@ -721,6 +745,8 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_te
 "interactive_human_bytes_forwarded":False
 "interactive_submit_bytes_blocked_by_supervisor":True
 "interactive_harness_owned_teardown":True
+"physical_terminal_preflight_passed":physical_terminal_preflight=="true"
+"interactive_terminal_state_restored":interactive_terminal_state_restored=="true"
 "selected_tui_confirmed":interactive=="true"
 "Do not type into Claude."
 "The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."

@@ -264,6 +264,8 @@ interactive=false
 clean_tui=false
 clean_tui_supervised=false
 selected_tui_supervised=false
+physical_terminal_preflight=false
+interactive_terminal_state_restored=false
 clean_target_plugin_absent=false
 selected_target_plugin_visible=false
 no_new_sibling_plugins=false
@@ -273,6 +275,17 @@ external_ancestor_agents_absent=$agents_boundary_probe
 project_agents_retained=$agents_boundary_probe
 if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
+
+  terminal_preflight_output=$(
+    python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"
+  ) || {
+    printf '%s\n' "$terminal_preflight_output"
+    fail "PHYSICAL_TERMINAL_PREFLIGHT"
+  }
+  printf '%s\n' "$terminal_preflight_output"
+  grep -Fqx "TERMINAL_STATE_DIAGNOSTIC=PASS" <<<"$terminal_preflight_output" \
+    || fail "PHYSICAL_TERMINAL_PREFLIGHT_MARKER"
+  physical_terminal_preflight=true
 
   echo
   echo "=== INTERACTIVE CLEAN TUI ==="
@@ -319,6 +332,7 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
     python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
   ) || fail "SELECTED_TUI_SUPERVISOR"
   selected_tui_supervised=true
+  interactive_terminal_state_restored=true
   [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
   printf 'Selected TUI opened normally and selected plugin skill was visible [y/N]: '
   read -r selected_answer
@@ -355,8 +369,8 @@ python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$review
   "$plugin_id" "$plugin_info_preflight" "$clean_tui" "$clean_tui_supervised" "$selected_tui_supervised" \
   "$clean_target_plugin_absent" "$interactive" "$selected_target_plugin_visible" "$no_new_sibling_plugins" \
   "$selected_plugin_errors_absent" "$no_model_prompt" "$external_ancestor_agents_absent" \
-  "$project_agents_retained" "$agents_boundary_probe" \
-  "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
+  "$project_agents_retained" "$agents_boundary_probe" "$physical_terminal_preflight" \
+  "$interactive_terminal_state_restored" "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, source_tree, reviewed_content_digest, artifact_sha,
@@ -364,7 +378,8 @@ import datetime, json, sys
     clean_target_plugin_absent, interactive, selected_target_plugin_visible,
     no_new_sibling_plugins, selected_plugin_errors_absent,
     no_model_prompt, external_ancestor_agents_absent, project_agents_retained,
-    agents_boundary_probe, claude_version_output, claude_version, claude_provider_sha,
+    agents_boundary_probe, physical_terminal_preflight, interactive_terminal_state_restored,
+    claude_version_output, claude_version, claude_provider_sha,
 ) = sys.argv[1:]
 record={
   "schema_version":"clroom.plugin-release-smoke.v5",
@@ -388,6 +403,8 @@ record={
   "interactive_human_bytes_forwarded":False,
   "interactive_submit_bytes_blocked_by_supervisor":True,
   "interactive_harness_owned_teardown":True,
+  "physical_terminal_preflight_passed":physical_terminal_preflight=="true",
+  "interactive_terminal_state_restored":interactive_terminal_state_restored=="true",
   "clean_target_plugin_absent_confirmed":clean_target_plugin_absent=="true",
   "selected_tui_confirmed":interactive=="true",
   "selected_target_plugin_visible_confirmed":selected_target_plugin_visible=="true",

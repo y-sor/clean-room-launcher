@@ -150,9 +150,9 @@
     },
     {
       "id": "claude-release-rehearsal-physical-terminal-state-ownership",
-      "decision": "FOLLOW_UP",
-      "failure_mode": "After removing human control chords, the real iTerm rehearsal still failed before probe injection with HUMAN_BYTES_FORWARDED=0 while shell-visible CSI O FocusOut events and a delayed DA1 payload appeared around teardown. A local Codex handoff could not inspect the physical session because its shell exposed a synthetic TERM=dumb PTY and macOS denied read-only iTerm inspection, so physical terminal-emulator state remained UNKNOWN.",
-      "durable_control": "No further Claude/provider retry is allowed until a checked-in provider-free diagnostic runs directly on the Owner's physical /dev/tty. The diagnostic is query-only: it records allowlisted terminal identity, termios state, DECRQM states for focus/mouse/alternate-screen/bracketed-paste/application modes, Kitty flags, DA1/DA2 responses, raw hex and read chunk boundaries, then proves termios restoration. Its parser has positive/negative self-tests and CI contract coverage. The resulting evidence determines whether the harness must snapshot/restore terminal-emulator modes or address a different physical-TTY invariant before another provider observation."
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A provider-free physical iTerm diagnostic proved the shell baseline was clean (focus reporting reset, bracketed paste reset, Kitty flags 0, no unexpected chunks, termios restored), yet the zero-key Claude rehearsal still failed before probe injection while CSI O FocusOut and delayed DA1 bytes appeared around teardown. This localized the failure to provider-induced terminal modes/events during the supervised run rather than stale pre-existing terminal state.",
+      "durable_control": "The release smoke now runs the checked-in physical terminal diagnostic before human TTY work. The supervisor snapshots queryable physical DEC/Kitty mode state before spawning the provider, treats CSI I/O focus events as terminal-generated machine traffic and relays them to the provider PTY, detects composer readiness from an ANSI-normalized visible stream, owns task-session teardown, restores the exact pre-run physical terminal mode/Kitty state, re-queries it, and fails closed unless it matches. Stage evidence records both physical-terminal preflight and terminal-state restoration. Negative self-tests cover focus events, styled readiness, human-input rejection and terminal-state drift."
     }
   ],
   "artifact_capability_gates": [
