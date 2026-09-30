@@ -252,6 +252,8 @@ after=$(fingerprint)
 
 interactive=false
 clean_tui=false
+clean_tui_supervised=false
+selected_tui_supervised=false
 clean_target_plugin_absent=false
 selected_target_plugin_visible=false
 no_new_sibling_plugins=false
@@ -282,15 +284,16 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Do not send a model prompt."
   echo "This TUI runs in a task-owned synthetic nested Git project."
   echo "Confirm the target plugin skill is absent from autocomplete."
-  echo "Do not press Enter while autocomplete/search text remains in the composer."
-  echo "Before keyboard shortcuts, switch to a Latin/English keyboard layout."
-  echo "Do not press Escape or attempt to clear the composer; the search fragment may remain visible."
-  echo "Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal."
+  echo "Type only the autocomplete search fragment; do not submit it."
+  echo "The release supervisor blocks Enter/CR/LF and provider-owned exit controls."
+  echo "When observation is complete, press Ctrl+] once; the supervisor owns teardown."
   echo
   (
     cd "$tui_project"
-    "$clroom" claude
-  ) || fail "CLEAN_TUI_EXIT"
+    python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude
+  ) || fail "CLEAN_TUI_SUPERVISOR"
+  clean_tui_supervised=true
+  [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
   printf 'Clean TUI opened normally [y/N]: '
   read -r clean_answer
   [[ "$clean_answer" == "y" || "$clean_answer" == "Y" ]] || fail "CLEAN_TUI_NOT_CONFIRMED"
@@ -298,10 +301,6 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   read -r clean_target_answer
   [[ "$clean_target_answer" == "y" || "$clean_target_answer" == "Y" ]] \
     || fail "CLEAN_TARGET_PLUGIN_PRESENT"
-  printf 'Clean TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission [y/N]: '
-  read -r clean_safe_exit_answer
-  [[ "$clean_safe_exit_answer" == "y" || "$clean_safe_exit_answer" == "Y" ]] \
-    || fail "CLEAN_SAFE_EXIT_NOT_CONFIRMED"
   clean_tui=true
   clean_target_plugin_absent=true
 
@@ -314,15 +313,16 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Confirm no plugin load errors are shown."
   echo "For agents-md, confirm repo/nested project AGENTS.md is reported as loaded."
   echo "Reject the smoke if the parent workspace AGENTS.md or .claude/AGENTS.md is reported as loaded."
-  echo "Do not press Enter while autocomplete/search text remains in the composer."
-  echo "Before keyboard shortcuts, switch to a Latin/English keyboard layout."
-  echo "Do not press Escape or attempt to clear the composer; the search fragment may remain visible."
-  echo "Press Ctrl+D twice within 800 ms to exit directly. Do not use /exit for this rehearsal."
+  echo "Type only the autocomplete search fragment; do not submit it."
+  echo "The release supervisor blocks Enter/CR/LF and provider-owned exit controls."
+  echo "When observation is complete, press Ctrl+] once; the supervisor owns teardown."
   echo
   (
     cd "$tui_project"
-    "$clroom" claude --with="plugin:$plugin_id"
-  ) || fail "SELECTED_TUI_EXIT"
+    python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"
+  ) || fail "SELECTED_TUI_SUPERVISOR"
+  selected_tui_supervised=true
+  [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
   printf 'Selected TUI opened normally and selected plugin skill was visible [y/N]: '
   read -r selected_answer
   [[ "$selected_answer" == "y" || "$selected_answer" == "Y" ]] || fail "SELECTED_TUI_NOT_CONFIRMED"
@@ -340,11 +340,7 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   read -r agents_answer
   [[ "$agents_answer" == "y" || "$agents_answer" == "Y" ]] \
     || fail "EXTERNAL_ANCESTOR_AGENTS_NOT_CONFIRMED"
-  printf 'Selected TUI exited directly with Ctrl+D twice within 800 ms, with no Enter/model submission [y/N]: '
-  read -r selected_safe_exit_answer
-  [[ "$selected_safe_exit_answer" == "y" || "$selected_safe_exit_answer" == "Y" ]] \
-    || fail "SELECTED_SAFE_EXIT_NOT_CONFIRMED"
-  printf 'No model prompt was sent in either TUI [y/N]: '
+  printf 'No inference/model response appeared in either TUI [y/N]: '
   read -r no_prompt_answer
   [[ "$no_prompt_answer" == "y" || "$no_prompt_answer" == "Y" ]] \
     || fail "NO_MODEL_PROMPT_NOT_CONFIRMED"
@@ -369,20 +365,22 @@ mkdir -p "$evidence_dir"
 if [[ "$phase" == "rehearse" ]]; then evidence_key=${reviewed_content_digest:0:12}; else evidence_key=${source_head:0:12}; fi
 evidence="$evidence_dir/${phase}-v${version}-${evidence_key}.json"
 python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$reviewed_content_digest" "$artifact_sha" \
-  "$plugin_id" "$plugin_info_preflight" "$clean_tui" "$clean_target_plugin_absent" "$interactive" \
-  "$selected_target_plugin_visible" "$no_new_sibling_plugins" "$selected_plugin_errors_absent" \
-  "$no_model_prompt" "$external_ancestor_agents_absent" "$project_agents_retained" "$agents_boundary_probe" \
+  "$plugin_id" "$plugin_info_preflight" "$clean_tui" "$clean_tui_supervised" "$selected_tui_supervised" \
+  "$clean_target_plugin_absent" "$interactive" "$selected_target_plugin_visible" "$no_new_sibling_plugins" \
+  "$selected_plugin_errors_absent" "$no_model_prompt" "$external_ancestor_agents_absent" \
+  "$project_agents_retained" "$agents_boundary_probe" \
   "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, source_tree, reviewed_content_digest, artifact_sha,
-    plugin_id, plugin_info_preflight, clean_tui, clean_target_plugin_absent, interactive,
-    selected_target_plugin_visible, no_new_sibling_plugins, selected_plugin_errors_absent,
+    plugin_id, plugin_info_preflight, clean_tui, clean_tui_supervised, selected_tui_supervised,
+    clean_target_plugin_absent, interactive, selected_target_plugin_visible,
+    no_new_sibling_plugins, selected_plugin_errors_absent,
     no_model_prompt, external_ancestor_agents_absent, project_agents_retained,
     agents_boundary_probe, claude_version_output, claude_version, claude_provider_sha,
 ) = sys.argv[1:]
 record={
-  "schema_version":"clroom.plugin-release-smoke.v4",
+  "schema_version":"clroom.plugin-release-smoke.v5",
   "result":"PASS",
   "phase":phase,
   "release_version":version,
@@ -398,6 +396,10 @@ record={
   "plugin_id":plugin_id,
   "plugin_info_preflight_passed":plugin_info_preflight=="true",
   "clean_tui_confirmed":clean_tui=="true",
+  "clean_tui_supervised":clean_tui_supervised=="true",
+  "selected_tui_supervised":selected_tui_supervised=="true",
+  "interactive_submit_bytes_blocked_by_supervisor":True,
+  "interactive_harness_owned_teardown":True,
   "clean_target_plugin_absent_confirmed":clean_target_plugin_absent=="true",
   "selected_tui_confirmed":interactive=="true",
   "selected_target_plugin_visible_confirmed":selected_target_plugin_visible=="true",
