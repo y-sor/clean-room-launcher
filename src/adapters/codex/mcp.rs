@@ -437,7 +437,7 @@ mod tests {
                 provider_id: "codex".to_owned(),
                 real_executable: PathBuf::from("/usr/bin/codex"),
                 artifact_digest: "0".repeat(64),
-                version: provider_inventory::CODEX_CLEAN_EXACT,
+                version: super::provider_inventory::CODEX_CLEAN_EXACT,
                 os: "macos".to_owned(),
                 arch: "aarch64".to_owned(),
                 interpreter: None,
