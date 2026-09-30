@@ -239,9 +239,12 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
     require(errors, "def task_owned_session_processes(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_INVENTORY")
     require(errors, "def terminate_task_owned_session(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_TEARDOWN")
+    supervise_index = text.find("def supervise(")
+    close_index = text.find("master_fd = -1", supervise_index)
+    teardown_index = text.find("terminate_task_owned_session(pid, child_session)", supervise_index)
     require(
         errors,
-        "os.close(master_fd)" in text and "master_fd = -1\n\n        if pid > 0:" in text,
+        supervise_index >= 0 and close_index > supervise_index and teardown_index > close_index,
         "CLAUDE_TTY_SUPERVISOR_PTY_CLOSE_BEFORE_TEARDOWN",
     )
     require(errors, '["/bin/ps", "-axo", "pid=,pgid="]' in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_ENUMERATION")
