@@ -10,7 +10,7 @@ This table is deliberately conservative.
 
 | Provider | Input / scope | Current CLROOM direction | Confidence |
 | --- | --- | --- | --- |
-| Claude Code | interactive top-level launch | Isolated; exact qualification target is 2.1.284 | Current-release qualification canary |
+| Claude Code | interactive top-level launch | Isolated; exact qualification target is 2.1.285 | Current-release qualification canary |
 | Claude Code | `-p` non-interactive launch | Launch path exercised; response-output semantics not claimed as qualified | Provider exited 0, but the expected textual canary was not observed |
 | Claude Code | ordinary user settings source | Omitted through `--setting-sources project,local`, with additional controls for known personal-global roots | Confirmed from current CLROOM source |
 | Claude Code | project settings source | Retained | Confirmed from current CLROOM source |
@@ -20,7 +20,7 @@ This table is deliberately conservative.
 | Claude Code | `~/.claude.json` | Not blanket-blocked | Known limitation |
 | Claude Code | managed / organization policy | Must remain authoritative | Product invariant; detailed combinations continue to require tests |
 | Claude Code | selected personal-global skill | Admitted through a private temporary projection | Confirmed from current CLROOM source |
-| Claude Code | v0.4.5 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one already-installed plugin whose observed effective surface is skill-only | Exact real-provider E2E on Claude Code 2.1.284 / macOS Apple Silicon |
+| Claude Code | v0.4.5 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one already-installed plugin whose observed effective surface is skill-only | Exact real-provider E2E on Claude Code 2.1.285 / macOS Apple Silicon |
 | Claude Code | v0.4.5 selected plugin root | Exact active install root is revalidated and reopened read-only; persistent provider configuration is not rewritten | Focused negative tests plus exact real-provider E2E |
 | Claude Code | v0.4.5 raw plugin activation overlap | `--plugin-dir` and `--plugin-url` are refused while CLROOM resource selection is active | CLI conflict tests |
 | Codex | global `AGENTS.md` / `AGENTS.override.md` | Known global instruction inputs blocked for the CLROOM launch | Confirmed from current CLROOM source |
