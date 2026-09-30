@@ -7,10 +7,16 @@ fail() {
 }
 
 mode=current-all
-if [[ ${1:-} == --frozen-codex ]]; then
-  mode=frozen-codex
-  shift
-fi
+case ${1:-} in
+  --frozen-codex)
+    mode=frozen-codex
+    shift
+    ;;
+  --frozen-all)
+    mode=frozen-all
+    shift
+    ;;
+esac
 [[ $# -eq 0 ]] || fail "USAGE"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
@@ -46,14 +52,14 @@ if [[ "$mode" == current-all ]]; then
 fi
 verify_integrity "@openai/codex@$CODEX_VERSION" "$CODEX_SHA512"
 verify_integrity "@openai/codex@$CODEX_VERSION-darwin-arm64" "$CODEX_PLATFORM_SHA512"
-if [[ "$mode" == current-all ]]; then
+if [[ "$mode" != frozen-codex ]]; then
   verify_integrity "@anthropic-ai/claude-code@$CLAUDE_VERSION" "$CLAUDE_SHA512"
   verify_integrity "@anthropic-ai/claude-code-darwin-arm64@$CLAUDE_VERSION" "$CLAUDE_PLATFORM_SHA512"
 fi
 
 [[ $mismatch -eq 0 ]] || fail "PIN_REGISTRY_MISMATCH"
 printf 'PROVIDER_PIN_CHECK_PASS mode=%s codex=%s' "$mode" "$CODEX_VERSION"
-if [[ "$mode" == current-all ]]; then
+if [[ "$mode" != frozen-codex ]]; then
   printf ' claude=%s' "$CLAUDE_VERSION"
 fi
 printf '\n'
