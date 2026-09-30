@@ -12,23 +12,32 @@ import termios
 import time
 import tty
 
-STOP_BYTE = 0x1D  # Ctrl+]
-SUBMIT_BYTES = {0x0A, 0x0D}  # LF / CR
-FORBIDDEN_PROVIDER_CONTROL_BYTES = {0x03, 0x04, 0x1B}  # Ctrl+C / Ctrl+D / Escape
+INJECT_BYTE = 0x14  # Ctrl+T
+STOP_BYTE = 0x07  # Ctrl+G
 TERM_GRACE_SECONDS = 2.0
 
 
-def filter_operator_input(data: bytes) -> tuple[bytes, str | None]:
-    forwarded = bytearray()
+def classify_operator_input(data: bytes) -> tuple[bool, bool, bool]:
+    inject = False
+    stop = False
+    unexpected = False
     for value in data:
-        if value == STOP_BYTE:
-            return bytes(forwarded), "stop"
-        if value in SUBMIT_BYTES:
-            return bytes(forwarded), "submit"
-        if value in FORBIDDEN_PROVIDER_CONTROL_BYTES:
-            return bytes(forwarded), "provider-control"
-        forwarded.append(value)
-    return bytes(forwarded), None
+        if value == INJECT_BYTE:
+            inject = True
+        elif value == STOP_BYTE:
+            stop = True
+        else:
+            unexpected = True
+    return inject, stop, unexpected
+
+
+def validate_probe_text(value: str) -> bytes:
+    raw = value.encode("utf-8")
+    if not raw:
+        raise ValueError("empty")
+    if any(value < 0x20 or value == 0x7F for value in raw):
+        raise ValueError("control-byte")
+    return raw
 
 
 def wait_for_child(pid: int, timeout: float) -> tuple[int, int] | None:
@@ -61,7 +70,7 @@ def spawn_child(argv: list[str]) -> tuple[int, int]:
     return pid, master_fd
 
 
-def supervise(argv: list[str]) -> int:
+def supervise(argv: list[str], probe_text: str) -> int:
     if not argv:
         print("CLAUDE_TTY_SUPERVISOR_BLOCKED:COMMAND_REQUIRED", file=sys.stderr)
         return 64
@@ -69,12 +78,19 @@ def supervise(argv: list[str]) -> int:
         print("CLAUDE_TTY_SUPERVISOR_BLOCKED:INTERACTIVE_TTY_REQUIRED", file=sys.stderr)
         return 2
 
+    try:
+        probe_bytes = validate_probe_text(probe_text)
+    except ValueError as exc:
+        print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:INVALID_PROBE_TEXT:{exc}", file=sys.stderr)
+        return 64
+
     stdin_fd = sys.stdin.fileno()
     stdout_fd = sys.stdout.fileno()
     saved = termios.tcgetattr(stdin_fd)
     pid = -1
     master_fd = -1
     stop_seen = False
+    probe_injected = False
     blocked_reason: str | None = None
 
     try:
@@ -84,6 +100,10 @@ def supervise(argv: list[str]) -> int:
             raise RuntimeError("child process group is not task-owned")
 
         tty.setraw(stdin_fd)
+        os.write(
+            stdout_fd,
+            b"\r\n[CLROOM release probe: Ctrl+T injects the fixed probe; Ctrl+G ends observation; all other human input is blocked]\r\n",
+        )
 
         while True:
             readable, _, _ = select.select([stdin_fd, master_fd], [], [])
@@ -105,17 +125,19 @@ def supervise(argv: list[str]) -> int:
                 if not data:
                     blocked_reason = "OPERATOR_TTY_EOF"
                     break
-                forwarded, event = filter_operator_input(data)
-                if forwarded:
-                    os.write(master_fd, forwarded)
-                if event == "stop":
+
+                inject, stop, unexpected = classify_operator_input(data)
+                if unexpected:
+                    blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
+                    break
+                if inject:
+                    if probe_injected:
+                        blocked_reason = "PROBE_ALREADY_INJECTED"
+                        break
+                    os.write(master_fd, probe_bytes)
+                    probe_injected = True
+                if stop:
                     stop_seen = True
-                    break
-                if event == "submit":
-                    blocked_reason = "SUBMIT_INPUT_ATTEMPTED"
-                    break
-                if event == "provider-control":
-                    blocked_reason = "PROVIDER_CONTROL_INPUT_ATTEMPTED"
                     break
 
         if pid > 0:
@@ -135,39 +157,48 @@ def supervise(argv: list[str]) -> int:
     sys.stdout.write("\n")
     sys.stdout.flush()
 
-    if blocked_reason is not None:
-        print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:{blocked_reason}", file=sys.stderr)
-        print("SUBMIT_BYTES_FORWARDED=0")
-        print("HARNESS_STOP_FORWARDED=0")
-        return 3
-
-    if not stop_seen:
-        print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROVIDER_EXITED_BEFORE_HARNESS_STOP", file=sys.stderr)
-        print("SUBMIT_BYTES_FORWARDED=0")
-        print("HARNESS_STOP_FORWARDED=0")
-        return 4
-
-    print("CLAUDE_TTY_SUPERVISOR=PASS")
+    print(f"PROBE_INJECTED={'YES' if probe_injected else 'NO'}")
+    print("HUMAN_BYTES_FORWARDED=0")
     print("SUBMIT_BYTES_FORWARDED=0")
     print("HARNESS_STOP_FORWARDED=0")
+
+    if blocked_reason is not None:
+        print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:{blocked_reason}", file=sys.stderr)
+        return 3
+    if not probe_injected:
+        print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROBE_NOT_INJECTED", file=sys.stderr)
+        return 4
+    if not stop_seen:
+        print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROVIDER_EXITED_BEFORE_HARNESS_STOP", file=sys.stderr)
+        return 5
+
+    print("CLAUDE_TTY_SUPERVISOR=PASS")
     print("TASK_PROCESS_GROUP_CLOSED=YES")
     return 0
 
 
 def self_test() -> int:
     cases = [
-        (b"/frontend-design", b"/frontend-design", None),
-        (b"abc\rrest", b"abc", "submit"),
-        (b"abc\nrest", b"abc", "submit"),
-        (b"abc\x1drest", b"abc", "stop"),
-        (b"abc\x03rest", b"abc", "provider-control"),
-        (b"abc\x04rest", b"abc", "provider-control"),
-        (b"abc\x1brest", b"abc", "provider-control"),
+        (bytes([INJECT_BYTE]), (True, False, False)),
+        (bytes([STOP_BYTE]), (False, True, False)),
+        (b"x", (False, False, True)),
+        (b"\r", (False, False, True)),
+        (b"\n", (False, False, True)),
+        (b"\x1b", (False, False, True)),
     ]
-    for raw, expected_forwarded, expected_event in cases:
-        forwarded, event = filter_operator_input(raw)
-        if forwarded != expected_forwarded or event != expected_event:
+    for raw, expected in cases:
+        if classify_operator_input(raw) != expected:
             raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:FILTER")
+
+    if validate_probe_text("/frontend-design") != b"/frontend-design":
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:PROBE_TEXT")
+    for unsafe in ("", "x\r", "x\n"):
+        try:
+            validate_probe_text(unsafe)
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:PROBE_CONTROL")
 
     pid, master_fd = spawn_child(["/bin/sh", "-c", "sleep 30 & wait"])
     try:
@@ -186,6 +217,7 @@ def self_test() -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--probe-text")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser.parse_args()
 
@@ -194,10 +226,13 @@ def main() -> int:
     args = parse_args()
     if args.self_test:
         return self_test()
+    if args.probe_text is None:
+        print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROBE_TEXT_REQUIRED", file=sys.stderr)
+        return 64
     command = list(args.command)
     if command and command[0] == "--":
         command = command[1:]
-    return supervise(command)
+    return supervise(command, args.probe_text)
 
 
 if __name__ == "__main__":
