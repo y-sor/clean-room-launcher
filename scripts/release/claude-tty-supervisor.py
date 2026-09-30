@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import fcntl
 import os
 import pty
 import select
@@ -113,10 +114,42 @@ def terminate_task_owned_session(pid: int, session_id: int) -> None:
 
 
 def spawn_child(argv: list[str]) -> tuple[int, int]:
-    pid, master_fd = pty.fork()
+    master_fd, slave_fd = pty.openpty()
+    ready_read, ready_write = os.pipe()
+    pid = os.fork()
     if pid == 0:
-        os.execvpe(argv[0], argv, os.environ.copy())
-        raise AssertionError("unreachable")
+        try:
+            os.close(master_fd)
+            os.close(ready_read)
+            os.setsid()
+            fcntl.ioctl(slave_fd, termios.TIOCSCTTY, 0)
+            for target_fd in (0, 1, 2):
+                if slave_fd != target_fd:
+                    os.dup2(slave_fd, target_fd)
+            if slave_fd > 2:
+                os.close(slave_fd)
+            os.write(ready_write, b"1")
+            os.close(ready_write)
+            os.execvpe(argv[0], argv, os.environ.copy())
+        except BaseException:
+            try:
+                os.write(ready_write, b"0")
+            except OSError:
+                pass
+            os._exit(127)
+
+    os.close(slave_fd)
+    os.close(ready_write)
+    try:
+        ready = os.read(ready_read, 1)
+    finally:
+        os.close(ready_read)
+    if ready != b"1":
+        try:
+            os.waitpid(pid, 0)
+        finally:
+            os.close(master_fd)
+        raise RuntimeError("child PTY session setup failed")
     return pid, master_fd
 
 
