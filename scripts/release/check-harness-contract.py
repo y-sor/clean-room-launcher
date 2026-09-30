@@ -203,21 +203,14 @@ def claude_prompt_mode_present(text: str) -> bool:
 
 def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     errors: list[str] = []
-    require(errors, "STOP_BYTE = 0x1D" in text, "CLAUDE_TTY_SUPERVISOR_STOP_CHORD")
-    require(errors, "SUBMIT_BYTES = {0x0A, 0x0D}" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_BYTES")
-    require(
-        errors,
-        "FORBIDDEN_PROVIDER_CONTROL_BYTES = {0x03, 0x04, 0x1B}" in text,
-        "CLAUDE_TTY_SUPERVISOR_PROVIDER_CONTROLS",
-    )
-    require(errors, "if value == STOP_BYTE:" in text, "CLAUDE_TTY_SUPERVISOR_STOP_INTERCEPT")
-    require(errors, "if value in SUBMIT_BYTES:" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_INTERCEPT")
-    require(
-        errors,
-        "if value in FORBIDDEN_PROVIDER_CONTROL_BYTES:" in text,
-        "CLAUDE_TTY_SUPERVISOR_PROVIDER_CONTROL_INTERCEPT",
-    )
+    require(errors, "INJECT_BYTE = 0x14" in text, "CLAUDE_TTY_SUPERVISOR_INJECT_CHORD")
+    require(errors, "STOP_BYTE = 0x07" in text, "CLAUDE_TTY_SUPERVISOR_STOP_CHORD")
+    require(errors, "def validate_probe_text(" in text, "CLAUDE_TTY_SUPERVISOR_FIXED_PROBE_VALIDATION")
+    require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_HARNESS_PROBE_INJECTION")
+    require(errors, "os.write(master_fd, forwarded)" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_FORWARDING_FORBIDDEN")
     require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
+    require(errors, "PROBE_INJECTED=" in text, "CLAUDE_TTY_SUPERVISOR_PROBE_EVIDENCE")
+    require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
     require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
     require(errors, "HARNESS_STOP_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_STOP_EVIDENCE")
     require(errors, "TASK_PROCESS_GROUP_CLOSED=YES" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
@@ -279,22 +272,24 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
-        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude' in stripped_lines,
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude' in stripped_lines,
         "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH",
     )
     require(
         errors,
-        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"' in stripped_lines,
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"' in stripped_lines,
         "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISOR_LAUNCH",
     )
     require(
         errors,
-        "The release supervisor blocks Enter/CR/LF and provider-owned exit controls." in text,
+        "Do not type into Claude." in text
+        and "All other human input is blocked and invalidates the observation." in text,
         "CLAUDE_RELEASE_SMOKE_SUPERVISOR_INPUT_GUARD",
     )
     require(
         errors,
-        "When observation is complete, press Ctrl+] once; the supervisor owns teardown." in text,
+        "Press Ctrl+T once; the release supervisor injects the exact non-submitting probe." in text
+        and "When observation is complete, press Ctrl+G once; the supervisor owns teardown." in text,
         "CLAUDE_RELEASE_SMOKE_HARNESS_STOP",
     )
     require(
@@ -620,8 +615,8 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_SELF_TEST")
     claude_smoke_fixture = """
-python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude
-python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --with="plugin:$plugin_id"
+python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
+python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
 "No inference/model response appeared in either TUI"
 "schema_version":"clroom.plugin-release-smoke.v5"
 "automated_probe_prompt_supplied":False
@@ -631,8 +626,10 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --w
 "interactive_submit_bytes_blocked_by_supervisor":True
 "interactive_harness_owned_teardown":True
 "selected_tui_confirmed":interactive=="true"
-"The release supervisor blocks Enter/CR/LF and provider-owned exit controls."
-"When observation is complete, press Ctrl+] once; the supervisor owns teardown."
+"Do not type into Claude."
+"Press Ctrl+T once; the release supervisor injects the exact non-submitting probe."
+"When observation is complete, press Ctrl+G once; the supervisor owns teardown."
+"All other human input is blocked and invalidates the observation."
 "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
 "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
 """
@@ -661,7 +658,7 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude --w
         ):
             raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROVIDER_EXIT_NOT_REJECTED")
     missing_supervisor = claude_smoke_fixture.replace(
-        'python3 "$root/scripts/release/claude-tty-supervisor.py" -- "$clroom" claude\n',
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude\n',
         "",
     )
     if "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH" not in validate_claude_release_smoke_contract(missing_supervisor):
