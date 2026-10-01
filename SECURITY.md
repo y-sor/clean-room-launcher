@@ -15,7 +15,7 @@
 
 The v0.4.5 qualification is limited to macOS on Apple Silicon. Minimum accepted
 provider ranges remain Codex CLI `0.147.0+` and Claude Code CLI `2.1.223+`.
-Exact release qualification targets are Codex `0.159.2` and Claude Code
+Exact release qualification targets are Codex `0.159.3` and Claude Code
 `2.1.286`, including the bounded provider-specific whole-plugin paths described
 in the public provider documentation. The distributed archive is unsigned and
 unnotarized at the Apple platform-signing layer.

@@ -45,7 +45,7 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
-        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.159.2 and Claude Code 2.1.286, with registry integrity and native-byte identity still required before acceptance.",
+        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.159.3 and Claude Code 2.1.286, with registry integrity and native-byte identity still required before acceptance.",
         "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state."
       ]
     },
@@ -159,12 +159,12 @@
     {
       "id": "codex-whole-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.5 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.159.2, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
+      "requirement": "Requalify exact v0.4.5 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.159.3, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
     },
     {
       "id": "codex-standalone-mcp-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Exercise exact v0.4.5 PR-candidate bytes with pinned Codex 0.159.2; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
+      "requirement": "Exercise exact v0.4.5 PR-candidate bytes with pinned Codex 0.159.3; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
     },
     {
       "id": "codex-provider-capabilities",

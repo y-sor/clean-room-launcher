@@ -24,11 +24,11 @@ This table is deliberately conservative.
 | Claude Code | v0.4.5 selected plugin root | Exact active install root is revalidated and reopened read-only; persistent provider configuration is not rewritten | Focused negative tests plus exact real-provider E2E |
 | Claude Code | v0.4.5 raw plugin activation overlap | `--plugin-dir` and `--plugin-url` are refused while CLROOM resource selection is active | CLI conflict tests |
 | Codex | global `AGENTS.md` / `AGENTS.override.md` | Known global instruction inputs blocked for the CLROOM launch | Confirmed from current CLROOM source |
-| Codex | interactive top-level launch | Existing isolation path retained; exact qualification target is 0.159.2 | Current-release qualification canary |
-| Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config`; exact qualification target is 0.159.2 | Current-release qualification canary |
-| Codex | v0.4.5 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one installed standalone-capable bundle into a private shadow PluginStore | Exact real-provider E2E on Codex CLI 0.159.2 / macOS Apple Silicon |
+| Codex | interactive top-level launch | Existing isolation path retained; exact qualification target is 0.159.3 | Current-release qualification canary |
+| Codex | `exec` non-interactive launch | Existing isolation plus exec-only `--ignore-user-config`; exact qualification target is 0.159.3 | Current-release qualification canary |
+| Codex | v0.4.5 whole-plugin selector | `--with=plugin:<provider-native-id>` admits exactly one installed standalone-capable bundle into a private shadow PluginStore | Exact real-provider E2E on Codex CLI 0.159.3 / macOS Apple Silicon |
 | Codex | v0.4.5 host-required plugin surface | App-owned `codex_app` MCP is classified `PLUGIN_HOST_REQUIRED` instead of being treated as standalone-capable | Negative qualification plus real standalone MCP fixture evidence |
-| Codex | v0.4.5 standalone MCP selector | One exact root-user `mcp:<id>`, stdio only, interactive launch only | Exact real-provider E2E on Codex CLI 0.159.2 / macOS Apple Silicon |
+| Codex | v0.4.5 standalone MCP selector | One exact root-user `mcp:<id>`, stdio only, interactive launch only | Exact real-provider E2E on Codex CLI 0.159.3 / macOS Apple Silicon |
 | Codex | standalone MCP environment | Literal values refused; each plain `env_vars` name also requires explicit `--pass-env=NAME` | Focused negatives plus exact-provider rehearsal |
 | Codex | ambient MCP siblings | Preflight requires selected `SessionFlags` MCP and refuses enabled non-session MCP layers before provider birth | Fail-closed source tests plus exact-provider negative rehearsal required before acceptance |
 | Claude Code | standalone MCP selector | Not qualified; fails closed | Outside v0.4.5 scope; no release qualification evidence |
