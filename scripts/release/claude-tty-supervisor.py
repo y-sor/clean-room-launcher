@@ -141,6 +141,37 @@ def count_standard_cpr_queries(previous_tail: bytes, data: bytes) -> tuple[int, 
     return count, tail
 
 
+def filter_runtime_terminal_input(
+    data: bytes,
+    standard_cpr_budget: int = 0,
+) -> tuple[bytes, int, bytes, int, int]:
+    """Relay recognized terminal protocol; discard all other runtime input."""
+    forwarded = bytearray()
+    response_count = 0
+    standard_cpr_used = 0
+    dropped_bytes = 0
+    offset = 0
+    while offset < len(data):
+        allow_standard_cpr = standard_cpr_used < standard_cpr_budget
+        length = terminal_response_length(
+            data[offset:],
+            allow_standard_cpr=allow_standard_cpr,
+        )
+        if length == 0:
+            return data[offset:], response_count, bytes(forwarded), standard_cpr_used, dropped_bytes
+        if length < 0:
+            dropped_bytes += 1
+            offset += 1
+            continue
+        sequence = data[offset : offset + length]
+        if STANDARD_CPR_RE.fullmatch(sequence):
+            standard_cpr_used += 1
+        forwarded.extend(sequence)
+        response_count += 1
+        offset += length
+    return b"", response_count, bytes(forwarded), standard_cpr_used, dropped_bytes
+
+
 def visible_text(data: bytes) -> bytes:
     """Best-effort printable TUI stream with ANSI/OSC/DCS controls removed."""
     out = bytearray()
@@ -431,6 +462,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
     standard_cpr_queries_seen = 0
     standard_cpr_responses_forwarded = 0
     standard_cpr_query_tail = b""
+    physical_input_bytes_dropped = 0
     physical_terminal_state_restored = False
     pending_input = b""
     pending_since: float | None = None
@@ -470,8 +502,10 @@ def supervise(argv: list[str], probe_text: str) -> int:
 
             if not readable:
                 if pending_input and pending_since is not None and now >= pending_since + INPUT_SEQUENCE_TIMEOUT_SECONDS:
-                    blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
-                    break
+                    physical_input_bytes_dropped += len(pending_input)
+                    pending_input = b""
+                    pending_since = None
+                    continue
                 if not probe_injected and now >= ready_deadline:
                     blocked_reason = "COMPOSER_READY_TIMEOUT"
                     break
@@ -518,27 +552,24 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     standard_cpr_queries_seen - standard_cpr_responses_forwarded,
                 )
                 (
-                    unexpected,
-                    incomplete,
+                    pending_input,
                     response_count,
                     response_bytes,
                     standard_cpr_used,
-                ) = classify_terminal_input(
+                    dropped_bytes,
+                ) = filter_runtime_terminal_input(
                     pending_input,
                     standard_cpr_budget=standard_cpr_budget,
                 )
-                if unexpected:
-                    blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
-                    break
-                if incomplete:
-                    continue
-                pending_input = b""
-                pending_since = None
+                physical_input_bytes_dropped += dropped_bytes
                 if response_bytes:
                     os.write(master_fd, response_bytes)
                     terminal_responses_forwarded += response_count
                     terminal_response_bytes_forwarded += len(response_bytes)
                     standard_cpr_responses_forwarded += standard_cpr_used
+                if pending_input:
+                    continue
+                pending_since = None
 
     except RuntimeError as exc:
         if blocked_reason is None:
@@ -587,6 +618,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
     print(f"TERMINAL_RESPONSE_BYTES_FORWARDED={terminal_response_bytes_forwarded}")
     print(f"STANDARD_CPR_QUERIES_SEEN={standard_cpr_queries_seen}")
     print(f"STANDARD_CPR_RESPONSES_FORWARDED={standard_cpr_responses_forwarded}")
+    print(f"PHYSICAL_INPUT_BYTES_DROPPED={physical_input_bytes_dropped}")
     print(f"PHYSICAL_TERMINAL_STATE_RESTORED={'YES' if physical_terminal_state_restored else 'NO'}")
     print("HUMAN_BYTES_FORWARDED=0")
     print("HUMAN_CONTROL_ACTIONS_REQUIRED=0")
@@ -676,6 +708,49 @@ def self_test() -> int:
     query_count, query_tail = count_standard_cpr_queries(query_tail, b"6n")
     if query_count != 1:
         raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:STANDARD_CPR_QUERY_SPLIT")
+
+    runtime_unknown = filter_runtime_terminal_input(b"x")
+    if runtime_unknown != (b"", 0, b"", 0, 1):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:RUNTIME_UNKNOWN_NOT_DROPPED:"
+            f"observed={runtime_unknown}"
+        )
+    runtime_mixed = filter_runtime_terminal_input(da1 + b"x" + focus_out)
+    if runtime_mixed != (b"", 2, da1 + focus_out, 0, 1):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:RUNTIME_MIXED_FILTER:"
+            f"observed={runtime_mixed}"
+        )
+    runtime_cpr_unqueried = filter_runtime_terminal_input(standard_cursor)
+    if runtime_cpr_unqueried != (b"", 0, b"", 0, len(standard_cursor)):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:RUNTIME_CPR_UNQUERIED_NOT_DROPPED:"
+            f"observed={runtime_cpr_unqueried}"
+        )
+    runtime_cpr_correlated = filter_runtime_terminal_input(
+        standard_cursor,
+        standard_cpr_budget=1,
+    )
+    if runtime_cpr_correlated != (b"", 1, standard_cursor, 1, 0):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:RUNTIME_CPR_CORRELATION:"
+            f"observed={runtime_cpr_correlated}"
+        )
+    runtime_cpr_over_budget = filter_runtime_terminal_input(
+        standard_cursor + standard_cursor,
+        standard_cpr_budget=1,
+    )
+    if runtime_cpr_over_budget != (b"", 1, standard_cursor, 1, len(standard_cursor)):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:RUNTIME_CPR_OVER_BUDGET:"
+            f"observed={runtime_cpr_over_budget}"
+        )
+    runtime_fragment = filter_runtime_terminal_input(da1[:10])
+    if runtime_fragment != (da1[:10], 0, b"", 0, 0):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:RUNTIME_FRAGMENT_BUFFER:"
+            f"observed={runtime_fragment}"
+        )
 
     for label, raw in (
         ("PRINTABLE", b"x"),
