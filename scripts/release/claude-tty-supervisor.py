@@ -50,9 +50,11 @@ CSI_RESPONSE_PATTERNS = (
     re.compile(rb"\x1b\[\?[0-9]+;[0-9]+\$y"),
 )
 KITTY_FLAGS_RE = re.compile(rb"\x1b\[\?([0-9]+)u")
+STANDARD_CPR_RE = re.compile(rb"\x1b\[[0-9]+;[0-9]+R")
+STANDARD_CPR_QUERY = b"\x1b[6n"
 
 
-def terminal_response_length(data: bytes) -> int:
+def terminal_response_length(data: bytes, allow_standard_cpr: bool = False) -> int:
     """Return >0 for one complete terminal machine input, 0 for a valid prefix, -1 otherwise."""
     if not data or data[0] != 0x1B:
         return -1
@@ -67,6 +69,8 @@ def terminal_response_length(data: bytes) -> int:
             if 0x40 <= value <= 0x7E:
                 sequence = data[: index + 1]
                 if any(pattern.fullmatch(sequence) for pattern in CSI_RESPONSE_PATTERNS):
+                    return index + 1
+                if allow_standard_cpr and STANDARD_CPR_RE.fullmatch(sequence):
                     return index + 1
                 return -1
             if 0x20 <= value <= 0x3F:
@@ -101,21 +105,40 @@ def terminal_response_length(data: bytes) -> int:
     return -1
 
 
-def classify_terminal_input(data: bytes) -> tuple[bool, bool, int, bytes]:
-    """Allow only terminal-generated machine traffic; human key bytes fail closed."""
+def classify_terminal_input(
+    data: bytes,
+    standard_cpr_budget: int = 0,
+) -> tuple[bool, bool, int, bytes, int]:
+    """Allow only correlated terminal-generated machine traffic; human key bytes fail closed."""
     forwarded = bytearray()
     count = 0
+    standard_cpr_used = 0
     offset = 0
     while offset < len(data):
-        length = terminal_response_length(data[offset:])
+        allow_standard_cpr = standard_cpr_used < standard_cpr_budget
+        length = terminal_response_length(
+            data[offset:],
+            allow_standard_cpr=allow_standard_cpr,
+        )
         if length < 0:
-            return True, False, count, bytes(forwarded)
+            return True, False, count, bytes(forwarded), standard_cpr_used
         if length == 0:
-            return False, True, count, bytes(forwarded)
-        forwarded.extend(data[offset : offset + length])
+            return False, True, count, bytes(forwarded), standard_cpr_used
+        sequence = data[offset : offset + length]
+        if STANDARD_CPR_RE.fullmatch(sequence):
+            standard_cpr_used += 1
+        forwarded.extend(sequence)
         count += 1
         offset += length
-    return False, False, count, bytes(forwarded)
+    return False, False, count, bytes(forwarded), standard_cpr_used
+
+
+def count_standard_cpr_queries(previous_tail: bytes, data: bytes) -> tuple[int, bytes]:
+    combined = previous_tail + data
+    count = combined.count(STANDARD_CPR_QUERY)
+    keep = max(0, len(STANDARD_CPR_QUERY) - 1)
+    tail = combined[-keep:] if keep else b""
+    return count, tail
 
 
 def visible_text(data: bytes) -> bytes:
@@ -198,7 +221,7 @@ def read_query_response(
 
     raw = bytes(payload)
     if raw:
-        unexpected, incomplete, _count, _forwarded = classify_terminal_input(raw)
+        unexpected, incomplete, _count, _forwarded, _standard_cpr_used = classify_terminal_input(raw)
         if unexpected or incomplete:
             raise RuntimeError("physical terminal query mixed with operator input")
     return raw
@@ -405,6 +428,9 @@ def supervise(argv: list[str], probe_text: str) -> int:
     observation_window_completed = False
     terminal_responses_forwarded = 0
     terminal_response_bytes_forwarded = 0
+    standard_cpr_queries_seen = 0
+    standard_cpr_responses_forwarded = 0
+    standard_cpr_query_tail = b""
     physical_terminal_state_restored = False
     pending_input = b""
     pending_since: float | None = None
@@ -465,6 +491,11 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 if not data:
                     break
                 os.write(stdout_fd, data)
+                new_cpr_queries, standard_cpr_query_tail = count_standard_cpr_queries(
+                    standard_cpr_query_tail,
+                    data,
+                )
+                standard_cpr_queries_seen += new_cpr_queries
                 output_tail.extend(data)
                 if len(output_tail) > OUTPUT_TAIL_LIMIT:
                     del output_tail[:-OUTPUT_TAIL_LIMIT]
@@ -482,7 +513,20 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 if not pending_input:
                     pending_since = time.monotonic()
                 pending_input += chunk
-                unexpected, incomplete, response_count, response_bytes = classify_terminal_input(pending_input)
+                standard_cpr_budget = max(
+                    0,
+                    standard_cpr_queries_seen - standard_cpr_responses_forwarded,
+                )
+                (
+                    unexpected,
+                    incomplete,
+                    response_count,
+                    response_bytes,
+                    standard_cpr_used,
+                ) = classify_terminal_input(
+                    pending_input,
+                    standard_cpr_budget=standard_cpr_budget,
+                )
                 if unexpected:
                     blocked_reason = "UNEXPECTED_OPERATOR_INPUT"
                     break
@@ -494,6 +538,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     os.write(master_fd, response_bytes)
                     terminal_responses_forwarded += response_count
                     terminal_response_bytes_forwarded += len(response_bytes)
+                    standard_cpr_responses_forwarded += standard_cpr_used
 
     except RuntimeError as exc:
         if blocked_reason is None:
@@ -540,6 +585,8 @@ def supervise(argv: list[str], probe_text: str) -> int:
     print(f"OBSERVATION_WINDOW_COMPLETED={'YES' if observation_window_completed else 'NO'}")
     print(f"TERMINAL_RESPONSES_FORWARDED={terminal_responses_forwarded}")
     print(f"TERMINAL_RESPONSE_BYTES_FORWARDED={terminal_response_bytes_forwarded}")
+    print(f"STANDARD_CPR_QUERIES_SEEN={standard_cpr_queries_seen}")
+    print(f"STANDARD_CPR_RESPONSES_FORWARDED={standard_cpr_responses_forwarded}")
     print(f"PHYSICAL_TERMINAL_STATE_RESTORED={'YES' if physical_terminal_state_restored else 'NO'}")
     print("HUMAN_BYTES_FORWARDED=0")
     print("HUMAN_CONTROL_ACTIONS_REQUIRED=0")
@@ -569,7 +616,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
 def self_test() -> int:
     def expect_terminal(
         raw: bytes,
-        expected: tuple[bool, bool, int, bytes],
+        expected: tuple[bool, bool, int, bytes, int],
         label: str,
     ) -> None:
         observed = classify_terminal_input(raw)
@@ -583,6 +630,7 @@ def self_test() -> int:
     kitty = b"\x1b[?0u"
     da2 = b"\x1b[>0;95;0c"
     cursor = b"\x1b[?24;80R"
+    standard_cursor = b"\x1b[24;80R"
     decrpm = b"\x1b[?2026;1$y"
     focus_in = b"\x1b[I"
     focus_out = b"\x1b[O"
@@ -602,13 +650,32 @@ def self_test() -> int:
         ("OSC11", osc11),
         ("XTVERSION", xtversion),
     ):
-        expect_terminal(raw, (False, False, 1, raw), label)
+        expect_terminal(raw, (False, False, 1, raw, 0), label)
 
-    expect_terminal(da1[:10], (False, True, 0, b""), "DA1_FRAGMENT")
-    expect_terminal(b"\x1b[", (False, True, 0, b""), "FOCUS_FRAGMENT")
-    expect_terminal(osc11[:-1], (False, True, 0, b""), "OSC_FRAGMENT")
-    expect_terminal(xtversion[:-1], (False, True, 0, b""), "DCS_FRAGMENT")
-    expect_terminal(kitty + focus_out + da1, (False, False, 3, kitty + focus_out + da1), "MULTI_MACHINE_INPUT")
+    expect_terminal(da1[:10], (False, True, 0, b"", 0), "DA1_FRAGMENT")
+    expect_terminal(b"\x1b[", (False, True, 0, b"", 0), "FOCUS_FRAGMENT")
+    expect_terminal(osc11[:-1], (False, True, 0, b"", 0), "OSC_FRAGMENT")
+    expect_terminal(xtversion[:-1], (False, True, 0, b"", 0), "DCS_FRAGMENT")
+    expect_terminal(kitty + focus_out + da1, (False, False, 3, kitty + focus_out + da1, 0), "MULTI_MACHINE_INPUT")
+    expect_terminal(standard_cursor, (True, False, 0, b"", 0), "STANDARD_CPR_WITHOUT_QUERY")
+    correlated = classify_terminal_input(standard_cursor, standard_cpr_budget=1)
+    if correlated != (False, False, 1, standard_cursor, 1):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:STANDARD_CPR_CORRELATION:"
+            f"observed={correlated}"
+        )
+    over_budget = classify_terminal_input(standard_cursor + standard_cursor, standard_cpr_budget=1)
+    if over_budget != (True, False, 1, standard_cursor, 1):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:STANDARD_CPR_BUDGET:"
+            f"observed={over_budget}"
+        )
+    query_count, query_tail = count_standard_cpr_queries(b"", b"prefix\x1b[")
+    if query_count != 0:
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:STANDARD_CPR_QUERY_PREFIX")
+    query_count, query_tail = count_standard_cpr_queries(query_tail, b"6n")
+    if query_count != 1:
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:STANDARD_CPR_QUERY_SPLIT")
 
     for label, raw in (
         ("PRINTABLE", b"x"),
@@ -617,7 +684,7 @@ def self_test() -> int:
         ("ARROW", b"\x1b[A"),
         ("CSI_U_KEY", b"\x1b[116;5u"),
     ):
-        unexpected, incomplete, _count, _forwarded = classify_terminal_input(raw)
+        unexpected, incomplete, _count, _forwarded, _standard_cpr_used = classify_terminal_input(raw)
         if not unexpected or incomplete:
             raise SystemExit(
                 f"CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:HUMAN_INPUT_ACCEPTED:{label}"
