@@ -197,7 +197,7 @@ pub(super) fn preflight_codex_mcp_layers(
     result
 }
 
-fn preflight_codex_project_mcp_layers(project: &Path) -> Result<(), String> {
+pub(super) fn preflight_codex_project_mcp_layers(project: &Path) -> Result<(), String> {
     if !project.is_absolute() {
         return Err(mcp_preflight::failed());
     }
