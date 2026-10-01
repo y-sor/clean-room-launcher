@@ -20,7 +20,7 @@
         "Claude TTY rehearsal separates human UI observation from provider lifecycle: the supervisor constructs an explicit task-owned PTY session with openpty/fork/setsid/TIOCSCTTY and a setup handshake; human bytes are never forwarded, Ctrl+T injects the exact non-submitting autocomplete probe, Ctrl+G stops at the harness layer, and teardown closes every process group in that PTY session before persistent-state fingerprint verification. Human confirmation is limited to autocomplete visibility, sibling/plugin-error state, and absence of inference/model response.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
-        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.285 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
+        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.286 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
         "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
         "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced."
       ]
@@ -45,7 +45,7 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
-        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.159.2 and Claude Code 2.1.285, with registry integrity and native-byte identity still required before acceptance.",
+        "v0.4.5 refreshes exact provider qualification inputs to current stable Codex 0.159.2 and Claude Code 2.1.286, with registry integrity and native-byte identity still required before acceptance.",
         "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state."
       ]
     },
@@ -174,12 +174,12 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.5 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.285, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
+      "requirement": "Requalify exact v0.4.5 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.286, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
     },
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.5 archive with pinned Claude Code 2.1.285 and bind evidence to accepted source/tree/review/archive identity."
+      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.5 archive with pinned Claude Code 2.1.286 and bind evidence to accepted source/tree/review/archive identity."
     },
     {
       "id": "promotion-prepare-execution-parity",
