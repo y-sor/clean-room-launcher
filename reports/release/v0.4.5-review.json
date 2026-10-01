@@ -80,7 +80,7 @@
       "id": "codex-shared-daemon-could-cross-launch-boundary",
       "decision": "COVERED",
       "failure_mode": "A provider shared background server could outlive one CLROOM launch and decouple runtime authority from the current clean/selective process boundary.",
-      "durable_control": "For Codex 0.159.2 the current CLROOM clean -c override set is outside upstream daemon-compatible overrides, forcing embedded mode; exact provider/MCP rehearsal also requires interactive-provider process correlation and task-owned lifecycle closure. Every provider pin move requires fresh qualification."
+      "durable_control": "For Codex 0.159.3 the current CLROOM clean -c override set is outside upstream daemon-compatible overrides, forcing embedded mode; exact provider/MCP rehearsal also requires interactive-provider process correlation and task-owned lifecycle closure. Every provider pin move requires fresh qualification."
     },
     {
       "id": "security-sensitive-toml-parser-dependency-added",
@@ -153,6 +153,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "A provider-free physical iTerm diagnostic proved the shell baseline was clean (focus reporting reset, bracketed paste reset, Kitty flags 0, no unexpected chunks, termios restored), yet the zero-key Claude rehearsal still failed before probe injection while CSI O FocusOut and delayed DA1 bytes appeared around teardown. This localized the failure to provider-induced terminal modes/events during the supervised run rather than stale pre-existing terminal state.",
       "durable_control": "The release smoke now runs the checked-in physical terminal diagnostic before human TTY work. The supervisor snapshots queryable physical DEC/Kitty mode state before spawning the provider, treats CSI I/O focus events as terminal-generated machine traffic and relays them to the provider PTY, detects composer readiness from an ANSI-normalized visible stream, owns task-session teardown, restores the exact pre-run physical terminal mode/Kitty state, re-queries it, and fails closed unless it matches. Stage evidence records both physical-terminal preflight and terminal-state restoration. Negative self-tests cover focus events, styled readiness, human-input rejection and terminal-state drift."
+    },
+    {
+      "id": "codex-01593-project-layer-config-read-hang",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "After the provider target moved to Codex 0.159.3, the standalone-MCP real-provider negative with a project .codex/config.toml MCP layer stopped reaching CLROOM_CODEX_MCP_LAYER_CONFLICT and timed out before provider birth, while an independent direct app-server config/read still proved the project MCP layer was enabled. Upstream Codex has an open config/read hang class around project/ancestor filesystem discovery, so using provider app-server discovery as the first authority for a known local project layer made the release gate vulnerable to provider-side config-read stalls.",
+      "durable_control": "CLROOM now performs a bounded fail-closed scan of project-local .codex/config.toml files from the launch directory through the nearest real Git boundary before spawning app-server. Each present config is read with the existing regular-file/no-symlink/size/race guards and deserialized with a presence-only TOML visitor that ignores MCP values; any project-layer mcp_servers key returns CLROOM_CODEX_MCP_LAYER_CONFLICT immediately. Provider app-server config/read remains required afterward for sessionFlags proof and non-project managed/system layer detection. The existing exact real-provider project_sibling_layer rehearsal plus a repo-boundary unit regression enforce the split authority."
     }
   ],
   "artifact_capability_gates": [
