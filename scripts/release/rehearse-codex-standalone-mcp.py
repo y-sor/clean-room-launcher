@@ -1000,13 +1000,24 @@ def rehearse(args):
                 "",
             ]),
         )
-        layer_summary = direct_provider_layer_probe(provider, project, home, server, selected_log)
-        print("CODEX_STANDALONE_MCP_LAYER_DIAGNOSTIC " + json.dumps(layer_summary, sort_keys=True))
+        # Prove the CLROOM-owned bounded project-layer guard first. A direct
+        # provider diagnostic may create provider-owned shadow state, so it
+        # must never run before the product fail-closed negative it explains.
         negatives["project_sibling_layer"] = negative_probe(
             "project_sibling_layer", candidate, project, home, provider,
             [f"--with=mcp:{MCP_NAME}", f"--pass-env={ALLOWED_ENV}", "--no-alt-screen"],
             "CLROOM_CODEX_MCP_LAYER_CONFLICT", selected_log, sibling_log,
         )
+        layer_summary = direct_provider_layer_probe(provider, project, home, server, selected_log)
+        project_layers = [
+            layer for layer in layer_summary
+            if layer.get("kind") == "project"
+            and layer.get("mcp") is True
+            and layer.get("disabled") is False
+        ]
+        if len(project_layers) != 1:
+            fail("direct provider layer diagnostic did not confirm one enabled project MCP layer")
+        print("CODEX_STANDALONE_MCP_LAYER_DIAGNOSTIC " + json.dumps(layer_summary, sort_keys=True))
         shutil.rmtree(project_codex)
 
         write_config(codex_home, server, selected_log, sibling_log, include_sibling=False)
