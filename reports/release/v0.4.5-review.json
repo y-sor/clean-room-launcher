@@ -170,7 +170,7 @@
       "id": "codex-01593-project-layer-config-read-hang",
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "After the provider target moved to Codex 0.159.3, the standalone-MCP real-provider negative with a project .codex/config.toml MCP layer stopped reaching CLROOM_CODEX_MCP_LAYER_CONFLICT and timed out before provider birth, while an independent direct app-server config/read still proved the project MCP layer was enabled. Upstream Codex has an open config/read hang class around project/ancestor filesystem discovery, so using provider app-server discovery as the first authority for a known local project layer made the release gate vulnerable to provider-side config-read stalls.",
-      "durable_control": "CLROOM now performs a bounded fail-closed scan of project-local .codex/config.toml files from the launch directory through the nearest real Git boundary before spawning app-server. Each present config is read with the existing regular-file/no-symlink/size/race guards and deserialized with a presence-only TOML visitor that ignores MCP values; any project-layer mcp_servers key returns CLROOM_CODEX_MCP_LAYER_CONFLICT immediately. Provider app-server config/read remains required afterward for sessionFlags proof and non-project managed/system layer detection. The existing exact real-provider project_sibling_layer rehearsal plus a repo-boundary unit regression enforce the split authority."
+      "durable_control": "The local project MCP scan now runs before provider-state preparation and repeats at the later MCP preflight boundary. The real-candidate project-layer negative runs before the independent layer diagnostic. Existing unit coverage and the exact rehearsal verify this ordering."
     }
   ],
   "artifact_capability_gates": [
