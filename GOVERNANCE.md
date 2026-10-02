@@ -6,8 +6,8 @@ explicit acceptance evidence, and a clean public-output safety check.
 
 The public contribution process and acceptance requirements are documented in
 [CONTRIBUTING.md](CONTRIBUTING.md). Small fixes may go directly to a pull
-request; substantial behavior, platform, provider, release-path, or security
-boundary changes should be discussed in an issue first.
+request; substantial behavior, platform, provider, release-path, or security-model
+changes should be discussed in an issue first.
 
 Maintainers may accept, request changes to, or reject contributions. Security,
 privacy, deterministic behavior, and truthful provider support claims take
