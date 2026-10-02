@@ -88,7 +88,7 @@ If one of those solves your problem cleanly, use it.
 
 CLROOM is useful in the middle: **you want a repeatable cleaner launch, you still want the relevant project-side setup, and you want personal-global inputs to be deliberate rather than automatic.**
 
-See [When to use CLROOM — and when not to](when-to-use-clroom.md).
+See [When to use CLROOM and when not to](when-to-use-clroom.md).
 
 ## What CLROOM does not claim
 
