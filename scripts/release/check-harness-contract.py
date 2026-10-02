@@ -813,6 +813,16 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_SELF_TEST")
     claude_smoke_fixture = """
+if [[ "$phase" == "diagnose-screen" ]]; then
+"No human observation or keypress is required."
+python3 "$root/scripts/release/claude-tty-supervisor.py" --diagnose-unsupported --diagnostic-evidence "$diagnostic_evidence" -- "$clroom" claude
+"SCREEN_CONTROL_IDENTITY="
+"SCREEN_CONTROL_SHA256="
+"SCREEN_CONTROL_RAW_TRANSCRIPT_RECORDED=NO"
+"SCREEN_CONTROL_DIAGNOSTIC=PASS"
+"PERSISTENT_CONFIG_CHANGED_SCREEN_DIAGNOSTIC"
+exit 0
+fi
 cd "$root"
 python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
 cd "$root"
