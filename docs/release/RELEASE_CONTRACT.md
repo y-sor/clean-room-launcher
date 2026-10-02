@@ -364,6 +364,24 @@ instructions from being mistaken for a clean PASS. A provider pin move requires
 both the machine boundary probe and this real-provider instruction-surface
 evidence to be refreshed before a protected tag can be created.
 
+## Published-baseline release-note scope
+
+Release notes are part of the shipped public surface, so they follow the same
+whole-release baseline as code review. The staged release body must contain
+every versioned CHANGELOG section after the latest published stable baseline
+through the exact candidate, in source order. A tagged-but-unpublished
+intermediate candidate is therefore included rather than silently disappearing
+from the next published release. The published baseline section itself is not
+repeated.
+
+The publishable-surface verifier independently reconstructs that exact
+baseline-exclusive range, validates all provider-version claims that will
+actually be published, and binds `published_baseline`,
+`included_changelog_versions`, the range digest and the exact rendered body
+into `publish-preview.json`. Historical sections older than or equal to the
+published baseline remain historical; they are excluded by range selection,
+not by weakening semantic validation of content that will be published.
+
 ## Exact-tag pre-publish reconciliation
 
 A successful promotion workflow is necessary but not by itself the publish
@@ -459,4 +477,4 @@ The only automatic continuation from accepted-main `Release candidate readiness`
 A protected `v*` tag triggers the `Release` workflow. That workflow may bind attestations and create or refresh a GitHub Draft Release from already accepted bytes. It must not rebuild, requalify providers, mutate repository settings, move the tag, or publish the Draft.
 
 `AUTOMATION_CHAIN_NO_AUTO_PUBLISH`
-No repository workflow is authorized to publish a GitHub Release automatically. Publish remains a separate Owner action-time gate after exact Draft reconciliation. A fallback executor must preserve the same tag/source/byte identity and cannot bypass the canonical release helpers or evidence.
+No repository workflow is authorized to publish a GitHub Release automatically. Publish remains a separate Owner action-time gate after exact Draft reconciliation. The only canonical publication action is scripts/release/publish-release.sh: it re-runs exact Draft/publish-preview reconciliation immediately before the irreversible action, never blind-retries an ambiguous publish result, reconciles authoritative release state after the action, and for stable releases requires releases/latest to resolve to the new immutable published tag. It then downloads the public releases/latest/install.sh path, proves those installer bytes equal the accepted stage, installs into an isolated temporary HOME, and smoke-checks all three installed entrypoints. A fallback executor must preserve the same tag/source/byte identity and cannot bypass the canonical release helpers or evidence.

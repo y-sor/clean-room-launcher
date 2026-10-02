@@ -38,6 +38,13 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 PY
 )
 [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_DIGEST"
+baseline_release=$(python3 - "$review_path" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["baseline_release"])
+PY
+)
+[[ "$baseline_release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "REVIEW_BASELINE"
 
 python3 scripts/release/check-release-contract.py --report >/dev/null || fail "RELEASE_CONTRACT"
 
@@ -131,7 +138,7 @@ codex_evidence="$evidence_dir/codex-stage-v${version}-${head:0:12}.json"
 [[ -s "$codex_evidence" ]] || fail "CODEX_STAGE_EVIDENCE_MISSING"
 install -m 0644 "$codex_evidence" "$output/codex-stage.json"
 
-python3 scripts/release/render-release-notes.py   --version "$version"   --artifact "$artifact_name"   --output "$output/release-notes.md"   || fail "RELEASE_NOTES"
+python3 scripts/release/render-release-notes.py   --version "$version"   --baseline-tag "$baseline_release"   --artifact "$artifact_name"   --output "$output/release-notes.md"   || fail "RELEASE_NOTES"
 python3 scripts/release/verify-publishable-surface.py \
   --write-preview \
   --dir "$output" \

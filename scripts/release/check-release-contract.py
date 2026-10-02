@@ -326,6 +326,8 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:MANUAL_DRAFT_REPAIR_POLICY")
     if contract.get("policy", {}).get("canonical_publish_helper") != "scripts/release/publish-release.sh":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANONICAL_PUBLISH_HELPER")
+    if contract.get("policy", {}).get("release_notes_scope") != "published_baseline_exclusive_through_candidate":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:RELEASE_NOTES_SCOPE")
     public_doc_version_policy(contract)
 
     if args.self_test:
@@ -357,6 +359,7 @@ def main():
             "posttag_draft_relation": "title_body_state_assets_equal_accepted_publish_preview",
             "manual_draft_repair": "forbidden",
             "canonical_publish_helper": "scripts/release/publish-release.sh",
+            "release_notes_scope": "published_baseline_exclusive_through_candidate",
         }.items():
             if contract.get("policy", {}).get(key) != expected:
                 raise SystemExit(f"RELEASE_CONTRACT_SELF_TEST_FAIL:{key}")

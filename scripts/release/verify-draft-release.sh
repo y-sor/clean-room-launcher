@@ -167,9 +167,6 @@ if preview.get("semantic_validation") != "PASS" or preview.get("provider_claims_
 PY
 
 mkdir -p "$tmp/assets"
-PY
-
-mkdir -p "$tmp/assets"
 gh release download "$tag" --dir "$tmp/assets" || fail "RELEASE_DOWNLOAD"
 
 python3 - "$tmp/stage/pretag-manifest.json" "$tmp/assets" <<'PY'   || fail "DRAFT_BYTE_RECONCILIATION"

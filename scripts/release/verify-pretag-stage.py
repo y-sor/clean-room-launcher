@@ -117,6 +117,11 @@ def main() -> int:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:FILE_BYTES:{name}")
 
     preview = json.loads((root / "publish-preview.json").read_text(encoding="utf-8"))
+    review_path = Path(f"reports/release/v{args.version}-review.json")
+    if not review_path.is_file():
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:review")
+    review = json.loads(review_path.read_text(encoding="utf-8"))
+    baseline_release = review.get("baseline_release")
     preview_required = {
         "schema_version": "clroom.publish-preview.v1",
         "release_version": args.version,
@@ -131,6 +136,21 @@ def main() -> int:
     for key, value in preview_required.items():
         if preview.get(key) != value:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:{key}")
+    if preview.get("published_baseline") != baseline_release:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:published_baseline")
+    included_versions = preview.get("included_changelog_versions")
+    if (
+        not isinstance(included_versions, list)
+        or not included_versions
+        or included_versions[0] != args.version
+        or baseline_release.removeprefix("v") in included_versions
+        or len(set(included_versions)) != len(included_versions)
+    ):
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:included_changelog_versions")
+    if preview.get("release_notes_sha256") != files["release-notes.md"]:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:release_notes_sha256")
+    if re.fullmatch(r"[0-9a-f]{64}", str(preview.get("release_changelog_range_sha256", ""))) is None:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:release_changelog_range_sha256")
     if args.source_tree and preview.get("source_tree") != args.source_tree:
         raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:source_tree")
     if args.codex_version and (preview.get("providers") or {}).get("codex") != args.codex_version:

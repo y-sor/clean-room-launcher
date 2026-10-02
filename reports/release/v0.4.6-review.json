@@ -56,7 +56,9 @@
         "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state.",
         "Action-time current-stable resolution on 2026-10-02 moved the qualification tuple to Codex 0.160.0 and Claude Code 2.1.287. Exact registry SHA-512 values and the Codex macOS native SHA-256 were re-frozen before requalification; all prior provider/runtime evidence is invalidated until the exact refreshed candidate closes its machine and human gates.",
         "v0.4.5 exposed a late release-output escape after protected tag creation: staged release-notes bytes were exact but contained stale provider-version prose. v0.4.6 separates publishable-content truth from byte integrity, binds semantic PASS into the stage manifest, and blocks tag creation without exact preview validation.",
-        "Post-tag Draft reconciliation now compares title/body/state/assets to the accepted publish preview, and publication is routed through a guarded canonical publish-release.sh helper that re-verifies the preview immediately before making the Draft public."
+        "Post-tag Draft reconciliation now compares title/body/state/assets to the accepted publish preview, and publication is routed through a guarded canonical publish-release.sh helper that re-verifies the preview immediately before making the Draft public.",
+        "Critical release shell helpers are syntax-checked by the harness contract, and guarded publication reconciles ambiguous outcomes plus the immutable stable releases/latest pointer.",
+        "Stable publication now closes the public delivery surface after the irreversible action by verifying the real releases/latest installer bytes and an isolated end-to-end install/smoke path."
       ]
     },
     "public_claims": {
@@ -65,7 +67,8 @@
         "Current README, provider matrix, provider guides, limitations and security source-contract claims advance to v0.4.6 and the exact provider targets while keeping unsupported transports, Claude standalone MCP, extra platforms, signing and notarization unclaimed.",
         "Standalone MCP wording no longer describes already-accepted source behavior as an unaccepted PR candidate; publication status remains separately owned by GitHub Releases.",
         "The exact current v0.4.6 CHANGELOG section is now active publish input rather than blanket-historical content: provider-version claims are checked against canonical provider pins before release-note rendering acceptance, while older changelog sections remain historical.",
-        "Accepted-main staging emits publish-preview.json binding the exact release body digest, tag/title/state, provider tuple, canonical installer URL and expected asset set; a dedicated required job semantically verifies this exact preview before the tag gate."
+        "Accepted-main staging emits publish-preview.json binding the exact release body digest, tag/title/state, provider tuple, canonical installer URL and expected asset set; a dedicated required job semantically verifies this exact preview before the tag gate.",
+        "Release notes are now rendered and independently verified over the complete baseline-exclusive changelog range from latest published stable v0.4.4 through v0.4.6, so the tagged-but-unpublished v0.4.5 delta cannot disappear from the next published public body."
       ]
     }
   },
@@ -213,6 +216,24 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The release contract treated all CHANGELOG.md content as historical, so the exact current candidate section escaped provider-version semantic inventory even though render-release-notes.py promoted that section into release-notes.md. Accepted-main staging then hashed and bound those bytes without proving their claims, and GPT pre-tag review did not independently inspect the exact staged publish preview before the protected v0.4.5 tag.",
       "durable_control": "The current candidate CHANGELOG section is candidate-scoped active publish input and is checked against canonical provider pins; stage-release emits a semantically validated publish-preview.json; a dedicated Publishable surface closure job is required by release topology/current-run admission; the tag helper re-verifies the preview; Draft reconciliation checks exact title/body/state/assets; and publish-release.sh rechecks the accepted preview at action time. Historical changelog sections remain exempt without exempting the current candidate section."
+    },
+    {
+      "id": "release-notes-unpublished-intermediate-coverage-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A recovery release after a protected but unpublished intermediate tag could render only the new candidate CHANGELOG section even though the authoritative release baseline remained the last published stable release. That could publish the full code delta while omitting user-visible release-note coverage for changes first recorded in the unpublished intermediate section.",
+      "durable_control": "Release-note rendering and independent publishable-surface verification are now published-baseline-aware: the exact body contains every CHANGELOG section after the latest published stable baseline through the candidate, the preview binds the baseline and included version list, provider claims across the entire published range are semantically checked, and the baseline section itself is excluded."
+    },
+    {
+      "id": "release-publish-verifier-action-to-effect-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A separate Draft verifier followed by a later publication command left mutable state between verification and the irreversible publish effect, and a failed publish command could tempt a blind retry without authoritative destination reconciliation.",
+      "durable_control": "The canonical publish helper reruns Draft/publish-preview reconciliation at action time, performs one publish action, reconciles authoritative release state before any retry decision, accepts an ambiguous command only when the exact immutable publication is proven, and for stable releases requires releases/latest to resolve to the exact new tag."
+    },
+    {
+      "id": "post-publish-public-install-path-verification-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A successful immutable GitHub Release state and correct API asset inventory do not by themselves prove that the user-facing releases/latest installer path has propagated and can install the exact accepted bytes.",
+      "durable_control": "The canonical publish helper now performs unavoidable post-action public verification for stable releases: it downloads releases/latest/install.sh, compares the public installer digest with the accepted pre-tag stage, executes it under an isolated temporary HOME so it downloads and verifies the public latest archive/manifest, and smoke-checks clroom, clroom-codex and clroom-claude."
     }
   ],
   "artifact_capability_gates": [
@@ -278,8 +299,11 @@
       "PUBLISHABLE_SURFACE_CLOSURE: exact staged publish-preview.json binds body/title/state/assets/provider facts and semantic PASS before protected tag creation",
       "release topology closure: Publishable surface closure is a required predecessor of attestation, promotion rehearsal and aggregate Release required, and current-run admission requires the same job",
       "post-tag Draft title/body/state/assets must equal the accepted publish preview; manual Draft repair is forbidden",
-      "canonical publish-release.sh re-verifies Draft, exact accepted stage, publish preview, tag and immutable-release policy immediately before publication"
+      "canonical publish-release.sh re-verifies Draft, exact accepted stage, publish preview, tag and immutable-release policy immediately before publication",
+      "published-baseline release-note closure: exact public notes contain every changelog section after the latest published stable release through the candidate; preview binds baseline + included versions and validates provider claims across the whole published range",
+      "guarded publish outcome reconciliation: no blind retry after the irreversible publication command; authoritative release state is reconciled and stable releases/latest must resolve to the exact immutable published tag",
+      "post-publish public-path verification: canonical helper proves releases/latest installer bytes equal the accepted stage, executes the public installer under an isolated HOME, and smoke-checks all installed entrypoints"
     ]
   },
-  "reviewed_content_digest": "e1c918f9aa2193b5129d95c5d3c86a8adcd56581ec180f3ebc6798d24716e012"
+  "reviewed_content_digest": "98f97836770c0ef0839bb29dfb0f582d041520e6a2f66ecfadc68cb1ead86023"
 }

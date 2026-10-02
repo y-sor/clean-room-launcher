@@ -122,18 +122,102 @@ PY
 echo "PUBLISH_ACTION_TIME_PREVIEW_PASS tag=$tag target=$expected"
 
 # Irreversible publication boundary: no build/provider/rewrite work after this point.
+set +e
 gh release edit "$tag" --draft=false
+publish_rc=$?
+set -e
 
-gh api "repos/$repository/releases/tags/$tag" >"$tmp/published.json"
-python3 - "$tmp/published.json" "$tag" <<'PY'
+# Never blind-retry publication. Reconcile the authoritative destination first.
+if ! gh api "repos/$repository/releases/tags/$tag" >"$tmp/published.json"; then
+  echo "PUBLISH_OUTCOME_UNKNOWN:RECONCILIATION_FAILED tag=$tag publish_rc=$publish_rc" >&2
+  exit 82
+fi
+publish_state=$(python3 - "$tmp/published.json" "$tag" "$expected" "$tmp/stage/publish-preview.json" <<'PY'
+import hashlib, json, sys
+release_path, tag, expected, preview_path = sys.argv[1:]
+data = json.load(open(release_path, encoding="utf-8"))
+preview = json.load(open(preview_path, encoding="utf-8"))
+if data.get("tag_name") != tag or data.get("target_commitish") not in (expected, "main"):
+    print("MISMATCH")
+    raise SystemExit(0)
+body = ((data.get("body") or "").rstrip() + "\n").encode("utf-8")
+if data.get("name") != preview.get("title"):
+    print("MISMATCH")
+elif hashlib.sha256(body).hexdigest() != preview.get("release_notes_sha256"):
+    print("MISMATCH")
+elif {item.get("name") for item in data.get("assets", [])} != set(preview.get("expected_release_assets") or []):
+    print("MISMATCH")
+elif data.get("draft") is False and data.get("published_at") and data.get("immutable") is True:
+    print("PUBLISHED")
+elif data.get("draft") is True and not data.get("published_at"):
+    print("DRAFT")
+else:
+    print("MISMATCH")
+PY
+)
+case "$publish_state" in
+  PUBLISHED)
+    echo "PUBLISH_OUTCOME_RECONCILED_PASS tag=$tag publish_rc=$publish_rc"
+    ;;
+  DRAFT)
+    echo "PUBLISH_OUTCOME_RECONCILED_DRAFT tag=$tag publish_rc=$publish_rc" >&2
+    if [[ $publish_rc -eq 0 ]]; then exit 83; else exit "$publish_rc"; fi
+    ;;
+  *)
+    echo "PUBLISH_OUTCOME_UNKNOWN:STATE_MISMATCH tag=$tag publish_rc=$publish_rc" >&2
+    exit 83
+    ;;
+esac
+
+if [[ "$tag" != *-rc.* ]]; then
+  gh api "repos/$repository/releases/latest" >"$tmp/latest.json" || {
+    echo "PUBLISH_GATE_BLOCKED:LATEST_QUERY" >&2
+    exit 84
+  }
+  python3 - "$tmp/latest.json" "$tag" <<'PY'
 import json, sys
 data = json.load(open(sys.argv[1], encoding="utf-8"))
 tag = sys.argv[2]
-if data.get("tag_name") != tag or data.get("draft") is not False:
-    raise SystemExit("PUBLISH_GATE_BLOCKED:POST_PUBLISH_STATE")
-if not data.get("published_at"):
-    raise SystemExit("PUBLISH_GATE_BLOCKED:POST_PUBLISH_TIMESTAMP")
-if data.get("immutable") is not True:
-    raise SystemExit("PUBLISH_GATE_BLOCKED:POST_PUBLISH_IMMUTABLE")
+if (
+    data.get("tag_name") != tag
+    or data.get("draft") is not False
+    or data.get("prerelease") is not False
+    or data.get("immutable") is not True
+    or not data.get("published_at")
+):
+    raise SystemExit("PUBLISH_GATE_BLOCKED:LATEST_RELEASE")
 PY
+  echo "LATEST_RELEASE_PASS tag=$tag"
+
+  public_install="$tmp/public-install.sh"
+  /usr/bin/curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error --retry 3     --output "$public_install"     "https://github.com/$repository/releases/latest/download/install.sh" || {
+      echo "PUBLISH_POSTVERIFY_BLOCKED:PUBLIC_INSTALL_DOWNLOAD" >&2
+      exit 85
+    }
+  python3 - "$tmp/stage/pretag-manifest.json" "$public_install" <<'PY' || exit 85
+import hashlib, json, pathlib, sys
+manifest = json.load(open(sys.argv[1], encoding="utf-8"))
+path = pathlib.Path(sys.argv[2])
+actual = hashlib.sha256(path.read_bytes()).hexdigest()
+expected = manifest["files"]["install.sh"]
+if actual != expected:
+    raise SystemExit(
+        f"PUBLISH_POSTVERIFY_BLOCKED:PUBLIC_INSTALL_BYTES:expected={expected}:actual={actual}"
+    )
+PY
+  public_home="$tmp/public-home"
+  mkdir -p "$public_home"
+  HOME="$public_home" /bin/sh "$public_install" >"$tmp/public-install.log" 2>&1 || {
+    cat "$tmp/public-install.log" >&2
+    echo "PUBLISH_POSTVERIFY_BLOCKED:PUBLIC_INSTALL_EXECUTION" >&2
+    exit 85
+  }
+  for name in clroom clroom-codex clroom-claude; do
+    "$public_home/.local/bin/$name" --clroom-installer-smoke >/dev/null 2>&1 || {
+      echo "PUBLISH_POSTVERIFY_BLOCKED:PUBLIC_INSTALL_SMOKE:$name" >&2
+      exit 85
+    }
+  done
+  echo "PUBLIC_INSTALL_VERIFY_PASS tag=$tag"
+fi
 echo "RELEASE_PUBLISH_PASS tag=$tag target=$expected"

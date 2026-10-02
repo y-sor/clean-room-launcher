@@ -702,12 +702,50 @@ def check(root: Path) -> list[str]:
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
 
+    for shell_rel in (
+        "scripts/release/stage-release.sh",
+        "scripts/release/resolve-pretag-stage.sh",
+        "scripts/release/push-release-tag.sh",
+        "scripts/release/verify-draft-release.sh",
+        "scripts/release/publish-release.sh",
+    ):
+        syntax = subprocess.run(
+            ["bash", "-n", str(root / shell_rel)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(errors, syntax.returncode == 0, "RELEASE_SHELL_SYNTAX:" + shell_rel)
+
+    renderer = read(root, "scripts/release/render-release-notes.py")
+    require(errors, "--baseline-tag" in renderer, "RELEASE_NOTES_PUBLISHED_BASELINE_ARG")
+    require(errors, "def release_range(" in renderer, "RELEASE_NOTES_BASELINE_RANGE")
+    require(errors, "RELEASE_NOTES_SELF_TEST_PASS" in renderer, "RELEASE_NOTES_BASELINE_SELF_TEST")
+    stage_script = read(root, "scripts/release/stage-release.sh")
+    require(errors, 'baseline_release=$(python3 - "$review_path"' in stage_script, "PRETAG_STAGE_REVIEW_BASELINE")
+    require(errors, '--baseline-tag "$baseline_release"' in stage_script, "PRETAG_STAGE_RENDER_BASELINE")
+    publishable_verifier = read(root, "scripts/release/verify-publishable-surface.py")
+    for marker in (
+        '"published_baseline"',
+        '"included_changelog_versions"',
+        '"release_changelog_range_sha256"',
+        "STALE_INTERMEDIATE",
+        "release-notes-not-exact-published-baseline-range",
+    ):
+        require(errors, marker in publishable_verifier, "PUBLISHABLE_BASELINE_RANGE:" + marker)
+
     publish_helper = read(root, "scripts/release/publish-release.sh")
     require(errors, "CLROOM_OWNER_PUBLISH_APPROVED" in publish_helper, "PUBLISH_HELPER_OWNER_GATE")
     require(errors, "verify-draft-release.sh" in publish_helper, "PUBLISH_HELPER_DRAFT_VERIFY")
     require(errors, "verify-publishable-surface.py" in publish_helper, "PUBLISH_HELPER_PREVIEW_VERIFY")
     require(errors, 'gh release edit "$tag" --draft=false' in publish_helper, "PUBLISH_HELPER_ACTION")
     require(errors, "PUBLISH_ACTION_TIME_PREVIEW_PASS" in publish_helper, "PUBLISH_HELPER_ACTION_TIME_PREVIEW")
+    require(errors, "PUBLISH_OUTCOME_RECONCILED_PASS" in publish_helper, "PUBLISH_HELPER_AMBIGUOUS_OUTCOME_RECONCILIATION")
+    require(errors, "PUBLISH_OUTCOME_UNKNOWN:RECONCILIATION_FAILED" in publish_helper, "PUBLISH_HELPER_NO_BLIND_RETRY")
+    require(errors, "LATEST_RELEASE_PASS" in publish_helper, "PUBLISH_HELPER_STABLE_LATEST_RECONCILIATION")
+    require(errors, "PUBLIC_INSTALL_VERIFY_PASS" in publish_helper, "PUBLISH_HELPER_PUBLIC_INSTALL_VERIFY")
+    require(errors, "releases/latest/download/install.sh" in publish_helper, "PUBLISH_HELPER_PUBLIC_LATEST_PATH")
+    require(errors, "--clroom-installer-smoke" in publish_helper, "PUBLISH_HELPER_PUBLIC_BINARY_SMOKE")
 
     resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
     admission = read(root, "scripts/release/pretag-run-admission.py")

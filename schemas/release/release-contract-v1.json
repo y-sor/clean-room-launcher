@@ -70,7 +70,8 @@
     "posttag_escape_policy": "first_avoidable_posttag_escape_is_harness_incident",
     "posttag_draft_relation": "title_body_state_assets_equal_accepted_publish_preview",
     "manual_draft_repair": "forbidden",
-    "canonical_publish_helper": "scripts/release/publish-release.sh"
+    "canonical_publish_helper": "scripts/release/publish-release.sh",
+    "release_notes_scope": "published_baseline_exclusive_through_candidate"
   },
   "domains": [
     {
