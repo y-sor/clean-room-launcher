@@ -420,12 +420,12 @@ The qualified macOS provider paths for this source tree are:
 
 | Coding agent and launch path | Platform | Status |
 |---|---|---|
-| Codex CLI 0.159.0 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.159.0 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.159.0 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
-| Codex CLI 0.159.0 — `clroom codex --with=mcp:<id>` | macOS / Apple Silicon | Exact one-stdio-MCP activation qualification target |
-| Claude Code CLI 2.1.284 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Claude Code CLI 2.1.284 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
+| Codex CLI 0.159.0 - interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.159.0 - `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.159.0 - `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
+| Codex CLI 0.159.0 - `clroom codex --with=mcp:<id>` | macOS / Apple Silicon | Exact one-stdio-MCP activation qualification target |
+| Claude Code CLI 2.1.284 - interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Claude Code CLI 2.1.284 - `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
 | Claude Code CLI `-p` response-output semantics | macOS / Apple Silicon | Not independently qualified |
 
 Linux and Windows are `NOT_QUALIFIED`. Intel macOS, Homebrew, crates.io,
@@ -440,7 +440,7 @@ For exact provider behavior, native alternatives, current limitations, and commo
 
 - [Why CLROOM exists](docs/why-clroom.md)
 - [Coding-agent configuration problem index](docs/problem-index.md)
-- [When to use Clean Room Launcher (CLROOM) — and when not to](docs/when-to-use-clroom.md)
+- [When to use Clean Room Launcher (CLROOM) - and when not to](docs/when-to-use-clroom.md)
 - [Use cases](docs/use-cases.md)
 - [Skill sets](docs/skill-sets.md)
 - [Claude Code and CLROOM](docs/claude-code.md)
@@ -486,7 +486,7 @@ container.
 ### Can I see what was cleaned?
 
 Yes. The launch plaque shows the active restriction categories, admitted global
-skills, and—when present—the project-local skill count before the provider starts.
+skills, and, when present, the project-local skill count before the provider starts.
 
 This release does not provide a per-file review interface or compiled-context
 manifest.
