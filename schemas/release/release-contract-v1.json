@@ -56,7 +56,7 @@
         "current_section": "active",
         "older_sections": "historical",
         "allowed_release_references": {
-          "0.4.4": "latest published stable baseline for v0.4.6 recovery",
+          "0.4.4": "published stable baseline used for v0.4.6 recovery",
           "0.4.5": "protected tagged-but-unpublished release-harness incident"
         }
       }
@@ -68,7 +68,14 @@
     "post_tag_provider_latest_recheck": "forbidden",
     "post_tag_role": "tag_bound_attestation_exact_byte_promotion_and_reconciliation_only",
     "workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter",
-    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required"
+    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required",
+    "public_lifecycle_claims": {
+      "forbidden_volatile_phrases": [
+        "Current published stable line",
+        "Current release-candidate source contract"
+      ],
+      "publication_authority": "GitHub Releases"
+    }
   },
   "domains": [
     {

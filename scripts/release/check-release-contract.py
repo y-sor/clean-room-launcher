@@ -253,6 +253,44 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
         return f"STALE_PROVIDER_VERSION:actual={version}:allowed={expected}"
     return None
 
+def public_lifecycle_claim_policy(contract):
+    policy = contract.get("policy", {}).get("public_lifecycle_claims")
+    if not isinstance(policy, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_LIFECYCLE_POLICY")
+    phrases = policy.get("forbidden_volatile_phrases")
+    if not isinstance(phrases, list) or not phrases or any(not isinstance(item, str) or not item for item in phrases):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_LIFECYCLE_PHRASES")
+    if policy.get("publication_authority") != "GitHub Releases":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLICATION_AUTHORITY")
+    return policy
+
+def lifecycle_claim_violation(text, policy):
+    for phrase in policy["forbidden_volatile_phrases"]:
+        if phrase in text:
+            return phrase
+    return None
+
+def validate_public_lifecycle_claims(contract):
+    version_policy = public_doc_version_policy(contract)
+    lifecycle_policy = public_lifecycle_claim_policy(contract)
+    tracked = run("git", "ls-files").splitlines()
+    paths = sorted(
+        path
+        for path in tracked
+        if any(matches(path, pattern) for pattern in version_policy["active_globs"])
+        and not any(matches(path, pattern) for pattern in version_policy["historical_exclusions"])
+    )
+    violations = []
+    for path in paths:
+        phrase = lifecycle_claim_violation((ROOT / path).read_text(encoding="utf-8"), lifecycle_policy)
+        if phrase is not None:
+            violations.append((path, phrase))
+    if violations:
+        for path, phrase in violations:
+            print(f"PUBLIC_LIFECYCLE_CLAIM_DRIFT:{path}:{phrase}", file=sys.stderr)
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_LIFECYCLE_CLAIM_DRIFT")
+    return paths
+
 def candidate_changelog_lines(text, candidate_version):
     lines = text.splitlines()
     prefix = f"## [{candidate_version}] - "
@@ -354,6 +392,7 @@ def main():
     if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PROMOTION_PREPARE_REHEARSAL_POLICY")
     public_doc_version_policy(contract)
+    public_lifecycle_claim_policy(contract)
 
     if args.self_test:
         sample=["src/cli/mod.rs","Cargo.lock",".github/dependabot.yml",".github/workflows/ci.yml",".github/FUNDING.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
@@ -379,6 +418,11 @@ def main():
         if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PROMOTION_PREPARE_REHEARSAL_POLICY")
         doc_policy = public_doc_version_policy(contract)
+        lifecycle_policy = public_lifecycle_claim_policy(contract)
+        if lifecycle_claim_violation("Current published stable line", lifecycle_policy) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_VOLATILE_PUBLISHED_STATUS")
+        if lifecycle_claim_violation("Supported source contract; publication status is in GitHub Releases", lifecycle_policy) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STABLE_PUBLICATION_STATUS")
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
         if not any(matches("docs/release/RELEASE_CONTRACT.md", pattern) for pattern in doc_policy["active_globs"]):
@@ -528,6 +572,7 @@ def main():
 
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     doc_version_inventory = validate_public_doc_versions(contract, version)
+    validate_public_lifecycle_claims(contract)
     changelog_lines = (ROOT/"CHANGELOG.md").read_text(encoding="utf-8").splitlines()
     try:
         declared_release_date = changelog_release_date(changelog_lines, version)

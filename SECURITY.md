@@ -4,8 +4,9 @@
 
 | Version | Status |
 | --- | --- |
-| `0.4.6` | Current release-candidate source contract; see GitHub Releases for publication status |
-| `0.4.4` | Current published stable line |
+| `0.4.6` | Supported source contract; authoritative publication status is in GitHub Releases |
+| `0.4.5` | Protected tagged Draft intentionally unpublished after a release-harness incident; not installable |
+| `0.4.4` | Published stable predecessor and v0.4.6 whole-release review baseline |
 | `0.4.0` | Prior published stable line |
 | `0.3.1` | Superseded by `0.4.0` |
 | `0.3.0` | Superseded by `0.3.1` |

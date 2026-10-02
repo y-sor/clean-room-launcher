@@ -219,6 +219,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "GitHub can report a Release published while releases/latest/download or the isolated public installer path is broken or routed to different bytes.",
       "durable_control": "Checked-in verify-public-release.sh treats PUBLISHED and PUBLIC_INSTALL_VERIFIED separately, verifies Latest/public asset bytes and attestations, exercises releases/latest/download and performs an isolated macOS Apple Silicon install."
+    },
+    {
+      "id": "public-source-publication-status-self-invalidation",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Candidate source can embed lifecycle-relative wording such as “current published stable” or “current release-candidate”; the same immutable tagged bytes would make that wording false when the candidate is published.",
+      "durable_control": "Release Contract now rejects lifecycle-volatile status phrases on active public documentation. SECURITY uses lifecycle-stable source/support wording, records v0.4.5 as tagged-but-unpublished incident evidence, and delegates authoritative live publication status to GitHub Releases."
     }
   ],
   "artifact_capability_gates": [
@@ -297,8 +303,9 @@
       "protected-tag helper requires exact successful publishable-content job and accepted publish-preview binding",
       "Draft title/body/state/assets reconcile to exact accepted pretag preview",
       "canonical guarded publish helper owns final verification, action-time fingerprint, one publish transition and immediate reconciliation",
-      "post-public verifier proves actual Latest/releases/latest/download routes and isolated install before PUBLIC_INSTALL_VERIFIED"
+      "post-public verifier proves actual Latest/releases/latest/download routes and isolated install before PUBLIC_INSTALL_VERIFIED",
+      "active public documentation rejects lifecycle-relative current-published/current-candidate wording that would self-invalidate at publication; GitHub Releases remains publication-state authority"
     ]
   },
-  "reviewed_content_digest": "1c8edbdcfb09c3eb95f70a0afb130ca24c1edcdb81cd8b376628dae164256397"
+  "reviewed_content_digest": "8ea0283f2df75ca61d142a7032088d49269904145f803b4e736d83a541c02323"
 }
