@@ -177,6 +177,21 @@ def public_doc_version_policy(contract):
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_OTHER_ALLOWLIST_KEY:{version}")
         if not isinstance(reason, str) or not reason.strip():
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_REASON:other:{version}")
+    changelog_policy = policy.get("candidate_changelog_version_inventory")
+    if not isinstance(changelog_policy, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_VERSION_POLICY")
+    if changelog_policy.get("current_section") != "active":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_CURRENT_POLICY")
+    if changelog_policy.get("older_sections") != "historical":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_HISTORY_POLICY")
+    references = changelog_policy.get("allowed_release_references")
+    if not isinstance(references, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_RELEASE_REFERENCES")
+    for version, reason in references.items():
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_RELEASE_REFERENCE:{version}")
+        if not isinstance(reason, str) or not reason.strip():
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_RELEASE_REFERENCE_REASON:{version}")
     return policy
 
 def provider_versions_from_pins(policy):
@@ -202,6 +217,10 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
     if prefix == "v":
         if any(matches(path, pattern) for pattern in historical_product_paths):
             return None
+        if path == "CHANGELOG.md":
+            references = policy["candidate_changelog_version_inventory"]["allowed_release_references"]
+            if version in references:
+                return None
         if version == candidate_version or version in other_allow:
             return None
         return f"STALE_PRODUCT_VERSION:expected={candidate_version}:actual={version}"
@@ -234,6 +253,21 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
         return f"STALE_PROVIDER_VERSION:actual={version}:allowed={expected}"
     return None
 
+def candidate_changelog_lines(text, candidate_version):
+    lines = text.splitlines()
+    prefix = f"## [{candidate_version}] - "
+    matches = [index for index, line in enumerate(lines) if line.startswith(prefix)]
+    if len(matches) != 1:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_SECTION")
+    start = matches[0]
+    result = []
+    for index in range(start, len(lines)):
+        line = lines[index]
+        if index > start and line.startswith("## ["):
+            break
+        result.append((index + 1, line))
+    return result
+
 def validate_public_doc_versions(contract, candidate_version):
     policy = public_doc_version_policy(contract)
     pins = provider_versions_from_pins(policy)
@@ -248,7 +282,11 @@ def validate_public_doc_versions(contract, candidate_version):
     violations = []
     for path in paths:
         text = (ROOT / path).read_text(encoding="utf-8")
-        for line_number, line in enumerate(text.splitlines(), start=1):
+        if path == "CHANGELOG.md":
+            source_lines = candidate_changelog_lines(text, candidate_version)
+        else:
+            source_lines = list(enumerate(text.splitlines(), start=1))
+        for line_number, line in source_lines:
             for match in SEMVER_TOKEN.finditer(line):
                 raw = match.group(0)
                 prefix = match.group("prefix")
@@ -386,6 +424,32 @@ def main():
             "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_STALE_VERSION")
+        changelog_fixture = """## [0.4.3] - 2026-10-02
+- Codex CLI 0.156.1 exact
+- recovery from `v0.4.4`
+
+## [0.4.2] - 2026-09-20
+- Codex CLI 0.154.0 historical
+"""
+        active_lines = candidate_changelog_lines(changelog_fixture, "0.4.3")
+        if any("0.154.0" in line for _, line in active_lines):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_HISTORICAL_CHANGELOG_SCANNED")
+        if public_doc_version_violation(
+            "CHANGELOG.md", "Codex CLI 0.156.0 stale", "", "0.156.0",
+            "0.4.3", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CHANGELOG_STALE_PROVIDER")
+        if public_doc_version_violation(
+            "CHANGELOG.md", "Codex CLI 0.156.1 exact", "", "0.156.1",
+            "0.4.3", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CHANGELOG_PROVIDER")
+        doc_policy["candidate_changelog_version_inventory"]["allowed_release_references"]["0.4.4"] = "fixture baseline"
+        if public_doc_version_violation(
+            "CHANGELOG.md", "recovery from v0.4.4", "v", "0.4.4",
+            "0.4.3", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CHANGELOG_HISTORICAL_REFERENCE")
         validate_public_doc_versions(
             contract,
             __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"],

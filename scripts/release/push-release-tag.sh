@@ -157,7 +157,7 @@ verify_required_main_workflows() {
     return 1
   fi
   if ! python3 - "$runs_tmp" "$expected" <<'PY'
-import json, sys
+import json, subprocess, sys
 path, expected = sys.argv[1:]
 data = json.load(open(path, encoding="utf-8"))
 required = {
@@ -183,6 +183,34 @@ for workflow_path, (workflow_name, workflow_event) in required.items():
         raise SystemExit(
             f"not-success:{workflow_name}:{latest.get('status')}:{latest.get('conclusion')}"
         )
+release_runs = [
+    run for run in data.get("workflow_runs", [])
+    if run.get("path") == ".github/workflows/release-candidate.yml"
+    and run.get("name") == "Release candidate readiness"
+    and run.get("event") == "push"
+    and run.get("head_branch") == "main"
+    and run.get("head_sha") == expected
+]
+release_runs.sort(key=lambda run: run.get("created_at") or "", reverse=True)
+if not release_runs:
+    raise SystemExit("missing:Release candidate readiness")
+release_run = release_runs[0]
+jobs = json.loads(subprocess.check_output(
+    ["gh", "api", f"repos/y-sor/clean-room-launcher/actions/runs/{release_run['id']}/jobs?per_page=100"],
+    text=True,
+))
+publishable = [
+    job for job in jobs.get("jobs", [])
+    if job.get("name") == "Publishable content semantic closure"
+]
+if len(publishable) != 1:
+    raise SystemExit("publishable-content-job-count")
+job = publishable[0]
+if job.get("status") != "completed" or job.get("conclusion") != "success":
+    raise SystemExit(
+        f"publishable-content-not-success:{job.get('status')}:{job.get('conclusion')}"
+    )
+print("PUBLISHABLE_CONTENT_JOB_PASS")
 print("REQUIRED_MAIN_WORKFLOWS_PASS")
 PY
   then
@@ -231,6 +259,17 @@ python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage"   --version 
     echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING" >&2
     exit 80
   }
+
+publish_preview_sha=$(python3 - "$tmp/stage/pretag-manifest.json" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1], encoding="utf-8"))["publish_preview_sha256"])
+PY
+)
+[[ "$publish_preview_sha" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "TAG_GATE_BLOCKED:PUBLISH_PREVIEW_BINDING" >&2
+  exit 80
+}
+echo "PUBLISH_PREVIEW_BINDING_PASS sha256=$publish_preview_sha"
 
 stage_binding_digest() {
   python3 - "$tmp/stage" <<'PY'

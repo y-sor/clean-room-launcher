@@ -36,9 +36,7 @@
         "docs/*.yaml",
         "docs/*.xml"
       ],
-      "historical_exclusions": [
-        "CHANGELOG.md"
-      ],
+      "historical_exclusions": [],
       "historical_product_paths": [
         "SECURITY.md"
       ],
@@ -53,7 +51,15 @@
           "2.1.248": "Claude native --restricted availability floor"
         }
       },
-      "allowed_other_versions": {}
+      "allowed_other_versions": {},
+      "candidate_changelog_version_inventory": {
+        "current_section": "active",
+        "older_sections": "historical",
+        "allowed_release_references": {
+          "0.4.4": "latest published stable baseline for v0.4.6 recovery",
+          "0.4.5": "protected tagged-but-unpublished release-harness incident"
+        }
+      }
     },
     "pretag_blocker_closure": "required",
     "codex_pretag_stage_transport": "github_actions_macos_accepted_main_exact_archive",

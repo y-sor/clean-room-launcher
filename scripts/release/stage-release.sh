@@ -132,6 +132,9 @@ codex_evidence="$evidence_dir/codex-stage-v${version}-${head:0:12}.json"
 install -m 0644 "$codex_evidence" "$output/codex-stage.json"
 
 python3 scripts/release/render-release-notes.py   --version "$version"   --artifact "$artifact_name"   --output "$output/release-notes.md"   || fail "RELEASE_NOTES"
+python3 scripts/release/release-facts.py   --output "$output/release-facts.json"   || fail "RELEASE_FACTS"
+python3 scripts/release/render-publish-preview.py   --facts "$output/release-facts.json"   --notes "$output/release-notes.md"   --output "$output/publish-preview.json"   || fail "PUBLISH_PREVIEW"
+python3 scripts/release/verify-publishable-surface.py   --facts "$output/release-facts.json"   --preview "$output/publish-preview.json"   --notes "$output/release-notes.md"   --output "$output/publishable-surface.json"   || fail "PUBLISHABLE_SURFACE"
 
 python3 -   "$output" "$version" "$head" "$source_tree" "$reviewed_content_digest"   "$artifact_name" "$CODEX_VERSION" "$CODEX_SHA512" "$CODEX_PLATFORM_SHA512" "$codex_provider_sha"   "$CLAUDE_VERSION" "$CLAUDE_SHA512" "$CLAUDE_PLATFORM_SHA512" "$claude_provider_sha" <<'PY'
 import hashlib, json, pathlib, sys
@@ -155,13 +158,16 @@ names = [
     "sbom.cdx.json",
     "install.sh",
     "release-notes.md",
+    "release-facts.json",
+    "publish-preview.json",
+    "publishable-surface.json",
     "codex-qualification.json",
     "claude-qualification.json",
     "codex-stage.json",
 ]
 files = {name: sha(root / name) for name in names}
 record = {
-    "schema_version": "clroom.pretag-stage.v1",
+    "schema_version": "clroom.pretag-stage.v2",
     "release_version": version,
     "source_head": source_head,
     "source_tree": source_tree,
@@ -170,6 +176,10 @@ record = {
     "provider_registry_freshness": "PASS",
     "generic_provider_qualification": "PASS",
     "codex_exact_archive_runtime": "PASS",
+    "publishable_surface_semantic": "PASS",
+    "release_facts_sha256": files["release-facts.json"],
+    "publish_preview_sha256": files["publish-preview.json"],
+    "publishable_surface_evidence_sha256": files["publishable-surface.json"],
     "providers": {
         "codex": {
             "version": codex_version,
@@ -192,6 +202,9 @@ record = {
         "codex_exact_archive_runtime",
         "installer_contract",
         "release_notes_render",
+        "release_facts",
+        "exact_publish_preview",
+        "publishable_surface_semantic",
         "provider_registry_freeze",
     }),
     "post_tag_only": sorted({
