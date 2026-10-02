@@ -57,7 +57,7 @@ for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) a
 do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_STAGE_SMOKE_MISSING:$needle"
 done
-for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v5"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_tui_supervised'   'selected_tui_supervised'   'interactive_submit_bytes_blocked_by_supervisor'   'interactive_harness_owned_teardown'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'
+for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v6"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_tui_supervised'   'selected_tui_supervised'   'interactive_submit_bytes_blocked_by_supervisor'   'interactive_harness_owned_teardown'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'   'clean_observation_ready_acknowledged'   'selected_observation_ready_acknowledged'
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_SMOKE_MISSING:$needle"
 done
@@ -69,9 +69,9 @@ if grep -Fq -- 'bash "$root/scripts/release/check-provider-pins.sh"' "$claude_sm
   fail "CLAUDE_HUMAN_TTY_MUTABLE_LATEST_LOOKUP"
 fi
 grep -Fq -- '"plugin_id": "frontend-design@claude-plugins-official"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_PLUGIN_IDENTITY"
-grep -Fq -- '"schema_version": "clroom.plugin-release-smoke.v5"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5"
+grep -Fq -- 'SCHEMA_VERSION = "clroom.plugin-release-smoke.v6"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5"
 grep -Fq -- '"automated_probe_prompt_supplied": False' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE"
-for needle in   '"clean_tui_supervised": True'   '"selected_tui_supervised": True'   '"interactive_submit_bytes_blocked_by_supervisor": True'   '"interactive_harness_owned_teardown": True'
+for needle in   '"clean_tui_supervised": True'   '"selected_tui_supervised": True'   '"interactive_submit_bytes_blocked_by_supervisor": True'   '"interactive_harness_owned_teardown": True'   '"clean_observation_ready_acknowledged": True'   '"selected_observation_ready_acknowledged": True'
 do
   grep -Fq -- "$needle" "$claude_stage_verifier" || fail "CLAUDE_STAGE_SUPERVISOR_EVIDENCE:$needle"
 done
