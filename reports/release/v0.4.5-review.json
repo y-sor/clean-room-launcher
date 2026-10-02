@@ -22,7 +22,8 @@
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
         "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.286 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
         "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
-        "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced."
+        "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced.",
+        "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection."
       ]
     },
     "dependencies": {
@@ -171,6 +172,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "After the provider target moved to Codex 0.159.3, the standalone-MCP real-provider negative with a project .codex/config.toml MCP layer stopped reaching CLROOM_CODEX_MCP_LAYER_CONFLICT and timed out before provider birth, while an independent direct app-server config/read still proved the project MCP layer was enabled. Upstream Codex has an open config/read hang class around project/ancestor filesystem discovery, so using provider app-server discovery as the first authority for a known local project layer made the release gate vulnerable to provider-side config-read stalls.",
       "durable_control": "The local project MCP scan now runs before provider-state preparation and repeats at the later MCP preflight boundary. The real-candidate project-layer negative runs before the independent layer diagnostic. Existing unit coverage and the exact rehearsal verify this ordering."
+    },
+    {
+      "id": "claude-release-rehearsal-stream-readiness-vs-screen-state",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The Claude composer was visibly present in iTerm while the supervisor timed out because readiness required one contiguous phrase in the linear provider output stream; differential terminal redraw can produce the final screen without ever emitting that phrase contiguously.",
+      "durable_control": "Composer readiness retains the exact-marker path and adds a bounded recent-visible-window check for specific normal-composer status tokens. The selected method is emitted as evidence. Executable self-tests cover differential redraw detection, false-positive rejection, and stale-window rejection."
     }
   ],
   "artifact_capability_gates": [
@@ -221,8 +228,9 @@
       "Claude TTY evidence ownership contract: human work is autocomplete observation only; the supervisor owns the PTY lifecycle, injects the fixed probe automatically, relays recognized runtime terminal protocol, discards other runtime bytes, bounds CPR relay by observed queries, and restores terminal state.",
       "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning",
       "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag",
-      "Claude real-provider TUI precondition contract: clean/selected observation runs from the exact candidate checkout; AGENTS boundary remains machine-owned; synthetic fresh-workspace TUI and human AGENTS rechecking are regression-forbidden."
+      "Claude real-provider TUI precondition contract: clean/selected observation runs from the exact candidate checkout; AGENTS boundary remains machine-owned; synthetic fresh-workspace TUI and human AGENTS rechecking are regression-forbidden.",
+      "Claude composer readiness is differential-redraw aware while remaining bounded: exact marker first, otherwise specific normal-status tokens inside the recent visible window, with explicit method evidence and negative regressions."
     ]
   },
-  "reviewed_content_digest": "6d31ae8412a6b33ecfb780afd2a00fd933e4e3e75e3749095dc9de1024f279b1"
+  "reviewed_content_digest": "98e48bb59abf44619eba4d5b232d39243d8bd8b26642567646231ed9f234a967"
 }
