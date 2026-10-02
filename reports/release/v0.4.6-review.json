@@ -1,0 +1,116 @@
+{
+  "schema_version": "clroom.release-review.v2",
+  "release": "v0.4.6",
+  "baseline_release": "v0.4.4",
+  "product_outcome": "Ship the complete accepted post-v0.4.4 product delta as v0.4.6, including bounded standalone Codex MCP selection and current provider qualification, while repairing the release system so exact publishable content is semantically accepted before any irreversible tag or publish action. The protected v0.4.5 tag remains unpublished incident evidence and is not a release baseline.",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "COVERED",
+      "evidence": [
+        "The post-v0.4.4 runtime delta adds one bounded root-user stdio standalone Codex MCP selection path while preserving clean and whole-plugin launch boundaries; exact-provider qualification remains mandatory.",
+        "Claude terminal handling includes the accepted rendered-screen and color-scheme-reporting fixes required by Claude Code 2.1.287 without expanding user-facing activation authority."
+      ]
+    },
+    "tests": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Existing exact-provider, MCP, lifecycle, TTY, sandbox, negative and full locked regressions continue to cover the runtime delta.",
+        "New release-content regressions reject stale provider versions in the current candidate CHANGELOG section while leaving older historical sections historical; staged release-note body drift and missing publishable-surface topology also fail closed."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "The post-v0.4.4 runtime dependency delta required by bounded Codex MCP parsing remains locked and covered by cargo-deny, dependency review and full locked tests; the v0.4.6 harness recovery adds no new runtime dependency."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Release-candidate staging now carries semantic public-preview evidence into the pretag manifest and final release-required topology.",
+        "Tag-triggered promotion remains promotion-only and additionally reconciles Draft body equality with the exact accepted staged release notes; automatic publication remains forbidden."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Current-candidate CHANGELOG semantics are checked separately from historical CHANGELOG sections against canonical provider/version policy.",
+        "stage-release generates release-facts.json and requires staged release-notes semantic PASS; verify-pretag-stage binds those facts and the exact release-notes digest.",
+        "Protected tag approval is bound to the exact staged public-preview digest, and a canonical guarded publish helper performs Draft verification, action-time body/state refresh, one publish call and remote outcome reconciliation."
+      ]
+    },
+    "public_claims": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The exact current candidate CHANGELOG section is an active public-claim surface rather than being swallowed by whole-file historical exclusion.",
+        "The exact staged release body must equal the candidate CHANGELOG body plus canonical deterministic release footer and is semantically bound to source, review, artifact and provider facts before tag."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "v045-publishable-release-notes-semantic-escape",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The protected v0.4.5 tag was created before a stale current-candidate CHANGELOG provider claim was discovered in the Draft release body. The defect was technically present in the accepted pretag release-notes.md. Whole-file CHANGELOG historical exclusion prevented provider-version inventory from checking the current candidate section, stage binding proved only note-byte identity rather than truthfulness, and GPT pre-tag review did not inspect the exact staged public preview.",
+      "durable_control": "v0.4.6 separates current candidate CHANGELOG semantics from historical sections; staged release notes produce machine-verified release-facts.json; semantic PASS is part of pretag closure; tag approval binds the exact public-preview digest; Draft body is reconciled to that preview; guarded publish re-verifies the Draft immediately before publication; and the publishable-surface meta-contract regression-forbids removal of these links."
+    },
+    {
+      "id": "v045-publish-verify-action-toctou",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The prior pre-publish verifier was strong but publication itself had no single canonical guarded helper, leaving a state window between verification and a later manual publish action.",
+      "durable_control": "publish-release.sh makes verify, exact-preview approval binding, action-time Draft/tag/policy refresh, one irreversible publish call and remote outcome reconciliation one canonical action chain."
+    },
+    {
+      "id": "v045-provider-tty-screen-harness-incidents",
+      "decision": "COVERED",
+      "failure_mode": "Claude Code 2.1.287 introduced terminal rendering/protocol behavior that repeatedly exposed weaknesses in the release observation harness before final candidate acceptance.",
+      "durable_control": "The accepted supervisor uses bounded rendered-screen state, fail-closed unsupported-control diagnostics, mode-2031 physical-state ownership, exact regressions, machine-owned teardown and zero submitted human/model bytes. These controls remain required for v0.4.6."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "codex-standalone-mcp-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Exercise exact v0.4.6 candidate source with pinned Codex 0.160.0 and require standalone MCP initialize/tools-list, independent fixture tools/call, sibling/environment/layer negatives, source-mutation refusal and lifecycle closure."
+    },
+    {
+      "id": "codex-provider-capabilities",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Build exact future-shipping v0.4.6 bytes once from accepted main and requalify clean, whole-plugin and standalone-MCP Codex capabilities against frozen provider inputs before tag."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Requalify exact v0.4.6 candidate with pinned Claude Code 2.1.287 using machine-owned sandbox/terminal invariants and bounded human autocomplete observation without model prompt."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Before tag, bind required Claude stage smoke to the exact v0.4.6 staged archive, accepted source/tree/review digest and frozen Claude executable bytes."
+    },
+    {
+      "id": "publishable-public-surface",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Generate and semantically verify the exact v0.4.6 release notes/public preview; bind release-facts.json and release-notes digest into the stage manifest and Owner tag approval."
+    },
+    {
+      "id": "guarded-publication",
+      "phase": "PRE_PUBLISH",
+      "requirement": "Require exact Draft body/assets/attestations to match accepted stage and execute publish only through the guarded verify-action-reconcile helper under a separate Owner gate."
+    }
+  ],
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "The v0.4.5 tagged-but-unpublished incident proved that byte identity and runtime qualification did not establish semantic truth of the publishable release body, and that publication lacked a single verify-to-action helper. v0.4.6 moves the public-content verdict before tag and closes the publish action-time gap.",
+    "promoted_controls": [
+      "current candidate CHANGELOG semantic-version inventory separated from historical sections",
+      "machine-verified release-facts.json for exact staged release-notes.md",
+      "publishable-surface semantics as required pretag blocker closure",
+      "protected tag Owner approval bound to exact public-preview digest",
+      "tag-triggered Draft body equality with exact staged release notes",
+      "guarded publish helper with immediate Draft verification, action-time refresh and outcome reconciliation",
+      "publishable-surface topology meta-contract with negative self-tests"
+    ]
+  },
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+}
