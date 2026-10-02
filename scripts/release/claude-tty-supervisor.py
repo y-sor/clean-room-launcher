@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import errno
+import hashlib
+import json
 import fcntl
 import os
 import pty
@@ -241,6 +243,10 @@ class TerminalScreen:
         self.pending = bytearray()
         self.trusted = True
         self.unsupported_mutations = 0
+        self.first_unsupported_identity = "NONE"
+        self.first_unsupported_sha256 = "NONE"
+        self._current_control_identity = "NONE"
+        self._current_control_raw: bytes | None = None
         self.insert_mode = False
         self.autowrap = True
         self.last_char = " "
@@ -252,9 +258,55 @@ class TerminalScreen:
     def buffer(self) -> list[list[str]]:
         return self.alternate if self.alternate_active else self.primary
 
-    def _mark_unsupported(self) -> None:
+    def _mark_unsupported(
+        self,
+        identity: str | None = None,
+        raw_control: bytes | None = None,
+    ) -> None:
         self.trusted = False
         self.unsupported_mutations += 1
+        if self.first_unsupported_identity != "NONE":
+            return
+        chosen_identity = identity or self._current_control_identity
+        chosen_raw = raw_control if raw_control is not None else self._current_control_raw
+        if re.fullmatch(r"[A-Za-z0-9_|=?;,:.+_-]{1,256}", chosen_identity or "") is None:
+            chosen_identity = "INTERNAL_IDENTITY_INVALID"
+            chosen_raw = None
+        self.first_unsupported_identity = chosen_identity
+        self.first_unsupported_sha256 = (
+            hashlib.sha256(chosen_raw).hexdigest()
+            if chosen_raw is not None
+            else "NONE"
+        )
+
+    def _csi_identity(self, sequence: bytes) -> str:
+        try:
+            text = sequence.decode("ascii")
+        except UnicodeDecodeError:
+            return f"CSI|encoding=NONASCII|length={len(sequence)}"
+        if not text:
+            return "CSI|encoding=EMPTY"
+        final = text[-1]
+        body = text[:-1]
+        prefix = ""
+        while body and body[0] in "?><=":
+            prefix += body[0]
+            body = body[1:]
+        intermediates = "".join(ch for ch in body if " " <= ch <= "/")
+        params_raw = "".join(ch for ch in body if ch.isdigit() or ch == ";")
+        return (
+            f"CSI|prefix={prefix or '-'}|params={params_raw or '-'}|"
+            f"intermediates_hex={intermediates.encode('ascii').hex() or '-'}|"
+            f"final=0x{ord(final):02x}"
+        )
+
+    def _set_control_context(self, identity: str, raw_control: bytes) -> None:
+        self._current_control_identity = identity
+        self._current_control_raw = raw_control
+
+    def _clear_control_context(self) -> None:
+        self._current_control_identity = "NONE"
+        self._current_control_raw = None
 
     def _clamp_cursor(self) -> None:
         self.row = max(0, min(self.row, self.rows - 1))
@@ -594,13 +646,26 @@ class TerminalScreen:
                     end = index + 2
                     while end < len(self.pending) and not (0x40 <= self.pending[end] <= 0x7E):
                         if not (0x20 <= self.pending[end] <= 0x3F):
-                            self._mark_unsupported()
+                            bad = self.pending[end]
+                            self._mark_unsupported(
+                                f"CSI|parse=INVALID_BYTE|value=0x{bad:02x}",
+                                bytes(self.pending[index : end + 1]),
+                            )
                             end += 1
                             break
                         end += 1
                     if end >= len(self.pending):
                         break
-                    self._handle_csi(bytes(self.pending[index + 2 : end + 1]))
+                    sequence = bytes(self.pending[index + 2 : end + 1])
+                    raw_control = b"\x1b[" + sequence
+                    self._set_control_context(
+                        self._csi_identity(sequence),
+                        raw_control,
+                    )
+                    try:
+                        self._handle_csi(sequence)
+                    finally:
+                        self._clear_control_context()
                     index = end + 1
                     continue
                 if kind in (ord("]"), ord("P"), ord("_"), ord("^"), ord("X")):
@@ -616,7 +681,9 @@ class TerminalScreen:
                         cursor += 1
                     if terminator < 0:
                         if len(self.pending) - index > SCREEN_MAX_SEQUENCE_BYTES:
-                            self._mark_unsupported()
+                            self._mark_unsupported(
+                                f"STRING|kind=0x{kind:02x}|reason=OVERFLOW"
+                            )
                             index += 2
                             continue
                         break
@@ -663,11 +730,17 @@ class TerminalScreen:
                         self.col = 0
                         index += 3
                         continue
-                    self._mark_unsupported()
+                    self._mark_unsupported(
+                        f"ESC_HASH|final=0x{self.pending[index + 2]:02x}",
+                        bytes(self.pending[index : index + 3]),
+                    )
                     index += 3
                     continue
                 else:
-                    self._mark_unsupported()
+                    self._mark_unsupported(
+                        f"ESC|kind=0x{kind:02x}",
+                        bytes(self.pending[index : index + 2]),
+                    )
                 index += 2
                 continue
 
@@ -693,7 +766,10 @@ class TerminalScreen:
 
             length = self._utf8_length(value)
             if length < 0:
-                self._mark_unsupported()
+                self._mark_unsupported(
+                    f"BYTE|value=0x{value:02x}",
+                    bytes((value,)),
+                )
                 index += 1
                 continue
             if index + length > len(self.pending):
@@ -702,7 +778,10 @@ class TerminalScreen:
             try:
                 decoded = raw.decode("utf-8")
             except UnicodeDecodeError:
-                self._mark_unsupported()
+                self._mark_unsupported(
+                    f"UTF8|reason=DECODE_ERROR|length={len(raw)}",
+                    raw,
+                )
                 index += 1
                 continue
             self._write_char(decoded)
@@ -711,7 +790,7 @@ class TerminalScreen:
         if index:
             del self.pending[:index]
         if len(self.pending) > SCREEN_MAX_SEQUENCE_BYTES:
-            self._mark_unsupported()
+            self._mark_unsupported("PENDING|reason=OVERFLOW")
             self.pending.clear()
 
     def rendered_rows(self) -> list[bytes]:
@@ -729,6 +808,49 @@ class TerminalScreen:
             if all(token in row for token in READY_STATUS_TOKENS):
                 return "SCREEN_STATUS_ROW"
         return None
+
+
+def screen_diagnostic_record(
+    screen: TerminalScreen,
+    *,
+    physical_terminal_state_restored: bool,
+    task_process_session_closed: bool,
+) -> dict[str, object]:
+    return {
+        "schema_version": "clroom.claude-screen-control-diagnostic.v1",
+        "result": (
+            "CAPTURED"
+            if screen.first_unsupported_identity != "NONE"
+            else "NOT_REPRODUCED"
+        ),
+        "unsupported_control_identity": screen.first_unsupported_identity,
+        "unsupported_control_sha256": screen.first_unsupported_sha256,
+        "unsupported_mutations": screen.unsupported_mutations,
+        "screen_model_trusted": screen.trusted,
+        "physical_terminal_state_restored": physical_terminal_state_restored,
+        "task_process_session_closed": task_process_session_closed,
+        "human_bytes_forwarded": 0,
+        "submit_bytes_forwarded": 0,
+        "raw_terminal_transcript_recorded": False,
+    }
+
+
+def write_screen_diagnostic(
+    path: str,
+    screen: TerminalScreen,
+    *,
+    physical_terminal_state_restored: bool,
+    task_process_session_closed: bool,
+) -> None:
+    record = screen_diagnostic_record(
+        screen,
+        physical_terminal_state_restored=physical_terminal_state_restored,
+        task_process_session_closed=task_process_session_closed,
+    )
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, sort_keys=True, indent=2)
+        handle.write("\n")
 
 
 def mode_response_re(mode: int) -> re.Pattern[bytes]:
@@ -945,7 +1067,13 @@ def spawn_child(argv: list[str]) -> tuple[int, int]:
     return pid, master_fd
 
 
-def supervise(argv: list[str], probe_text: str) -> int:
+def supervise(
+    argv: list[str],
+    probe_text: str | None,
+    *,
+    diagnose_unsupported: bool = False,
+    diagnostic_evidence: str | None = None,
+) -> int:
     if not argv:
         print("CLAUDE_TTY_SUPERVISOR_BLOCKED:COMMAND_REQUIRED", file=sys.stderr)
         return 64
@@ -953,11 +1081,17 @@ def supervise(argv: list[str], probe_text: str) -> int:
         print("CLAUDE_TTY_SUPERVISOR_BLOCKED:INTERACTIVE_TTY_REQUIRED", file=sys.stderr)
         return 2
 
-    try:
-        probe_bytes = validate_probe_text(probe_text)
-    except ValueError as exc:
-        print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:INVALID_PROBE_TEXT:{exc}", file=sys.stderr)
-        return 64
+    if diagnose_unsupported:
+        probe_bytes = b""
+    else:
+        if probe_text is None:
+            print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROBE_TEXT_REQUIRED", file=sys.stderr)
+            return 64
+        try:
+            probe_bytes = validate_probe_text(probe_text)
+        except ValueError as exc:
+            print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:INVALID_PROBE_TEXT:{exc}", file=sys.stderr)
+            return 64
 
     stdin_fd = sys.stdin.fileno()
     stdout_fd = sys.stdout.fileno()
@@ -979,6 +1113,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
     standard_cpr_query_tail = b""
     physical_input_bytes_dropped = 0
     physical_terminal_state_restored = False
+    task_process_session_closed = False
     pending_input = b""
     pending_since: float | None = None
     blocked_reason: str | None = None
@@ -995,10 +1130,16 @@ def supervise(argv: list[str], probe_text: str) -> int:
         if child_session == os.getsid(0):
             raise RuntimeError("child PTY session is not task-owned")
 
-        os.write(
-            stdout_fd,
-            b"\r\n[CLROOM release probe: automatic non-submitting probe; bounded observation window; do not type]\r\n",
-        )
+        if diagnose_unsupported:
+            os.write(
+                stdout_fd,
+                b"\r\n[CLROOM screen diagnostic: machine-owned; no probe, prompt, or human input]\r\n",
+            )
+        else:
+            os.write(
+                stdout_fd,
+                b"\r\n[CLROOM release probe: automatic non-submitting probe; bounded observation window; do not type]\r\n",
+            )
 
         while True:
             now = time.monotonic()
@@ -1021,7 +1162,14 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     pending_since = None
                     continue
                 if not probe_injected and now >= ready_deadline:
-                    blocked_reason = "SCREEN_MODEL_UNTRUSTED" if not screen.trusted else "COMPOSER_READY_TIMEOUT"
+                    if diagnose_unsupported:
+                        blocked_reason = "DIAGNOSTIC_UNSUPPORTED_NOT_REPRODUCED"
+                    else:
+                        blocked_reason = (
+                            "SCREEN_MODEL_UNTRUSTED"
+                            if not screen.trusted
+                            else "COMPOSER_READY_TIMEOUT"
+                        )
                     break
                 if probe_injected and observation_deadline is not None and now >= observation_deadline:
                     observation_window_completed = True
@@ -1045,7 +1193,11 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 )
                 standard_cpr_queries_seen += new_cpr_queries
                 screen.feed(data)
-                if not probe_injected:
+                if diagnose_unsupported:
+                    if not screen.trusted:
+                        blocked_reason = "DIAGNOSTIC_UNSUPPORTED_CAPTURED"
+                        break
+                elif not probe_injected:
                     detected_ready_via = screen.composer_ready_method()
                     if detected_ready_via is not None:
                         composer_ready_seen = True
@@ -1105,6 +1257,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
             except RuntimeError:
                 if blocked_reason is None:
                     blocked_reason = "TASK_SESSION_TEARDOWN"
+            task_process_session_closed = not task_owned_session_processes(child_session)
 
         if baseline_state is not None:
             try:
@@ -1130,6 +1283,8 @@ def supervise(argv: list[str], probe_text: str) -> int:
     print(f"COMPOSER_READY_METHOD={composer_ready_via}")
     print(f"SCREEN_MODEL_TRUSTED={'YES' if screen.trusted else 'NO'}")
     print(f"SCREEN_MODEL_UNSUPPORTED_MUTATIONS={screen.unsupported_mutations}")
+    print(f"SCREEN_MODEL_FIRST_UNSUPPORTED_IDENTITY={screen.first_unsupported_identity}")
+    print(f"SCREEN_MODEL_FIRST_UNSUPPORTED_SHA256={screen.first_unsupported_sha256}")
     print(f"PROBE_INJECTED={'YES' if probe_injected else 'NO'}")
     print(f"OBSERVATION_WINDOW_COMPLETED={'YES' if observation_window_completed else 'NO'}")
     print(f"TERMINAL_RESPONSES_FORWARDED={terminal_responses_forwarded}")
@@ -1142,6 +1297,33 @@ def supervise(argv: list[str], probe_text: str) -> int:
     print("HUMAN_CONTROL_ACTIONS_REQUIRED=0")
     print("SUBMIT_BYTES_FORWARDED=0")
     print("HARNESS_STOP_FORWARDED=0")
+    print(f"TASK_PROCESS_SESSION_CLOSED={'YES' if task_process_session_closed else 'NO'}")
+
+    if diagnostic_evidence is not None:
+        write_screen_diagnostic(
+            diagnostic_evidence,
+            screen,
+            physical_terminal_state_restored=physical_terminal_state_restored,
+            task_process_session_closed=task_process_session_closed,
+        )
+
+    if diagnose_unsupported:
+        if (
+            blocked_reason == "DIAGNOSTIC_UNSUPPORTED_CAPTURED"
+            and screen.first_unsupported_identity != "NONE"
+            and physical_terminal_state_restored
+            and task_process_session_closed
+        ):
+            print("CLAUDE_TTY_SCREEN_DIAGNOSTIC=CAPTURED")
+            return 0
+        if blocked_reason is not None:
+            print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:{blocked_reason}", file=sys.stderr)
+        else:
+            print(
+                "CLAUDE_TTY_SUPERVISOR_BLOCKED:DIAGNOSTIC_UNSUPPORTED_NOT_REPRODUCED",
+                file=sys.stderr,
+            )
+        return 3
 
     if blocked_reason is not None:
         print(f"CLAUDE_TTY_SUPERVISOR_BLOCKED:{blocked_reason}", file=sys.stderr)
@@ -1160,7 +1342,6 @@ def supervise(argv: list[str], probe_text: str) -> int:
         return 7
 
     print("CLAUDE_TTY_SUPERVISOR=PASS")
-    print("TASK_PROCESS_SESSION_CLOSED=YES")
     return 0
 
 def self_test() -> int:
@@ -1347,10 +1528,41 @@ def self_test() -> int:
         )
 
     unsupported_screen = TerminalScreen(rows=8, cols=96)
-    unsupported_screen.feed(b"\x1b[1zmanual mode shortcuts /effort")
+    unsupported_control = b"\x1b[?9999h"
+    unsupported_screen.feed(b"PRIVATE_SENTINEL" + unsupported_control)
+    expected_identity = (
+        "CSI|prefix=?|params=9999|intermediates_hex=-|final=0x68"
+    )
+    expected_sha256 = hashlib.sha256(unsupported_control).hexdigest()
     if unsupported_screen.trusted or unsupported_screen.unsupported_mutations != 1:
         raise SystemExit(
             "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_UNSUPPORTED_MUTATION_UNTRUSTED"
+        )
+    if unsupported_screen.first_unsupported_identity != expected_identity:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_CONTROL_IDENTITY"
+        )
+    if unsupported_screen.first_unsupported_sha256 != expected_sha256:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_CONTROL_FINGERPRINT"
+        )
+    if "PRIVATE_SENTINEL" in unsupported_screen.first_unsupported_identity:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_DIAGNOSTIC_PRIVACY"
+        )
+    diagnostic_record = screen_diagnostic_record(
+        unsupported_screen,
+        physical_terminal_state_restored=True,
+        task_process_session_closed=True,
+    )
+    diagnostic_json = json.dumps(diagnostic_record, sort_keys=True)
+    if "PRIVATE_SENTINEL" in diagnostic_json or "\\x1b" in diagnostic_json:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_DIAGNOSTIC_PRIVACY"
+        )
+    if diagnostic_record["raw_terminal_transcript_recorded"] is not False:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_DIAGNOSTIC_RAW_TRANSCRIPT"
         )
     if unsupported_screen.composer_ready_method() is not None:
         raise SystemExit(
@@ -1441,6 +1653,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--probe-text")
+    parser.add_argument("--diagnose-unsupported", action="store_true")
+    parser.add_argument("--diagnostic-evidence")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser.parse_args()
 
@@ -1449,13 +1663,24 @@ def main() -> int:
     args = parse_args()
     if args.self_test:
         return self_test()
-    if args.probe_text is None:
+    if args.diagnostic_evidence is not None and not args.diagnose_unsupported:
+        print(
+            "CLAUDE_TTY_SUPERVISOR_BLOCKED:DIAGNOSTIC_EVIDENCE_REQUIRES_DIAGNOSTIC_MODE",
+            file=sys.stderr,
+        )
+        return 64
+    if not args.diagnose_unsupported and args.probe_text is None:
         print("CLAUDE_TTY_SUPERVISOR_BLOCKED:PROBE_TEXT_REQUIRED", file=sys.stderr)
         return 64
     command = list(args.command)
     if command and command[0] == "--":
         command = command[1:]
-    return supervise(command, args.probe_text)
+    return supervise(
+        command,
+        args.probe_text,
+        diagnose_unsupported=args.diagnose_unsupported,
+        diagnostic_evidence=args.diagnostic_evidence,
+    )
 
 
 if __name__ == "__main__":

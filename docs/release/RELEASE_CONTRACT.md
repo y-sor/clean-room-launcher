@@ -186,18 +186,33 @@ than a post-test auto-write.
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
-   Claude runs locally because its selected-plugin TUI requires a genuine human
-   terminal observation; its evidence stays outside the tracked tree. The exact
-   PR machine readiness owns mutable provider-latest resolution. The local human
-   smoke self-provisions the same pinned provider tuple from reviewed package
-   integrities without re-querying latest, then machine preflight proves the
-   exact skill-only selection is qualified. Clean and selected Claude sessions
-   run through a task-owned PTY supervisor. Human input is not forwarded to
-   Claude: one harness chord injects the exact non-submitting autocomplete probe,
-   another harness chord ends observation, and the supervisor closes only the
-   task-owned process group before persistent-state verification. The human only
-   observes target absence/presence, sibling/plugin-error state and the AGENTS
-   boundary. Any unexpected operator input or inference invalidates the run.
+   Claude runs locally because selected-plugin autocomplete remains the one
+   genuine human visual observation; its evidence stays outside the tracked
+   tree. The exact PR machine readiness owns mutable provider-latest resolution.
+   The local smoke self-provisions the same pinned provider tuple from reviewed
+   package integrities without re-querying latest, then machine preflight proves
+   the exact skill-only selection is qualified. Clean and selected Claude
+   sessions run through a task-owned PTY supervisor. The operator sends zero
+   bytes inside Claude. The supervisor maintains a bounded rendered terminal
+   screen model, waits for trusted same-row composer readiness, injects only the
+   fixed non-submitting autocomplete probe, keeps the UI open for a bounded
+   observation window, restores physical terminal state and owns task-session
+   teardown before persistent-state verification. Unknown screen-mutating
+   controls fail closed before probe injection. Human work is limited to the
+   target absence/presence, sibling/plugin-error and no-inference observations
+   after the supervisor returns; provider exit UX is not part of the proof.
+
+   A screen-model failure is diagnosed only through the canonical
+   `diagnose-screen` phase of
+   `scripts/release/local-plugin-activation-smoke.sh`. That phase runs only the
+   clean Claude launch, injects no autocomplete probe, requires no human input or
+   y/N confirmation, stops at the first unsupported control, restores/tears down
+   task-owned state and emits only a normalized terminal-control identity plus
+   SHA-256 fingerprint and invariant counters. Raw terminal text/transcripts,
+   prompts, Owner paths and credential/provider-state contents are never
+   serialized by this diagnostic. The diagnostic result is evidence for a
+   subsequent semantic model change; it is never itself a qualification PASS.
+
    Codex runs automatically in the macOS Release-candidate workflow and proves
    the real MCP runtime plus post-runtime clean-state closure. This catches
    product/runtime failures at the earliest candidate boundary.
@@ -323,6 +338,11 @@ Use:
 ~~~sh
 # Before merge: exact PR candidate, only Claude remains a local human-TTY gate.
 bash scripts/release/local-plugin-activation-smoke.sh rehearse \
+  --expected-head <exact-pr-head> --plugin-id frontend-design@claude-plugins-official
+
+# Only after a fail-closed unknown screen-control incident; machine-owned
+# diagnostic, never a qualification PASS and never a substitute for rehearsal.
+bash scripts/release/local-plugin-activation-smoke.sh diagnose-screen \
   --expected-head <exact-pr-head> --plugin-id frontend-design@claude-plugins-official
 
 # Codex pre-merge rehearsal is produced automatically by the PR

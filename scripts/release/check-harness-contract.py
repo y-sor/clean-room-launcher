@@ -252,6 +252,15 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "COMPOSER_READY_METHOD=" in text, "CLAUDE_TTY_SUPERVISOR_READY_METHOD_EVIDENCE")
     require(errors, "SCREEN_MODEL_TRUSTED=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_TRUST_EVIDENCE")
     require(errors, "SCREEN_MODEL_UNSUPPORTED_MUTATIONS=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_UNSUPPORTED_EVIDENCE")
+    require(errors, "SCREEN_MODEL_FIRST_UNSUPPORTED_IDENTITY=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_IDENTITY_EVIDENCE")
+    require(errors, "SCREEN_MODEL_FIRST_UNSUPPORTED_SHA256=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_FINGERPRINT_EVIDENCE")
+    require(errors, "--diagnose-unsupported" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_MODE")
+    require(errors, "no probe, prompt, or human input" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_NO_PROBE_BANNER")
+    require(errors, "CLAUDE_TTY_SCREEN_DIAGNOSTIC=CAPTURED" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_CAPTURED")
+    require(errors, '"raw_terminal_transcript_recorded": False' in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_NO_RAW_TRANSCRIPT")
+    require(errors, "SCREEN_DIAGNOSTIC_PRIVACY" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_PRIVACY_TEST")
+    require(errors, "SCREEN_CONTROL_FINGERPRINT" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_FINGERPRINT_TEST")
+    require(errors, "os.O_EXCL" in text and "0o600" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_PRIVATE_CREATE")
     require(errors, "OBSERVATION_WINDOW_COMPLETED=" in text, "CLAUDE_TTY_SUPERVISOR_OBSERVATION_EVIDENCE")
     require(errors, "PHYSICAL_TERMINAL_STATE_RESTORED=" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_EVIDENCE")
     require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
@@ -275,7 +284,7 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "sid = os.getsid(pid)" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_ID_LOOKUP")
     require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SPLIT_PROCESS_GROUP" in text, "CLAUDE_TTY_SUPERVISOR_SPLIT_GROUP_SELF_TEST")
     require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SESSION_RESIDUE" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_RESIDUE_SELF_TEST")
-    require(errors, "TASK_PROCESS_SESSION_CLOSED=YES" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
+    require(errors, "TASK_PROCESS_SESSION_CLOSED=" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
     require(
         errors,
         "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in text,
@@ -400,6 +409,53 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
         errors,
         "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE" in text,
         "CLAUDE_RELEASE_SMOKE_SELECTED_FINGERPRINT",
+    )
+    require(
+        errors,
+        '"$phase" == "diagnose-screen"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_PHASE",
+    )
+    require(
+        errors,
+        "--diagnose-unsupported" in text
+        and "--diagnostic-evidence" in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_LAUNCH",
+    )
+    require(
+        errors,
+        "No human observation or keypress is required." in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_MACHINE_ONLY",
+    )
+    require(
+        errors,
+        "SCREEN_CONTROL_IDENTITY=" in text
+        and "SCREEN_CONTROL_SHA256=" in text
+        and "SCREEN_CONTROL_RAW_TRANSCRIPT_RECORDED=NO" in text
+        and "SCREEN_CONTROL_DIAGNOSTIC=PASS" in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_SANITIZED_EVIDENCE",
+    )
+    require(
+        errors,
+        "PERSISTENT_CONFIG_CHANGED_SCREEN_DIAGNOSTIC" in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_FINGERPRINT",
+    )
+    diagnostic_start = text.find('if [[ "$phase" == "diagnose-screen" ]]')
+    diagnostic_exit = text.find("exit 0", diagnostic_start)
+    diagnostic_read = text.find("read -r", diagnostic_start)
+    diagnostic_selected = text.find('--with="plugin:$plugin_id"', diagnostic_start)
+    require(
+        errors,
+        diagnostic_start >= 0
+        and diagnostic_exit > diagnostic_start
+        and (diagnostic_read < 0 or diagnostic_read > diagnostic_exit),
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_NO_HUMAN_READ",
+    )
+    require(
+        errors,
+        diagnostic_start >= 0
+        and diagnostic_exit > diagnostic_start
+        and (diagnostic_selected < 0 or diagnostic_selected > diagnostic_exit),
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_CLEAN_ONLY",
     )
     forbidden = (
         "Press Escape once to dismiss autocomplete",

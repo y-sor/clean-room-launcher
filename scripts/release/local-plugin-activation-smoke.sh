@@ -3,6 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: scripts/release/local-plugin-activation-smoke.sh rehearse --expected-head SHA --plugin-id ID" >&2
+  echo "       scripts/release/local-plugin-activation-smoke.sh diagnose-screen --expected-head SHA --plugin-id ID" >&2
   echo "       scripts/release/local-plugin-activation-smoke.sh stage --expected-head SHA --artifact PATH --plugin-id ID" >&2
   exit 64
 }
@@ -13,7 +14,7 @@ fail() {
 }
 
 phase=${1:-}
-[[ "$phase" == "rehearse" || "$phase" == "stage" ]] || usage
+[[ "$phase" == "rehearse" || "$phase" == "diagnose-screen" || "$phase" == "stage" ]] || usage
 shift || true
 
 artifact_input=
@@ -66,10 +67,10 @@ bash "$root/scripts/release/provision-provider-canaries.sh" --all-frozen "$provi
 # shellcheck disable=SC1090
 source "$provider_env"
 export PATH="$provider_root/bin:$PATH"
-if [[ "$phase" == "rehearse" ]]; then
-  echo "PROVIDER_PR_TUPLE_FREEZE_REUSED=YES"
-else
+if [[ "$phase" == "stage" ]]; then
   echo "PROVIDER_REGISTRY_FREEZE_REUSED=YES"
+else
+  echo "PROVIDER_PR_TUPLE_FREEZE_REUSED=YES"
 fi
 
 # shellcheck source=provider-pins.sh
@@ -107,7 +108,7 @@ PY
 )
 [[ "$reviewed_content_digest" =~ ^[0-9a-f]{64}$ ]] || fail "REVIEW_CONTENT_DIGEST"
 
-if [[ "$phase" == "rehearse" ]]; then
+if [[ "$phase" != "stage" ]]; then
   cargo fetch --locked >/dev/null
   CLROOM_SOURCE_COMMIT="$source_head" CLROOM_TARGET='' \
     ./packaging/build-artifacts.sh "$assets" >"$tmp/build.log"
@@ -259,6 +260,81 @@ plugin_info_preflight=true
 probe_text="/${plugin_id%%@*}"
 after=$(fingerprint)
 [[ "$before" == "$after" ]] || fail "PERSISTENT_CONFIG_CHANGED"
+
+if [[ "$phase" == "diagnose-screen" ]]; then
+  [[ -t 0 && -t 1 ]] || fail "INTERACTIVE_TTY_REQUIRED"
+
+  terminal_preflight_output=$(
+    python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"
+  ) || {
+    printf '%s\n' "$terminal_preflight_output"
+    fail "PHYSICAL_TERMINAL_PREFLIGHT"
+  }
+  printf '%s\n' "$terminal_preflight_output"
+  grep -Fqx "TERMINAL_STATE_DIAGNOSTIC=PASS" <<<"$terminal_preflight_output" \
+    || fail "PHYSICAL_TERMINAL_PREFLIGHT_MARKER"
+
+  diagnostic_evidence="$tmp/screen-control.json"
+  echo
+  echo "=== MACHINE SCREEN-CONTROL DIAGNOSTIC ==="
+  echo "No human observation or keypress is required."
+  echo "The supervisor stops after the first unsupported screen control and records only a normalized control identity plus SHA-256 fingerprint."
+  echo
+  (
+    cd "$root"
+    python3 "$root/scripts/release/claude-tty-supervisor.py" \
+      --diagnose-unsupported \
+      --diagnostic-evidence "$diagnostic_evidence" \
+      -- "$clroom" claude
+  ) || fail "SCREEN_CONTROL_DIAGNOSTIC"
+
+  [[ "$before" == "$(fingerprint)" ]] || fail "PERSISTENT_CONFIG_CHANGED_SCREEN_DIAGNOSTIC"
+
+  python3 - "$diagnostic_evidence" <<'PY' || fail "SCREEN_CONTROL_DIAGNOSTIC_EVIDENCE"
+import json
+import re
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    record = json.load(handle)
+
+identity = record.get("unsupported_control_identity")
+fingerprint = record.get("unsupported_control_sha256")
+mutations = record.get("unsupported_mutations")
+
+checks = (
+    record.get("schema_version") == "clroom.claude-screen-control-diagnostic.v1",
+    record.get("result") == "CAPTURED",
+    isinstance(identity, str)
+    and re.fullmatch(r"[A-Za-z0-9_|=?;,:.+_-]{1,256}", identity) is not None,
+    isinstance(fingerprint, str)
+    and re.fullmatch(r"[0-9a-f]{64}", fingerprint) is not None,
+    isinstance(mutations, int) and mutations >= 1,
+    record.get("screen_model_trusted") is False,
+    record.get("physical_terminal_state_restored") is True,
+    record.get("task_process_session_closed") is True,
+    record.get("human_bytes_forwarded") == 0,
+    record.get("submit_bytes_forwarded") == 0,
+    record.get("raw_terminal_transcript_recorded") is False,
+)
+if not all(checks):
+    raise SystemExit(1)
+
+print(f"SCREEN_CONTROL_IDENTITY={identity}")
+print(f"SCREEN_CONTROL_SHA256={fingerprint}")
+print(f"SCREEN_CONTROL_UNSUPPORTED_MUTATIONS={mutations}")
+print("SCREEN_CONTROL_RAW_TRANSCRIPT_RECORDED=NO")
+print("SCREEN_CONTROL_DIAGNOSTIC=PASS")
+PY
+
+  [[ "$(claude --version 2>&1 | head -1)" == "$claude_version_output" ]] \
+    || fail "CLAUDE_PROVIDER_VERSION_CHANGED"
+  [[ "$(shasum -a 256 "$(command -v claude)" | awk '{print $1}')" == "$claude_provider_sha" ]] \
+    || fail "CLAUDE_PROVIDER_BYTES_CHANGED"
+
+  echo "PLUGIN_RELEASE_SCREEN_DIAGNOSTIC=CAPTURED"
+  exit 0
+fi
 
 interactive=false
 clean_tui=false
