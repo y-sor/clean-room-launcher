@@ -116,6 +116,10 @@ Semantic Versioning after the first public release.
 - The standalone-MCP source-mutation rehearsal is event-driven on macOS so the
   TOCTOU negative fails on the actual preflight creation seam instead of a
   polling race.
+- The source-mutation provider observer is bound to the task-owned preflight
+  directory lifecycle rather than provider argv spelling: provider processes
+  inside preflight are classified as machine preflight, while any non-version
+  provider birth after preflight teardown remains a fail-closed escape.
 
 ## [0.4.4] - 2026-09-23
 
