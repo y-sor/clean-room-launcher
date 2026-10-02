@@ -608,6 +608,53 @@ def check(root: Path) -> list[str]:
         and "TERMINAL_STATE_DIAGNOSTIC_SELF_TEST_PASS" in terminal_diagnostic_self_test.stdout,
         "TERMINAL_STATE_DIAGNOSTIC_SELF_TEST",
     )
+    provider_source_pin_checker_path = root / "scripts/release/check-provider-source-pins.py"
+    require(errors, provider_source_pin_checker_path.is_file(), "PROVIDER_SOURCE_PIN_CHECKER_MISSING")
+    if provider_source_pin_checker_path.is_file():
+        provider_source_pin_checker = provider_source_pin_checker_path.read_text(encoding="utf-8")
+        for marker in (
+            "PROVIDER_SOURCE_PIN_BLOCKED:",
+            "CLAUDE_CLEAN_EXACT",
+            "CLAUDE_PLUGIN_ACTIVATION_EXACT",
+            "CODEX_CLEAN_EXACT",
+            "CODEX_PLUGIN_ACTIVATION_EXACT",
+            "PROVIDER_SOURCE_PIN_SELF_TEST_PASS",
+        ):
+            require(
+                errors,
+                marker in provider_source_pin_checker,
+                "PROVIDER_SOURCE_PIN_CHECKER_CONTRACT:" + marker,
+            )
+        provider_source_pin_self_test = subprocess.run(
+            [sys.executable, str(provider_source_pin_checker_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if provider_source_pin_self_test.returncode != 0:
+            if provider_source_pin_self_test.stdout:
+                print(provider_source_pin_self_test.stdout, end="", file=sys.stderr)
+            if provider_source_pin_self_test.stderr:
+                print(provider_source_pin_self_test.stderr, end="", file=sys.stderr)
+        require(
+            errors,
+            provider_source_pin_self_test.returncode == 0
+            and "PROVIDER_SOURCE_PIN_SELF_TEST_PASS" in provider_source_pin_self_test.stdout,
+            "PROVIDER_SOURCE_PIN_CHECKER_SELF_TEST",
+        )
+
+    readiness = read(root, "scripts/release/readiness.sh")
+    require(
+        errors,
+        "python3 scripts/release/check-provider-source-pins.py --self-test" in readiness,
+        "PROVIDER_SOURCE_PIN_SELF_TEST_DISCONNECTED",
+    )
+    require(
+        errors,
+        'python3 scripts/release/check-provider-source-pins.py || fail "PROVIDER_SOURCE_PIN_CONTRACT"' in readiness,
+        "PROVIDER_SOURCE_PIN_CHECK_DISCONNECTED",
+    )
+
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
         errors,
