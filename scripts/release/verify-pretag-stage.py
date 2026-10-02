@@ -14,6 +14,7 @@ REQUIRED_CLOSURE = {
     "codex_exact_archive_runtime",
     "installer_contract",
     "release_notes_render",
+    "publishable_surface_semantics",
     "provider_registry_freeze",
 }
 POST_TAG_ONLY = {
@@ -54,6 +55,8 @@ def main() -> int:
         "provider_registry_freshness": "PASS",
         "generic_provider_qualification": "PASS",
         "codex_exact_archive_runtime": "PASS",
+        "release_notes_semantic_validation": "PASS",
+        "publishable_surface_manifest": "PASS",
     }
     if args.source_tree:
         expected["source_tree"] = args.source_tree
@@ -100,6 +103,7 @@ def main() -> int:
         "sbom.cdx.json",
         "install.sh",
         "release-notes.md",
+        "release-facts.json",
         "codex-qualification.json",
         "claude-qualification.json",
         "codex-stage.json",
@@ -112,6 +116,31 @@ def main() -> int:
         path = root / name
         if not path.is_file() or sha256(path) != expected_sha:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:FILE_BYTES:{name}")
+
+    facts = json.loads((root / "release-facts.json").read_text(encoding="utf-8"))
+    facts_required = {
+        "schema_version": "clroom.release-facts.v1",
+        "result": "PASS",
+        "release_version": args.version,
+        "source_head": args.source_head,
+        "artifact_name": record["artifact_name"],
+        "release_notes_sha256": files["release-notes.md"],
+        "qualified_platform": "macOS Apple Silicon",
+        "apple_platform_signing": "unsigned",
+    }
+    if args.source_tree:
+        facts_required["source_tree"] = args.source_tree
+    if args.reviewed_content_digest:
+        facts_required["reviewed_content_digest"] = args.reviewed_content_digest
+    for key, value in facts_required.items():
+        if facts.get(key) != value:
+            raise SystemExit(f"PRETAG_STAGE_BLOCKED:RELEASE_FACTS:{key}")
+    if args.codex_version and (facts.get("providers", {}).get("codex") or {}).get("version") != args.codex_version:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:RELEASE_FACTS:CODEX_VERSION")
+    if args.claude_version and (facts.get("providers", {}).get("claude") or {}).get("version") != args.claude_version:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:RELEASE_FACTS:CLAUDE_VERSION")
+    if sha256(root / "release-facts.json") != files["release-facts.json"]:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:RELEASE_FACTS:BYTES")
 
     codex = json.loads((root / "codex-stage.json").read_text(encoding="utf-8"))
     runtime_required = {
