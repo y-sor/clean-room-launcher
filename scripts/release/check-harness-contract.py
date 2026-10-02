@@ -792,6 +792,7 @@ run.get("conclusion") is not None
 Release eligibility and harness seal
 CLROOM release readiness
 Rehearse/stage exact release bytes
+Publishable surface closure
 Rehearse attestation mechanism before tag
 job.get("status") != "completed" or job.get("conclusion") != "success"
 PRETAG_RUN_ADMISSION_SELF_TEST_PASS
@@ -821,6 +822,20 @@ PRETAG_RUN_ADMISSION_SELF_TEST_PASS
         )
     ):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_UPSTREAM")
+    missing_publishable = admission_fixture.replace(
+        "Publishable surface closure", "missing publishable surface"
+    )
+    if not any(
+        error.startswith("PRETAG_CURRENT_RUN_UPSTREAM_JOB:Publishable surface closure")
+        for error in validate_pretag_current_run_contract(
+            resolver_fixture,
+            missing_publishable,
+            promotion_fixture,
+            release_fixture,
+            candidate_fixture,
+        )
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_PUBLISHABLE")
     tag_exception = release_fixture + "\nCLROOM_PRETAG_CURRENT_RUN_ID\n"
     if "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN" not in validate_pretag_current_run_contract(
         resolver_fixture,
