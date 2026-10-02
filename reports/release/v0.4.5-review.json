@@ -23,7 +23,8 @@
         "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.287 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
         "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
         "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced.",
-        "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection."
+        "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection.",
+        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.287; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants."
       ]
     },
     "dependencies": {
@@ -234,5 +235,5 @@
       "action-time provider drift is resolved before acceptance by re-freezing exact current-stable registry/package/native identities and invalidating provider-bound evidence until exact-candidate requalification closes again"
     ]
   },
-  "reviewed_content_digest": "527973c61ba06d7c1daa341f497195c5a1637f310e8fad80374d14e86730a9f5"
+  "reviewed_content_digest": "bcc17a6989b5709bb14e6111f92fcc9599e59adacb2076691c4c1b219dfe2a27"
 }
