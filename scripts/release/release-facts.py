@@ -10,7 +10,7 @@ PROVIDER_PINS = ROOT / "scripts/release/provider-pins.sh"
 
 def pin(name: str) -> str:
     text = PROVIDER_PINS.read_text(encoding="utf-8")
-    match = re.search(rf"^{re.escape(name)}=(?:'([^']+)'|([^\\s]+))$", text, re.MULTILINE)
+    match = re.search(rf"^{re.escape(name)}=(?:'([^']+)'|([^\s]+))$", text, re.MULTILINE)
     if match is None:
         raise SystemExit(f"RELEASE_FACTS_BLOCKED:PIN:{name}")
     return match.group(1) or match.group(2)

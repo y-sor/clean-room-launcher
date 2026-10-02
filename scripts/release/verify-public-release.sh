@@ -88,10 +88,11 @@ cmp -s "$tmp/latest-install.sh" "$tmp/stage/install.sh" || fail "LATEST_INSTALLE
 cmp -s "$tmp/latest-SHA256SUMS" "$tmp/stage/SHA256SUMS" || fail "LATEST_CHECKSUM_DRIFT"
 chmod 0755 "$tmp/latest-install.sh"
 
-mkdir -p "$tmp/home"
-HOME="$tmp/home" sh "$tmp/latest-install.sh" >"$tmp/install.out" || fail "ISOLATED_PUBLIC_INSTALL"
+install_home="$tmp"/home
+mkdir -p "$install_home"
+HOME="$install_home" sh "$tmp/latest-install.sh" >"$tmp/install.out" || fail "ISOLATED_PUBLIC_INSTALL"
 for name in clroom clroom-codex clroom-claude; do
-  HOME="$tmp/home" "$tmp/home/.local/bin/$name" --clroom-installer-smoke >/dev/null 2>&1 \
+  HOME="$install_home" "$install_home"/.local/bin/"$name" --clroom-installer-smoke >/dev/null 2>&1 \
     || fail "INSTALLED_BINARY:$name"
 done
 
