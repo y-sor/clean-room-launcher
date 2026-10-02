@@ -335,6 +335,16 @@ For Codex whole-plugin activation this means:
 A provider version change invalidates this lifecycle evidence and requires fresh
 qualification against the new exact provider tuple.
 
+The canonical release provider pins and the shipped product qualification
+constants are one tuple contract, not independent mirrors. Canonical readiness
+must derive the expected Codex/Claude version tuples from
+`scripts/release/provider-pins.sh` and fail unless both clean-launch and
+whole-plugin exact constants in `src/catalog/provider_inventory.rs` match.
+The checker must include a negative self-test that rejects a stale clean or
+plugin-activation tuple. Updating registry/package pins, public docs and a
+mirrored test expectation without updating the shipped qualification constants
+is therefore a pre-merge blocker.
+
 ## Provider ambient-input surface closure
 
 Provider version changes can add new instruction/configuration discovery
