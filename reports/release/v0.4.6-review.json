@@ -315,5 +315,5 @@
       "Claude human-observation evidence cannot be created from post-hoc confirmations alone: an empty-line readiness acknowledgement must occur before each clean/selected provider launch, is never forwarded to Claude, and is required by the stage evidence verifier."
     ]
   },
-  "reviewed_content_digest": "23b4754ce842609e0c9f283f4a5bc6b3c1bc5e069cf538a40eeb68450496bbd8"
+  "reviewed_content_digest": "cf5b65914dce2a138a1e5f8db0b911ce174a9593b7d4368621a66c283fd104d3"
 }
