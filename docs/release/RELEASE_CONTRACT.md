@@ -77,7 +77,7 @@ made any existing control insufficient.
 
 ## Artifact integrity and pre-tag closure
 
-A protected release tag is an irreversible identity boundary, not a test trigger.
+A protected release tag is an irreversible release identity, not a test trigger.
 All technically reproducible release blockers must be closed before the tag.
 
 The exact PR candidate still receives the earliest available product/runtime
@@ -119,10 +119,10 @@ covers completed-run acceptance, current-run acceptance, wrong event/SHA,
 missing binding, failed completed runs, and missing/failed upstream jobs in the
 cheap eligibility lane before provider provisioning. The protected tag helper
 requires the exact-source rehearsal to have completed successfully. This closes runner OS,
-Git file-mode and shell invocation parity before the irreversible tag boundary
+Git file-mode and shell invocation parity before protected tag creation
 without weakening post-tag stage selection.
 
-Claude remains the one genuine local human-TTY boundary. Before tag creation,
+Claude remains the one genuine local human-TTY evidence step. Before tag creation,
 the Owner runs the Claude stage smoke against the exact staged archive, not a
 rebuild and not a Draft download. Its durable evidence binds the exact accepted
 source/tree/review digest, Claude version, the exact frozen Claude provider
@@ -263,7 +263,7 @@ For whole-plugin activation:
 
    Codex runs automatically in the macOS Release-candidate workflow and proves
    the real MCP runtime plus post-runtime clean-state closure. This catches
-   product/runtime failures at the earliest candidate boundary.
+   product/runtime failures at the earliest candidate stage.
 2. **Accepted-main exact-byte staging:** after merge identity is known, the
    Release-candidate workflow builds the future shipping archive once and runs
    generic provider qualification plus the Codex whole-plugin runtime against
@@ -339,9 +339,9 @@ For every newly pinned provider tuple, release qualification must re-prove the
 ambient input classes CLROOM claims to suppress. For Claude Code 2.1.287 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
 through ancestor directories. For Git projects, CLROOM uses the nearest real
-(non-symlink) `.git` file or directory as the project instruction boundary;
+(non-symlink) `.git` file or directory as the project instruction root;
 outside Git it falls back to the launch directory. Those instruction names are
-denied only above that boundary, so launching from a nested project directory
+denied only outside that root, so launching from a nested project directory
 must still retain repo-root and nested project AGENTS files. Regression tests
 must prove both the negative external-ancestor case and this nested-cwd positive
 project case.
@@ -353,11 +353,11 @@ remain readable. The probe must separately prove that the launched provider
 body executed after version preflight; a provider `--version` success alone
 cannot satisfy this evidence. Pre-merge rehearsal evidence additionally requires the real pinned-provider
 selected-plugin TUI to run inside a task-owned synthetic nested Git project and
-confirm both sides of the boundary: repo/nested project AGENTS.md is reported as
+confirm both project-root cases: repo/nested project AGENTS.md is reported as
 loaded, while AGENTS.md and .claude/AGENTS.md above that Git project are not.
 This prevents a permission-denied ancestor walk that drops all project
 instructions from being mistaken for a clean PASS. A provider pin move requires
-both the machine boundary probe and this real-provider instruction-surface
+both the machine project-root probe and this real-provider instruction-surface
 evidence to be refreshed before a protected tag can be created.
 
 ## Exact-tag pre-publish reconciliation
@@ -440,7 +440,7 @@ scripts/release/local-release-audit.sh --full
 For an `ACTIVE_CANDIDATE`, the summary prints the authoritative published
 baseline, the complete commit list, every changed file and its release domain,
 the contract-evolution decision, artifact capability gates, and the
-dependency/version diff. Full mode additionally runs the public-boundary check,
+dependency/version diff. Full mode additionally runs the public-content check (`scripts/check-public-boundary.sh`),
 installer self-test, all locked tests, builds a candidate archive, verifies its
 metadata, and prints its SHA-256.
 
