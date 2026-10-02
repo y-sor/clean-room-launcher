@@ -14,6 +14,7 @@ REQUIRED_CLOSURE = {
     "codex_exact_archive_runtime",
     "installer_contract",
     "release_notes_render",
+    "publishable_surface_closure",
     "provider_registry_freeze",
 }
 POST_TAG_ONLY = {
@@ -54,6 +55,7 @@ def main() -> int:
         "provider_registry_freshness": "PASS",
         "generic_provider_qualification": "PASS",
         "codex_exact_archive_runtime": "PASS",
+        "publishable_surface_closure": "PASS",
     }
     if args.source_tree:
         expected["source_tree"] = args.source_tree
@@ -100,6 +102,7 @@ def main() -> int:
         "sbom.cdx.json",
         "install.sh",
         "release-notes.md",
+        "publish-preview.json",
         "codex-qualification.json",
         "claude-qualification.json",
         "codex-stage.json",
@@ -112,6 +115,36 @@ def main() -> int:
         path = root / name
         if not path.is_file() or sha256(path) != expected_sha:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:FILE_BYTES:{name}")
+
+    preview = json.loads((root / "publish-preview.json").read_text(encoding="utf-8"))
+    preview_required = {
+        "schema_version": "clroom.publish-preview.v1",
+        "release_version": args.version,
+        "source_head": args.source_head,
+        "semantic_validation": "PASS",
+        "provider_claims_validation": "PASS",
+        "manual_draft_repair": "FORBIDDEN",
+        "tag_name": f"v{args.version}",
+        "title": f"v{args.version} — Clean Room Launcher",
+        "draft": True,
+    }
+    for key, value in preview_required.items():
+        if preview.get(key) != value:
+            raise SystemExit(f"PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:{key}")
+    if args.source_tree and preview.get("source_tree") != args.source_tree:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:source_tree")
+    if args.codex_version and (preview.get("providers") or {}).get("codex") != args.codex_version:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:codex")
+    if args.claude_version and (preview.get("providers") or {}).get("claude") != args.claude_version:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:claude")
+    expected_assets = sorted([
+        record["artifact_name"],
+        f"{record['artifact_name']}.provenance.sigstore.json",
+        f"{record['artifact_name']}.sbom.sigstore.json",
+        "SHA256SUMS", "install.sh", "sbom.cdx.json",
+    ])
+    if preview.get("expected_release_assets") != expected_assets:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:PUBLISH_PREVIEW:assets")
 
     codex = json.loads((root / "codex-stage.json").read_text(encoding="utf-8"))
     runtime_required = {
@@ -139,6 +172,10 @@ def main() -> int:
     print(
         f"PRETAG_STAGE_VERIFY_PASS version={args.version} "
         f"source={args.source_head} artifact_sha256={files[record['artifact_name']]}"
+    )
+    print(
+        f"PUBLISHABLE_SURFACE_BINDING_PASS preview_sha256={files['publish-preview.json']} "
+        f"release_notes_sha256={files['release-notes.md']}"
     )
     return 0
 

@@ -132,6 +132,15 @@ codex_evidence="$evidence_dir/codex-stage-v${version}-${head:0:12}.json"
 install -m 0644 "$codex_evidence" "$output/codex-stage.json"
 
 python3 scripts/release/render-release-notes.py   --version "$version"   --artifact "$artifact_name"   --output "$output/release-notes.md"   || fail "RELEASE_NOTES"
+python3 scripts/release/verify-publishable-surface.py \
+  --write-preview \
+  --dir "$output" \
+  --version "$version" \
+  --source-head "$head" \
+  --source-tree "$source_tree" \
+  --codex-version "$CODEX_VERSION" \
+  --claude-version "$CLAUDE_VERSION" \
+  || fail "PUBLISHABLE_SURFACE"
 
 python3 -   "$output" "$version" "$head" "$source_tree" "$reviewed_content_digest"   "$artifact_name" "$CODEX_VERSION" "$CODEX_SHA512" "$CODEX_PLATFORM_SHA512" "$codex_provider_sha"   "$CLAUDE_VERSION" "$CLAUDE_SHA512" "$CLAUDE_PLATFORM_SHA512" "$claude_provider_sha" <<'PY'
 import hashlib, json, pathlib, sys
@@ -155,6 +164,7 @@ names = [
     "sbom.cdx.json",
     "install.sh",
     "release-notes.md",
+    "publish-preview.json",
     "codex-qualification.json",
     "claude-qualification.json",
     "codex-stage.json",
@@ -170,6 +180,7 @@ record = {
     "provider_registry_freshness": "PASS",
     "generic_provider_qualification": "PASS",
     "codex_exact_archive_runtime": "PASS",
+    "publishable_surface_closure": "PASS",
     "providers": {
         "codex": {
             "version": codex_version,
@@ -192,6 +203,7 @@ record = {
         "codex_exact_archive_runtime",
         "installer_contract",
         "release_notes_render",
+        "publishable_surface_closure",
         "provider_registry_freeze",
     }),
     "post_tag_only": sorted({
