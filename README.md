@@ -240,7 +240,7 @@ whose effective MCP surface includes the app-owned `codex_app` server is
 host-required and fails closed for standalone CLROOM activation; configuration
 visibility is not treated as proof that app-hosted tools exist.
 
-v0.4.5 also adds a deliberately narrower standalone Codex MCP selector for
+v0.4.5 also adds a deliberately narrower standalone Codex MCP selection for
 interactive launches:
 
 ```sh
