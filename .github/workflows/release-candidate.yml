@@ -38,6 +38,7 @@ jobs:
           python3 scripts/release/check-harness-contract.py --self-test
           python3 scripts/release/check-harness-contract.py
           python3 scripts/release/stage-binding.py --self-test
+          python3 scripts/release/pretag-run-admission.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py
           python3 scripts/release/check-release-contract.py --self-test

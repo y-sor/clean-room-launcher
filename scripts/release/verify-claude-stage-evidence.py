@@ -18,7 +18,7 @@ def main() -> int:
     with open(args.evidence, encoding="utf-8") as handle:
         record = json.load(handle)
     required = {
-        "schema_version": "clroom.plugin-release-smoke.v4",
+        "schema_version": "clroom.plugin-release-smoke.v5",
         "result": "PASS",
         "phase": "stage",
         "release_version": args.version,
@@ -31,6 +31,13 @@ def main() -> int:
         "plugin_id": "frontend-design@claude-plugins-official",
         "plugin_info_preflight_passed": True,
         "clean_tui_confirmed": True,
+        "clean_tui_supervised": True,
+        "selected_tui_supervised": True,
+        "interactive_human_bytes_forwarded": False,
+        "interactive_submit_bytes_blocked_by_supervisor": True,
+        "interactive_harness_owned_teardown": True,
+        "physical_terminal_preflight_passed": True,
+        "interactive_terminal_state_restored": True,
         "clean_target_plugin_absent_confirmed": True,
         "selected_tui_confirmed": True,
         "selected_target_plugin_visible_confirmed": True,

@@ -305,6 +305,10 @@ fn launch_isolated_codex(
         mcp_activation
             .revalidate()
             .map_err(codex_mcp_activation_error_message)?;
+        // Reject project-local sibling MCP layers before preparing persistent
+        // provider state. The full provider-layer preflight repeats this check
+        // immediately before provider birth to close the action-time boundary.
+        process::preflight_codex_project_mcp_layers(&plan.project)?;
     }
     let state = if invocation == launch_contract::CodexInvocation::Interactive {
         Some(process::prepare_codex_state(

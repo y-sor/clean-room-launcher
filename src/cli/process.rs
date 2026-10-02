@@ -16,7 +16,7 @@ use clroom::adapters::claude::{
 use clroom::adapters::codex::{
     activation::{self as codex_activation, PluginActivationPlan},
     isolation::{IsolationInputs, IsolationPlan, plan_with_skills},
-    mcp::McpActivationPlan,
+    mcp::{self as codex_mcp, McpActivationPlan},
 };
 use clroom::adapters::{
     identity::{ProviderIdentity, resolve_identity, revalidate_identity},
@@ -44,6 +44,7 @@ pub(super) fn prepare_codex_state(
 }
 
 const CODEX_MCP_PREFLIGHT_TIMEOUT: Duration = Duration::from_secs(5);
+const CODEX_PROJECT_LAYER_MAX_ANCESTORS: usize = 64;
 const CODEX_MCP_PREFLIGHT_MAX_FRAMES: usize = 64;
 const CODEX_MCP_PREFLIGHT_MAX_FRAME_BYTES: usize = 1024 * 1024;
 
@@ -57,6 +58,7 @@ pub(super) fn preflight_codex_mcp_layers(
         .revalidate()
         .map_err(|_| "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before preflight; retry".to_owned())?;
     revalidate_launch_identity(identity)?;
+    preflight_codex_project_mcp_layers(&plan.project)?;
 
     let project = plan
         .project
@@ -193,6 +195,66 @@ pub(super) fn preflight_codex_mcp_layers(
         );
     }
     result
+}
+
+pub(super) fn preflight_codex_project_mcp_layers(project: &Path) -> Result<(), String> {
+    if !project.is_absolute() {
+        return Err(mcp_preflight::failed());
+    }
+
+    let mut repo_root = project;
+    let mut found_git_boundary = false;
+    for _ in 0..CODEX_PROJECT_LAYER_MAX_ANCESTORS {
+        let marker = repo_root.join(".git");
+        match fs::symlink_metadata(&marker) {
+            Ok(metadata) => {
+                if metadata.file_type().is_symlink()
+                    || !(metadata.is_dir() || metadata.is_file())
+                {
+                    return Err(mcp_preflight::failed());
+                }
+                found_git_boundary = true;
+                break;
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(_) => return Err(mcp_preflight::failed()),
+        }
+
+        let Some(parent) = repo_root.parent() else {
+            break;
+        };
+        repo_root = parent;
+    }
+
+    if !found_git_boundary {
+        repo_root = project;
+    }
+
+    let mut current = project;
+    loop {
+        let config = current.join(".codex").join("config.toml");
+        match fs::symlink_metadata(&config) {
+            Ok(_) => {
+                let has_mcp = codex_mcp::config_contains_mcp_servers(&config)
+                    .map_err(|_| mcp_preflight::failed())?;
+                if has_mcp {
+                    return Err(
+                        "CLROOM_CODEX_MCP_LAYER_CONFLICT: another enabled Codex config layer contains MCP servers; standalone restore refuses sibling MCP activation"
+                            .to_owned(),
+                    );
+                }
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(_) => return Err(mcp_preflight::failed()),
+        }
+
+        if current == repo_root {
+            break;
+        }
+        current = current.parent().ok_or_else(mcp_preflight::failed)?;
+    }
+
+    Ok(())
 }
 
 fn create_private_preflight_dir(path: &Path) -> Result<(), String> {
@@ -797,7 +859,9 @@ fn local_claude_unavailable() -> String {
 
 #[cfg(all(test, unix))]
 mod tests {
-    use super::{CLAUDE_GATE_SCRIPT, codex_workspace_conflicts};
+    use super::{
+        CLAUDE_GATE_SCRIPT, codex_workspace_conflicts, preflight_codex_project_mcp_layers,
+    };
     use std::{
         fs,
         os::unix::fs::symlink,
@@ -828,6 +892,45 @@ mod tests {
         fs::create_dir_all(&ambient).unwrap();
         symlink(&ambient, project.join(".codex")).unwrap();
         assert!(codex_workspace_conflicts(&project, &ambient));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn codex_project_mcp_preflight_refuses_repo_layer_without_scanning_above_git_root() {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-codex-project-mcp-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let repo = root.join("repo");
+        let nested = repo.join("nested");
+        fs::create_dir_all(repo.join(".git")).unwrap();
+        fs::create_dir_all(&nested).unwrap();
+
+        fs::create_dir_all(root.join(".codex")).unwrap();
+        fs::write(
+            root.join(".codex/config.toml"),
+            "[mcp_servers.outside]\ncommand = \"outside\"\n",
+        )
+        .unwrap();
+        assert!(preflight_codex_project_mcp_layers(&nested).is_ok());
+
+        fs::create_dir_all(repo.join(".codex")).unwrap();
+        fs::write(
+            repo.join(".codex/config.toml"),
+            "[model]\nname = \"synthetic\"\n",
+        )
+        .unwrap();
+        assert!(preflight_codex_project_mcp_layers(&nested).is_ok());
+
+        fs::write(
+            repo.join(".codex/config.toml"),
+            "[mcp_servers.project_sibling]\ncommand = \"fixture\"\n",
+        )
+        .unwrap();
+        let error = preflight_codex_project_mcp_layers(&nested).unwrap_err();
+        assert!(error.starts_with("CLROOM_CODEX_MCP_LAYER_CONFLICT:"));
 
         let _ = fs::remove_dir_all(&root);
     }

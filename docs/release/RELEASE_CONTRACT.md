@@ -106,9 +106,21 @@ non-executable direct invocation fails before provider provisioning.
 After accepted-main staging completes, a separate Ubuntu
 `Release promotion rehearsal` workflow resolves the exact accepted stage using
 the same explicit `bash scripts/release/resolve-pretag-stage.sh` invocation used
-by the tag-triggered Release workflow. The protected tag helper requires this
-exact-source rehearsal to have completed successfully. This closes runner OS,
-Git file-mode and shell invocation parity before the irreversible tag boundary.
+by the tag-triggered Release workflow. Because this rehearsal runs inside the
+same accepted-main workflow run that produced the stage, it may opt the resolver
+into that exact current run only through `CLROOM_PRETAG_CURRENT_RUN_ID`. The
+resolver then independently requires GitHub Actions, the same run id, trusted
+`push` on `refs/heads/main`, the exact source SHA/repository, and completed
+success for eligibility, readiness, exact-byte staging and pre-tag attestation
+before downloading the artifact. The tag-triggered Release workflow is forbidden
+from setting this exception and continues to accept only a fully
+`completed/success` accepted-main run. A deterministic admission self-test
+covers completed-run acceptance, current-run acceptance, wrong event/SHA,
+missing binding, failed completed runs, and missing/failed upstream jobs in the
+cheap eligibility lane before provider provisioning. The protected tag helper
+requires the exact-source rehearsal to have completed successfully. This closes runner OS,
+Git file-mode and shell invocation parity before the irreversible tag boundary
+without weakening post-tag stage selection.
 
 Claude remains the one genuine local human-TTY boundary. Before tag creation,
 the Owner runs the Claude stage smoke against the exact staged archive, not a
@@ -174,20 +186,46 @@ than a post-test auto-write.
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
-   Claude runs locally because its selected-plugin TUI requires a genuine human
-   terminal confirmation; its evidence stays outside the tracked tree. The local
-   Claude smoke sends no model prompt: machine preflight proves the exact
-   skill-only selection is qualified, then a human observes the target skill
-   absent in a clean TUI and present in the selected TUI, with no newly admitted
-   sibling plugin or plugin-load error. Autocomplete inspection must never press
-   Enter while search text remains in the composer: the operator cancels/clears
-   with Ctrl+C, visibly confirms an empty composer, and exits with Ctrl+D.
-   Slash-command `/exit` is forbidden in this rehearsal because residual
-   autocomplete text could concatenate into a submitted prompt; any attempted
-   inference invalidates the run even when provider usage is zero. Codex runs
-   automatically in the macOS Release-candidate workflow and proves the real MCP
-   runtime plus post-runtime clean-state closure. This catches product/runtime
-   failures at the earliest candidate boundary.
+   Claude runs locally because selected-plugin autocomplete remains the one
+   genuine human visual observation; its evidence stays outside the tracked
+   tree. The exact PR machine readiness owns mutable provider-latest resolution.
+   The local smoke self-provisions the same pinned provider tuple from reviewed
+   package integrities without re-querying latest, then machine preflight proves
+   the exact skill-only selection is qualified. Clean and selected Claude
+   sessions run through a task-owned PTY supervisor. The operator sends zero
+   bytes inside Claude. The supervisor maintains a bounded rendered terminal
+   screen model, waits for trusted same-row composer readiness, injects only the
+   fixed non-submitting autocomplete probe, keeps the UI open for a bounded
+   observation window, restores physical terminal state and owns task-session
+   teardown before persistent-state verification. Unknown screen-mutating
+   controls fail closed before probe injection. Human work is limited to the
+   target absence/presence, sibling/plugin-error and no-inference observations
+   after the supervisor returns; provider exit UX is not part of the proof.
+
+   A screen-model failure is diagnosed only through the canonical
+   `diagnose-screen` phase of
+   `scripts/release/local-plugin-activation-smoke.sh`. That phase runs only the
+   clean Claude launch, injects no autocomplete probe, requires no human input or
+   y/N confirmation, stops at the first unsupported control, restores/tears down
+   task-owned state and emits only a normalized terminal-control identity plus
+   SHA-256 fingerprint and invariant counters. Raw terminal text/transcripts,
+   prompts, Owner paths and credential/provider-state contents are never
+   serialized by this diagnostic. The diagnostic result is evidence for a
+   subsequent semantic model change; it is never itself a qualification PASS.
+
+   The Claude Code 2.1.287 incident captured DEC private mode 2031
+   (`CSI ? 2031 h`), which enables terminal color-scheme change reporting. It
+   does not mutate rendered screen cells, so the screen model admits it without
+   losing readiness trust. Because it changes terminal protocol/state, the
+   supervisor also treats mode 2031 as critical physical terminal state: it is
+   queried before provider start, restored after task teardown and re-verified.
+   The corresponding terminal-generated `CSI ? 997 n`,
+   `CSI ? 997 ; 1 n` and `CSI ? 997 ; 2 n` reports are relayed as machine
+   traffic; other values are not recognized as machine traffic and are discarded at runtime.
+
+   Codex runs automatically in the macOS Release-candidate workflow and proves
+   the real MCP runtime plus post-runtime clean-state closure. This catches
+   product/runtime failures at the earliest candidate boundary.
 2. **Accepted-main exact-byte staging:** after merge identity is known, the
    Release-candidate workflow builds the future shipping archive once and runs
    generic provider qualification plus the Codex whole-plugin runtime against
@@ -260,7 +298,7 @@ surfaces without changing CLROOM itself. Startup/version/byte checks alone are
 therefore insufficient for a clean-launch claim.
 
 For every newly pinned provider tuple, release qualification must re-prove the
-ambient input classes CLROOM claims to suppress. For Claude Code 2.1.284 the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.287 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
 through ancestor directories. For Git projects, CLROOM uses the nearest real
 (non-symlink) `.git` file or directory as the project instruction boundary;
@@ -310,6 +348,11 @@ Use:
 ~~~sh
 # Before merge: exact PR candidate, only Claude remains a local human-TTY gate.
 bash scripts/release/local-plugin-activation-smoke.sh rehearse \
+  --expected-head <exact-pr-head> --plugin-id frontend-design@claude-plugins-official
+
+# Only after a fail-closed unknown screen-control incident; machine-owned
+# diagnostic, never a qualification PASS and never a substitute for rehearsal.
+bash scripts/release/local-plugin-activation-smoke.sh diagnose-screen \
   --expected-head <exact-pr-head> --plugin-id frontend-design@claude-plugins-official
 
 # Codex pre-merge rehearsal is produced automatically by the PR
@@ -368,7 +411,7 @@ does not grant merge, tag, or publish permission.
 ## Declared automation-chain topology
 
 `AUTOMATION_CHAIN_RELEASE_CANDIDATE_TO_PROMOTION_REHEARSAL`
-The only automatic continuation from accepted-main `Release candidate readiness` into promotion preparation is a local reusable `workflow_call`. The caller is restricted to trusted `push` runs on `refs/heads/main` in `ACTIVE_CANDIDATE`, passes the exact `github.sha`, and closes the promotion rehearsal inside the same release-candidate run. Privileged `workflow_run` checkout chains are forbidden. The reusable workflow carries only `contents: read` and `actions: read` and performs no publication.
+The only automatic continuation from accepted-main `Release candidate readiness` into promotion preparation is a local reusable `workflow_call`. The caller is restricted to trusted `push` runs on `refs/heads/main` in `ACTIVE_CANDIDATE`, passes the exact `github.sha`, and closes the promotion rehearsal inside the same release-candidate run. That rehearsal alone binds `CLROOM_PRETAG_CURRENT_RUN_ID` to `github.run_id`; the resolver accepts it only after independently proving exact run/repository/ref/SHA identity and PASS of the upstream release jobs. The tag workflow never receives this binding and remains completed-run-only. Privileged `workflow_run` checkout chains are forbidden. The reusable workflow carries only `contents: read` and `actions: read` and performs no publication.
 
 `AUTOMATION_CHAIN_TAG_TO_DRAFT`
 A protected `v*` tag triggers the `Release` workflow. That workflow may bind attestations and create or refresh a GitHub Draft Release from already accepted bytes. It must not rebuild, requalify providers, mutate repository settings, move the tag, or publish the Draft.

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -132,6 +134,64 @@ def validate_supply_chain_verifier_contract(text: str) -> list[str]:
 
 
 
+def validate_pretag_current_run_contract(
+    resolver: str,
+    admission: str,
+    promotion: str,
+    release: str,
+    release_candidate: str,
+) -> list[str]:
+    errors: list[str] = []
+    require(
+        errors,
+        "CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}" in promotion,
+        "PRETAG_CURRENT_RUN_PROMOTION_BINDING",
+    )
+    require(
+        errors,
+        "CLROOM_PRETAG_CURRENT_RUN_ID" not in release,
+        "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN",
+    )
+    require(
+        errors,
+        "python3 scripts/release/pretag-run-admission.py --self-test" in release_candidate,
+        "PRETAG_CURRENT_RUN_SELF_TEST_EARLY",
+    )
+    required_resolver_markers = {
+        "PRETAG_CURRENT_RUN_ID_INPUT": 'current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"',
+        "PRETAG_CURRENT_RUN_ACTIONS": '[[ "${GITHUB_ACTIONS:-}" == "true" ]]',
+        "PRETAG_CURRENT_RUN_ID_MATCH": '[[ "${GITHUB_RUN_ID:-}" == "$current_run_id" ]]',
+        "PRETAG_CURRENT_RUN_EVENT": '[[ "${GITHUB_EVENT_NAME:-}" == "push" ]]',
+        "PRETAG_CURRENT_RUN_REF": '[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]',
+        "PRETAG_CURRENT_RUN_SHA": '[[ "${GITHUB_SHA:-}" == "$expected" ]]',
+        "PRETAG_CURRENT_RUN_REPOSITORY": '[[ "${GITHUB_REPOSITORY:-}" == "$repository" ]]',
+        "PRETAG_CURRENT_RUN_HELPER": "pretag-run-admission.py",
+        "PRETAG_CURRENT_RUN_RUN_JSON": '--run-json "$tmp/run-$run_id.json"',
+        "PRETAG_CURRENT_RUN_BINDING_ARG": 'run_args+=(--current-run-id "$current_run_id")',
+        "PRETAG_CURRENT_RUN_JOBS_JSON": '--jobs-json "$tmp/jobs-$run_id.json"',
+    }
+    for code, marker in required_resolver_markers.items():
+        require(errors, marker in resolver, code)
+
+    required_admission_markers = {
+        "PRETAG_CURRENT_RUN_IN_PROGRESS_ONLY": 'run.get("status") != "in_progress"',
+        "PRETAG_CURRENT_RUN_NO_CONCLUSION": 'run.get("conclusion") is not None',
+        "PRETAG_COMPLETED_RUN_STILL_REQUIRED": 'run.get("status") == "completed" and run.get("conclusion") == "success"',
+        "PRETAG_CURRENT_RUN_JOB_STATUS": 'job.get("status") != "completed" or job.get("conclusion") != "success"',
+        "PRETAG_CURRENT_RUN_SELF_TEST": "PRETAG_RUN_ADMISSION_SELF_TEST_PASS",
+    }
+    for code, marker in required_admission_markers.items():
+        require(errors, marker in admission, code)
+    for name in (
+        "Release eligibility and harness seal",
+        "CLROOM release readiness",
+        "Rehearse/stage exact release bytes",
+        "Rehearse attestation mechanism before tag",
+    ):
+        require(errors, name in admission, "PRETAG_CURRENT_RUN_UPSTREAM_JOB:" + name)
+    return errors
+
+
 def claude_prompt_mode_present(text: str) -> bool:
     for line in text.splitlines():
         tokens = line.replace('"', "").replace("'", "").split()
@@ -141,12 +201,108 @@ def claude_prompt_mode_present(text: str) -> bool:
                     return True
     return False
 
-def validate_claude_release_smoke_contract(text: str) -> list[str]:
+def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     errors: list[str] = []
+    require(errors, "INJECT_BYTE" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INJECT_CHORD_FORBIDDEN")
+    require(errors, "STOP_BYTE" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_STOP_CHORD_FORBIDDEN")
+    require(errors, "CSI_U_KEY_RE" not in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_KEY_PROTOCOL_FORBIDDEN")
+    require(errors, "def validate_probe_text(" in text, "CLAUDE_TTY_SUPERVISOR_FIXED_PROBE_VALIDATION")
+    require(errors, "pty.fork()" not in text, "CLAUDE_TTY_SUPERVISOR_PLATFORM_FORKPTY_FORBIDDEN")
+    require(errors, "pty.openpty()" in text, "CLAUDE_TTY_SUPERVISOR_OPENPTY")
+    require(errors, "os.setsid()" in text, "CLAUDE_TTY_SUPERVISOR_EXPLICIT_SESSION")
+    require(errors, "termios.TIOCSCTTY" in text, "CLAUDE_TTY_SUPERVISOR_CONTROLLING_TTY")
+    require(errors, "ready_read, ready_write = os.pipe()" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_READY_HANDSHAKE")
+    require(errors, "READY_MARKER = b\"manual mode on\"" in text, "CLAUDE_TTY_SUPERVISOR_COMPOSER_READY_MARKER")
+    require(errors, "READY_STATUS_TOKENS" in text, "CLAUDE_TTY_SUPERVISOR_COMPOSER_READY_STATUS_TOKENS")
+    require(errors, "class TerminalScreen:" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_MODEL")
+    require(errors, "SCREEN_MAX_ROWS" in text and "SCREEN_MAX_COLS" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_BOUNDS")
+    require(errors, "def feed(self, data: bytes)" in text, "CLAUDE_TTY_SUPERVISOR_INCREMENTAL_SCREEN_FEED")
+    require(errors, "def composer_ready_method(self)" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_READY_DETECTOR")
+    require(errors, "SCREEN_DIFFERENTIAL_REDRAW" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIFFERENTIAL_TEST")
+    require(errors, "SCREEN_CLEAR_REMOVES_READY" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CLEAR_NEGATIVE_TEST")
+    require(errors, "SCREEN_TRUST_FALSE_POSITIVE" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_TRUST_NEGATIVE_TEST")
+    require(errors, "SCREEN_SAME_ROW_REQUIRED" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_SAME_ROW_TEST")
+    require(errors, "SCREEN_SPLIT_CSI" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_SPLIT_CSI_TEST")
+    require(errors, "SCREEN_UNSUPPORTED_MUTATION_UNTRUSTED" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_UNSUPPORTED_MUTATION_TEST")
+    require(errors, "READY_VISIBLE_WINDOW_BYTES" not in text, "CLAUDE_TTY_SUPERVISOR_LINEAR_WINDOW_FORBIDDEN")
+    require(errors, "output_tail" not in text, "CLAUDE_TTY_SUPERVISOR_LINEAR_OUTPUT_TAIL_FORBIDDEN")
+    require(errors, "composer_ready_method(bytes(" not in text, "CLAUDE_TTY_SUPERVISOR_LINEAR_READY_CALL_FORBIDDEN")
+    require(errors, "elif private:" in text and "self._mark_unsupported()" in text, "CLAUDE_TTY_SUPERVISOR_UNKNOWN_PRIVATE_MODE_FAIL_CLOSED")
+    require(errors, "OBSERVATION_WINDOW_SECONDS" in text, "CLAUDE_TTY_SUPERVISOR_BOUNDED_OBSERVATION")
+    require(errors, "os.write(master_fd, probe_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_AUTOMATIC_PROBE")
+    require(errors, "def terminal_response_length(" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_PARSER")
+    require(errors, "def classify_terminal_input(" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_INPUT_CLASSIFIER")
+    require(errors, 'STANDARD_CPR_QUERY = b"\\x1b[6n"' in text, "CLAUDE_TTY_SUPERVISOR_STANDARD_CPR_QUERY")
+    require(errors, "def count_standard_cpr_queries(" in text, "CLAUDE_TTY_SUPERVISOR_STANDARD_CPR_CORRELATION")
+    require(errors, "standard_cpr_budget: int = 0" in text, "CLAUDE_TTY_SUPERVISOR_STANDARD_CPR_BUDGET")
+    require(errors, "FOCUS_EVENT_RE" in text, "CLAUDE_TTY_SUPERVISOR_FOCUS_EVENT_RELAY")
+    require(errors, "def visible_text(" in text and "linear = visible_text(differential_ready)" in text, "CLAUDE_TTY_SUPERVISOR_LINEAR_STREAM_REGRESSION_ORACLE")
+    require(errors, "def query_physical_terminal_state(" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_SNAPSHOT")
+    require(errors, "def restore_physical_terminal_state(" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_RESTORE")
+    require(errors, "def terminal_state_matches(" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_VERIFY")
+    require(errors, "pending_input = b\"\"" in text, "CLAUDE_TTY_SUPERVISOR_STREAMING_BUFFER")
+    require(errors, "INPUT_SEQUENCE_TIMEOUT_SECONDS" in text, "CLAUDE_TTY_SUPERVISOR_INCOMPLETE_SEQUENCE_TIMEOUT")
+    require(errors, "os.write(master_fd, response_bytes)" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_RELAY")
+    require(errors, "TERMINAL_RESPONSES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_EVIDENCE")
+    require(errors, "TERMINAL_RESPONSE_BYTES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_RESPONSE_BYTE_EVIDENCE")
+    require(errors, "STANDARD_CPR_RESPONSES_FORWARDED=" in text, "CLAUDE_TTY_SUPERVISOR_STANDARD_CPR_EVIDENCE")
+    require(errors, "STANDARD_CPR_WITHOUT_QUERY" in text, "CLAUDE_TTY_SUPERVISOR_STANDARD_CPR_NEGATIVE_TEST")
+    require(errors, "STANDARD_CPR_BUDGET" in text, "CLAUDE_TTY_SUPERVISOR_STANDARD_CPR_BOUNDED_TEST")
+    require(errors, "COMPOSER_READY_SEEN=" in text, "CLAUDE_TTY_SUPERVISOR_READY_EVIDENCE")
+    require(errors, "COMPOSER_READY_METHOD=" in text, "CLAUDE_TTY_SUPERVISOR_READY_METHOD_EVIDENCE")
+    require(errors, "SCREEN_MODEL_TRUSTED=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_TRUST_EVIDENCE")
+    require(errors, "SCREEN_MODEL_UNSUPPORTED_MUTATIONS=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_UNSUPPORTED_EVIDENCE")
+    require(errors, "COLOR_SCHEME_REPORT_MODE = 2031" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_MODE_2031")
+    require(errors, "COLOR_SCHEME_REPORT_RE" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_REPORT_RELAY")
+    require(errors, "SCREEN_MODE_2031_INCIDENT_FINGERPRINT" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_INCIDENT_REPLAY")
+    require(errors, "SCREEN_MODE_2031_CRITICAL_RESTORE" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_CRITICAL_RESTORE")
+    require(errors, "COLOR_SCHEME_REPORT_INVALID" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_REPORT_NEGATIVE")
+    require(errors, "SCREEN_MODEL_FIRST_UNSUPPORTED_IDENTITY=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_IDENTITY_EVIDENCE")
+    require(errors, "SCREEN_MODEL_FIRST_UNSUPPORTED_SHA256=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_FINGERPRINT_EVIDENCE")
+    require(errors, "--diagnose-unsupported" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_MODE")
+    require(errors, "no probe, prompt, or human input" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_NO_PROBE_BANNER")
+    require(errors, "CLAUDE_TTY_SCREEN_DIAGNOSTIC=CAPTURED" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_CAPTURED")
+    require(errors, '"raw_terminal_transcript_recorded": False' in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_NO_RAW_TRANSCRIPT")
+    require(errors, "SCREEN_DIAGNOSTIC_PRIVACY" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_PRIVACY_TEST")
+    require(errors, "SCREEN_CONTROL_FINGERPRINT" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_FINGERPRINT_TEST")
+    require(errors, "os.O_EXCL" in text and "0o600" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_PRIVATE_CREATE")
+    require(errors, "OBSERVATION_WINDOW_COMPLETED=" in text, "CLAUDE_TTY_SUPERVISOR_OBSERVATION_EVIDENCE")
+    require(errors, "PHYSICAL_TERMINAL_STATE_RESTORED=" in text, "CLAUDE_TTY_SUPERVISOR_PHYSICAL_STATE_EVIDENCE")
+    require(errors, "HUMAN_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_EVIDENCE")
+    require(errors, "HUMAN_CONTROL_ACTIONS_REQUIRED=0" in text, "CLAUDE_TTY_SUPERVISOR_ZERO_HUMAN_ACTION_EVIDENCE")
+    require(errors, "SUBMIT_BYTES_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_SUBMIT_EVIDENCE")
+    require(errors, "HARNESS_STOP_FORWARDED=0" in text, "CLAUDE_TTY_SUPERVISOR_STOP_EVIDENCE")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:HUMAN_INPUT_ACCEPTED" in text, "CLAUDE_TTY_SUPERVISOR_HUMAN_INPUT_NEGATIVE_TEST")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:TERMINAL_PROTOCOL_FILTER" in text, "CLAUDE_TTY_SUPERVISOR_TERMINAL_PROTOCOL_SELF_TEST")
+    require(errors, "os.killpg(" in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_GROUP_TEARDOWN")
+    require(errors, "def task_owned_session_processes(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_INVENTORY")
+    require(errors, "def terminate_task_owned_session(" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_TEARDOWN")
+    supervise_index = text.find("def supervise(")
+    close_index = text.find("master_fd = -1", supervise_index)
+    teardown_index = text.find("terminate_task_owned_session(pid, child_session)", supervise_index)
     require(
         errors,
-        '"schema_version":"clroom.plugin-release-smoke.v4"' in text,
-        "CLAUDE_RELEASE_SMOKE_SCHEMA_V4",
+        supervise_index >= 0 and close_index > supervise_index and teardown_index > close_index,
+        "CLAUDE_TTY_SUPERVISOR_PTY_CLOSE_BEFORE_TEARDOWN",
+    )
+    require(errors, '["/bin/ps", "-axo", "pid=,pgid="]' in text, "CLAUDE_TTY_SUPERVISOR_PROCESS_ENUMERATION")
+    require(errors, "sid = os.getsid(pid)" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_ID_LOOKUP")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SPLIT_PROCESS_GROUP" in text, "CLAUDE_TTY_SUPERVISOR_SPLIT_GROUP_SELF_TEST")
+    require(errors, "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SESSION_RESIDUE" in text, "CLAUDE_TTY_SUPERVISOR_SESSION_RESIDUE_SELF_TEST")
+    require(errors, "TASK_PROCESS_SESSION_CLOSED=" in text, "CLAUDE_TTY_SUPERVISOR_CLEANUP_EVIDENCE")
+    require(
+        errors,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in text,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST_MARKER",
+    )
+    return errors
+def validate_claude_release_smoke_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    stripped_lines = {line.strip() for line in text.splitlines()}
+    require(
+        errors,
+        '"schema_version":"clroom.plugin-release-smoke.v5"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCHEMA_V5",
     )
     require(
         errors,
@@ -160,44 +316,164 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
+        '"clean_tui_supervised":clean_tui_supervised=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISED",
+    )
+    require(
+        errors,
+        '"selected_tui_supervised":selected_tui_supervised=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISED",
+    )
+    require(
+        errors,
+        '"interactive_human_bytes_forwarded":False' in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_BYTES_BLOCKED",
+    )
+    require(
+        errors,
+        '"interactive_submit_bytes_blocked_by_supervisor":True' in text,
+        "CLAUDE_RELEASE_SMOKE_SUBMIT_BLOCKED",
+    )
+    require(
+        errors,
+        '"interactive_harness_owned_teardown":True' in text,
+        "CLAUDE_RELEASE_SMOKE_HARNESS_TEARDOWN",
+    )
+    require(
+        errors,
+        '"physical_terminal_preflight_passed":physical_terminal_preflight=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_PHYSICAL_TERMINAL_PREFLIGHT",
+    )
+    require(
+        errors,
+        '"interactive_terminal_state_restored":interactive_terminal_state_restored=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_TERMINAL_STATE_RESTORED",
+    )
+    require(
+        errors,
         '"selected_tui_confirmed":interactive=="true"' in text,
         "CLAUDE_RELEASE_SMOKE_SELECTED_TTY",
     )
     require(
         errors,
-        "No model prompt was sent in either TUI" in text,
+        "No inference/model response appeared in either TUI" in text,
         "CLAUDE_RELEASE_SMOKE_HUMAN_NO_PROMPT_CONFIRMATION",
     )
     require(
         errors,
-        "Do not press Enter while autocomplete/search text remains in the composer." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_NO_ENTER",
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude' in stripped_lines,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH",
     )
     require(
         errors,
-        "Press Ctrl+C to cancel and clear the composer; visually confirm it is empty." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CLEAR",
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"' in stripped_lines,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_SUPERVISOR_LAUNCH",
+    )
+    require(errors, 'cd "$root"' in stripped_lines, "CLAUDE_RELEASE_SMOKE_EXACT_CHECKOUT_TUI")
+    require(
+        errors,
+        'python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"' in stripped_lines,
+        "CLAUDE_RELEASE_SMOKE_PHYSICAL_TERMINAL_PREFLIGHT_CALL",
+    )
+    require(errors, 'cd "$tui_project"' not in stripped_lines, "CLAUDE_RELEASE_SMOKE_SYNTHETIC_TUI_FORBIDDEN")
+    require(
+        errors,
+        "The AGENTS boundary is already machine-proved; human work is autocomplete observation only." in text,
+        "CLAUDE_RELEASE_SMOKE_MACHINE_AGENTS_BOUNDARY",
     )
     require(
         errors,
-        "Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal." in text,
-        "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CTRL_D",
+        "Repo/nested project AGENTS.md was reported as loaded" not in text
+        and "No AGENTS.md above the synthetic Git project was reported as loaded" not in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_AGENTS_RECHECK_FORBIDDEN",
     )
     require(
         errors,
-        "Clean composer was cleared and TUI exited with Ctrl+D without submitting input" in text,
-        "CLAUDE_RELEASE_SMOKE_CLEAN_SAFE_EXIT_CONFIRMATION",
+        "Do not type into Claude." in text
+        and "Human work is observation only; no keypresses are required." in text,
+        "CLAUDE_RELEASE_SMOKE_SUPERVISOR_INPUT_GUARD",
     )
     require(
         errors,
-        "Selected composer was cleared and TUI exited with Ctrl+D without submitting input" in text,
-        "CLAUDE_RELEASE_SMOKE_SELECTED_SAFE_EXIT_CONFIRMATION",
+        "injects the exact non-submitting probe automatically" in text
+        and "bounded observation window" in text
+        and "then owns teardown" in text,
+        "CLAUDE_RELEASE_SMOKE_AUTOMATIC_OBSERVATION",
     )
     require(
         errors,
-        "Exit normally with /exit." not in text,
-        "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT",
+        "Press Ctrl+T" not in text and "Press Ctrl+G" not in text,
+        "CLAUDE_RELEASE_SMOKE_HUMAN_CONTROL_ACTIONS_FORBIDDEN",
     )
+    require(
+        errors,
+        "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE" in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_FINGERPRINT",
+    )
+    require(
+        errors,
+        "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE" in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_FINGERPRINT",
+    )
+    require(
+        errors,
+        '"$phase" == "diagnose-screen"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_PHASE",
+    )
+    require(
+        errors,
+        "--diagnose-unsupported" in text
+        and "--diagnostic-evidence" in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_LAUNCH",
+    )
+    require(
+        errors,
+        "No human observation or keypress is required." in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_MACHINE_ONLY",
+    )
+    require(
+        errors,
+        "SCREEN_CONTROL_IDENTITY=" in text
+        and "SCREEN_CONTROL_SHA256=" in text
+        and "SCREEN_CONTROL_RAW_TRANSCRIPT_RECORDED=NO" in text
+        and "SCREEN_CONTROL_DIAGNOSTIC=PASS" in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_SANITIZED_EVIDENCE",
+    )
+    require(
+        errors,
+        "PERSISTENT_CONFIG_CHANGED_SCREEN_DIAGNOSTIC" in text,
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_FINGERPRINT",
+    )
+    diagnostic_start = text.find('if [[ "$phase" == "diagnose-screen" ]]')
+    diagnostic_exit = text.find("exit 0", diagnostic_start)
+    diagnostic_read = text.find("read -r", diagnostic_start)
+    diagnostic_selected = text.find('--with="plugin:$plugin_id"', diagnostic_start)
+    require(
+        errors,
+        diagnostic_start >= 0
+        and diagnostic_exit > diagnostic_start
+        and (diagnostic_read < 0 or diagnostic_read > diagnostic_exit),
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_NO_HUMAN_READ",
+    )
+    require(
+        errors,
+        diagnostic_start >= 0
+        and diagnostic_exit > diagnostic_start
+        and (diagnostic_selected < 0 or diagnostic_selected > diagnostic_exit),
+        "CLAUDE_RELEASE_SMOKE_SCREEN_DIAGNOSTIC_CLEAN_ONLY",
+    )
+    forbidden = (
+        "Press Escape once to dismiss autocomplete",
+        "Visually confirm the composer is empty.",
+        "Press Ctrl+C to cancel and clear the composer",
+        "Press Ctrl+T",
+        "Press Ctrl+G",
+        "Press Ctrl+D twice within 800 ms",
+        "Then press Ctrl+D to exit",
+        "Exit normally with /exit.",
+    )
+    for marker in forbidden:
+        require(errors, marker not in text, "CLAUDE_RELEASE_SMOKE_PROVIDER_EXIT_FORBIDDEN:" + marker)
     require(
         errors,
         not claude_prompt_mode_present(text),
@@ -232,17 +508,82 @@ def check(root: Path) -> list[str]:
 
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
+    claude_tty_supervisor_path = root / "scripts/release/claude-tty-supervisor.py"
+    claude_tty_supervisor = claude_tty_supervisor_path.read_text(encoding="utf-8")
+    errors.extend(validate_claude_tty_supervisor_contract(claude_tty_supervisor))
+    supervisor_self_test = subprocess.run(
+        [sys.executable, str(claude_tty_supervisor_path), "--self-test"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if supervisor_self_test.returncode != 0:
+        if supervisor_self_test.stdout:
+            print(supervisor_self_test.stdout, end="", file=sys.stderr)
+        if supervisor_self_test.stderr:
+            print(supervisor_self_test.stderr, end="", file=sys.stderr)
+    require(
+        errors,
+        supervisor_self_test.returncode == 0
+        and "CLAUDE_TTY_SUPERVISOR_SELF_TEST_PASS" in supervisor_self_test.stdout,
+        "CLAUDE_TTY_SUPERVISOR_SELF_TEST",
+    )
+    terminal_diagnostic_path = root / "scripts/release/terminal-state-diagnostic.py"
+    require(errors, terminal_diagnostic_path.is_file(), "TERMINAL_STATE_DIAGNOSTIC_MISSING")
+    terminal_diagnostic = terminal_diagnostic_path.read_text(encoding="utf-8")
+    for marker in (
+        'SCHEMA_VERSION = "clroom.terminal-state-diagnostic.v1"',
+        'os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)',
+        '"focus_reporting"',
+        '"bracketed_paste"',
+        '"color_scheme_reporting"',
+        'COLOR_SCHEME_REPORT_RE',
+        'b"\\x1b[?u"',
+        '"termios_restored"',
+        '"chunks"',
+        '"unexpected_hex"',
+        '"TERMINAL_PREFLIGHT_SUMMARY "',
+    ):
+        require(errors, marker in terminal_diagnostic, "TERMINAL_STATE_DIAGNOSTIC_CONTRACT:" + marker)
+    require(errors, 'query.endswith((b"h", b"l"))' in terminal_diagnostic, "TERMINAL_STATE_DIAGNOSTIC_QUERY_ONLY")
+    terminal_diagnostic_self_test = subprocess.run(
+        [sys.executable, str(terminal_diagnostic_path), "--self-test"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if terminal_diagnostic_self_test.returncode != 0:
+        if terminal_diagnostic_self_test.stdout:
+            print(terminal_diagnostic_self_test.stdout, end="", file=sys.stderr)
+        if terminal_diagnostic_self_test.stderr:
+            print(terminal_diagnostic_self_test.stderr, end="", file=sys.stderr)
+    require(
+        errors,
+        terminal_diagnostic_self_test.returncode == 0
+        and "TERMINAL_STATE_DIAGNOSTIC_SELF_TEST_PASS" in terminal_diagnostic_self_test.stdout,
+        "TERMINAL_STATE_DIAGNOSTIC_SELF_TEST",
+    )
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
         errors,
-        '"schema_version": "clroom.plugin-release-smoke.v4"' in claude_stage_verifier,
-        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V4",
+        '"schema_version": "clroom.plugin-release-smoke.v5"' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5",
     )
     require(
         errors,
         '"automated_probe_prompt_supplied": False' in claude_stage_verifier,
         "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE",
     )
+    for marker in (
+        '"clean_tui_supervised": True',
+        '"selected_tui_supervised": True',
+        '"interactive_human_bytes_forwarded": False',
+        '"interactive_submit_bytes_blocked_by_supervisor": True',
+        '"interactive_harness_owned_teardown": True',
+        '"physical_terminal_preflight_passed": True',
+        '"interactive_terminal_state_restored": True',
+    ):
+        require(errors, marker in claude_stage_verifier, "CLAUDE_STAGE_EVIDENCE_SUPERVISOR:" + marker)
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
@@ -337,6 +678,14 @@ def check(root: Path) -> list[str]:
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
 
+    resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
+    admission = read(root, "scripts/release/pretag-run-admission.py")
+    errors.extend(
+        validate_pretag_current_run_contract(
+            resolver, admission, promotion, release, release_candidate
+        )
+    )
+
     for path, text in workflow_text.items():
         require(errors, re.search(r"(?m)^concurrency:\s*$", text) is not None, f"WORKFLOW_CONCURRENCY:{path}")
         blocks = job_blocks(text)
@@ -392,19 +741,118 @@ def self_test() -> None:
     missing_verifier = verifier_fixture.replace("Provision pinned Python supply-chain verifier", "Provision removed verifier")
     if "SUPPLY_CHAIN_VERIFIER_STEP_MISSING" not in validate_supply_chain_verifier_contract(missing_verifier):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:SUPPLY_CHAIN_VERIFIER_MISSING")
+    resolver_fixture = """
+current_run_id="${CLROOM_PRETAG_CURRENT_RUN_ID:-}"
+[[ "${GITHUB_ACTIONS:-}" == "true" ]]
+[[ "${GITHUB_RUN_ID:-}" == "$current_run_id" ]]
+[[ "${GITHUB_EVENT_NAME:-}" == "push" ]]
+[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]
+[[ "${GITHUB_SHA:-}" == "$expected" ]]
+[[ "${GITHUB_REPOSITORY:-}" == "$repository" ]]
+pretag-run-admission.py
+--run-json "$tmp/run-$run_id.json"
+run_args+=(--current-run-id "$current_run_id")
+--jobs-json "$tmp/jobs-$run_id.json"
+"""
+    admission_fixture = """
+run.get("status") == "completed" and run.get("conclusion") == "success"
+run.get("status") != "in_progress"
+run.get("conclusion") is not None
+Release eligibility and harness seal
+CLROOM release readiness
+Rehearse/stage exact release bytes
+Rehearse attestation mechanism before tag
+job.get("status") != "completed" or job.get("conclusion") != "success"
+PRETAG_RUN_ADMISSION_SELF_TEST_PASS
+"""
+    promotion_fixture = "CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}"
+    release_fixture = 'tags:\n      - "v*"'
+    candidate_fixture = "python3 scripts/release/pretag-run-admission.py --self-test"
+    if validate_pretag_current_run_contract(
+        resolver_fixture,
+        admission_fixture,
+        promotion_fixture,
+        release_fixture,
+        candidate_fixture,
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_CLEAN")
+    missing_upstream = admission_fixture.replace(
+        "Rehearse attestation mechanism before tag", "missing attestation"
+    )
+    if not any(
+        error.startswith("PRETAG_CURRENT_RUN_UPSTREAM_JOB:")
+        for error in validate_pretag_current_run_contract(
+            resolver_fixture,
+            missing_upstream,
+            promotion_fixture,
+            release_fixture,
+            candidate_fixture,
+        )
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_UPSTREAM")
+    tag_exception = release_fixture + "\nCLROOM_PRETAG_CURRENT_RUN_ID\n"
+    if "PRETAG_CURRENT_RUN_TAG_PATH_FORBIDDEN" not in validate_pretag_current_run_contract(
+        resolver_fixture,
+        admission_fixture,
+        promotion_fixture,
+        tag_exception,
+        candidate_fixture,
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_TAG_PATH")
+    weak_identity = resolver_fixture.replace(
+        '[[ "${GITHUB_REF:-}" == "refs/heads/main" ]]', ""
+    )
+    if "PRETAG_CURRENT_RUN_REF" not in validate_pretag_current_run_contract(
+        weak_identity,
+        admission_fixture,
+        promotion_fixture,
+        release_fixture,
+        candidate_fixture,
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_IDENTITY")
+    missing_behavioral_self_test = candidate_fixture.replace("--self-test", "--report")
+    if "PRETAG_CURRENT_RUN_SELF_TEST_EARLY" not in validate_pretag_current_run_contract(
+        resolver_fixture,
+        admission_fixture,
+        promotion_fixture,
+        release_fixture,
+        missing_behavioral_self_test,
+    ):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:PRETAG_CURRENT_RUN_SELF_TEST")
     claude_smoke_fixture = """
-"$clroom" claude
-"$clroom" claude --with="plugin:$plugin_id"
-"No model prompt was sent in either TUI"
-"schema_version":"clroom.plugin-release-smoke.v4"
+if [[ "$phase" == "diagnose-screen" ]]; then
+"No human observation or keypress is required."
+python3 "$root/scripts/release/claude-tty-supervisor.py" --diagnose-unsupported --diagnostic-evidence "$diagnostic_evidence" -- "$clroom" claude
+"SCREEN_CONTROL_IDENTITY="
+"SCREEN_CONTROL_SHA256="
+"SCREEN_CONTROL_RAW_TRANSCRIPT_RECORDED=NO"
+"SCREEN_CONTROL_DIAGNOSTIC=PASS"
+"PERSISTENT_CONFIG_CHANGED_SCREEN_DIAGNOSTIC"
+exit 0
+fi
+cd "$root"
+python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
+cd "$root"
+python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
+"The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
+python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"
+"No inference/model response appeared in either TUI"
+"schema_version":"clroom.plugin-release-smoke.v5"
 "automated_probe_prompt_supplied":False
 "clean_tui_confirmed":clean_tui=="true"
+"clean_tui_supervised":clean_tui_supervised=="true"
+"selected_tui_supervised":selected_tui_supervised=="true"
+"interactive_human_bytes_forwarded":False
+"interactive_submit_bytes_blocked_by_supervisor":True
+"interactive_harness_owned_teardown":True
+"physical_terminal_preflight_passed":physical_terminal_preflight=="true"
+"interactive_terminal_state_restored":interactive_terminal_state_restored=="true"
 "selected_tui_confirmed":interactive=="true"
-"Do not press Enter while autocomplete/search text remains in the composer."
-"Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."
-"Then press Ctrl+D to exit from the empty composer. Do not use /exit for this rehearsal."
-"Clean composer was cleared and TUI exited with Ctrl+D without submitting input"
-"Selected composer was cleared and TUI exited with Ctrl+D without submitting input"
+"Do not type into Claude."
+"The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
+"Human work is observation only; no keypresses are required."
+"PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
+"PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
 """
     if validate_claude_release_smoke_contract(claude_smoke_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_NO_PROMPT_CLEAN")
@@ -415,15 +863,33 @@ def self_test() -> None:
     for prompt_smoke in prompt_smokes:
         if "CLAUDE_RELEASE_SMOKE_MODEL_PROMPT_FORBIDDEN" not in validate_claude_release_smoke_contract(prompt_smoke):
             raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROMPT_NOT_REJECTED")
-    unsafe_exit_smoke = claude_smoke_fixture + '\n"Exit normally with /exit."\n'
-    if "CLAUDE_RELEASE_SMOKE_UNSAFE_SLASH_EXIT" not in validate_claude_release_smoke_contract(unsafe_exit_smoke):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_UNSAFE_EXIT_NOT_REJECTED")
-    missing_clear_smoke = claude_smoke_fixture.replace(
-        '"Press Ctrl+C to cancel and clear the composer; visually confirm it is empty."\n',
+    for provider_exit in (
+        "Press Escape once to dismiss autocomplete",
+        "Visually confirm the composer is empty.",
+        "Press Ctrl+C to cancel and clear the composer",
+        "Press Ctrl+D twice within 800 ms",
+        "Exit normally with /exit.",
+    ):
+        provider_exit_errors = validate_claude_release_smoke_contract(
+            claude_smoke_fixture + "\n" + provider_exit
+        )
+        if not any(
+            code.startswith("CLAUDE_RELEASE_SMOKE_PROVIDER_EXIT_FORBIDDEN:")
+            for code in provider_exit_errors
+        ):
+            raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_PROVIDER_EXIT_NOT_REJECTED")
+    synthetic_tui = claude_smoke_fixture.replace('cd "$root"\n', 'cd "$tui_project"\n', 1)
+    if "CLAUDE_RELEASE_SMOKE_SYNTHETIC_TUI_FORBIDDEN" not in validate_claude_release_smoke_contract(synthetic_tui):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SYNTHETIC_TUI_NOT_REJECTED")
+    human_agents = claude_smoke_fixture + '\nRepo/nested project AGENTS.md was reported as loaded\n'
+    if "CLAUDE_RELEASE_SMOKE_HUMAN_AGENTS_RECHECK_FORBIDDEN" not in validate_claude_release_smoke_contract(human_agents):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_HUMAN_AGENTS_RECHECK_NOT_REJECTED")
+    missing_supervisor = claude_smoke_fixture.replace(
+        'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude\n',
         "",
     )
-    if "CLAUDE_RELEASE_SMOKE_SAFE_EXIT_CLEAR" not in validate_claude_release_smoke_contract(missing_clear_smoke):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SAFE_EXIT_CLEAR_NOT_REQUIRED")
+    if "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH" not in validate_claude_release_smoke_contract(missing_supervisor):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SUPERVISOR_NOT_REQUIRED")
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 

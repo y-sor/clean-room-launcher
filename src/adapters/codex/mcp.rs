@@ -188,6 +188,52 @@ pub fn plan(
 }
 
 
+pub fn config_contains_mcp_servers(path: &Path) -> Result<bool, ActivationError> {
+    let source = read_source(path)?;
+    let deserializer =
+        toml::de::Deserializer::parse(&source).map_err(|_| ActivationError::InvalidSource)?;
+    ProjectMcpPresence
+        .deserialize(deserializer)
+        .map_err(|_| ActivationError::InvalidSource)
+}
+
+struct ProjectMcpPresence;
+
+impl<'de> DeserializeSeed<'de> for ProjectMcpPresence {
+    type Value = bool;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(ProjectMcpPresenceVisitor)
+    }
+}
+
+struct ProjectMcpPresenceVisitor;
+
+impl<'de> Visitor<'de> for ProjectMcpPresenceVisitor {
+    type Value = bool;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a Codex config table")
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        let mut has_mcp = false;
+        while let Some(key) = map.next_key::<String>()? {
+            if key == "mcp_servers" {
+                has_mcp = true;
+            }
+            map.next_value::<IgnoredAny>()?;
+        }
+        Ok(has_mcp)
+    }
+}
+
 fn selected_server(source: &str, selected_id: &str) -> Result<Option<toml::Table>, ActivationError> {
     let deserializer =
         toml::de::Deserializer::parse(source).map_err(|_| ActivationError::InvalidSource)?;
@@ -437,7 +483,7 @@ mod tests {
                 provider_id: "codex".to_owned(),
                 real_executable: PathBuf::from("/usr/bin/codex"),
                 artifact_digest: "0".repeat(64),
-                version: (0, 159, 0),
+                version: super::provider_inventory::CODEX_CLEAN_EXACT,
                 os: "macos".to_owned(),
                 arch: "aarch64".to_owned(),
                 interpreter: None,
