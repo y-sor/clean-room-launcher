@@ -45,6 +45,11 @@ Semantic Versioning after the first public release.
   advances under the new `v0.4.6` identity from published baseline `v0.4.4`.
 - Release-required topology and the tag helper now fail closed if the distinct
   publishable-content semantic predecessor/evidence is absent or unsuccessful.
+- Claude clean/selected human-TTY evidence now requires an explicit
+  pre-launch readiness acknowledgement while the operator is looking at the
+  terminal. The acknowledgement is consumed before Claude starts, never reaches
+  provider stdin, is bound into evidence schema v6, and post-hoc confirmations
+  without that readiness evidence are rejected.
 
 ### Dependencies
 
