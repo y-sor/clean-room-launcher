@@ -265,6 +265,22 @@ pretag_stage_binding=$(stage_binding_digest) || {
 }
 printf 'PRETAG_STAGE_BINDING_PASS sha256=%s\n' "$pretag_stage_binding"
 
+release_notes_sha=$(python3 - "$tmp/stage/pretag-manifest.json" <<'PY'
+import json, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+print(record["files"]["release-notes.md"])
+PY
+)
+[[ "$release_notes_sha" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "TAG_GATE_BLOCKED:PUBLIC_PREVIEW_DIGEST" >&2
+  exit 80
+}
+[[ "$approval_token" == "YES:$tag:$expected:$release_notes_sha" ]] || {
+  echo "TAG_GATE_BLOCKED:OWNER_APPROVAL_PUBLIC_PREVIEW" >&2
+  exit 65
+}
+printf 'PUBLIC_PREVIEW_APPROVAL_BOUND sha256=%s\n' "$release_notes_sha"
+
 artifact_name="clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
 artifact_sha=$(python3 - "$tmp/stage/pretag-manifest.json" "$artifact_name" <<'PY'
 import json, sys
