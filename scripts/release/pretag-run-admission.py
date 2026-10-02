@@ -12,6 +12,7 @@ REQUIRED_CURRENT_JOBS = {
     "Release eligibility and harness seal",
     "CLROOM release readiness",
     "Rehearse/stage exact release bytes",
+    "Publishable surface closure",
     "Rehearse attestation mechanism before tag",
 }
 

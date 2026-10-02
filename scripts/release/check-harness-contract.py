@@ -186,6 +186,7 @@ def validate_pretag_current_run_contract(
         "Release eligibility and harness seal",
         "CLROOM release readiness",
         "Rehearse/stage exact release bytes",
+        "Publishable surface closure",
         "Rehearse attestation mechanism before tag",
     ):
         require(errors, name in admission, "PRETAG_CURRENT_RUN_UPSTREAM_JOB:" + name)
@@ -619,20 +620,35 @@ def check(root: Path) -> list[str]:
         "needs: [release-eligibility, release-readiness]" in stage,
         "PRETAG_STAGE_TOPOLOGY",
     )
+    publishable = release_jobs.get("publishable-surface", "")
+    require(errors, "name: Publishable surface closure" in publishable, "PUBLISHABLE_SURFACE_JOB")
+    require(
+        errors,
+        "needs: [release-eligibility, pretag-stage]" in publishable,
+        "PUBLISHABLE_SURFACE_TOPOLOGY",
+    )
+    require(
+        errors,
+        "verify-publishable-surface.py" in publishable
+        and "PUBLISHABLE_SURFACE_CLOSURE_PASS" in publishable,
+        "PUBLISHABLE_SURFACE_EXECUTION",
+    )
     attest = release_jobs.get("pretag-attestation-rehearsal", "")
     require(
         errors,
-        "needs: [release-eligibility, release-readiness, pretag-stage]" in attest,
+        "needs: [release-eligibility, release-readiness, pretag-stage, publishable-surface]" in attest,
         "PRETAG_ATTEST_TOPOLOGY",
     )
     release_required = release_jobs.get("release-required", "")
     require(errors, "name: Release required" in release_required, "RELEASE_REQUIRED_NAME")
     require(
         errors,
-        "needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal, promotion-prepare-rehearsal]" in release_required,
+        "needs: [release-eligibility, release-readiness, pretag-stage, publishable-surface, pretag-attestation-rehearsal, promotion-prepare-rehearsal]" in release_required,
         "RELEASE_REQUIRED_TOPOLOGY",
     )
     require(errors, "if: always()" in release_required, "RELEASE_REQUIRED_ALWAYS")
+    require(errors, "PUBLISHABLE: ${{ needs.publishable-surface.result }}" in release_required, "RELEASE_REQUIRED_PUBLISHABLE_RESULT")
+    require(errors, 'test "$PUBLISHABLE" = success' in release_required, "RELEASE_REQUIRED_PUBLISHABLE_PASS")
 
     docs = read(root, "docs/release/RELEASE_CONTRACT.md")
     for marker in AUTOMATION_MARKERS:
@@ -650,6 +666,11 @@ def check(root: Path) -> list[str]:
         "PROMOTION_CHAIN_CALLER_MISSING",
     )
     promotion_job = release_jobs.get("promotion-prepare-rehearsal", "")
+    require(
+        errors,
+        "publishable-surface" in promotion_job,
+        "PROMOTION_CHAIN_PUBLISHABLE_SURFACE",
+    )
     require(errors, "github.event_name == 'push'" in promotion_job, "PROMOTION_CHAIN_PUSH_ONLY")
     require(errors, "github.ref == 'refs/heads/main'" in promotion_job, "PROMOTION_CHAIN_MAIN_ONLY")
     require(errors, "needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE'" in promotion_job, "PROMOTION_CHAIN_ACTIVE_ONLY")
