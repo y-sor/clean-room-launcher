@@ -40,6 +40,10 @@ Semantic Versioning after the first public release.
   contain stale provider claims. Hash equality now proves identity only;
   machine-verifiable public claims receive an independent semantic PASS before
   tag creation.
+- Exact shipped clean/plugin provider tuples are now machine-bound to the
+  canonical release provider pins. A provider refresh that updates package
+  identities but leaves product qualification constants stale fails readiness
+  before local human-TTY rehearsal.
 - The protected `v0.4.5` tag and Draft remain unpublished incident evidence.
   They are not moved, reused, manually rewritten or promoted; this recovery
   advances under the new `v0.4.6` identity from published baseline `v0.4.4`.
