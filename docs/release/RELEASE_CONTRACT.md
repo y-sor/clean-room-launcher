@@ -75,10 +75,20 @@ This is intentionally separate from ordinary CI. CI answers whether the current
 candidate passes existing controls. Contract evolution asks whether the delta
 made any existing control insufficient.
 
-## Artifact integrity and pre-tag closure
+## Artifact integrity, publishable truth and pre-tag closure
 
 A protected release tag is an irreversible identity boundary, not a test trigger.
 All technically reproducible release blockers must be closed before the tag.
+Byte identity and semantic truth are separate requirements: a digest proves that
+content is unchanged, not that its public claims are correct.
+
+For an active candidate, accepted-main staging renders the exact publishable
+surface before tag creation. The staged `publish-preview.json` binds the exact
+release tag/title/state, normalized release-body digest, candidate changelog
+section digest, provider tuple, canonical installer URL and expected release
+asset set to the accepted source/tree. `verify-publishable-surface.py` must
+semantically validate that preview against authoritative structured facts before
+the protected tag can be created.
 
 The exact PR candidate still receives the earliest available product/runtime
 rehearsal before merge. After an accepted squash/merge, exact shipping bytes can
@@ -93,8 +103,12 @@ The same accepted-main workflow also rehearses the GitHub attestation mechanism
 with the exact staged subjects before any tag exists. A successful workflow
 uploads one content-addressed pre-tag stage artifact bound to the accepted source
 SHA, source tree, reviewed-content digest, provider pins/integrities, exact
-provider executable SHA-256 digests and exact file digests. The tag gate resolves only a successful accepted-main workflow
-artifact for that exact SHA.
+provider executable SHA-256 digests, exact file digests and a semantically
+validated `publish-preview.json`. A separate `Publishable surface closure`
+job downloads that exact stage and is a required predecessor of attestation,
+promotion rehearsal and aggregate `Release required`. The tag gate resolves
+only a successful accepted-main workflow artifact for that exact SHA and
+re-verifies the publishable surface before push.
 
 Workflow execution semantics are part of the release contract, not incidental
 filesystem metadata. Every repo-local script invoked directly by a GitHub Actions
@@ -145,20 +159,45 @@ test or registry freshness check executes after the guard before the irreversibl
 push.
 
 Post-tag automation is promotion-only. It resolves the already accepted staged
-bytes, creates tag-bound attestations for those same bytes, creates/refreshes a
-guarded Draft, uploads only the accepted release-visible files, downloads the
-Draft again and proves byte equality plus tag-bound attestation identity. It
-must not rebuild, rerun tests, provision providers, execute Codex/Claude runtime
-qualification, or call repository-admin policy endpoints. The contract scans
-the complete repository workflow directory: `.github/workflows/release.yml` is
-the only workflow allowed to match a tag push; every other push workflow must
-be explicitly branch-filtered.
+bytes and publish preview, creates tag-bound attestations for those same bytes,
+creates/refreshes a guarded Draft, uploads only the accepted release-visible
+files, downloads the Draft again and proves exact Draft title/body/state/asset
+agreement with the pre-tag preview plus byte equality and tag-bound attestation
+identity. It must not rebuild, rewrite release notes, rerun tests, provision
+providers, execute Codex/Claude runtime qualification, or call repository-admin
+policy endpoints. Manual Draft editing is not a recovery path: any body/title/
+state drift blocks publication. The contract scans the complete repository
+workflow directory: `.github/workflows/release.yml` is the only workflow
+allowed to match a tag push; every other push workflow must be explicitly
+branch-filtered.
 
 A transient GitHub/network failure in tag-bound attestation, Draft creation,
-upload or reconciliation is retried on the same protected tag with the same
-accepted bytes. It does not justify moving the tag or consuming another version.
-Any deterministic post-tag blocker that was technically reproducible pre-tag is
-a release-harness escape.
+upload or reconciliation may be retried on the same protected tag with the same
+accepted content. It does not justify moving the tag or consuming another
+version. Any avoidable blocker first discovered after a protected tag that was
+technically reproducible pre-tag is immediately a HARNESS INCIDENT: publication
+stops, the tag is not moved/reused, and the earliest reproducible gate must be
+repaired before another release tag.
+
+## Publication boundary
+
+Publication is a separate one-shot Owner action and uses
+`scripts/release/publish-release.sh`. The helper requires an exact
+`CLROOM_OWNER_PUBLISH_APPROVED=YES:<tag>:<sha>` token, re-runs the canonical
+Draft verifier, resolves and verifies the accepted stage and publish preview,
+refreshes immutable-release/tag/Draft action-time state, and rechecks exact
+Draft title/body/state/assets immediately before the irreversible
+`gh release edit <tag> --draft=false`.
+
+No build, provider qualification, release-note rewrite or manual Draft repair is
+allowed between the action-time preview check and publication. After publication
+the helper verifies that the release is non-Draft, has a publication timestamp
+and is immutable.
+
+The v0.4.5 protected tag is retained as unpublished incident evidence after its
+Draft exposed a stale provider-version claim that had been technically observable
+before tag. v0.4.6 repairs that gate architecture rather than moving/reusing the
+tag or manually editing the Draft.
 
 ## Public documentation version coherence
 
@@ -171,10 +210,13 @@ semantic-version key and a non-empty machine-checked rationale. Current-version 
 the README and install/support matrices must not keep an older exact release
 version after the candidate advances.
 
-Historical release records remain historical: `CHANGELOG.md` and the version
-history table in `SECURITY.md` are not rewritten merely because a new candidate
-exists. Provider claims inside `SECURITY.md`, however, are still checked against
-the current provider pins.
+Historical release records remain historical, but historical scope is
+section-aware. Older `CHANGELOG.md` sections and the version history table in
+`SECURITY.md` are not rewritten merely because a new candidate exists. The
+**exact current candidate CHANGELOG section is not historical**: because it feeds
+`release-notes.md`, its provider-version claims are checked against current
+canonical pins before tag. Provider claims inside `SECURITY.md` are likewise
+checked against current provider pins.
 
 The release harness never edits documentation after provider tests. A provider
 pin move must be accompanied by the required qualification evidence and matching
