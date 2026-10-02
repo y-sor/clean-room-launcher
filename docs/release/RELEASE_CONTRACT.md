@@ -301,7 +301,13 @@ For standalone Codex MCP activation:
    selections, standalone-MCP/whole-plugin mixing, active non-session MCP
    layers, and selected-source mutation must all fail before an interactive
    provider/MCP runtime is admitted. The source-mutation oracle uses the
-   task-owned preflight creation seam rather than timing-only polling.
+   task-owned preflight creation seam rather than timing-only polling. Provider
+   processes observed while the task-owned `.mcp-preflight-*` directory exists
+   belong to the machine-owned config-layer preflight even when provider argv
+   presentation is not stable enough to preserve the `app-server` token.
+   After that directory disappears, any provider mode other than a bounded
+   version probe is an escape and fails the rehearsal. The final product launch
+   independently revalidates the selected MCP before `exec`.
 3. **Accepted-main exact-byte staging:** after merge identity is known, the same
    standalone-MCP capability is requalified against the exact future shipping
    archive and frozen pinned provider inputs before a protected tag can be
