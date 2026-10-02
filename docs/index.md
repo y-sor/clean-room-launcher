@@ -12,13 +12,13 @@ Clean Room Launcher (CLROOM) launches the installed Codex or Claude Code CLI wit
 
 ## Start here
 
-- [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
+- [Why CLROOM exists: the 2-minute explanation](why-clroom.md)
 - [Problem index: find your symptom or half-remembered term](problem-index.md)
 - [Use cases: practical CLROOM workflows](use-cases.md)
 - [Clean-launch walkthrough](demo.md)
 - [Agent runners: apps, scripts, CI, and multi-agent tools](agent-runners.md)
 - [Skill sets: create, use, combine, and edit reusable groups](skill-sets.md)
-- [When to use CLROOM — and when not to](when-to-use-clroom.md)
+- [When to use CLROOM and when not to](when-to-use-clroom.md)
 - [Claude Code and CLROOM](claude-code.md)
 - [Codex and CLROOM](codex.md)
 - [Current provider support](providers.md)
@@ -31,7 +31,7 @@ Clean Room Launcher (CLROOM) launches the installed Codex or Claude Code CLI wit
 
 ## Start from the problem, not the product name
 
-If you only remember a symptom — old instructions, too many skills, a project skill that still appears, `--safe-mode`, `--bare`, `--restricted`, `CODEX_HOME`, `AGENTS.md`, `CLAUDE.md`, a hook firing, a runner spawning the provider, a wrong implementation path, or a clean baseline — use the [coding-agent configuration problem index](problem-index.md).
+If you only remember a symptom such as old instructions, too many skills, a project skill that still appears, `--safe-mode`, `--bare`, `--restricted`, `CODEX_HOME`, `AGENTS.md`, `CLAUDE.md`, a hook firing, a runner spawning the provider, a wrong implementation path, or a clean baseline, use the [coding-agent configuration problem index](problem-index.md).
 
 The problem index groups real-world wording under canonical answers. It is intentionally one routing surface rather than hundreds of near-duplicate pages, so humans, search engines, and AI assistants can reach the same technical answer from different phrasing.
 
