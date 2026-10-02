@@ -7,6 +7,47 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-02
+
+### Added
+
+- Added bounded standalone Codex MCP selection for one exact root-user
+  `mcp_servers.<id>` stdio server per interactive launch, with explicit
+  environment-name admission, source fingerprinting, layer preflight, and
+  fail-closed conflict handling.
+- Added exact-candidate and exact-shipping-byte provider rehearsal for the new
+  standalone MCP path while preserving the existing clean and whole-plugin
+  launch contracts.
+
+### Changed
+
+- Exact release qualification uses Codex `0.160.0` and Claude Code `2.1.287`
+  on macOS Apple Silicon.
+- Release acceptance now treats the exact public release body as part of the
+  candidate: staged release notes are semantically checked against authoritative
+  release facts before a protected tag can be authorized.
+
+### Fixed
+
+- Closed the release-notes harness gap that allowed historical CHANGELOG
+  exclusions to suppress provider-version validation for the current candidate
+  section.
+- Bound protected tag approval to the exact staged public-preview digest and
+  added guarded publication that re-verifies the Draft immediately before the
+  irreversible publish action.
+- Hardened Claude terminal rehearsal for current provider rendering and
+  color-scheme reporting while retaining zero human/provider-submit bytes in
+  release evidence.
+
+### Security
+
+- Post-tag promotion is limited to exact accepted bytes, tag-bound
+  attestations, and Draft reconciliation; Draft body drift from the accepted
+  staged preview blocks publication.
+- The protected `v0.4.5` tag remains unpublished as release-harness incident
+  evidence and is superseded by this candidate; it is not moved, reused, or
+  treated as the published baseline.
+
 ## [0.4.5] - 2026-09-29
 
 ### Added
