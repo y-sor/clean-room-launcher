@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Clean Room Launcher (CLROOM) FAQ — Codex, Claude Code, Agent Skills, clean sessions
+title: Clean Room Launcher (CLROOM) FAQ: Codex, Claude Code, Agent Skills, clean sessions
 description: Direct answers about CLROOM, clean Codex and Claude Code sessions, global vs project instructions and skills, Agent Skills, Claude safe mode and bare mode, Codex AGENTS.md, CODEX_HOME, skill sets, and current limitations.
 permalink: /faq/
 nav_title: FAQ
@@ -136,4 +136,4 @@ Use the official Anthropic and OpenAI links on the provider pages. Provider beha
 
 ## I do not know the right term for my problem. Where should I start?
 
-Use the [coding-agent configuration problem index](problem-index.md). It starts from symptoms and common search language — old instructions, too many skills, project skills that still appear, context noise, safe mode, bare mode, restricted mode, CODEX_HOME, AGENTS.md, CLAUDE.md, hooks, MCP, runners, reproducibility — and routes to the relevant answer.
+Use the [coding-agent configuration problem index](problem-index.md). It starts from symptoms and common search language: old instructions, too many skills, project skills that still appear, context noise, safe mode, bare mode, restricted mode, CODEX_HOME, AGENTS.md, CLAUDE.md, hooks, MCP, runners, and reproducibility. From there, it routes to the relevant answer.
