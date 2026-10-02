@@ -27,7 +27,8 @@
         "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.287; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants.",
         "Claude TTY readiness now uses a bounded dependency-free terminal screen-state model rather than linear PTY history. Executable regressions construct a differential cursor-overwrite stream whose linear visible text lacks every readiness token while the rendered same-row screen qualifies; clear/overwrite, cross-row, trust-like, split-CSI, alternate-screen and unsupported-mutation negatives are also enforced.",
         "Unknown Claude screen controls now have a canonical machine-owned diagnostic path: the supervisor records only a normalized control identity and SHA-256 fingerprint for the first fail-closed control, writes private 0600 O_EXCL evidence with no raw terminal transcript, verifies terminal restoration/task-session closure/zero human and submit bytes, and the release smoke exposes a clean-only diagnose-screen phase with no y/N confirmation.",
-        "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight."
+        "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight.",
+        "Claude human-TTY evidence now requires a shell-level readiness Enter immediately before each clean and selected provider launch while the operator is looking at that terminal. The acknowledgement is consumed before Claude starts, never reaches provider stdin, is recorded in schema v6, and the stage verifier rejects legacy v5 or missing readiness acknowledgements."
       ]
     },
     "dependencies": {
@@ -225,6 +226,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Candidate source can embed lifecycle-relative wording such as “current published stable” or “current release-candidate”; the same immutable tagged bytes would make that wording false when the candidate is published.",
       "durable_control": "Release Contract now rejects lifecycle-volatile status phrases on active public documentation. SECURITY uses lifecycle-stable source/support wording, records v0.4.5 as tagged-but-unpublished incident evidence, and delegates authoritative live publication status to GitHub Releases."
+    },
+    {
+      "id": "claude-human-observation-posthoc-confirmation-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A bounded clean/selected Claude observation window could complete while the operator was focused on another window, after which post-run y/N confirmations could attest UI facts that were not actually observed.",
+      "durable_control": "The outer smoke now requires an explicit empty-line readiness acknowledgement immediately before each clean and selected Claude launch, before provider start. Both acknowledgements are bound into plugin-release-smoke schema v6; the stage verifier and its negative self-test reject legacy v5 evidence or either missing acknowledgement, while Claude still receives zero human bytes."
     }
   ],
   "artifact_capability_gates": [
@@ -286,7 +293,7 @@
       "provider-pin movement invalidates standalone MCP, whole-plugin, lifecycle and ambient-input evidence",
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
-      "prompt-free Claude release rehearsal schema v5 with clean/selected supervised human-TTY evidence, machine-recorded submit blocking/harness-owned teardown, and no Claude print-mode model prompts",
+      "prompt-free Claude release rehearsal schema v6 with clean/selected supervised human-TTY evidence, explicit pre-launch human-observation readiness acknowledgements, machine-recorded submit blocking/harness-owned teardown, and no Claude print-mode model prompts",
       "Claude TTY evidence ownership contract: human work is autocomplete observation only; the supervisor owns the PTY lifecycle, injects the fixed probe automatically, relays recognized runtime terminal protocol, discards other runtime bytes, bounds CPR relay by observed queries, and restores terminal state.",
       "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning",
       "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag",
@@ -304,7 +311,8 @@
       "Draft title/body/state/assets reconcile to exact accepted pretag preview",
       "canonical guarded publish helper owns final verification, action-time fingerprint, one publish transition and immediate reconciliation",
       "post-public verifier proves actual Latest/releases/latest/download routes and isolated install before PUBLIC_INSTALL_VERIFIED",
-      "active public documentation rejects lifecycle-relative current-published/current-candidate wording that would self-invalidate at publication; GitHub Releases remains publication-state authority"
+      "active public documentation rejects lifecycle-relative current-published/current-candidate wording that would self-invalidate at publication; GitHub Releases remains publication-state authority",
+      "Claude human-observation evidence cannot be created from post-hoc confirmations alone: an empty-line readiness acknowledgement must occur before each clean/selected provider launch, is never forwarded to Claude, and is required by the stage evidence verifier."
     ]
   },
   "reviewed_content_digest": "23b4754ce842609e0c9f283f4a5bc6b3c1bc5e069cf538a40eeb68450496bbd8"
