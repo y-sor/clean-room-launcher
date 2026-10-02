@@ -230,15 +230,21 @@ For whole-plugin activation:
    The local smoke self-provisions the same pinned provider tuple from reviewed
    package integrities without re-querying latest, then machine preflight proves
    the exact skill-only selection is qualified. Clean and selected Claude
-   sessions run through a task-owned PTY supervisor. The operator sends zero
-   bytes inside Claude. The supervisor maintains a bounded rendered terminal
-   screen model, waits for trusted same-row composer readiness, injects only the
-   fixed non-submitting autocomplete probe, keeps the UI open for a bounded
-   observation window, restores physical terminal state and owns task-session
-   teardown before persistent-state verification. Unknown screen-mutating
-   controls fail closed before probe injection. Human work is limited to the
-   target absence/presence, sibling/plugin-error and no-inference observations
-   after the supervisor returns; provider exit UX is not part of the proof.
+   sessions run through a task-owned PTY supervisor. Immediately before each
+   clean or selected provider launch, the outer harness stops and requires one
+   explicit readiness Enter while the operator is looking at that terminal.
+   The acknowledgement is consumed before Claude starts and is never forwarded
+   to provider stdin. The operator then keeps the terminal visible through the
+   bounded observation window. The supervisor maintains a bounded rendered
+   terminal screen model, waits for trusted same-row composer readiness, injects
+   only the fixed non-submitting autocomplete probe, restores physical terminal
+   state and owns task-session teardown before persistent-state verification.
+   Unknown screen-mutating controls fail closed before probe injection. Human
+   work is limited to the target absence/presence, sibling/plugin-error and
+   no-inference observations; post-run y/N answers are accepted only when the
+   corresponding pre-launch readiness acknowledgement was recorded. Evidence
+   schema v6 binds both readiness acknowledgements, and the stage verifier
+   rejects legacy v5 evidence. Provider exit UX is not part of the proof.
 
    A screen-model failure is diagnosed only through the canonical
    `diagnose-screen` phase of
