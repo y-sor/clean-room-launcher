@@ -137,6 +137,37 @@ def validate_changelog_baseline_date(declared, published_at):
         )
     return baseline
 
+def candidate_changelog_section(lines, version):
+    prefix = f"## [{version}] - "
+    starts = [index for index, line in enumerate(lines) if line.startswith(prefix)]
+    if len(starts) != 1:
+        raise ValueError(f"expected exactly one changelog section for {version}")
+    start = starts[0] + 1
+    end = len(lines)
+    for index in range(start, len(lines)):
+        if lines[index].startswith("## ["):
+            end = index
+            break
+    return [(index + 1, lines[index]) for index in range(start, end)]
+
+def candidate_changelog_policy(contract):
+    policy = contract.get("policy", {}).get("candidate_changelog_version_inventory")
+    if not isinstance(policy, dict) or policy.get("status") != "required":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_VERSION_POLICY")
+    allowed = policy.get("allowed_historical_product_versions")
+    if not isinstance(allowed, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_HISTORICAL_ALLOWLIST")
+    for version, reason in allowed.items():
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+            raise SystemExit(
+                f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_ALLOWLIST_KEY:{version}"
+            )
+        if not isinstance(reason, str) or not reason.strip():
+            raise SystemExit(
+                f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_ALLOWLIST_REASON:{version}"
+            )
+    return policy
+
 SEMVER_TOKEN = re.compile(
     r"(?<![0-9])(?P<prefix>v?)(?P<version>[0-9]+\.[0-9]+\.[0-9]+)(?P<plus>\+)?(?![0-9])"
 )
@@ -234,6 +265,54 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
         return f"STALE_PROVIDER_VERSION:actual={version}:allowed={expected}"
     return None
 
+def validate_candidate_changelog_versions(contract, candidate_version, lines=None):
+    policy = public_doc_version_policy(contract)
+    candidate_policy = candidate_changelog_policy(contract)
+    pins = provider_versions_from_pins(policy)
+    if lines is None:
+        lines = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+    try:
+        section = candidate_changelog_section(lines, candidate_version)
+    except ValueError as error:
+        raise SystemExit(
+            f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_SECTION:{error}"
+        ) from error
+    allowed_historical = candidate_policy["allowed_historical_product_versions"]
+    inventory = []
+    violations = []
+    for line_number, line in section:
+        for match in SEMVER_TOKEN.finditer(line):
+            raw = match.group(0)
+            prefix = match.group("prefix")
+            version = match.group("version")
+            if prefix == "v" and version in allowed_historical:
+                violation = None
+            else:
+                violation = public_doc_version_violation(
+                    "CHANGELOG-CANDIDATE.md",
+                    line,
+                    prefix,
+                    version,
+                    candidate_version,
+                    pins,
+                    policy,
+                )
+            inventory.append(
+                ("CHANGELOG.md", line_number, raw, "PASS" if violation is None else violation)
+            )
+            if violation is not None:
+                violations.append((line_number, raw, violation))
+    if violations:
+        for line_number, raw, violation in violations:
+            print(
+                f"CANDIDATE_CHANGELOG_VERSION_DRIFT:CHANGELOG.md:{line_number}:{raw}:{violation}",
+                file=sys.stderr,
+            )
+        raise SystemExit(
+            "RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_VERSION_DRIFT"
+        )
+    return inventory
+
 def validate_public_doc_versions(contract, candidate_version):
     policy = public_doc_version_policy(contract)
     pins = provider_versions_from_pins(policy)
@@ -316,6 +395,15 @@ def main():
     if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PROMOTION_PREPARE_REHEARSAL_POLICY")
     public_doc_version_policy(contract)
+    candidate_changelog_policy(contract)
+    for key in (
+        "release_notes_semantic_validation",
+        "publishable_surface_manifest",
+        "draft_body_exact_stage",
+        "guarded_publish_helper",
+    ):
+        if contract.get("policy", {}).get(key) != "required":
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:POLICY:{key}")
 
     if args.self_test:
         sample=["src/cli/mod.rs","Cargo.lock",".github/dependabot.yml",".github/workflows/ci.yml",".github/FUNDING.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
@@ -341,6 +429,44 @@ def main():
         if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PROMOTION_PREPARE_REHEARSAL_POLICY")
         doc_policy = public_doc_version_policy(contract)
+        candidate_policy = candidate_changelog_policy(contract)
+        if "0.4.5" not in candidate_policy["allowed_historical_product_versions"]:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CANDIDATE_CHANGELOG_HISTORICAL_ALLOWLIST")
+        fixture_candidate = [
+            "## [0.4.6] - 2026-10-02",
+            "",
+            "### Changed",
+            "",
+            "- Codex 0.160.0 and Claude Code 2.1.287 are exact.",
+            "- Supersedes unpublished v0.4.5.",
+            "## [0.4.5] - 2026-09-29",
+            "- Historical Codex 0.159.0 is preserved.",
+        ]
+        fixture_pins_live = {"codex": "0.160.0", "claude": "2.1.287"}
+        original_provider_versions = provider_versions_from_pins
+        try:
+            globals()["provider_versions_from_pins"] = lambda _policy: fixture_pins_live
+            validate_candidate_changelog_versions(contract, "0.4.6", fixture_candidate)
+            stale_current = list(fixture_candidate)
+            stale_current[4] = "- Codex 0.159.0 and Claude Code 2.1.287 are exact."
+            try:
+                validate_candidate_changelog_versions(contract, "0.4.6", stale_current)
+            except SystemExit as error:
+                if "CANDIDATE_CHANGELOG_VERSION_DRIFT" not in str(error):
+                    raise
+            else:
+                raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STALE_CURRENT_CHANGELOG_PROVIDER")
+            unclassified = list(fixture_candidate)
+            unclassified.insert(5, "- Toolchain 7.7.7 is current.")
+            try:
+                validate_candidate_changelog_versions(contract, "0.4.6", unclassified)
+            except SystemExit as error:
+                if "CANDIDATE_CHANGELOG_VERSION_DRIFT" not in str(error):
+                    raise
+            else:
+                raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_UNCLASSIFIED_CURRENT_CHANGELOG_VERSION")
+        finally:
+            globals()["provider_versions_from_pins"] = original_provider_versions
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
         if not any(matches("docs/release/RELEASE_CONTRACT.md", pattern) for pattern in doc_policy["active_globs"]):
@@ -465,6 +591,9 @@ def main():
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     doc_version_inventory = validate_public_doc_versions(contract, version)
     changelog_lines = (ROOT/"CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+    candidate_changelog_inventory = validate_candidate_changelog_versions(
+        contract, version, changelog_lines
+    )
     try:
         declared_release_date = changelog_release_date(changelog_lines, version)
         if args.tag_date is not None:
