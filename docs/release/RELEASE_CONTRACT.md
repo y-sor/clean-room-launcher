@@ -213,6 +213,16 @@ For whole-plugin activation:
    serialized by this diagnostic. The diagnostic result is evidence for a
    subsequent semantic model change; it is never itself a qualification PASS.
 
+   The Claude Code 2.1.287 incident captured DEC private mode 2031
+   (`CSI ? 2031 h`), which enables terminal color-scheme change reporting. It
+   does not mutate rendered screen cells, so the screen model admits it without
+   losing readiness trust. Because it changes terminal protocol/state, the
+   supervisor also treats mode 2031 as critical physical terminal state: it is
+   queried before provider start, restored after task teardown and re-verified.
+   The corresponding terminal-generated `CSI ? 997 n`,
+   `CSI ? 997 ; 1 n` and `CSI ? 997 ; 2 n` reports are relayed as machine
+   traffic; other values are not recognized as machine traffic and are discarded at runtime.
+
    Codex runs automatically in the macOS Release-candidate workflow and proves
    the real MCP runtime plus post-runtime clean-state closure. This catches
    product/runtime failures at the earliest candidate boundary.

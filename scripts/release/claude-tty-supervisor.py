@@ -28,6 +28,7 @@ READY_STATUS_TOKENS = (b"manual mode", b"shortcuts", b"/effort")
 SCREEN_MAX_ROWS = 200
 SCREEN_MAX_COLS = 512
 SCREEN_MAX_SEQUENCE_BYTES = 8192
+COLOR_SCHEME_REPORT_MODE = 2031
 
 PHYSICAL_MODE_IDS = (
     1,
@@ -43,12 +44,15 @@ PHYSICAL_MODE_IDS = (
     1049,
     2004,
     2026,
+    COLOR_SCHEME_REPORT_MODE,
 )
-CRITICAL_PHYSICAL_MODES = (1004, 2004)
+CRITICAL_PHYSICAL_MODES = (1004, 2004, COLOR_SCHEME_REPORT_MODE)
 
 FOCUS_EVENT_RE = re.compile(rb"\x1b\[[IO]")
+COLOR_SCHEME_REPORT_RE = re.compile(rb"\x1b\[\?997(?:;[12])?n")
 CSI_RESPONSE_PATTERNS = (
     FOCUS_EVENT_RE,
+    COLOR_SCHEME_REPORT_RE,
     re.compile(rb"\x1b\[\?[0-9]+(?:;[0-9]+)*c"),
     re.compile(rb"\x1b\[>[0-9]+(?:;[0-9]+)*c"),
     re.compile(rb"\x1b\[\?[0-9]+u"),
@@ -491,7 +495,7 @@ class TerminalScreen:
                 self.autowrap = enabled
             elif private and mode in {
                 1, 12, 25, 66, 1000, 1002, 1003, 1004, 1005, 1006, 1007,
-                1015, 2004, 2026
+                1015, 2004, 2026, COLOR_SCHEME_REPORT_MODE
             }:
                 continue
             elif private:
@@ -1363,6 +1367,10 @@ def self_test() -> int:
     cursor = b"\x1b[?24;80R"
     standard_cursor = b"\x1b[24;80R"
     decrpm = b"\x1b[?2026;1$y"
+    color_dark = b"\x1b[?997;1n"
+    color_light = b"\x1b[?997;2n"
+    color_changed = b"\x1b[?997n"
+    color_invalid = b"\x1b[?997;3n"
     focus_in = b"\x1b[I"
     focus_out = b"\x1b[O"
     osc10 = b"\x1b]10;rgb:ffff/ffff/ffff\x07"
@@ -1375,6 +1383,9 @@ def self_test() -> int:
         ("DA2", da2),
         ("CURSOR", cursor),
         ("DECRPM", decrpm),
+        ("COLOR_SCHEME_DARK", color_dark),
+        ("COLOR_SCHEME_LIGHT", color_light),
+        ("COLOR_SCHEME_CHANGED", color_changed),
         ("FOCUS_IN", focus_in),
         ("FOCUS_OUT", focus_out),
         ("OSC10", osc10),
@@ -1383,6 +1394,12 @@ def self_test() -> int:
     ):
         expect_terminal(raw, (False, False, 1, raw, 0), label)
 
+    invalid_color = classify_terminal_input(color_invalid)
+    if invalid_color != (True, False, 0, b"", 0):
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:COLOR_SCHEME_REPORT_INVALID:"
+            f"observed={invalid_color}"
+        )
     expect_terminal(da1[:10], (False, True, 0, b"", 0), "DA1_FRAGMENT")
     expect_terminal(b"\x1b[", (False, True, 0, b"", 0), "FOCUS_FRAGMENT")
     expect_terminal(osc11[:-1], (False, True, 0, b"", 0), "OSC_FRAGMENT")
@@ -1525,6 +1542,38 @@ def self_test() -> int:
     if split_rows.composer_ready_method() is not None:
         raise SystemExit(
             "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_SAME_ROW_REQUIRED"
+        )
+
+    incident_mode = b"\x1b[?2031h"
+    incident_sha256 = "d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791"
+    if hashlib.sha256(incident_mode).hexdigest() != incident_sha256:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_MODE_2031_INCIDENT_FINGERPRINT"
+        )
+    color_mode_screen = TerminalScreen(rows=8, cols=96)
+    color_mode_screen.feed(
+        incident_mode + b"manual mode ? for shortcuts on /effort"
+    )
+    if not color_mode_screen.trusted:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_MODE_2031_TRUST"
+        )
+    if color_mode_screen.composer_ready_method() != "SCREEN_STATUS_ROW":
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_MODE_2031_READY"
+        )
+    color_mode_screen.feed(b"\x1b[?2031l")
+    if not color_mode_screen.trusted:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_MODE_2031_RESET"
+        )
+    if COLOR_SCHEME_REPORT_MODE not in PHYSICAL_MODE_IDS:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_MODE_2031_PHYSICAL_SNAPSHOT"
+        )
+    if COLOR_SCHEME_REPORT_MODE not in CRITICAL_PHYSICAL_MODES:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_MODE_2031_CRITICAL_RESTORE"
         )
 
     unsupported_screen = TerminalScreen(rows=8, cols=96)

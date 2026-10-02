@@ -252,6 +252,11 @@ def validate_claude_tty_supervisor_contract(text: str) -> list[str]:
     require(errors, "COMPOSER_READY_METHOD=" in text, "CLAUDE_TTY_SUPERVISOR_READY_METHOD_EVIDENCE")
     require(errors, "SCREEN_MODEL_TRUSTED=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_TRUST_EVIDENCE")
     require(errors, "SCREEN_MODEL_UNSUPPORTED_MUTATIONS=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_UNSUPPORTED_EVIDENCE")
+    require(errors, "COLOR_SCHEME_REPORT_MODE = 2031" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_MODE_2031")
+    require(errors, "COLOR_SCHEME_REPORT_RE" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_REPORT_RELAY")
+    require(errors, "SCREEN_MODE_2031_INCIDENT_FINGERPRINT" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_INCIDENT_REPLAY")
+    require(errors, "SCREEN_MODE_2031_CRITICAL_RESTORE" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_CRITICAL_RESTORE")
+    require(errors, "COLOR_SCHEME_REPORT_INVALID" in text, "CLAUDE_TTY_SUPERVISOR_COLOR_SCHEME_REPORT_NEGATIVE")
     require(errors, "SCREEN_MODEL_FIRST_UNSUPPORTED_IDENTITY=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_IDENTITY_EVIDENCE")
     require(errors, "SCREEN_MODEL_FIRST_UNSUPPORTED_SHA256=" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_CONTROL_FINGERPRINT_EVIDENCE")
     require(errors, "--diagnose-unsupported" in text, "CLAUDE_TTY_SUPERVISOR_SCREEN_DIAGNOSTIC_MODE")
@@ -531,6 +536,8 @@ def check(root: Path) -> list[str]:
         'os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)',
         '"focus_reporting"',
         '"bracketed_paste"',
+        '"color_scheme_reporting"',
+        'COLOR_SCHEME_REPORT_RE',
         'b"\\x1b[?u"',
         '"termios_restored"',
         '"chunks"',

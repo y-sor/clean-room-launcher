@@ -31,6 +31,7 @@ MODE_NAMES = {
     1049: "alternate_screen_1049",
     2004: "bracketed_paste",
     2026: "synchronized_output",
+    2031: "color_scheme_reporting",
 }
 MODE_STATE_NAMES = {
     0: "not_recognized",
@@ -44,6 +45,7 @@ FOCUS_EVENT_RE = re.compile(rb"\x1b\[[IO]")
 DA1_RE = re.compile(rb"\x1b\[\?[0-9]+(?:;[0-9]+)*c")
 DA2_RE = re.compile(rb"\x1b\[>[0-9]+(?:;[0-9]+)*c")
 KITTY_FLAGS_RE = re.compile(rb"\x1b\[\?([0-9]+)u")
+COLOR_SCHEME_REPORT_RE = re.compile(rb"\x1b\[\?997(?:;[12])?n")
 
 
 def run_git(root: Path, *args: str) -> str:
@@ -113,7 +115,14 @@ def mode_response_re(mode: int) -> re.Pattern[bytes]:
 
 def strip_known_machine_sequences(data: bytes, extra_patterns: tuple[re.Pattern[bytes], ...]) -> bytes:
     remaining = data
-    patterns = (FOCUS_EVENT_RE, DA1_RE, DA2_RE, KITTY_FLAGS_RE, *extra_patterns)
+    patterns = (
+        FOCUS_EVENT_RE,
+        DA1_RE,
+        DA2_RE,
+        KITTY_FLAGS_RE,
+        COLOR_SCHEME_REPORT_RE,
+        *extra_patterns,
+    )
     changed = True
     while changed and remaining:
         changed = False
@@ -170,7 +179,12 @@ def self_test() -> int:
         if match is None or int(match.group(1)) != 2:
             raise SystemExit("TERMINAL_STATE_DIAGNOSTIC_SELF_TEST_FAIL:MODE_RESPONSE")
 
-    sample = b"\x1b[O\x1b[?64;1;2;4;6;17;18;21;22;52c\x1b[?1004;1$y"
+    sample = (
+        b"\x1b[O"
+        b"\x1b[?997;1n"
+        b"\x1b[?64;1;2;4;6;17;18;21;22;52c"
+        b"\x1b[?1004;1$y"
+    )
     leftover = strip_known_machine_sequences(sample, (mode_response_re(1004),))
     if leftover:
         raise SystemExit("TERMINAL_STATE_DIAGNOSTIC_SELF_TEST_FAIL:MACHINE_CLASSIFIER")
@@ -275,6 +289,7 @@ def diagnose(expected_head: str) -> int:
     evidence["kitty_keyboard_flags"] = kitty_flags
 
     focus = evidence["mode_states"].get("focus_reporting", {})
+    color_scheme = evidence["mode_states"].get("color_scheme_reporting", {})
     evidence_dir = common_dir / "clroom-release-evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence_path = evidence_dir / f"terminal-state-{head[:12]}.json"
@@ -284,7 +299,16 @@ def diagnose(expected_head: str) -> int:
     focus_state = focus.get("state", "unknown")
     termios_restored = bool(evidence["termios_restored"])
     focus_known = focus_state not in ("unknown", "no_response")
-    status = "PASS" if termios_restored and focus_known and unexpected_count == 0 else "BLOCKED"
+    color_scheme_state = color_scheme.get("state", "unknown")
+    color_scheme_known = color_scheme_state not in ("unknown", "no_response")
+    status = (
+        "PASS"
+        if termios_restored
+        and focus_known
+        and color_scheme_known
+        and unexpected_count == 0
+        else "BLOCKED"
+    )
 
     print(
         "TERMINAL_PREFLIGHT_SUMMARY "
@@ -293,6 +317,7 @@ def diagnose(expected_head: str) -> int:
         f"tty={evidence['tty']} "
         f"term_program={evidence['terminal'].get('TERM_PROGRAM', 'unknown')} "
         f"focus_reporting={focus_state} "
+        f"color_scheme_reporting={color_scheme_state} "
         f"bracketed_paste={evidence['mode_states'].get('bracketed_paste', {}).get('state', 'unknown')} "
         f"kitty_flags={kitty_flags if kitty_flags is not None else 'unknown'} "
         f"unexpected_chunks={unexpected_count} "

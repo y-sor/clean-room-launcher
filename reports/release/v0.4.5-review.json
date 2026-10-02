@@ -26,7 +26,8 @@
         "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection.",
         "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.287; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants.",
         "Claude TTY readiness now uses a bounded dependency-free terminal screen-state model rather than linear PTY history. Executable regressions construct a differential cursor-overwrite stream whose linear visible text lacks every readiness token while the rendered same-row screen qualifies; clear/overwrite, cross-row, trust-like, split-CSI, alternate-screen and unsupported-mutation negatives are also enforced.",
-        "Unknown Claude screen controls now have a canonical machine-owned diagnostic path: the supervisor records only a normalized control identity and SHA-256 fingerprint for the first fail-closed control, writes private 0600 O_EXCL evidence with no raw terminal transcript, verifies terminal restoration/task-session closure/zero human and submit bytes, and the release smoke exposes a clean-only diagnose-screen phase with no y/N confirmation."
+        "Unknown Claude screen controls now have a canonical machine-owned diagnostic path: the supervisor records only a normalized control identity and SHA-256 fingerprint for the first fail-closed control, writes private 0600 O_EXCL evidence with no raw terminal transcript, verifies terminal restoration/task-session closure/zero human and submit bytes, and the release smoke exposes a clean-only diagnose-screen phase with no y/N confirmation.",
+        "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight."
       ]
     },
     "dependencies": {
@@ -194,6 +195,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "A fail-closed screen-model run reported exactly one unsupported mutation but did not retain the identity of that control. That made semantic diagnosis impossible without another live Owner TUI repetition and encouraged speculative whitelisting.",
       "durable_control": "The canonical Claude supervisor fingerprints the first unsupported control using a normalized control-only identity plus SHA-256 without serializing terminal text. A dedicated diagnose-screen smoke phase runs only clean Claude, injects no probe, requires no human observation or confirmation, stops at the first unsupported control, verifies persistent provider state and task-owned teardown, and emits only sanitized control evidence. Release-contract and harness-contract checks prevent fallback to raw transcripts or ad-hoc human retries."
+    },
+    {
+      "id": "claude-screen-color-scheme-reporting-mode-2031",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The bounded screen model correctly failed closed on Claude Code 2.1.287 emitting CSI ?2031h, but the harness had not classified DEC private mode 2031. A simple screen-model whitelist would also have missed that the mode changes physical-terminal protocol state and enables CSI ?997...n color-scheme reports.",
+      "durable_control": "Mode 2031 is modeled as rendered-screen-neutral but critical physical terminal state. The supervisor queries it before provider start, restores/re-verifies it after task teardown, and relays only the defined CSI ?997n, CSI ?997;1n and CSI ?997;2n machine reports. The exact captured incident fingerprint is a positive replay regression; invalid report values and unknown private modes remain negative coverage. terminal-state-diagnostic.py independently requires queryable 2031 state in preflight."
     }
   ],
   "artifact_capability_gates": [
@@ -248,8 +255,9 @@
       "Claude composer readiness is differential-redraw aware while remaining bounded: exact marker first, otherwise specific normal-status tokens inside the recent visible window, with explicit method evidence and negative regressions.",
       "action-time provider drift is resolved before acceptance by re-freezing exact current-stable registry/package/native identities and invalidating provider-bound evidence until exact-candidate requalification closes again",
       "Claude composer readiness is bound to trusted rendered terminal screen state, not linear PTY history: bounded VT cursor/erase/edit/scroll/alternate-screen modeling, same-row status evidence, split-sequence handling, explicit screen-trust evidence, and fail-closed unsupported screen mutations are mandatory before probe injection",
-      "Claude screen-model incident diagnosis is machine-owned and privacy-bounded: first unsupported control normalized identity + SHA-256 only, private 0600 exclusive evidence, zero raw transcript, clean-only no-probe diagnose-screen helper, persistent-state verification and task-owned teardown before any semantic whitelist/model change"
+      "Claude screen-model incident diagnosis is machine-owned and privacy-bounded: first unsupported control normalized identity + SHA-256 only, private 0600 exclusive evidence, zero raw transcript, clean-only no-probe diagnose-screen helper, persistent-state verification and task-owned teardown before any semantic whitelist/model change",
+      "Claude terminal color-scheme reporting ownership: captured CSI ?2031h is screen-neutral but mode 2031 is physical terminal state that must be DECRQM-snapshotted/restored/reverified; only CSI ?997n / ?997;1n / ?997;2n are admitted as color-scheme machine traffic, with exact incident fingerprint and malformed-report regressions"
     ]
   },
-  "reviewed_content_digest": "80286f8d86c8d4004ff10a17e5984a2d5e7f910376ec7107601eeb68c003d025"
+  "reviewed_content_digest": "767ab372248e2a7afa017ad0b94ad97a00320dc1f2fc5636165d0e6497fe2f5f"
 }
