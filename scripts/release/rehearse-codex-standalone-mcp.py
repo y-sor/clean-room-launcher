@@ -576,6 +576,23 @@ def provider_modes_in_tree(root_pid, provider):
     return sorted(modes)
 
 
+def source_mutation_partition_modes(modes, preflight_active):
+    runtime_modes = set(modes) - {"sandbox-exec", "version"}
+    if preflight_active:
+        return runtime_modes, set()
+    return set(), runtime_modes
+
+
+def source_mutation_preflight_active(preflight_root):
+    try:
+        return any(
+            path.name.startswith(".mcp-preflight-")
+            for path in preflight_root.iterdir()
+        )
+    except FileNotFoundError:
+        return False
+
+
 def negative_probe(label, candidate, project, home, provider, args, expected_marker, selected_log, sibling_log):
     unlink(selected_log)
     unlink(sibling_log)
@@ -671,13 +688,26 @@ def source_mutation_probe(candidate, project, home, provider, selected_log, sibl
     )
     preflight_seen = False
     modes_seen = set()
+    preflight_runtime_modes_seen = set()
+    escaped_runtime_modes_seen = set()
     mutated = False
     timed_out = False
     stderr = ""
+
+    def observe_provider_phase():
+        current_modes = set(provider_modes_in_tree(proc.pid, provider))
+        modes_seen.update(current_modes)
+        preflight_modes, escaped_modes = source_mutation_partition_modes(
+            current_modes,
+            source_mutation_preflight_active(preflight_root),
+        )
+        preflight_runtime_modes_seen.update(preflight_modes)
+        escaped_runtime_modes_seen.update(escaped_modes)
+
     try:
         deadline = time.monotonic() + 60
         while proc.poll() is None and time.monotonic() < deadline:
-            modes_seen.update(provider_modes_in_tree(proc.pid, provider))
+            observe_provider_phase()
             remaining = max(0.0, deadline - time.monotonic())
             events = watcher.control(None, 1, min(0.25, remaining))
             if events:
@@ -695,7 +725,7 @@ def source_mutation_probe(candidate, project, home, provider, selected_log, sibl
         if mutated and proc.poll() is None:
             exit_deadline = time.monotonic() + 30
             while proc.poll() is None and time.monotonic() < exit_deadline:
-                modes_seen.update(provider_modes_in_tree(proc.pid, provider))
+                observe_provider_phase()
                 time.sleep(0.05)
             if proc.poll() is None:
                 timed_out = True
@@ -722,12 +752,14 @@ def source_mutation_probe(candidate, project, home, provider, selected_log, sibl
         or "CLROOM_RESOURCE_STATE_CHANGED" not in (stderr or "")
         or selected_log.exists()
         or sibling_log.exists()
-        or "interactive" in modes_seen
+        or escaped_runtime_modes_seen
     ):
         fail(
             "source_mutation did not fail closed "
             f"(status={proc.returncode}, timeout={timed_out}, preflight_seen={preflight_seen}, "
             f"mutated={mutated}, markers={markers}, provider_modes_seen={modes_seen}, "
+            f"preflight_runtime_modes_seen={sorted(preflight_runtime_modes_seen)}, "
+            f"escaped_runtime_modes_seen={sorted(escaped_runtime_modes_seen)}, "
             f"selected={selected}, sibling={sibling})"
         )
     return "PASS"
@@ -1072,6 +1104,30 @@ def rehearse(args):
 
 
 def self_test():
+    allowed_preflight, escaped_preflight = source_mutation_partition_modes(
+        {"sandbox-exec", "interactive"}, True
+    )
+    if allowed_preflight != {"interactive"} or escaped_preflight:
+        fail("source-mutation preflight lifecycle classification self-test")
+
+    allowed_outside, escaped_outside = source_mutation_partition_modes(
+        {"sandbox-exec", "version", "interactive"}, False
+    )
+    if allowed_outside or escaped_outside != {"interactive"}:
+        fail("source-mutation post-preflight interactive escape self-test")
+
+    allowed_app_server, escaped_app_server = source_mutation_partition_modes(
+        {"app-server"}, False
+    )
+    if allowed_app_server or escaped_app_server != {"app-server"}:
+        fail("source-mutation post-preflight app-server escape self-test")
+
+    allowed_version, escaped_version = source_mutation_partition_modes(
+        {"sandbox-exec", "version"}, False
+    )
+    if allowed_version or escaped_version:
+        fail("source-mutation version-only classification self-test")
+
     import tempfile
     with tempfile.TemporaryDirectory(prefix="clroom-standalone-mcp-rehearsal-") as raw:
         root = pathlib.Path(raw)
