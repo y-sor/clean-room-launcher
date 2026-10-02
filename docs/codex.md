@@ -70,7 +70,7 @@ path without that exec-only flag.
 
 ## v0.4.6: select one installed whole plugin
 
-The v0.4.6 source adds one bounded Codex whole-plugin selector for the
+The v0.4.6 source adds one bounded Codex whole-plugin selection for the
 interactive launch path:
 
 ```sh
@@ -78,7 +78,7 @@ codex plugin list --json
 clroom codex --with=plugin:plugin-name@marketplace-name
 ```
 
-The selector preserves Codex's provider-native plugin ID and admits at most one
+`--with=plugin` preserves Codex's provider-native plugin ID and admits at most one
 already-installed bundle for that launch. CLROOM does not install, update,
 remove, or refresh plugins or marketplaces.
 
@@ -117,7 +117,7 @@ clroom codex --with=mcp:my-server
 clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
 ```
 
-The selector resolves exactly one root-user `mcp_servers.<id>` entry from the
+`--with=mcp` resolves exactly one root-user `mcp_servers.<id>` entry from the
 ambient Codex `config.toml`. It accepts only stdio definitions with a command,
 string arguments, an optional absolute `cwd`, and plain environment-variable
 name references. Literal `env` values, structured/remote environment sources,

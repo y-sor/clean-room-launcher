@@ -1,6 +1,6 @@
 ---
 layout: page
-title: When to use CLROOM — and when not to
+title: When to use CLROOM and when not to
 description: Compare Clean Room Launcher (CLROOM) with Claude Code safe mode, bare mode, setting sources, CODEX_HOME, profiles, and manual configuration.
 permalink: /when-to-use-clroom/
 nav_title: When to use

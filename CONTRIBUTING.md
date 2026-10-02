@@ -9,7 +9,7 @@ For a small bug fix, documentation fix, test improvement, or narrowly scoped
 maintenance change, you can open a pull request directly.
 
 For a substantial behavior change, a new provider or platform, a new release or
-installation path, or a change to a security boundary, open a GitHub issue first
+installation path, or a change to the security model, open a GitHub issue first
 so the intended outcome and support claim can be agreed before implementation.
 
 Do not use a public issue for vulnerability details. Follow [SECURITY.md](SECURITY.md)
@@ -46,7 +46,7 @@ Changes must preserve these project invariants:
   evidence in the repository and CI.
 - GitHub Actions dependencies must remain pinned to full commit SHAs and workflow
   permissions must stay least-privilege.
-- Public files must continue to pass the repository public-boundary check.
+- Public files must continue to pass `scripts/check-public-boundary.sh`.
 - Avoid unrelated refactors in security or release changes; keep review scope
   small enough to verify.
 
