@@ -21,6 +21,8 @@ COMPOSER_READY_TIMEOUT_SECONDS = 20.0
 OBSERVATION_WINDOW_SECONDS = 8.0
 QUERY_TIMEOUT_SECONDS = 0.35
 READY_MARKER = b"manual mode on"
+READY_STATUS_TOKENS = (b"manual mode", b"shortcuts", b"/effort")
+READY_VISIBLE_WINDOW_BYTES = 4096
 OUTPUT_TAIL_LIMIT = 131072
 
 PHYSICAL_MODE_IDS = (
@@ -217,6 +219,16 @@ def visible_text(data: bytes) -> bytes:
             out.append(value)
         index += 1
     return re.sub(rb"\s+", b" ", bytes(out))
+
+
+def composer_ready_method(data: bytes) -> str | None:
+    visible = visible_text(data)
+    window = visible[-READY_VISIBLE_WINDOW_BYTES:]
+    if READY_MARKER in window:
+        return "EXACT_MARKER"
+    if all(token in window for token in READY_STATUS_TOKENS):
+        return "STATUS_TOKENS"
+    return None
 
 
 def mode_response_re(mode: int) -> re.Pattern[bytes]:
@@ -456,6 +468,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
     baseline_state: dict[str, object] | None = None
     probe_injected = False
     composer_ready_seen = False
+    composer_ready_via = "NONE"
     observation_window_completed = False
     terminal_responses_forwarded = 0
     terminal_response_bytes_forwarded = 0
@@ -533,11 +546,14 @@ def supervise(argv: list[str], probe_text: str) -> int:
                 output_tail.extend(data)
                 if len(output_tail) > OUTPUT_TAIL_LIMIT:
                     del output_tail[:-OUTPUT_TAIL_LIMIT]
-                if not probe_injected and READY_MARKER in visible_text(bytes(output_tail)):
-                    composer_ready_seen = True
-                    os.write(master_fd, probe_bytes)
-                    probe_injected = True
-                    observation_deadline = time.monotonic() + OBSERVATION_WINDOW_SECONDS
+                if not probe_injected:
+                    detected_ready_via = composer_ready_method(bytes(output_tail))
+                    if detected_ready_via is not None:
+                        composer_ready_seen = True
+                        composer_ready_via = detected_ready_via
+                        os.write(master_fd, probe_bytes)
+                        probe_injected = True
+                        observation_deadline = time.monotonic() + OBSERVATION_WINDOW_SECONDS
 
             if stdin_fd in readable:
                 chunk = os.read(stdin_fd, 4096)
@@ -612,6 +628,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
     sys.stdout.flush()
 
     print(f"COMPOSER_READY_SEEN={'YES' if composer_ready_seen else 'NO'}")
+    print(f"COMPOSER_READY_METHOD={composer_ready_via}")
     print(f"PROBE_INJECTED={'YES' if probe_injected else 'NO'}")
     print(f"OBSERVATION_WINDOW_COMPLETED={'YES' if observation_window_completed else 'NO'}")
     print(f"TERMINAL_RESPONSES_FORWARDED={terminal_responses_forwarded}")
@@ -770,8 +787,34 @@ def self_test() -> int:
         b"\x1b[33mmanual\x1b[0m mode "
         b"\x1b[1mon\x1b[0m"
     )
-    if READY_MARKER not in visible_text(styled_ready):
+    if composer_ready_method(styled_ready) != "EXACT_MARKER":
         raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:ANSI_READY_MARKER")
+
+    differential_ready = (
+        b"manual mode "
+        b"? for shortcuts "
+        b"on "
+        b"/effort"
+    )
+    if composer_ready_method(differential_ready) != "STATUS_TOKENS":
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:DIFFERENTIAL_READY_MARKER"
+        )
+
+    trust_like = b"manual mode selection requires confirmation /effort"
+    if composer_ready_method(trust_like) is not None:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:READY_FALSE_POSITIVE"
+        )
+
+    stale_ready = (
+        b"manual mode shortcuts /effort"
+        + (b"x" * (READY_VISIBLE_WINDOW_BYTES + 32))
+    )
+    if composer_ready_method(stale_ready) is not None:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:READY_WINDOW_NOT_BOUNDED"
+        )
 
     baseline = {
         "modes": {1: 2, 1004: 2, 2004: 2, 2026: 1},
