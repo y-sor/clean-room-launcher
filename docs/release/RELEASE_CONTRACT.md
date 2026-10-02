@@ -160,6 +160,42 @@ accepted bytes. It does not justify moving the tag or consuming another version.
 Any deterministic post-tag blocker that was technically reproducible pre-tag is
 a release-harness escape.
 
+## Publishable surface closure
+
+Before a protected tag, accepted-main staging materializes structured
+`release-facts.json`, exact `release-notes.md`, `publish-preview.json` and
+`publishable-surface.json`. The semantic verifier checks the exact rendered
+public body against authoritative product/provider facts independently of byte
+hashes. The pre-tag manifest binds facts, preview and semantic-evidence digests.
+
+The Release-candidate workflow has a distinct
+`Publishable content semantic closure` predecessor. `Release required`, the
+pre-tag attestation path and promotion rehearsal transitively require it.
+Deleting, renaming or disconnecting that job is a harness-contract failure.
+The protected-tag helper independently requires the exact main-push job to have
+completed successfully and requires the staged publish-preview binding.
+
+Post-tag automation remains promotion-only. It may bind tag-dependent
+attestations and promote the accepted bytes, but it does not run
+`release-facts.py`, `render-publish-preview.py` or
+`verify-publishable-surface.py` as first-time gates. Draft reconciliation
+compares title, body, draft/prerelease state and asset set to the exact accepted
+preview.
+
+Publication uses `scripts/release/publish-release.sh` only after a fresh Owner
+publish gate. That helper performs final Draft verification, refreshes the
+action-time Draft fingerprint immediately before the one publish mutation,
+writes the accepted title/body during that transition, and reconciles the
+immutable published object. GitHub REST does not support conditional unsafe
+PATCH for this endpoint, so the helper contains the unsupported CAS window in
+one process and treats any post-action content/asset drift as a release incident.
+
+`PUBLISHED` is not end-to-end completion.
+`scripts/release/verify-public-release.sh` separately proves that the actual
+Latest Release, `releases/latest/download` installer/checksum routes,
+public asset bytes and attestations match accepted staging, then performs an
+isolated macOS Apple Silicon install from the public installer route.
+
 ## Public documentation version coherence
 
 Every active release candidate must inventory semantic-version mentions across
@@ -171,10 +207,12 @@ semantic-version key and a non-empty machine-checked rationale. Current-version 
 the README and install/support matrices must not keep an older exact release
 version after the candidate advances.
 
-Historical release records remain historical: `CHANGELOG.md` and the version
-history table in `SECURITY.md` are not rewritten merely because a new candidate
-exists. Provider claims inside `SECURITY.md`, however, are still checked against
-the current provider pins.
+Only older `CHANGELOG.md` sections are historical. The exact current candidate
+section is active publishable release input and is scanned against current
+provider/product facts before tag; a blanket CHANGELOG historical exclusion is
+forbidden. The version history table in `SECURITY.md` remains historical.
+Provider claims inside `SECURITY.md`, however, are still checked against the
+current provider pins.
 
 The release harness never edits documentation after provider tests. A provider
 pin move must be accompanied by the required qualification evidence and matching
@@ -370,6 +408,13 @@ bash scripts/release/local-plugin-activation-smoke.sh stage \
 # Only after that evidence passes may the Owner authorize the protected tag.
 # After tag-bound promotion creates the Draft:
 bash scripts/release/verify-draft-release.sh v<version> <exact-tag-source-sha>
+
+# Only after the separate Owner publish gate:
+CLROOM_OWNER_PUBLISH_APPROVED=YES:v<version>:<exact-tag-source-sha> \
+  bash scripts/release/publish-release.sh v<version> <exact-tag-source-sha>
+
+# After publication, prove the real public latest/download install path:
+bash scripts/release/verify-public-release.sh v<version> <exact-tag-source-sha>
 ~~~
 
 Local Codex smoke commands remain diagnostic/development tools only. Canonical

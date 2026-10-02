@@ -135,28 +135,20 @@ print("EXACT_TAG_PROMOTION_PASS")
 PY
 
 gh release view "$tag"   --json tagName,name,isDraft,isPrerelease,body,assets   >"$tmp/release.json" || fail "RELEASE_QUERY"
-python3 - "$tmp/release.json" "$tag" "$version" "$tmp/stage/release-notes.md" <<'PY'   || fail "RELEASE_IDENTITY_NOTES_OR_ASSETS"
-import json, pathlib, sys
-path, tag, version, notes_path = sys.argv[1:]
-data = json.load(open(path, encoding="utf-8"))
-if data.get("tagName") != tag:
+python3 - "$tmp/release.json" "$tmp/stage/publish-preview.json" <<'PY'   || fail "RELEASE_IDENTITY_NOTES_OR_ASSETS"
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+preview = json.load(open(sys.argv[2], encoding="utf-8"))
+if data.get("tagName") != preview["tag_name"]:
     raise SystemExit("tag")
-if data.get("name") != f"{tag} — Clean Room Launcher":
+if data.get("name") != preview["release_title"]:
     raise SystemExit("name")
-if data.get("isDraft") is not True or data.get("isPrerelease") is not False:
+if data.get("isDraft") is not preview["draft"] or data.get("isPrerelease") is not preview["prerelease"]:
     raise SystemExit("state")
-if (data.get("body") or "").rstrip() != pathlib.Path(notes_path).read_text(encoding="utf-8").rstrip():
+if (data.get("body") or "").rstrip() != preview["body"].rstrip():
     raise SystemExit("notes")
-expected = {
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.provenance.sigstore.json",
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.sbom.sigstore.json",
-    "install.sh",
-    "sbom.cdx.json",
-    "SHA256SUMS",
-}
 actual = {item.get("name") for item in data.get("assets", [])}
-if actual != expected:
+if actual != set(preview["expected_assets"]):
     raise SystemExit(f"assets:{sorted(actual)}")
 PY
 

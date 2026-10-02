@@ -607,6 +607,11 @@ def check(root: Path) -> list[str]:
     require(errors, "always()" in required, "CI_REQUIRED_ALWAYS")
 
     release_jobs = job_blocks(release_candidate)
+    publishable = release_jobs.get("publishable-content", "")
+    require(errors, "name: Publishable content semantic closure" in publishable, "PUBLISHABLE_CONTENT_JOB_MISSING")
+    require(errors, "needs: [release-eligibility, pretag-stage]" in publishable, "PUBLISHABLE_CONTENT_TOPOLOGY")
+    require(errors, "verify-publishable-surface.py" in publishable, "PUBLISHABLE_CONTENT_SEMANTIC_VERIFIER")
+    require(errors, "--evidence pretag-stage/publishable-surface.json" in publishable, "PUBLISHABLE_CONTENT_EVIDENCE_BINDING")
     eligibility = release_jobs.get("release-eligibility", "")
     require(errors, "runs-on: ubuntu-latest" in eligibility, "RELEASE_ELIGIBILITY_RUNNER")
     require(errors, "check-release-contract.py --self-test" in eligibility, "RELEASE_ELIGIBILITY_SELF_TEST")
@@ -622,17 +627,20 @@ def check(root: Path) -> list[str]:
     attest = release_jobs.get("pretag-attestation-rehearsal", "")
     require(
         errors,
-        "needs: [release-eligibility, release-readiness, pretag-stage]" in attest,
+        "needs: [release-eligibility, release-readiness, pretag-stage, publishable-content]" in attest,
         "PRETAG_ATTEST_TOPOLOGY",
     )
     release_required = release_jobs.get("release-required", "")
     require(errors, "name: Release required" in release_required, "RELEASE_REQUIRED_NAME")
     require(
         errors,
-        "needs: [release-eligibility, release-readiness, pretag-stage, pretag-attestation-rehearsal, promotion-prepare-rehearsal]" in release_required,
+        "needs: [release-eligibility, release-readiness, pretag-stage, publishable-content, pretag-attestation-rehearsal, promotion-prepare-rehearsal]" in release_required,
         "RELEASE_REQUIRED_TOPOLOGY",
     )
     require(errors, "if: always()" in release_required, "RELEASE_REQUIRED_ALWAYS")
+    require(errors, "publishable-content" in release_required, "PUBLISHABLE_CONTENT_RELEASE_REQUIRED")
+    require(errors, 'PUBLISHABLE: ${{ needs.publishable-content.result }}' in release_required, "PUBLISHABLE_CONTENT_RESULT_BINDING")
+    require(errors, 'test "$PUBLISHABLE" = success' in release_required, "PUBLISHABLE_CONTENT_SUCCESS_REQUIRED")
 
     docs = read(root, "docs/release/RELEASE_CONTRACT.md")
     for marker in AUTOMATION_MARKERS:
@@ -677,6 +685,18 @@ def check(root: Path) -> list[str]:
     require(errors, 'release create "$tag" --draft' in release, "RELEASE_DRAFT_ONLY")
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
+    require(errors, "publish-preview.json" in release and "release-body" in release, "DRAFT_PREVIEW_RECONCILIATION")
+    tag_helper = read(root, "scripts/release/push-release-tag.sh")
+    require(errors, "PUBLISHABLE_CONTENT_JOB_PASS" in tag_helper, "TAG_HELPER_PUBLISHABLE_CONTENT_JOB")
+    require(errors, "PUBLISH_PREVIEW_BINDING_PASS" in tag_helper, "TAG_HELPER_PUBLISH_PREVIEW_BINDING")
+    draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
+    require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
+    publish_helper = read(root, "scripts/release/publish-release.sh")
+    for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_RECONCILIATION", "GUARDED_PUBLISH_PASS"):
+        require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
+    public_verify = read(root, "scripts/release/verify-public-release.sh")
+    for item in ("releases/latest/download", "ISOLATED_PUBLIC_INSTALL", "PUBLIC_INSTALL_ROUTE_VERIFY_PASS"):
+        require(errors, item in public_verify, "PUBLIC_INSTALL_ROUTE_CONTRACT:" + item)
 
     resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
     admission = read(root, "scripts/release/pretag-run-admission.py")

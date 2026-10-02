@@ -31,6 +31,9 @@ for forbidden in \
   'npm view' \
   'immutable-releases' \
   'check-release-contract.py' \
+  'release-facts.py' \
+  'render-publish-preview.py' \
+  'verify-publishable-surface.py' \
   'resolve-release-lifecycle.py' \
   'git ls-remote --symref origin HEAD' \
   'refs/heads/main'

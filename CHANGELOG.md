@@ -7,6 +7,62 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-02
+
+### Added
+
+- Added bounded standalone Codex MCP selection for one exact root-user stdio
+  server per interactive launch, with fail-closed environment admission,
+  layer-conflict checks, source revalidation, real-provider initialization and
+  task-owned lifecycle closure.
+- Added pre-tag publishable-surface closure: exact release facts, rendered
+  release notes and the publish preview are materialized, semantically checked
+  against authoritative product/provider facts, content-addressed and required
+  by release topology before a protected tag can be created.
+- Added a canonical guarded publish action plus post-public verification of the
+  real `releases/latest/download` installer route and an isolated install.
+
+### Changed
+
+- Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
+  Claude Code `2.1.287`, with registry/package/native identities frozen into
+  accepted pre-tag evidence.
+- The current candidate changelog section is now active release input. Older
+  changelog sections remain historical, but they can no longer exempt the
+  current publishable section from provider/product version validation.
+- Draft reconciliation now binds title, body, draft/prerelease state and asset
+  set to the exact accepted pre-tag publish preview; post-tag automation remains
+  promotion-only and does not introduce first-time semantic/provider/build gates.
+
+### Fixed
+
+- Closed the release-harness defect that allowed byte-perfect staged notes to
+  contain stale provider claims. Hash equality now proves identity only;
+  machine-verifiable public claims receive an independent semantic PASS before
+  tag creation.
+- The protected `v0.4.5` tag and Draft remain unpublished incident evidence.
+  They are not moved, reused, manually rewritten or promoted; this recovery
+  advances under the new `v0.4.6` identity from published baseline `v0.4.4`.
+- Release-required topology and the tag helper now fail closed if the distinct
+  publishable-content semantic predecessor/evidence is absent or unsuccessful.
+
+### Dependencies
+
+- The runtime delta from published `v0.4.4` includes bounded TOML parsing for
+  standalone Codex MCP configuration. The `v0.4.6` recovery adds no further
+  runtime or build dependency.
+
+### Security
+
+- Before a protected tag, the exact public body/title/state/asset contract is
+  rendered and bound to structured provider/product/platform facts; stale or
+  unclassified volatile claims block the candidate even when all file hashes
+  are correct.
+- Publication is a separate Owner gate executed through one checked-in helper
+  that re-verifies the Draft and action-time fingerprint immediately before the
+  irreversible transition, then reconciles the published object. Public-route
+  install verification remains a separate post-publication state.
+
 ## [0.4.5] - 2026-09-29
 
 ### Added

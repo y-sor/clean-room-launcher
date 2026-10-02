@@ -36,9 +36,7 @@
         "docs/*.yaml",
         "docs/*.xml"
       ],
-      "historical_exclusions": [
-        "CHANGELOG.md"
-      ],
+      "historical_exclusions": [],
       "historical_product_paths": [
         "SECURITY.md"
       ],
@@ -53,7 +51,15 @@
           "2.1.248": "Claude native --restricted availability floor"
         }
       },
-      "allowed_other_versions": {}
+      "allowed_other_versions": {},
+      "candidate_changelog_version_inventory": {
+        "current_section": "active",
+        "older_sections": "historical",
+        "allowed_release_references": {
+          "0.4.4": "published stable baseline used for v0.4.6 recovery",
+          "0.4.5": "protected tagged-but-unpublished release-harness incident"
+        }
+      }
     },
     "pretag_blocker_closure": "required",
     "codex_pretag_stage_transport": "github_actions_macos_accepted_main_exact_archive",
@@ -62,7 +68,14 @@
     "post_tag_provider_latest_recheck": "forbidden",
     "post_tag_role": "tag_bound_attestation_exact_byte_promotion_and_reconciliation_only",
     "workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter",
-    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required"
+    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required",
+    "public_lifecycle_claims": {
+      "forbidden_volatile_phrases": [
+        "Current published stable line",
+        "Current release-candidate source contract"
+      ],
+      "publication_authority": "GitHub Releases"
+    }
   },
   "domains": [
     {
