@@ -28,7 +28,8 @@
         "Claude TTY readiness now uses a bounded dependency-free terminal screen-state model rather than linear PTY history. Executable regressions construct a differential cursor-overwrite stream whose linear visible text lacks every readiness token while the rendered same-row screen qualifies; clear/overwrite, cross-row, trust-like, split-CSI, alternate-screen and unsupported-mutation negatives are also enforced.",
         "Unknown Claude screen controls now have a canonical machine-owned diagnostic path: the supervisor records only a normalized control identity and SHA-256 fingerprint for the first fail-closed control, writes private 0600 O_EXCL evidence with no raw terminal transcript, verifies terminal restoration/task-session closure/zero human and submit bytes, and the release smoke exposes a clean-only diagnose-screen phase with no y/N confirmation.",
         "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight.",
-        "Claude human-TTY evidence now requires a shell-level readiness Enter immediately before each clean and selected provider launch while the operator is looking at that terminal. The acknowledgement is consumed before Claude starts, never reaches provider stdin, is recorded in schema v6, and the stage verifier rejects legacy v5 or missing readiness acknowledgements."
+        "Claude human-TTY evidence now requires a shell-level readiness Enter immediately before each clean and selected provider launch while the operator is looking at that terminal. The acknowledgement is consumed before Claude starts, never reaches provider stdin, is recorded in schema v6, and the stage verifier rejects legacy v5 or missing readiness acknowledgements.",
+        "Provider tuple coherence is now cross-bound rather than mirrored: check-provider-source-pins.py derives Codex/Claude tuples from provider-pins.sh, requires both clean-launch and plugin-activation constants in src/catalog/provider_inventory.rs to match, and has negative self-tests for stale Claude clean/plugin and Codex clean tuples. Canonical readiness executes both the self-test and the live source-pin check, while the harness contract fails if either invocation is disconnected."
       ]
     },
     "dependencies": {
@@ -53,7 +54,8 @@
         "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
         "v0.4.6 refreshes exact provider qualification inputs to current stable Codex 0.160.0 and Claude Code 2.1.288, with registry integrity and native-byte identity still required before acceptance.",
         "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state.",
-        "Action-time current-stable resolution on 2026-10-02 moved the qualification tuple to Codex 0.160.0 and Claude Code 2.1.288. Exact registry SHA-512 values and the Codex macOS native SHA-256 were re-frozen before requalification; all prior provider/runtime evidence is invalidated until the exact refreshed candidate closes its machine and human gates."
+        "Action-time current-stable resolution on 2026-10-02 moved the qualification tuple to Codex 0.160.0 and Claude Code 2.1.288. Exact registry SHA-512 values and the Codex macOS native SHA-256 were re-frozen before requalification; all prior provider/runtime evidence is invalidated until the exact refreshed candidate closes its machine and human gates.",
+        "The 2.1.288 refresh exposed a source-pin split: registry pins and public claims had advanced while shipped Claude clean/plugin qualification constants remained 2.1.287, so local plugin preflight correctly failed PROVIDER_TUPLE_NOT_QUALIFIED before TUI. v0.4.6 now treats provider-pins.sh plus product exact tuples as one fail-closed release contract."
       ]
     },
     "public_claims": {
@@ -238,6 +240,12 @@
       "decision": "COVERED",
       "failure_mode": "Before v0.4.6 reached the protected tag, the npm stable tuple moved from Claude Code 2.1.287 to 2.1.288, invalidating all provider-bound evidence tied to the previous tuple.",
       "durable_control": "Release readiness failed closed on the latest-tag mismatch before tag creation. The candidate advances the exact Claude qualification pin to 2.1.288, refreshes wrapper and darwin-arm64 SHA-512 identities from the registry, updates current public claims, and requires full exact-candidate machine plus human-TTY requalification before acceptance."
+    },
+    {
+      "id": "provider-pin-product-tuple-split",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A provider refresh could update canonical registry pins, public claims and their mirrored expectations while shipped clean/plugin qualification constants remained on the previous provider version. Machine readiness could still pass, leaving the first failure to local plugin-info preflight.",
+      "durable_control": "Canonical readiness now runs check-provider-source-pins.py, which derives expected tuples from provider-pins.sh and requires both clean-launch and plugin-activation constants for Codex and Claude in src/catalog/provider_inventory.rs to match. Its negative self-test rejects stale clean/plugin tuples, and check-harness-contract.py requires the checker plus both readiness invocations so the gate cannot be silently disconnected."
     }
   ],
   "artifact_capability_gates": [
