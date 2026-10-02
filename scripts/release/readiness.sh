@@ -68,6 +68,7 @@ fi
 [[ -f scripts/release/resolve-pretag-stage.sh ]] || fail "PRETAG_STAGE_RESOLVER_MISSING"
 [[ -f scripts/release/verify-pretag-stage.py ]] || fail "PRETAG_STAGE_VERIFIER_MISSING"
 [[ -f scripts/release/check-harness-contract.py ]] || fail "HARNESS_CONTRACT_MISSING"
+[[ -f scripts/release/check-publishable-surface-contract.py ]] || fail "PUBLISHABLE_SURFACE_CONTRACT_MISSING"
 [[ -f scripts/release/stage-binding.py ]] || fail "STAGE_BINDING_HELPER_MISSING"
 [[ -f scripts/release/verify-claude-stage-evidence.py ]] || fail "CLAUDE_STAGE_VERIFIER_MISSING"
 [[ -f scripts/release/render-release-notes.py ]] || fail "RELEASE_NOTES_RENDERER_MISSING"
@@ -76,6 +77,8 @@ fi
 [[ -f scripts/release/publish-release.sh ]] || fail "PUBLISH_HELPER_MISSING"
 python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
 python3 scripts/release/verify-release-notes.py --self-test || fail "RELEASE_NOTES_VERIFIER_SELF_TEST"
+python3 scripts/release/check-publishable-surface-contract.py --self-test || fail "PUBLISHABLE_SURFACE_CONTRACT_SELF_TEST"
+python3 scripts/release/check-publishable-surface-contract.py || fail "PUBLISHABLE_SURFACE_CONTRACT"
 python3 scripts/release/codex-mcp-fixture.py --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
   python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
