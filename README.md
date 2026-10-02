@@ -18,6 +18,8 @@
   <a href="docs/demo.md">Read the clean-launch walkthrough →</a>
 </p>
 
+Maintained by [Yevgeniy Sorokin](https://yevgeniy-sorokin.pages.dev/) ([GitHub](https://github.com/ewgenij87snwork)).
+
 <p align="center">
   <a
     href="#use-the-global-skills-you-need-without-loading-the-rest"
