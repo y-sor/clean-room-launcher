@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: CLROOM_OWNER_TAG_APPROVED=YES:<tag>:<sha> bash scripts/release/push-release-tag.sh <tag> <expected-main-sha>" >&2
+  echo "usage: CLROOM_OWNER_TAG_APPROVED=YES:<tag>:<sha>:<release-notes-sha256> bash scripts/release/push-release-tag.sh <tag> <expected-main-sha>" >&2
   exit 64
 }
 
@@ -11,8 +11,9 @@ tag=$1
 expected=$2
 [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || usage
 [[ $expected =~ ^[0-9a-f]{40}$ ]] || usage
-[[ ${CLROOM_OWNER_TAG_APPROVED:-} == "YES:$tag:$expected" ]] || {
-  echo "TAG_GATE_BLOCKED:OWNER_APPROVAL_TOKEN" >&2
+approval_token=${CLROOM_OWNER_TAG_APPROVED:-}
+[[ "$approval_token" == YES:"$tag":"$expected":* ]] || {
+  echo "TAG_GATE_BLOCKED:OWNER_APPROVAL_TOKEN_FORMAT" >&2
   exit 65
 }
 
