@@ -301,8 +301,8 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     stripped_lines = {line.strip() for line in text.splitlines()}
     require(
         errors,
-        '"schema_version":"clroom.plugin-release-smoke.v5"' in text,
-        "CLAUDE_RELEASE_SMOKE_SCHEMA_V5",
+        '"schema_version":"clroom.plugin-release-smoke.v6"' in text,
+        "CLAUDE_RELEASE_SMOKE_SCHEMA_V6",
     )
     require(
         errors,
@@ -351,6 +351,16 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     )
     require(
         errors,
+        '"clean_observation_ready_acknowledged":clean_observation_ready=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_OBSERVATION_READY_EVIDENCE",
+    )
+    require(
+        errors,
+        '"selected_observation_ready_acknowledged":selected_observation_ready=="true"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_OBSERVATION_READY_EVIDENCE",
+    )
+    require(
+        errors,
         '"selected_tui_confirmed":interactive=="true"' in text,
         "CLAUDE_RELEASE_SMOKE_SELECTED_TTY",
     )
@@ -390,8 +400,43 @@ def validate_claude_release_smoke_contract(text: str) -> list[str]:
     require(
         errors,
         "Do not type into Claude." in text
-        and "Human work is observation only; no keypresses are required." in text,
+        and "The readiness Enter is consumed by the harness before Claude starts and is never forwarded to Claude." in text
+        and "Keep this terminal visible until the bounded observation window ends and the confirmation questions appear." in text,
         "CLAUDE_RELEASE_SMOKE_SUPERVISOR_INPUT_GUARD",
+    )
+    clean_ready_prompt = "Press Enter only when you are ready to observe the CLEAN autocomplete window"
+    selected_ready_prompt = "Press Enter only when you are ready to observe the SELECTED autocomplete window"
+    clean_ready_read = "IFS= read -r clean_ready_answer"
+    selected_ready_read = "IFS= read -r selected_ready_answer"
+    clean_launch = 'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude'
+    selected_launch = 'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"'
+    require(
+        errors,
+        clean_ready_prompt in text
+        and clean_ready_read in text
+        and '[[ -z "$clean_ready_answer" ]] || fail "CLEAN_OBSERVATION_READY_INVALID"' in text,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_OBSERVATION_READY",
+    )
+    require(
+        errors,
+        selected_ready_prompt in text
+        and selected_ready_read in text
+        and '[[ -z "$selected_ready_answer" ]] || fail "SELECTED_OBSERVATION_READY_INVALID"' in text,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_OBSERVATION_READY",
+    )
+    clean_ready_index = text.find(clean_ready_read)
+    clean_launch_index = text.find(clean_launch)
+    selected_ready_index = text.find(selected_ready_read)
+    selected_launch_index = text.find(selected_launch)
+    require(
+        errors,
+        clean_ready_index >= 0 and clean_launch_index > clean_ready_index,
+        "CLAUDE_RELEASE_SMOKE_CLEAN_OBSERVATION_READY_ORDER",
+    )
+    require(
+        errors,
+        selected_ready_index >= 0 and selected_launch_index > selected_ready_index,
+        "CLAUDE_RELEASE_SMOKE_SELECTED_OBSERVATION_READY_ORDER",
     )
     require(
         errors,
@@ -851,13 +896,19 @@ python3 "$root/scripts/release/claude-tty-supervisor.py" --diagnose-unsupported 
 exit 0
 fi
 cd "$root"
+"Press Enter only when you are ready to observe the CLEAN autocomplete window"
+IFS= read -r clean_ready_answer
+[[ -z "$clean_ready_answer" ]] || fail "CLEAN_OBSERVATION_READY_INVALID"
 python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude
 cd "$root"
+"Press Enter only when you are ready to observe the SELECTED autocomplete window"
+IFS= read -r selected_ready_answer
+[[ -z "$selected_ready_answer" ]] || fail "SELECTED_OBSERVATION_READY_INVALID"
 python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude --with="plugin:$plugin_id"
 "The AGENTS boundary is already machine-proved; human work is autocomplete observation only."
 python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$head"
 "No inference/model response appeared in either TUI"
-"schema_version":"clroom.plugin-release-smoke.v5"
+"schema_version":"clroom.plugin-release-smoke.v6"
 "automated_probe_prompt_supplied":False
 "clean_tui_confirmed":clean_tui=="true"
 "clean_tui_supervised":clean_tui_supervised=="true"
@@ -867,10 +918,13 @@ python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$h
 "interactive_harness_owned_teardown":True
 "physical_terminal_preflight_passed":physical_terminal_preflight=="true"
 "interactive_terminal_state_restored":interactive_terminal_state_restored=="true"
+"clean_observation_ready_acknowledged":clean_observation_ready=="true"
+"selected_observation_ready_acknowledged":selected_observation_ready=="true"
 "selected_tui_confirmed":interactive=="true"
 "Do not type into Claude."
 "The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
-"Human work is observation only; no keypresses are required."
+"The readiness Enter is consumed by the harness before Claude starts and is never forwarded to Claude."
+"Keep this terminal visible until the bounded observation window ends and the confirmation questions appear."
 "PERSISTENT_CONFIG_CHANGED_CLEAN_INTERACTIVE"
 "PERSISTENT_CONFIG_CHANGED_SELECTED_INTERACTIVE"
 """
@@ -910,6 +964,21 @@ python3 "$root/scripts/release/terminal-state-diagnostic.py" --expected-head "$h
     )
     if "CLAUDE_RELEASE_SMOKE_CLEAN_SUPERVISOR_LAUNCH" not in validate_claude_release_smoke_contract(missing_supervisor):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SUPERVISOR_NOT_REQUIRED")
+
+    missing_clean_ready = claude_smoke_fixture.replace("IFS= read -r clean_ready_answer\n", "")
+    if "CLAUDE_RELEASE_SMOKE_CLEAN_OBSERVATION_READY" not in validate_claude_release_smoke_contract(missing_clean_ready):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_CLEAN_READY_NOT_REQUIRED")
+
+    missing_selected_ready = claude_smoke_fixture.replace("IFS= read -r selected_ready_answer\n", "")
+    if "CLAUDE_RELEASE_SMOKE_SELECTED_OBSERVATION_READY" not in validate_claude_release_smoke_contract(missing_selected_ready):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_SELECTED_READY_NOT_REQUIRED")
+
+    clean_launch_line = 'python3 "$root/scripts/release/claude-tty-supervisor.py" --probe-text "$probe_text" -- "$clroom" claude\n'
+    late_clean_ready = claude_smoke_fixture.replace("IFS= read -r clean_ready_answer\n", "")
+    late_clean_ready = late_clean_ready.replace(clean_launch_line, clean_launch_line + "IFS= read -r clean_ready_answer\n")
+    if "CLAUDE_RELEASE_SMOKE_CLEAN_OBSERVATION_READY_ORDER" not in validate_claude_release_smoke_contract(late_clean_ready):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:CLAUDE_CLEAN_READY_ORDER_NOT_REQUIRED")
+
     print("HARNESS_CONTRACT_SELF_TEST_PASS")
 
 
