@@ -231,6 +231,16 @@ python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage"   --version 
     echo "TAG_GATE_BLOCKED:PRETAG_STAGE_BINDING" >&2
     exit 80
   }
+python3 scripts/release/verify-publishable-surface.py \
+  --dir "$tmp/stage" \
+  --version "$version" \
+  --source-head "$expected" \
+  --source-tree "$current_tree" \
+  --codex-version "$CODEX_VERSION" \
+  --claude-version "$CLAUDE_VERSION" || {
+    echo "TAG_GATE_BLOCKED:PUBLISHABLE_SURFACE" >&2
+    exit 80
+  }
 
 stage_binding_digest() {
   python3 - "$tmp/stage" <<'PY'

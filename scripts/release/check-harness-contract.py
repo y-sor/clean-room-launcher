@@ -695,9 +695,19 @@ def check(root: Path) -> list[str]:
 
     release = workflow_text[".github/workflows/release.yml"]
     require(errors, 'tags:\n      - "v*"' in release, "RELEASE_TAG_TRIGGER")
+    require(errors, "publish-preview.json" in release, "RELEASE_DRAFT_PUBLISH_PREVIEW")
+    require(errors, "--json tagName,name,isDraft,isPrerelease,body,assets" in release, "RELEASE_DRAFT_BODY_RECONCILIATION")
+    require(errors, "release-body" in release, "RELEASE_DRAFT_BODY_DIGEST")
     require(errors, 'release create "$tag" --draft' in release, "RELEASE_DRAFT_ONLY")
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
+
+    publish_helper = read(root, "scripts/release/publish-release.sh")
+    require(errors, "CLROOM_OWNER_PUBLISH_APPROVED" in publish_helper, "PUBLISH_HELPER_OWNER_GATE")
+    require(errors, "verify-draft-release.sh" in publish_helper, "PUBLISH_HELPER_DRAFT_VERIFY")
+    require(errors, "verify-publishable-surface.py" in publish_helper, "PUBLISH_HELPER_PREVIEW_VERIFY")
+    require(errors, 'gh release edit "$tag" --draft=false' in publish_helper, "PUBLISH_HELPER_ACTION")
+    require(errors, "PUBLISH_ACTION_TIME_PREVIEW_PASS" in publish_helper, "PUBLISH_HELPER_ACTION_TIME_PREVIEW")
 
     resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
     admission = read(root, "scripts/release/pretag-run-admission.py")

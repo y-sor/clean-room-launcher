@@ -85,6 +85,14 @@ trap 'rm -rf -- "$tmp"' EXIT HUP INT TERM
 
 bash scripts/release/resolve-pretag-stage.sh "$version" "$expected" "$tmp/stage"   || fail "PRETAG_STAGE"
 python3 scripts/release/verify-pretag-stage.py   --dir "$tmp/stage"   --version "$version"   --source-head "$expected"   --source-tree "$current_tree"   --reviewed-content-digest "$reviewed_content_digest"   --codex-version "$CODEX_VERSION"   --claude-version "$CLAUDE_VERSION"   || fail "PRETAG_STAGE_BINDING"
+python3 scripts/release/verify-publishable-surface.py \
+  --dir "$tmp/stage" \
+  --version "$version" \
+  --source-head "$expected" \
+  --source-tree "$current_tree" \
+  --codex-version "$CODEX_VERSION" \
+  --claude-version "$CLAUDE_VERSION" \
+  || fail "PUBLISHABLE_SURFACE"
 
 artifact="clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
 artifact_sha=$(python3 - "$tmp/stage/pretag-manifest.json" "$artifact" <<'PY'
@@ -135,29 +143,30 @@ print("EXACT_TAG_PROMOTION_PASS")
 PY
 
 gh release view "$tag"   --json tagName,name,isDraft,isPrerelease,body,assets   >"$tmp/release.json" || fail "RELEASE_QUERY"
-python3 - "$tmp/release.json" "$tag" "$version" "$tmp/stage/release-notes.md" <<'PY'   || fail "RELEASE_IDENTITY_NOTES_OR_ASSETS"
-import json, pathlib, sys
-path, tag, version, notes_path = sys.argv[1:]
-data = json.load(open(path, encoding="utf-8"))
-if data.get("tagName") != tag:
+python3 - "$tmp/release.json" "$tmp/stage/publish-preview.json" <<'PY'   || fail "RELEASE_IDENTITY_NOTES_OR_ASSETS"
+import hashlib, json, sys
+release_path, preview_path = sys.argv[1:]
+data = json.load(open(release_path, encoding="utf-8"))
+preview = json.load(open(preview_path, encoding="utf-8"))
+if data.get("tagName") != preview.get("tag_name"):
     raise SystemExit("tag")
-if data.get("name") != f"{tag} — Clean Room Launcher":
+if data.get("name") != preview.get("title"):
     raise SystemExit("name")
-if data.get("isDraft") is not True or data.get("isPrerelease") is not False:
+if data.get("isDraft") is not preview.get("draft") or data.get("isPrerelease") is not preview.get("prerelease"):
     raise SystemExit("state")
-if (data.get("body") or "").rstrip() != pathlib.Path(notes_path).read_text(encoding="utf-8").rstrip():
+body = ((data.get("body") or "").rstrip() + "\n").encode("utf-8")
+if hashlib.sha256(body).hexdigest() != preview.get("release_notes_sha256"):
     raise SystemExit("notes")
-expected = {
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.provenance.sigstore.json",
-    f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.sbom.sigstore.json",
-    "install.sh",
-    "sbom.cdx.json",
-    "SHA256SUMS",
-}
+expected = set(preview.get("expected_release_assets") or [])
 actual = {item.get("name") for item in data.get("assets", [])}
 if actual != expected:
     raise SystemExit(f"assets:{sorted(actual)}")
+if preview.get("semantic_validation") != "PASS" or preview.get("provider_claims_validation") != "PASS":
+    raise SystemExit("semantic")
+
+PY
+
+mkdir -p "$tmp/assets"
 PY
 
 mkdir -p "$tmp/assets"

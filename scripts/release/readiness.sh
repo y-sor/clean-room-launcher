@@ -63,6 +63,8 @@ fi
 [[ -x scripts/release/local-release-audit.sh ]] || fail "RELEASE_AUDIT_EXECUTABLE"
 [[ -x scripts/release/local-plugin-activation-smoke.sh ]] || fail "PLUGIN_SMOKE_EXECUTABLE"
 [[ -x scripts/release/verify-draft-release.sh ]] || fail "DRAFT_RELEASE_VERIFY_EXECUTABLE"
+[[ -x scripts/release/publish-release.sh ]] || fail "PUBLISH_RELEASE_EXECUTABLE"
+[[ -x scripts/release/verify-publishable-surface.py ]] || fail "PUBLISHABLE_SURFACE_VERIFY_EXECUTABLE"
 [[ -f scripts/release/resolve-codex-rehearsal-evidence.sh ]] || fail "CODEX_REHEARSAL_RESOLVER_MISSING"
 [[ -f scripts/release/stage-release.sh ]] || fail "PRETAG_STAGE_SCRIPT_MISSING"
 [[ -f scripts/release/resolve-pretag-stage.sh ]] || fail "PRETAG_STAGE_RESOLVER_MISSING"
@@ -98,6 +100,8 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/resolve-codex-rehearsal-evidence.sh \
     scripts/release/verify-draft-release.sh \
+    scripts/release/publish-release.sh \
+    scripts/release/verify-publishable-surface.py \
     scripts/release/stage-release.sh \
     scripts/release/resolve-pretag-stage.sh \
     scripts/release/check-post-tag-contract.sh \
@@ -117,6 +121,8 @@ else
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/resolve-codex-rehearsal-evidence.sh \
     scripts/release/verify-draft-release.sh \
+    scripts/release/publish-release.sh \
+    scripts/release/verify-publishable-surface.py \
     scripts/release/stage-release.sh \
     scripts/release/resolve-pretag-stage.sh \
     scripts/release/check-post-tag-contract.sh \

@@ -86,7 +86,9 @@ for required in \
   'verify-pretag-stage.py' \
   'uses: actions/attest@' \
   'gh release upload' \
-  'DRAFT_PROMOTION_RECONCILE_PASS'
+  'DRAFT_PROMOTION_RECONCILE_PASS' \
+  'publish-preview.json' \
+  '--json tagName,name,isDraft,isPrerelease,body,assets'
 do
   grep -Fq -- "$required" "$release_workflow" || fail "PROMOTION_CONTRACT:$required"
 done
