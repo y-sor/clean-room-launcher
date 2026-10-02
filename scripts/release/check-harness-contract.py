@@ -611,8 +611,8 @@ def check(root: Path) -> list[str]:
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
         errors,
-        '"schema_version": "clroom.plugin-release-smoke.v5"' in claude_stage_verifier,
-        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5",
+        'SCHEMA_VERSION = "clroom.plugin-release-smoke.v6"' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_SCHEMA_V6",
     )
     require(
         errors,
@@ -627,8 +627,16 @@ def check(root: Path) -> list[str]:
         '"interactive_harness_owned_teardown": True',
         '"physical_terminal_preflight_passed": True',
         '"interactive_terminal_state_restored": True',
+        '"clean_observation_ready_acknowledged": True',
+        '"selected_observation_ready_acknowledged": True',
     ):
         require(errors, marker in claude_stage_verifier, "CLAUDE_STAGE_EVIDENCE_SUPERVISOR:" + marker)
+    require(
+        errors,
+        "CLAUDE_STAGE_EVIDENCE_SELF_TEST_PASS" in claude_stage_verifier
+        and 'legacy["schema_version"] = "clroom.plugin-release-smoke.v5"' in claude_stage_verifier,
+        "CLAUDE_STAGE_EVIDENCE_READINESS_NEGATIVE_SELF_TEST",
+    )
 
     fuzz = workflow_text[".github/workflows/fuzz.yml"]
     require(errors, (root / "fuzz/Cargo.lock").is_file(), "FUZZ_LOCKFILE_MISSING")
