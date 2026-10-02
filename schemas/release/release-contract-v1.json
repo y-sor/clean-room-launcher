@@ -62,7 +62,17 @@
     "post_tag_provider_latest_recheck": "forbidden",
     "post_tag_role": "tag_bound_attestation_exact_byte_promotion_and_reconciliation_only",
     "workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter",
-    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required"
+    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required",
+    "candidate_changelog_version_inventory": {
+      "status": "required",
+      "allowed_historical_product_versions": {
+        "0.4.5": "protected tag was created but release remained unpublished after a release-harness incident; v0.4.6 supersedes it"
+      }
+    },
+    "release_notes_semantic_validation": "required",
+    "publishable_surface_manifest": "required",
+    "draft_body_exact_stage": "required",
+    "guarded_publish_helper": "required"
   },
   "domains": [
     {
