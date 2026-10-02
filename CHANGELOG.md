@@ -25,7 +25,7 @@ Semantic Versioning after the first public release.
 ### Changed
 
 - Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
-  Claude Code `2.1.287`, with registry/package/native identities frozen into
+  Claude Code `2.1.288`, with registry/package/native identities frozen into
   accepted pre-tag evidence.
 - The current candidate changelog section is now active release input. Older
   changelog sections remain historical, but they can no longer exempt the
