@@ -14,6 +14,7 @@ import sys
 import termios
 import time
 import tty
+import unicodedata
 
 TERM_GRACE_SECONDS = 2.0
 INPUT_SEQUENCE_TIMEOUT_SECONDS = 0.5
@@ -22,8 +23,9 @@ OBSERVATION_WINDOW_SECONDS = 8.0
 QUERY_TIMEOUT_SECONDS = 0.35
 READY_MARKER = b"manual mode on"
 READY_STATUS_TOKENS = (b"manual mode", b"shortcuts", b"/effort")
-READY_VISIBLE_WINDOW_BYTES = 4096
-OUTPUT_TAIL_LIMIT = 131072
+SCREEN_MAX_ROWS = 200
+SCREEN_MAX_COLS = 512
+SCREEN_MAX_SEQUENCE_BYTES = 8192
 
 PHYSICAL_MODE_IDS = (
     1,
@@ -221,14 +223,512 @@ def visible_text(data: bytes) -> bytes:
     return re.sub(rb"\s+", b" ", bytes(out))
 
 
-def composer_ready_method(data: bytes) -> str | None:
-    visible = visible_text(data)
-    window = visible[-READY_VISIBLE_WINDOW_BYTES:]
-    if READY_MARKER in window:
-        return "EXACT_MARKER"
-    if all(token in window for token in READY_STATUS_TOKENS):
-        return "STATUS_TOKENS"
-    return None
+class TerminalScreen:
+    """Bounded fail-closed terminal screen model for composer readiness."""
+
+    def __init__(self, rows: int = 80, cols: int = 240) -> None:
+        self.rows = max(1, min(rows, SCREEN_MAX_ROWS))
+        self.cols = max(1, min(cols, SCREEN_MAX_COLS))
+        self.primary = self._blank_buffer()
+        self.alternate = self._blank_buffer()
+        self.alternate_active = False
+        self.row = 0
+        self.col = 0
+        self.saved_primary = (0, 0)
+        self.saved_alternate = (0, 0)
+        self.scroll_top = 0
+        self.scroll_bottom = self.rows - 1
+        self.pending = bytearray()
+        self.trusted = True
+        self.unsupported_mutations = 0
+        self.insert_mode = False
+        self.autowrap = True
+        self.last_char = " "
+
+    def _blank_buffer(self) -> list[list[str]]:
+        return [[" "] * self.cols for _ in range(self.rows)]
+
+    @property
+    def buffer(self) -> list[list[str]]:
+        return self.alternate if self.alternate_active else self.primary
+
+    def _mark_unsupported(self) -> None:
+        self.trusted = False
+        self.unsupported_mutations += 1
+
+    def _clamp_cursor(self) -> None:
+        self.row = max(0, min(self.row, self.rows - 1))
+        self.col = max(0, min(self.col, self.cols - 1))
+
+    def _char_width(self, value: str) -> int:
+        if value == "\u200d" or unicodedata.combining(value):
+            return 0
+        return 2 if unicodedata.east_asian_width(value) in {"W", "F"} else 1
+
+    def _scroll_up(self, count: int = 1) -> None:
+        count = max(1, min(count, self.scroll_bottom - self.scroll_top + 1))
+        for _ in range(count):
+            del self.buffer[self.scroll_top]
+            self.buffer.insert(self.scroll_bottom, [" "] * self.cols)
+
+    def _scroll_down(self, count: int = 1) -> None:
+        count = max(1, min(count, self.scroll_bottom - self.scroll_top + 1))
+        for _ in range(count):
+            del self.buffer[self.scroll_bottom]
+            self.buffer.insert(self.scroll_top, [" "] * self.cols)
+
+    def _linefeed(self) -> None:
+        if self.row == self.scroll_bottom:
+            self._scroll_up()
+        else:
+            self.row = min(self.rows - 1, self.row + 1)
+
+    def _write_char(self, value: str) -> None:
+        width = self._char_width(value)
+        if width == 0:
+            return
+        if self.col >= self.cols:
+            if self.autowrap:
+                self.col = 0
+                self._linefeed()
+            else:
+                self.col = self.cols - 1
+        if width == 2 and self.col == self.cols - 1:
+            self.col = 0
+            self._linefeed()
+        row = self.buffer[self.row]
+        if self.insert_mode:
+            for index in range(self.cols - 1, self.col + width - 1, -1):
+                row[index] = row[index - width]
+        row[self.col] = value
+        if width == 2:
+            row[self.col + 1] = " "
+        self.last_char = value
+        self.col += width
+        if self.col >= self.cols:
+            self.col = self.cols
+
+    def _erase_display(self, mode: int) -> None:
+        if mode in (2, 3):
+            for index in range(self.rows):
+                self.buffer[index] = [" "] * self.cols
+            return
+        if mode == 0:
+            self._erase_line(0)
+            for index in range(self.row + 1, self.rows):
+                self.buffer[index] = [" "] * self.cols
+            return
+        if mode == 1:
+            self._erase_line(1)
+            for index in range(0, self.row):
+                self.buffer[index] = [" "] * self.cols
+            return
+        self._mark_unsupported()
+
+    def _erase_line(self, mode: int) -> None:
+        row = self.buffer[self.row]
+        if mode == 0:
+            for index in range(self.col, self.cols):
+                row[index] = " "
+        elif mode == 1:
+            for index in range(0, self.col + 1):
+                row[index] = " "
+        elif mode == 2:
+            self.buffer[self.row] = [" "] * self.cols
+        else:
+            self._mark_unsupported()
+
+    def _insert_chars(self, count: int) -> None:
+        count = max(1, min(count, self.cols - self.col))
+        row = self.buffer[self.row]
+        for index in range(self.cols - 1, self.col + count - 1, -1):
+            row[index] = row[index - count]
+        for index in range(self.col, min(self.cols, self.col + count)):
+            row[index] = " "
+
+    def _delete_chars(self, count: int) -> None:
+        count = max(1, min(count, self.cols - self.col))
+        row = self.buffer[self.row]
+        for index in range(self.col, self.cols - count):
+            row[index] = row[index + count]
+        for index in range(self.cols - count, self.cols):
+            row[index] = " "
+
+    def _erase_chars(self, count: int) -> None:
+        count = max(1, min(count, self.cols - self.col))
+        row = self.buffer[self.row]
+        for index in range(self.col, min(self.cols, self.col + count)):
+            row[index] = " "
+
+    def _insert_lines(self, count: int) -> None:
+        if not (self.scroll_top <= self.row <= self.scroll_bottom):
+            return
+        count = max(1, min(count, self.scroll_bottom - self.row + 1))
+        for _ in range(count):
+            del self.buffer[self.scroll_bottom]
+            self.buffer.insert(self.row, [" "] * self.cols)
+
+    def _delete_lines(self, count: int) -> None:
+        if not (self.scroll_top <= self.row <= self.scroll_bottom):
+            return
+        count = max(1, min(count, self.scroll_bottom - self.row + 1))
+        for _ in range(count):
+            del self.buffer[self.row]
+            self.buffer.insert(self.scroll_bottom, [" "] * self.cols)
+
+    def _switch_alternate(self, enabled: bool, save_cursor: bool) -> None:
+        if enabled == self.alternate_active:
+            return
+        if enabled:
+            if save_cursor:
+                self.saved_primary = (self.row, self.col)
+            self.alternate = self._blank_buffer()
+            self.alternate_active = True
+            self.row = 0
+            self.col = 0
+        else:
+            self.alternate_active = False
+            if save_cursor:
+                self.row, self.col = self.saved_primary
+            self._clamp_cursor()
+        self.scroll_top = 0
+        self.scroll_bottom = self.rows - 1
+
+    def _save_cursor(self) -> None:
+        if self.alternate_active:
+            self.saved_alternate = (self.row, self.col)
+        else:
+            self.saved_primary = (self.row, self.col)
+
+    def _restore_cursor(self) -> None:
+        if self.alternate_active:
+            self.row, self.col = self.saved_alternate
+        else:
+            self.row, self.col = self.saved_primary
+        self._clamp_cursor()
+
+    def _params(self, raw: str, default: int = 1) -> list[int]:
+        if not raw:
+            return [default]
+        values: list[int] = []
+        for item in raw.split(";"):
+            if item == "":
+                values.append(default)
+            elif item.isdigit():
+                values.append(int(item))
+            else:
+                raise ValueError("non-numeric CSI parameter")
+        return values
+
+    def _handle_modes(self, raw: str, enabled: bool, private: bool) -> None:
+        try:
+            modes = self._params(raw, default=0)
+        except ValueError:
+            self._mark_unsupported()
+            return
+        for mode in modes:
+            if private and mode in (47, 1047):
+                self._switch_alternate(enabled, save_cursor=False)
+            elif private and mode == 1049:
+                self._switch_alternate(enabled, save_cursor=True)
+            elif private and mode == 1048:
+                self._save_cursor() if enabled else self._restore_cursor()
+            elif not private and mode == 4:
+                self.insert_mode = enabled
+            elif private and mode == 7:
+                self.autowrap = enabled
+            elif private and mode in {
+                1, 12, 25, 66, 1000, 1002, 1003, 1004, 1005, 1006, 1007,
+                1015, 2004, 2026
+            }:
+                continue
+            elif private:
+                self._mark_unsupported()
+            else:
+                self._mark_unsupported()
+
+    def _handle_csi(self, sequence: bytes) -> None:
+        try:
+            text = sequence.decode("ascii")
+        except UnicodeDecodeError:
+            self._mark_unsupported()
+            return
+        final = text[-1]
+        body = text[:-1]
+        prefix = ""
+        while body and body[0] in "?><=":
+            prefix += body[0]
+            body = body[1:]
+        intermediates = "".join(ch for ch in body if " " <= ch <= "/")
+        params_raw = "".join(ch for ch in body if ch.isdigit() or ch == ";")
+
+        if final == "m":
+            return
+        if final in {"n", "c"}:
+            return
+        if final == "p" and ("$" in intermediates or "?" in prefix):
+            return
+        if final == "u" and prefix:
+            return
+        if final == "q" and intermediates.strip() == "":
+            return
+        if final == "t":
+            try:
+                params = self._params(params_raw, default=0)
+            except ValueError:
+                self._mark_unsupported()
+                return
+            if params and params[0] in {13, 14, 16, 18, 19, 20, 21}:
+                return
+            self._mark_unsupported()
+            return
+        if final in {"h", "l"}:
+            self._handle_modes(params_raw, final == "h", prefix == "?")
+            return
+        if prefix or (intermediates and final != "p"):
+            self._mark_unsupported()
+            return
+
+        try:
+            params = self._params(params_raw)
+        except ValueError:
+            self._mark_unsupported()
+            return
+        first = params[0] if params else 1
+
+        if final == "A":
+            self.row -= first
+        elif final in {"B", "e"}:
+            self.row += first
+        elif final in {"C", "a"}:
+            self.col += first
+        elif final == "D":
+            self.col -= first
+        elif final == "E":
+            self.row += first
+            self.col = 0
+        elif final == "F":
+            self.row -= first
+            self.col = 0
+        elif final == "G" or final == chr(96):
+            self.col = first - 1
+        elif final == "d":
+            self.row = first - 1
+        elif final in {"H", "f"}:
+            row = params[0] if params else 1
+            col = params[1] if len(params) > 1 else 1
+            self.row = row - 1
+            self.col = col - 1
+        elif final == "J":
+            self._erase_display(0 if not params_raw else first)
+        elif final == "K":
+            self._erase_line(0 if not params_raw else first)
+        elif final == "@":
+            self._insert_chars(first)
+        elif final == "P":
+            self._delete_chars(first)
+        elif final == "X":
+            self._erase_chars(first)
+        elif final == "L":
+            self._insert_lines(first)
+        elif final == "M":
+            self._delete_lines(first)
+        elif final == "S":
+            self._scroll_up(first)
+        elif final == "T":
+            self._scroll_down(first)
+        elif final == "r":
+            top = params[0] if params else 1
+            bottom = params[1] if len(params) > 1 else self.rows
+            if not (1 <= top <= bottom <= self.rows):
+                self._mark_unsupported()
+                return
+            self.scroll_top = top - 1
+            self.scroll_bottom = bottom - 1
+            self.row = self.scroll_top
+            self.col = 0
+        elif final == "s":
+            self._save_cursor()
+        elif final == "u":
+            self._restore_cursor()
+        elif final == "b":
+            for _ in range(first):
+                self._write_char(self.last_char)
+        elif final in {"g", "I", "Z"}:
+            if final == "I":
+                self.col = min(self.cols - 1, ((self.col // 8) + first) * 8)
+            elif final == "Z":
+                self.col = max(0, ((max(0, self.col - 1) // 8) - first + 1) * 8)
+        elif final == "p" and intermediates == "!":
+            self.insert_mode = False
+            self.scroll_top = 0
+            self.scroll_bottom = self.rows - 1
+            self.row = 0
+            self.col = 0
+        else:
+            self._mark_unsupported()
+            return
+        self._clamp_cursor()
+
+    def _utf8_length(self, first: int) -> int:
+        if first < 0x80:
+            return 1
+        if 0xC2 <= first <= 0xDF:
+            return 2
+        if 0xE0 <= first <= 0xEF:
+            return 3
+        if 0xF0 <= first <= 0xF4:
+            return 4
+        return -1
+
+    def feed(self, data: bytes) -> None:
+        self.pending.extend(data)
+        index = 0
+        while index < len(self.pending):
+            value = self.pending[index]
+            if value == 0x1B:
+                if index + 1 >= len(self.pending):
+                    break
+                kind = self.pending[index + 1]
+                if kind == ord("["):
+                    end = index + 2
+                    while end < len(self.pending) and not (0x40 <= self.pending[end] <= 0x7E):
+                        if not (0x20 <= self.pending[end] <= 0x3F):
+                            self._mark_unsupported()
+                            end += 1
+                            break
+                        end += 1
+                    if end >= len(self.pending):
+                        break
+                    self._handle_csi(bytes(self.pending[index + 2 : end + 1]))
+                    index = end + 1
+                    continue
+                if kind in (ord("]"), ord("P"), ord("_"), ord("^"), ord("X")):
+                    cursor = index + 2
+                    terminator = -1
+                    while cursor < len(self.pending):
+                        if kind == ord("]") and self.pending[cursor] == 0x07:
+                            terminator = cursor + 1
+                            break
+                        if self.pending[cursor : cursor + 2] == b"\x1b\\":
+                            terminator = cursor + 2
+                            break
+                        cursor += 1
+                    if terminator < 0:
+                        if len(self.pending) - index > SCREEN_MAX_SEQUENCE_BYTES:
+                            self._mark_unsupported()
+                            index += 2
+                            continue
+                        break
+                    index = terminator
+                    continue
+                if kind in b"()*+-./":
+                    if index + 2 >= len(self.pending):
+                        break
+                    index += 3
+                    continue
+                if kind == ord("7"):
+                    self._save_cursor()
+                elif kind == ord("8"):
+                    self._restore_cursor()
+                elif kind == ord("D"):
+                    self._linefeed()
+                elif kind == ord("M"):
+                    if self.row == self.scroll_top:
+                        self._scroll_down()
+                    else:
+                        self.row = max(0, self.row - 1)
+                elif kind == ord("E"):
+                    self.col = 0
+                    self._linefeed()
+                elif kind == ord("c"):
+                    self.primary = self._blank_buffer()
+                    self.alternate = self._blank_buffer()
+                    self.alternate_active = False
+                    self.row = 0
+                    self.col = 0
+                    self.scroll_top = 0
+                    self.scroll_bottom = self.rows - 1
+                    self.insert_mode = False
+                    self.autowrap = True
+                elif kind in (ord("="), ord(">"), ord("H")):
+                    pass
+                elif kind == ord("#"):
+                    if index + 2 >= len(self.pending):
+                        break
+                    if self.pending[index + 2] == ord("8"):
+                        for row in range(self.rows):
+                            self.buffer[row] = ["E"] * self.cols
+                        self.row = 0
+                        self.col = 0
+                        index += 3
+                        continue
+                    self._mark_unsupported()
+                    index += 3
+                    continue
+                else:
+                    self._mark_unsupported()
+                index += 2
+                continue
+
+            if value == 0x0D:
+                self.col = 0
+                index += 1
+                continue
+            if value in (0x0A, 0x0B, 0x0C):
+                self._linefeed()
+                index += 1
+                continue
+            if value == 0x08:
+                self.col = max(0, self.col - 1)
+                index += 1
+                continue
+            if value == 0x09:
+                self.col = min(self.cols - 1, ((self.col // 8) + 1) * 8)
+                index += 1
+                continue
+            if value < 0x20 or value == 0x7F:
+                index += 1
+                continue
+
+            length = self._utf8_length(value)
+            if length < 0:
+                self._mark_unsupported()
+                index += 1
+                continue
+            if index + length > len(self.pending):
+                break
+            raw = bytes(self.pending[index : index + length])
+            try:
+                decoded = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                self._mark_unsupported()
+                index += 1
+                continue
+            self._write_char(decoded)
+            index += length
+
+        if index:
+            del self.pending[:index]
+        if len(self.pending) > SCREEN_MAX_SEQUENCE_BYTES:
+            self._mark_unsupported()
+            self.pending.clear()
+
+    def rendered_rows(self) -> list[bytes]:
+        return [
+            re.sub(rb"\s+", b" ", "".join(row).encode("ascii", "ignore")).strip()
+            for row in self.buffer
+        ]
+
+    def composer_ready_method(self) -> str | None:
+        if not self.trusted or self.pending:
+            return None
+        for row in self.rendered_rows():
+            if READY_MARKER in row:
+                return "SCREEN_EXACT_MARKER"
+            if all(token in row for token in READY_STATUS_TOKENS):
+                return "SCREEN_STATUS_ROW"
+        return None
 
 
 def mode_response_re(mode: int) -> re.Pattern[bytes]:
@@ -462,6 +962,8 @@ def supervise(argv: list[str], probe_text: str) -> int:
     stdin_fd = sys.stdin.fileno()
     stdout_fd = sys.stdout.fileno()
     saved = termios.tcgetattr(stdin_fd)
+    terminal_size = os.get_terminal_size(stdin_fd)
+    screen = TerminalScreen(rows=terminal_size.lines, cols=terminal_size.columns)
     pid = -1
     master_fd = -1
     child_session: int | None = None
@@ -480,7 +982,6 @@ def supervise(argv: list[str], probe_text: str) -> int:
     pending_input = b""
     pending_since: float | None = None
     blocked_reason: str | None = None
-    output_tail = bytearray()
     ready_deadline = time.monotonic() + COMPOSER_READY_TIMEOUT_SECONDS
     observation_deadline: float | None = None
 
@@ -520,7 +1021,7 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     pending_since = None
                     continue
                 if not probe_injected and now >= ready_deadline:
-                    blocked_reason = "COMPOSER_READY_TIMEOUT"
+                    blocked_reason = "SCREEN_MODEL_UNTRUSTED" if not screen.trusted else "COMPOSER_READY_TIMEOUT"
                     break
                 if probe_injected and observation_deadline is not None and now >= observation_deadline:
                     observation_window_completed = True
@@ -543,11 +1044,9 @@ def supervise(argv: list[str], probe_text: str) -> int:
                     data,
                 )
                 standard_cpr_queries_seen += new_cpr_queries
-                output_tail.extend(data)
-                if len(output_tail) > OUTPUT_TAIL_LIMIT:
-                    del output_tail[:-OUTPUT_TAIL_LIMIT]
+                screen.feed(data)
                 if not probe_injected:
-                    detected_ready_via = composer_ready_method(bytes(output_tail))
+                    detected_ready_via = screen.composer_ready_method()
                     if detected_ready_via is not None:
                         composer_ready_seen = True
                         composer_ready_via = detected_ready_via
@@ -629,6 +1128,8 @@ def supervise(argv: list[str], probe_text: str) -> int:
 
     print(f"COMPOSER_READY_SEEN={'YES' if composer_ready_seen else 'NO'}")
     print(f"COMPOSER_READY_METHOD={composer_ready_via}")
+    print(f"SCREEN_MODEL_TRUSTED={'YES' if screen.trusted else 'NO'}")
+    print(f"SCREEN_MODEL_UNSUPPORTED_MUTATIONS={screen.unsupported_mutations}")
     print(f"PROBE_INJECTED={'YES' if probe_injected else 'NO'}")
     print(f"OBSERVATION_WINDOW_COMPLETED={'YES' if observation_window_completed else 'NO'}")
     print(f"TERMINAL_RESPONSES_FORWARDED={terminal_responses_forwarded}")
@@ -782,38 +1283,90 @@ def self_test() -> int:
                 f"CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:HUMAN_INPUT_ACCEPTED:{label}"
             )
 
-    styled_ready = (
+    styled_screen = TerminalScreen(rows=8, cols=96)
+    styled_screen.feed(
         b"\x1b[2mstatus\x1b[0m: "
         b"\x1b[33mmanual\x1b[0m mode "
         b"\x1b[1mon\x1b[0m"
     )
-    if composer_ready_method(styled_ready) != "EXACT_MARKER":
-        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:ANSI_READY_MARKER")
+    if styled_screen.composer_ready_method() != "SCREEN_EXACT_MARKER":
+        raise SystemExit("CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_EXACT_MARKER")
+
+    def paint_reverse(row: int, col: int, value: str) -> bytes:
+        payload = bytearray()
+        for offset, character in reversed(list(enumerate(value))):
+            payload.extend(f"\x1b[{row};{col + offset}H".encode("ascii"))
+            payload.extend(character.encode("ascii"))
+        return bytes(payload)
 
     differential_ready = (
-        b"manual mode "
-        b"? for shortcuts "
-        b"on "
-        b"/effort"
+        paint_reverse(3, 1, "manual mode")
+        + paint_reverse(3, 22, "shortcuts")
+        + paint_reverse(3, 48, "/effort")
     )
-    if composer_ready_method(differential_ready) != "STATUS_TOKENS":
+    linear = visible_text(differential_ready)
+    if any(token in linear for token in READY_STATUS_TOKENS):
         raise SystemExit(
-            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:DIFFERENTIAL_READY_MARKER"
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_DIFFERENTIAL_FIXTURE_NOT_DIFFERENTIAL"
+        )
+    differential_screen = TerminalScreen(rows=8, cols=96)
+    for chunk in (
+        differential_ready[:7],
+        differential_ready[7:19],
+        differential_ready[19:43],
+        differential_ready[43:],
+    ):
+        differential_screen.feed(chunk)
+    if differential_screen.composer_ready_method() != "SCREEN_STATUS_ROW":
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_DIFFERENTIAL_REDRAW"
+        )
+    if differential_screen.pending:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_SPLIT_CSI"
         )
 
-    trust_like = b"manual mode selection requires confirmation /effort"
-    if composer_ready_method(trust_like) is not None:
+    differential_screen.feed(b"\x1b[3;1H\x1b[2K")
+    if differential_screen.composer_ready_method() is not None:
         raise SystemExit(
-            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:READY_FALSE_POSITIVE"
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_CLEAR_REMOVES_READY"
         )
 
-    stale_ready = (
-        b"manual mode shortcuts /effort"
-        + (b"x" * (READY_VISIBLE_WINDOW_BYTES + 32))
-    )
-    if composer_ready_method(stale_ready) is not None:
+    trust_screen = TerminalScreen(rows=8, cols=96)
+    trust_screen.feed(b"manual mode selection requires confirmation /effort")
+    if trust_screen.composer_ready_method() is not None:
         raise SystemExit(
-            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:READY_WINDOW_NOT_BOUNDED"
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_TRUST_FALSE_POSITIVE"
+        )
+
+    split_rows = TerminalScreen(rows=8, cols=96)
+    split_rows.feed(b"manual mode\r\nshortcuts\r\n/effort")
+    if split_rows.composer_ready_method() is not None:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_SAME_ROW_REQUIRED"
+        )
+
+    unsupported_screen = TerminalScreen(rows=8, cols=96)
+    unsupported_screen.feed(b"\x1b[1zmanual mode shortcuts /effort")
+    if unsupported_screen.trusted or unsupported_screen.unsupported_mutations != 1:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_UNSUPPORTED_MUTATION_UNTRUSTED"
+        )
+    if unsupported_screen.composer_ready_method() is not None:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_UNTRUSTED_READY"
+        )
+
+    alternate_screen = TerminalScreen(rows=8, cols=96)
+    alternate_screen.feed(b"primary\x1b[?1049hmanual mode shortcuts /effort")
+    if alternate_screen.composer_ready_method() != "SCREEN_STATUS_ROW":
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_ALTERNATE_READY"
+        )
+    alternate_screen.feed(b"\x1b[?1049l")
+    if alternate_screen.composer_ready_method() is not None:
+        raise SystemExit(
+            "CLAUDE_TTY_SUPERVISOR_SELF_TEST_FAIL:SCREEN_ALTERNATE_RESTORE"
         )
 
     baseline = {

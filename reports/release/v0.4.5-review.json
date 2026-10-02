@@ -24,7 +24,8 @@
         "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
         "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced.",
         "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection.",
-        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.287; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants."
+        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.287; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants.",
+        "Claude TTY readiness now uses a bounded dependency-free terminal screen-state model rather than linear PTY history. Executable regressions construct a differential cursor-overwrite stream whose linear visible text lacks every readiness token while the rendered same-row screen qualifies; clear/overwrite, cross-row, trust-like, split-CSI, alternate-screen and unsupported-mutation negatives are also enforced."
       ]
     },
     "dependencies": {
@@ -180,6 +181,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The Claude composer was visibly present in iTerm while the supervisor timed out because readiness required one contiguous phrase in the linear provider output stream; differential terminal redraw can produce the final screen without ever emitting that phrase contiguously.",
       "durable_control": "Composer readiness retains the exact-marker path and adds a bounded recent-visible-window check for specific normal-composer status tokens. The selected method is emitted as evidence. Executable self-tests cover differential redraw detection, false-positive rejection, and stale-window rejection."
+    },
+    {
+      "id": "claude-release-rehearsal-linear-pty-screen-model-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "After the first differential-redraw repair, Claude Code 2.1.287 visibly rendered the normal composer while readiness still timed out. The bounded token detector still operated on stripped linear PTY history, so cursor-addressed redraw could create the final status row without the equivalent tokens ever existing contiguously in the byte history.",
+      "durable_control": "The supervisor now maintains a bounded in-process terminal screen model, incrementally executing the cursor, erase, insert/delete, scroll, alternate-screen, UTF-8 and relevant mode controls needed for provider rendering. Readiness requires a trusted rendered row containing the exact marker or all status tokens on that same row. Unsupported screen-mutating controls make the screen untrusted and prevent probe injection. Contract checks forbid the former linear readiness window/output-tail path, and self-tests reproduce cursor-overwrite redraw where linear text cannot qualify."
     }
   ],
   "artifact_capability_gates": [
@@ -232,8 +239,9 @@
       "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag",
       "Claude real-provider TUI precondition contract: clean/selected observation runs from the exact candidate checkout; AGENTS boundary remains machine-owned; synthetic fresh-workspace TUI and human AGENTS rechecking are regression-forbidden.",
       "Claude composer readiness is differential-redraw aware while remaining bounded: exact marker first, otherwise specific normal-status tokens inside the recent visible window, with explicit method evidence and negative regressions.",
-      "action-time provider drift is resolved before acceptance by re-freezing exact current-stable registry/package/native identities and invalidating provider-bound evidence until exact-candidate requalification closes again"
+      "action-time provider drift is resolved before acceptance by re-freezing exact current-stable registry/package/native identities and invalidating provider-bound evidence until exact-candidate requalification closes again",
+      "Claude composer readiness is bound to trusted rendered terminal screen state, not linear PTY history: bounded VT cursor/erase/edit/scroll/alternate-screen modeling, same-row status evidence, split-sequence handling, explicit screen-trust evidence, and fail-closed unsupported screen mutations are mandatory before probe injection"
     ]
   },
-  "reviewed_content_digest": "bcc17a6989b5709bb14e6111f92fcc9599e59adacb2076691c4c1b219dfe2a27"
+  "reviewed_content_digest": "b7199997744301a78c4c527fdc45217663feae8cc8bfedea0d551657dd8f4ffe"
 }
