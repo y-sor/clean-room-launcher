@@ -32,6 +32,10 @@ def version_violation(
     pins: dict[str, str],
     release_references: set[str],
 ) -> str | None:
+    if prefix == "v":
+        if version == candidate_version or version in release_references:
+            return None
+        return f"STALE_PRODUCT_VERSION:actual={version}:expected={candidate_version}"
     lower = line.lower()
     providers = {provider for provider in ("codex", "claude") if provider in lower}
     if providers:
@@ -39,10 +43,6 @@ def version_violation(
         if version in allowed:
             return None
         return f"STALE_PROVIDER_VERSION:actual={version}:allowed={','.join(sorted(allowed))}"
-    if prefix == "v":
-        if version == candidate_version or version in release_references:
-            return None
-        return f"STALE_PRODUCT_VERSION:actual={version}:expected={candidate_version}"
     if version == candidate_version:
         return None
     return f"UNCLASSIFIED_VERSION:{version}"
@@ -174,7 +174,9 @@ def self_test() -> None:
         ("Codex 0.159.0 stale", "", "0.159.0", True),
         ("Codex 0.160.0 current", "", "0.160.0", False),
         ("Claude Code 2.1.287 current", "", "2.1.287", False),
+        ("v0.4.6 provider/product facts", "v", "0.4.6", False),
         ("recovery from v0.4.5", "v", "0.4.5", False),
+        ("provider/product facts from v0.4.3", "v", "0.4.3", True),
         ("mystery dependency 9.9.9", "", "9.9.9", True),
     ]
     for line, prefix, version, should_fail in fixtures:
