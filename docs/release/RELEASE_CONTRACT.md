@@ -194,10 +194,10 @@ allowed between the action-time preview check and publication. After publication
 the helper verifies that the release is non-Draft, has a publication timestamp
 and is immutable.
 
-The v0.4.5 protected tag is retained as unpublished incident evidence after its
-Draft exposed a stale provider-version claim that had been technically observable
-before tag. v0.4.6 repairs that gate architecture rather than moving/reusing the
-tag or manually editing the Draft.
+The immediately preceding protected candidate tag is retained as unpublished
+incident evidence after its Draft exposed a stale provider-version claim that had
+been technically observable before tag. v0.4.6 repairs that gate architecture
+rather than moving/reusing the prior tag or manually editing the Draft.
 
 ## Public documentation version coherence
 

@@ -305,5 +305,5 @@
       "post-publish public-path verification: canonical helper proves releases/latest installer bytes equal the accepted stage, executes the public installer under an isolated HOME, and smoke-checks all installed entrypoints"
     ]
   },
-  "reviewed_content_digest": "98f97836770c0ef0839bb29dfb0f582d041520e6a2f66ecfadc68cb1ead86023"
+  "reviewed_content_digest": "d31e972b5cf180bce677e7ed55b91bdb57d3fc4a17db26247cfa56fb8d536350"
 }
