@@ -7,6 +7,46 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-10-02
+
+### Added
+
+- Adds the bounded standalone Codex MCP selection and exact provider/runtime
+  qualification work prepared after v0.4.4, superseding the unpublished v0.4.5
+  candidate without broadening the supported resource-selection surface.
+- Adds pre-tag publishable-surface closure: the exact release body, title/state,
+  install URL, provider claims and expected release asset set are rendered and
+  semantically verified before a protected tag can be created.
+
+### Changed
+
+- Exact release qualification uses Codex `0.160.0` and Claude Code `2.1.287`.
+- Release-candidate topology now treats publishable-content truth as a separate
+  blocker from artifact-byte integrity; `Release required` cannot pass without
+  both.
+- Draft publication is routed through a guarded canonical helper that rechecks
+  the accepted staged preview immediately before publication.
+
+### Fixed
+
+- Fixes a release-harness gap where the blanket historical exclusion for
+  `CHANGELOG.md` also hid the current candidate section from provider-version
+  drift checks. Historical sections remain historical, while the exact current
+  candidate section is active publish input and is checked against canonical
+  provider pins.
+- Makes Draft reconciliation verify the exact accepted release body/title/state,
+  not only the release asset set and byte digests.
+- v0.4.5 was tagged but never published after Draft verification exposed a
+  stale public provider-version claim. Its protected tag is preserved as
+  incident evidence and is not moved or reused.
+
+### Security
+
+- An exact hash is no longer accepted as proof that publishable release content
+  is truthful. Machine-verifiable public claims are checked against structured
+  release facts before tag creation, and post-tag Draft edits cannot substitute
+  for that pre-tag proof.
+
 ## [0.4.5] - 2026-09-29
 
 ### Added

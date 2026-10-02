@@ -153,6 +153,7 @@ def public_doc_version_policy(contract):
         "active_globs",
         "historical_exclusions",
         "historical_product_paths",
+        "candidate_scoped_historical_paths",
     ):
         if not isinstance(policy.get(field), list):
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_POLICY:{field}")
@@ -315,6 +316,16 @@ def main():
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:WORKFLOW_EXEC_POLICY")
     if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PROMOTION_PREPARE_REHEARSAL_POLICY")
+    if contract.get("policy", {}).get("publishable_surface_closure") != "exact_staged_preview_semantic_pass_required_before_tag":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHABLE_SURFACE_POLICY")
+    if contract.get("policy", {}).get("posttag_escape_policy") != "first_avoidable_posttag_escape_is_harness_incident":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:POSTTAG_ESCAPE_POLICY")
+    if contract.get("policy", {}).get("posttag_draft_relation") != "title_body_state_assets_equal_accepted_publish_preview":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:POSTTAG_DRAFT_RELATION")
+    if contract.get("policy", {}).get("manual_draft_repair") != "forbidden":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:MANUAL_DRAFT_REPAIR_POLICY")
+    if contract.get("policy", {}).get("canonical_publish_helper") != "scripts/release/publish-release.sh":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANONICAL_PUBLISH_HELPER")
     public_doc_version_policy(contract)
 
     if args.self_test:
@@ -340,6 +351,17 @@ def main():
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_WORKFLOW_EXEC_POLICY")
         if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PROMOTION_PREPARE_REHEARSAL_POLICY")
+        for key, expected in {
+            "publishable_surface_closure": "exact_staged_preview_semantic_pass_required_before_tag",
+            "posttag_escape_policy": "first_avoidable_posttag_escape_is_harness_incident",
+            "posttag_draft_relation": "title_body_state_assets_equal_accepted_publish_preview",
+            "manual_draft_repair": "forbidden",
+            "canonical_publish_helper": "scripts/release/publish-release.sh",
+        }.items():
+            if contract.get("policy", {}).get(key) != expected:
+                raise SystemExit(f"RELEASE_CONTRACT_SELF_TEST_FAIL:{key}")
+        if subprocess.call(["python3", "scripts/release/verify-publishable-surface.py", "--self-test"], cwd=ROOT) != 0:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLISHABLE_SURFACE")
         doc_policy = public_doc_version_policy(contract)
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
@@ -464,6 +486,19 @@ def main():
 
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     doc_version_inventory = validate_public_doc_versions(contract, version)
+    pins = provider_versions_from_pins(public_doc_version_policy(contract))
+    try:
+        subprocess.check_call(
+            [
+                "python3", "scripts/release/verify-publishable-surface.py",
+                "--source-only", "--version", version,
+                "--codex-version", pins["codex"],
+                "--claude-version", pins["claude"],
+            ],
+            cwd=ROOT,
+        )
+    except subprocess.CalledProcessError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_PUBLISHABLE_CLAIMS") from error
     changelog_lines = (ROOT/"CHANGELOG.md").read_text(encoding="utf-8").splitlines()
     try:
         declared_release_date = changelog_release_date(changelog_lines, version)
@@ -577,6 +612,7 @@ def main():
             print(f"TAG_ACTION_DATE={args.tag_date}")
         print(f"CONTRACT_EVOLUTION={evolution['decision']}")
         print(f"PUBLIC_DOC_VERSION_MENTIONS={len(doc_version_inventory)}")
+        print("PUBLISHABLE_SOURCE_SEMANTIC=PASS")
         print("=== PUBLIC DOC VERSION INVENTORY ===")
         for path, line_number, raw, classification in doc_version_inventory:
             print(f"{path}:{line_number}\t{raw}\t{classification}")

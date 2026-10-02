@@ -53,7 +53,10 @@
           "2.1.248": "Claude native --restricted availability floor"
         }
       },
-      "allowed_other_versions": {}
+      "allowed_other_versions": {},
+      "candidate_scoped_historical_paths": [
+        "CHANGELOG.md"
+      ]
     },
     "pretag_blocker_closure": "required",
     "codex_pretag_stage_transport": "github_actions_macos_accepted_main_exact_archive",
@@ -62,7 +65,12 @@
     "post_tag_provider_latest_recheck": "forbidden",
     "post_tag_role": "tag_bound_attestation_exact_byte_promotion_and_reconciliation_only",
     "workflow_local_exec_contract": "direct_repo_local_scripts_require_executable_git_mode_or_explicit_interpreter",
-    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required"
+    "pretag_promotion_prepare_rehearsal": "accepted_main_ubuntu_exact_resolver_invocation_required",
+    "publishable_surface_closure": "exact_staged_preview_semantic_pass_required_before_tag",
+    "posttag_escape_policy": "first_avoidable_posttag_escape_is_harness_incident",
+    "posttag_draft_relation": "title_body_state_assets_equal_accepted_publish_preview",
+    "manual_draft_repair": "forbidden",
+    "canonical_publish_helper": "scripts/release/publish-release.sh"
   },
   "domains": [
     {
