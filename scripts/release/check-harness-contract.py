@@ -860,7 +860,7 @@ def check(root: Path) -> list[str]:
     draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
     publish_helper = read(root, "scripts/release/publish-release.sh")
-    for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_RECONCILIATION", "GUARDED_PUBLISH_PASS"):
+    for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_EXACT", "GUARDED_PUBLISH_OUTCOME_UNKNOWN", "GUARDED_PUBLISH_PASS"):
         require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
     errors.extend(validate_publish_draft_lookup_contract(publish_helper))
     errors.extend(validate_publish_outcome_reconciliation_contract(publish_helper))
