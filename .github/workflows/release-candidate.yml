@@ -116,6 +116,15 @@ jobs:
             exit 1
           fi
           grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_ACTION_PIN' "$output"
+      - name: Rehearse current published public route before expensive lanes
+        if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/rehearse-public-route.sh --self-test
+          bash scripts/release/rehearse-public-route.sh
       - name: Provision pinned Python supply-chain verifier
         if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
         shell: bash
