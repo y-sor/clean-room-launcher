@@ -309,7 +309,16 @@ def main_run(args: argparse.Namespace) -> int:
     helper_cmd = [sys.executable, str(helper)]
     tag_push = run(
         helper_cmd
-        + ["tag-push", "--remote", "origin", "--tag", tag, "--expected", source_head]
+        + [
+            "tag-push",
+            "--remote",
+            "origin",
+            "--tag",
+            tag,
+            "--expected",
+            source_head,
+            "--simulate-local-error-after-action",
+        ]
     )
     if tag_push.returncode != 0:
         if tag_push.stdout:
@@ -381,6 +390,7 @@ def main_run(args: argparse.Namespace) -> int:
                 str(metadata),
                 "--download-dir",
                 str(download_dir),
+                "--simulate-local-error-after-action",
             ]
         )
         if promote.returncode != 0:
@@ -426,6 +436,7 @@ def main_run(args: argparse.Namespace) -> int:
             "--preview-json",
             str(preview),
             "--apply",
+            "--simulate-local-error-after-action",
         ]
         if allow_nonimmutable:
             publish_args.append("--allow-nonimmutable")
@@ -473,10 +484,11 @@ def main_run(args: argparse.Namespace) -> int:
         "action_helper_sha256": helper_sha256,
         "rehearsal_sha256": rehearsal_sha256,
         "gh_version": checked(["gh", "--version"], "GH_VERSION").splitlines()[0],
-        "tag_push": "PASS",
-        "draft_promote": "PASS",
+        "tag_push": "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED",
+        "draft_promote": "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED",
+        "draft_upload": "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED",
         "publish_read_rehearsal": "PASS",
-        "publish_transition": "PASS",
+        "publish_transition": "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED",
         "latest_reconciliation": "PASS",
         "published_immutable": release_json.get("isImmutable"),
         "fidelity_matrix": matrix,
