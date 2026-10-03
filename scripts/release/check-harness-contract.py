@@ -78,21 +78,21 @@ def require(errors: list[str], condition: bool, code: str) -> None:
 
 def validate_publish_draft_lookup_contract(text: str) -> list[str]:
     errors: list[str] = []
-    start = text.find("capture_and_validate_draft() {")
+    start = text.find('draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)')
     end = text.find("\ngit fetch --quiet origin main", start if start >= 0 else 0)
-    require(errors, start >= 0, "GUARDED_PUBLISH_DRAFT_CAPTURE_MISSING")
+    require(errors, start >= 0, "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG")
     require(errors, end > start >= 0, "GUARDED_PUBLISH_DRAFT_CAPTURE_BOUNDARY")
     if start >= 0 and end > start:
         block = text[start:end]
         require(
             errors,
-            'draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)' in block,
-            "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG",
+            '[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"' in block,
+            "GUARDED_PUBLISH_DRAFT_ID_VALIDATION",
         )
         require(
             errors,
-            '[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"' in block,
-            "GUARDED_PUBLISH_DRAFT_ID_VALIDATION",
+            "capture_and_validate_draft() {" in block,
+            "GUARDED_PUBLISH_DRAFT_CAPTURE_MISSING",
         )
         require(
             errors,
@@ -103,6 +103,41 @@ def validate_publish_draft_lookup_contract(text: str) -> list[str]:
             errors,
             'releases/tags/$tag' not in block,
             "GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_FORBIDDEN",
+        )
+    return errors
+
+
+def validate_publish_outcome_reconciliation_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    mutation = text.find('gh release edit "$tag" --draft=false --latest --verify-tag')
+    final_pass = text.find('echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"')
+    require(errors, mutation >= 0, "GUARDED_PUBLISH_MUTATION_MISSING")
+    require(errors, final_pass > mutation >= 0, "GUARDED_PUBLISH_RECONCILIATION_BOUNDARY")
+    if mutation >= 0 and final_pass > mutation:
+        block = text[mutation:final_pass]
+        for marker, code in (
+            ("set +e", "GUARDED_PUBLISH_MUTATION_RC_CAPTURE"),
+            ("publish_rc=$?", "GUARDED_PUBLISH_MUTATION_RC"),
+            ('gh api "repos/$repository/releases/$draft_id"', "GUARDED_PUBLISH_RELEASE_ID_RECONCILE"),
+            ("PUBLISHED_EXACT", "GUARDED_PUBLISH_PUBLISHED_EXACT"),
+            ("DRAFT_UNCHANGED", "GUARDED_PUBLISH_NOT_APPLIED_CLASS"),
+            ("GUARDED_PUBLISH_OUTCOME_UNKNOWN", "GUARDED_PUBLISH_UNKNOWN_CLASS"),
+            ('gh api "repos/$repository/releases/latest"', "GUARDED_PUBLISH_LATEST_BY_API"),
+        ):
+            require(errors, marker in block, code)
+        require(
+            errors,
+            "gh release list" not in block,
+            "GUARDED_PUBLISH_POST_MUTATION_CLI_LIST_FORBIDDEN",
+        )
+        mutation_fail_pattern = re.search(
+            r'gh release edit[\s\S]{0,300}\|\|\s*fail\s+"PUBLISH_TRANSITION"',
+            block,
+        )
+        require(
+            errors,
+            mutation_fail_pattern is None,
+            "GUARDED_PUBLISH_MUTATION_EARLY_FAIL_FORBIDDEN",
         )
     return errors
 
@@ -826,6 +861,7 @@ def check(root: Path) -> list[str]:
     for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_RECONCILIATION", "GUARDED_PUBLISH_PASS"):
         require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
     errors.extend(validate_publish_draft_lookup_contract(publish_helper))
+    errors.extend(validate_publish_outcome_reconciliation_contract(publish_helper))
     public_verify = read(root, "scripts/release/verify-public-release.sh")
     for item in ("releases/latest/download", "ISOLATED_PUBLIC_INSTALL", "PUBLIC_INSTALL_ROUTE_VERIFY_PASS"):
         require(errors, item in public_verify, "PUBLIC_INSTALL_ROUTE_CONTRACT:" + item)
@@ -852,30 +888,65 @@ def check(root: Path) -> list[str]:
 
 def self_test() -> None:
     publish_fixture = """
+draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
+[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
 capture_and_validate_draft() {
   local output=$1
-  local draft_id
-  draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
-  [[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
   gh api "repos/$repository/releases/$draft_id" >"$output" || fail "DRAFT_QUERY"
 }
 git fetch --quiet origin main
+set +e
+gh release edit "$tag" --draft=false --latest --verify-tag
+publish_rc=$?
+set -e
+gh api "repos/$repository/releases/$draft_id"
+PUBLISHED_EXACT
+DRAFT_UNCHANGED
+GUARDED_PUBLISH_OUTCOME_UNKNOWN
+gh api "repos/$repository/releases/latest"
+echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"
 """
     if validate_publish_draft_lookup_contract(publish_fixture):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_LOOKUP_CLEAN")
+    if validate_publish_outcome_reconciliation_contract(publish_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_OUTCOME_CLEAN")
+
     bad_draft_lookup = publish_fixture.replace(
-        'gh api "repos/$repository/releases/$draft_id"',
-        'gh api "repos/$repository/releases/tags/$tag"',
+        'gh api "repos/$repository/releases/$draft_id" >"$output"',
+        'gh api "repos/$repository/releases/tags/$tag" >"$output"',
     )
     bad_errors = validate_publish_draft_lookup_contract(bad_draft_lookup)
     if "GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_FORBIDDEN" not in bad_errors:
         raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_ACCEPTED")
+
     missing_draft_view = publish_fixture.replace(
-        'draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)',
+        'draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"',
         'draft_id=123',
     )
     if "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG" not in validate_publish_draft_lookup_contract(missing_draft_view):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_VIEW_NOT_REQUIRED")
+
+    early_fail = publish_fixture.replace(
+        'gh release edit "$tag" --draft=false --latest --verify-tag',
+        'gh release edit "$tag" --draft=false --latest --verify-tag || fail "PUBLISH_TRANSITION"',
+    )
+    if "GUARDED_PUBLISH_MUTATION_EARLY_FAIL_FORBIDDEN" not in validate_publish_outcome_reconciliation_contract(early_fail):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_EARLY_FAIL_ACCEPTED")
+
+    missing_after_query = publish_fixture.replace(
+        'gh api "repos/$repository/releases/$draft_id"\nPUBLISHED_EXACT',
+        'PUBLISHED_EXACT',
+    )
+    if "GUARDED_PUBLISH_RELEASE_ID_RECONCILE" not in validate_publish_outcome_reconciliation_contract(missing_after_query):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_RECONCILIATION_QUERY_NOT_REQUIRED")
+
+    cli_latest = publish_fixture.replace(
+        'gh api "repos/$repository/releases/latest"',
+        'gh release list --json tagName,isLatest,isImmutable',
+    )
+    cli_errors = validate_publish_outcome_reconciliation_contract(cli_latest)
+    if "GUARDED_PUBLISH_POST_MUTATION_CLI_LIST_FORBIDDEN" not in cli_errors:
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_CLI_LATEST_ACCEPTED")
 
     sha_a = "a" * 40
     sha_b = "b" * 40
