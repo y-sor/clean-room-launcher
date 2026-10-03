@@ -855,9 +855,19 @@ def check(root: Path) -> list[str]:
     eligibility = release_jobs.get("release-eligibility", "")
     require(errors, "runs-on: ubuntu-latest" in eligibility, "RELEASE_ELIGIBILITY_RUNNER")
     require(errors, "check-release-contract.py --self-test" in eligibility, "RELEASE_ELIGIBILITY_SELF_TEST")
+    require(errors, "resolve-release-lifecycle.py --self-test" in eligibility, "RELEASE_LIFECYCLE_SELF_TEST_EARLY")
+    require(errors, "check-quarantine-repair-scope.py --self-test" in eligibility, "QUARANTINE_REPAIR_SCOPE_SELF_TEST_EARLY")
+    require(errors, "tag_source: ${{ steps.lifecycle.outputs.tag_source }}" in eligibility, "QUARANTINE_REPAIR_TAG_SOURCE_OUTPUT")
+    require(errors, "QUARANTINED_REPAIR" in eligibility, "QUARANTINE_REPAIR_ELIGIBILITY_BRANCH")
+    require(errors, "check-quarantine-repair-scope.py" in eligibility, "QUARANTINE_REPAIR_SCOPE_GATE")
     require(errors, "check-release-contract.py --report" in eligibility, "RELEASE_ELIGIBILITY_SEAL")
     readiness = release_jobs.get("release-readiness", "")
     require(errors, "needs: release-eligibility" in readiness, "RELEASE_READINESS_NEEDS_ELIGIBILITY")
+    require(
+        errors,
+        "if: needs.release-eligibility.outputs.lifecycle != 'QUARANTINED_REPAIR'" in readiness,
+        "QUARANTINE_REPAIR_EXPENSIVE_READINESS_SKIP",
+    )
     stage = release_jobs.get("pretag-stage", "")
     require(
         errors,
@@ -881,6 +891,41 @@ def check(root: Path) -> list[str]:
     require(errors, "publishable-content" in release_required, "PUBLISHABLE_CONTENT_RELEASE_REQUIRED")
     require(errors, 'PUBLISHABLE: ${{ needs.publishable-content.result }}' in release_required, "PUBLISHABLE_CONTENT_RESULT_BINDING")
     require(errors, 'test "$PUBLISHABLE" = success' in release_required, "PUBLISHABLE_CONTENT_SUCCESS_REQUIRED")
+    require(errors, "QUARANTINED_REPAIR:*" in release_required, "QUARANTINE_REPAIR_REQUIRED_CASE")
+    require(
+        errors,
+        release_required.count('test "$READINESS" = skipped') >= 1
+        and release_required.count('test "$STAGE" = skipped') >= 2,
+        "QUARANTINE_REPAIR_REQUIRED_SKIPS",
+    )
+
+    quarantine_scope_path = root / "scripts/release/check-quarantine-repair-scope.py"
+    require(errors, quarantine_scope_path.is_file(), "QUARANTINE_REPAIR_SCOPE_CHECK_MISSING")
+    if quarantine_scope_path.is_file():
+        quarantine_scope = quarantine_scope_path.read_text(encoding="utf-8")
+        for marker in (
+            "QUARANTINE_REPAIR_SCOPE_PASS",
+            "QUARANTINE_REPAIR_SCOPE_BLOCKED",
+            "BASE_NOT_ANCESTOR",
+            ".github/workflows/release*.yml",
+            "scripts/release/**",
+            "docs/release/**",
+            "schemas/release/**",
+            "tests/contracts/**",
+        ):
+            require(errors, marker in quarantine_scope, "QUARANTINE_REPAIR_SCOPE_CONTRACT:" + marker)
+        quarantine_self_test = subprocess.run(
+            [sys.executable, str(quarantine_scope_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            errors,
+            quarantine_self_test.returncode == 0
+            and "QUARANTINE_REPAIR_SCOPE_SELF_TEST_PASS" in quarantine_self_test.stdout,
+            "QUARANTINE_REPAIR_SCOPE_SELF_TEST",
+        )
 
     docs = read(root, "docs/release/RELEASE_CONTRACT.md")
     for marker in AUTOMATION_MARKERS:
@@ -898,6 +943,9 @@ def check(root: Path) -> list[str]:
         "rendered GitHub Releases identity",
         "resource lifecycle / cleanup",
         "PRESERVED_PENDING_OWNER_GATE",
+        "QUARANTINED_REPAIR",
+        "consumed protected tag",
+        "harness-only repair scope",
     ):
         require(errors, marker in docs, "RELEASE_FIRST_EXECUTION_MATRIX_CONTRACT:" + marker)
 
