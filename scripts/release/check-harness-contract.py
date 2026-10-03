@@ -1066,10 +1066,17 @@ echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"
     if "GUARDED_PUBLISH_MUTATION_EARLY_FAIL_FORBIDDEN" not in validate_publish_outcome_reconciliation_contract(early_fail):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_EARLY_FAIL_ACCEPTED")
 
+    reconcile_loop = '''for attempt in 1 2 3 4 5; do
+  gh api "repos/$repository/releases/$draft_id"
+done'''
     missing_after_query = publish_fixture.replace(
-        'gh api "repos/$repository/releases/$draft_id"\nPUBLISHED_EXACT',
-        'PUBLISHED_EXACT',
+        reconcile_loop,
+        '''for attempt in 1 2 3 4 5; do
+  true
+done''',
     )
+    if missing_after_query == publish_fixture:
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_RECONCILIATION_MUTATION_NOOP")
     if "GUARDED_PUBLISH_RELEASE_ID_RECONCILE" not in validate_publish_outcome_reconciliation_contract(missing_after_query):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_RECONCILIATION_QUERY_NOT_REQUIRED")
 
