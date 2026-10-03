@@ -871,9 +871,13 @@ def check(root: Path) -> list[str]:
     require(errors, "FIRST_EXECUTION_MATRIX" in docs, "RELEASE_FIRST_EXECUTION_MATRIX_MISSING")
     for marker in (
         "Boundary / First-Execution Map",
+        "POST_BOUNDARY_ONLY_WHITELIST",
         "release-external-action.py",
         "rehearse-external-release-lifecycle.py",
         "LAB_REQUIRED",
+        "exact remote protected tag object",
+        "the one exact production Draft→published effect",
+        "exact new `releases/latest/download` routes",
         "rendered GitHub Releases identity",
         "resource lifecycle / cleanup",
         "PRESERVED_PENDING_OWNER_GATE",
