@@ -966,6 +966,64 @@ def check(root: Path) -> list[str]:
     )
     draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
+
+    external_action_path = root / "scripts/release/release-external-action.py"
+    require(errors, external_action_path.is_file(), "RELEASE_EXTERNAL_ACTION_HELPER_MISSING")
+    if external_action_path.is_file():
+        external_action = external_action_path.read_text(encoding="utf-8")
+        for marker in (
+            "RELEASE_EXTERNAL_ACTION_SELF_TEST_PASS",
+            "tag-push",
+            "draft-promote",
+            "publish",
+            "git\", \"push",
+            "git\", \"ls-remote",
+            "gh\", \"release\", \"upload",
+            "gh\", \"release\", \"download",
+            "databaseId,tagName,name,isDraft,isPrerelease,isImmutable,publishedAt,body,assets",
+            "DRAFT_UNCHANGED",
+            "PUBLISHED_PENDING_IMMUTABILITY",
+            "PUBLISHED_EXACT",
+            "PUBLISH_ACTION_REHEARSAL_PASS",
+            "GUARDED_PUBLISH_OUTCOME_UNKNOWN",
+        ):
+            require(errors, marker in external_action, "RELEASE_EXTERNAL_ACTION_CONTRACT:" + marker)
+        external_self_test = subprocess.run(
+            [sys.executable, str(external_action_path), "self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            errors,
+            external_self_test.returncode == 0
+            and "RELEASE_EXTERNAL_ACTION_SELF_TEST_PASS" in external_self_test.stdout,
+            "RELEASE_EXTERNAL_ACTION_SELF_TEST",
+        )
+
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py draft-promote" in release,
+        "RELEASE_DRAFT_CANONICAL_ACTION_PATH",
+    )
+    require(
+        errors,
+        'gh release upload "$tag"' not in release,
+        "RELEASE_DRAFT_INLINE_UPLOAD_FORBIDDEN",
+    )
+
+    tag_helper = read(root, "scripts/release/push-release-tag.sh")
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py tag-push" in tag_helper,
+        "TAG_HELPER_CANONICAL_EXTERNAL_ACTION",
+    )
+    require(
+        errors,
+        'git push origin "refs/tags/$tag"' not in tag_helper,
+        "TAG_HELPER_INLINE_PUSH_FORBIDDEN",
+    )
+
     publish_helper = read(root, "scripts/release/publish-release.sh")
     publish_syntax = subprocess.run(
         ["bash", "-n", str(root / "scripts/release/publish-release.sh")],
@@ -974,10 +1032,21 @@ def check(root: Path) -> list[str]:
         check=False,
     )
     require(errors, publish_syntax.returncode == 0, "GUARDED_PUBLISH_BASH_SYNTAX")
-    for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_EXACT", "GUARDED_PUBLISH_OUTCOME_UNKNOWN", "GUARDED_PUBLISH_PASS"):
+    for item in (
+        "CLROOM_OWNER_PUBLISH_APPROVED",
+        "verify-draft-release.sh",
+        "IMMUTABLE_RELEASE_POLICY_ACTION_TIME",
+        "python3 scripts/release/release-external-action.py publish",
+        "--preview-json",
+        "--apply",
+    ):
         require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
-    errors.extend(validate_publish_draft_lookup_contract(publish_helper))
-    errors.extend(validate_publish_outcome_reconciliation_contract(publish_helper))
+    require(
+        errors,
+        'gh release edit "$tag" --draft=false --latest' not in publish_helper,
+        "GUARDED_PUBLISH_INLINE_MUTATION_FORBIDDEN",
+    )
+
     public_verify = read(root, "scripts/release/verify-public-release.sh")
     for item in (
         "releases/latest/download",
@@ -1017,77 +1086,6 @@ def check(root: Path) -> list[str]:
 
 
 def self_test() -> None:
-    publish_fixture = """
-draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
-[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
-capture_and_validate_draft() {
-  local output=$1
-  gh api "repos/$repository/releases/$draft_id" >"$output" || fail "DRAFT_QUERY"
-}
-git fetch --quiet origin main
-set +e
-gh release edit "$tag" --draft=false --latest --verify-tag
-publish_rc=$?
-set -e
-for attempt in 1 2 3 4 5; do
-  gh api "repos/$repository/releases/$draft_id"
-done
-PUBLISHED_EXACT
-DRAFT_UNCHANGED
-PUBLISHED_PENDING_IMMUTABILITY
-GUARDED_PUBLISH_OUTCOME_UNKNOWN
-gh api "repos/$repository/releases/latest"
-echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"
-"""
-    if validate_publish_draft_lookup_contract(publish_fixture):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_LOOKUP_CLEAN")
-    if validate_publish_outcome_reconciliation_contract(publish_fixture):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_OUTCOME_CLEAN")
-
-    bad_draft_lookup = publish_fixture.replace(
-        'gh api "repos/$repository/releases/$draft_id" >"$output"',
-        'gh api "repos/$repository/releases/tags/$tag" >"$output"',
-    )
-    bad_errors = validate_publish_draft_lookup_contract(bad_draft_lookup)
-    if "GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_FORBIDDEN" not in bad_errors:
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_ACCEPTED")
-
-    missing_draft_view = publish_fixture.replace(
-        'draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"',
-        'draft_id=123',
-    )
-    if "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG" not in validate_publish_draft_lookup_contract(missing_draft_view):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_VIEW_NOT_REQUIRED")
-
-    early_fail = publish_fixture.replace(
-        'gh release edit "$tag" --draft=false --latest --verify-tag',
-        'gh release edit "$tag" --draft=false --latest --verify-tag || fail "PUBLISH_TRANSITION"',
-    )
-    if "GUARDED_PUBLISH_MUTATION_EARLY_FAIL_FORBIDDEN" not in validate_publish_outcome_reconciliation_contract(early_fail):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_EARLY_FAIL_ACCEPTED")
-
-    reconcile_loop = '''for attempt in 1 2 3 4 5; do
-  gh api "repos/$repository/releases/$draft_id"
-done'''
-    missing_after_query = publish_fixture.replace(
-        reconcile_loop,
-        '''for attempt in 1 2 3 4 5; do
-  true
-done''',
-    )
-    if missing_after_query == publish_fixture:
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_RECONCILIATION_MUTATION_NOOP")
-    if "GUARDED_PUBLISH_RELEASE_ID_RECONCILE" not in validate_publish_outcome_reconciliation_contract(missing_after_query):
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_RECONCILIATION_QUERY_NOT_REQUIRED")
-
-    cli_latest = publish_fixture.replace(
-        'gh api "repos/$repository/releases/latest"',
-        'gh release list --json tagName,isLatest,isImmutable',
-    )
-    cli_errors = validate_publish_outcome_reconciliation_contract(cli_latest)
-    if "GUARDED_PUBLISH_POST_MUTATION_CLI_LIST_FORBIDDEN" not in cli_errors:
-        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_CLI_LATEST_ACCEPTED")
-
     sha_a = "a" * 40
     sha_b = "b" * 40
     clean = [("init", sha_a, "4.38.0"), ("analyze", sha_a, "4.38.0"), ("upload-sarif", sha_a, "4.38.0")]
