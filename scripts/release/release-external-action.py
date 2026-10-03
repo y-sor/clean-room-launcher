@@ -231,6 +231,9 @@ def gh_release_view(repository: str, tag: str) -> tuple[int, dict | None]:
 
 def cmd_tag_push(args: argparse.Namespace) -> int:
     push = run(["git", "push", args.remote, f"refs/tags/{args.tag}"])
+    push_rc = push.returncode
+    if args.simulate_local_error_after_action and push_rc == 0:
+        push_rc = 97
     reconcile = run(
         [
             "git",
@@ -243,15 +246,15 @@ def cmd_tag_push(args: argparse.Namespace) -> int:
     )
     if reconcile.returncode != 0:
         print(
-            f"TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED tag={args.tag} push_rc={push.returncode}",
+            f"TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED tag={args.tag} push_rc={push_rc}",
             file=sys.stderr,
         )
         return 82
     direct, peeled = parse_ls_remote(reconcile.stdout, args.tag)
     if peeled == args.expected:
         print(f"TAG_PUSH_PASS tag={args.tag} target={args.expected}")
-        if push.returncode != 0:
-            print(f"TAG_PUSH_LOCAL_ERROR_RECONCILED=YES rc={push.returncode}")
+        if push_rc != 0:
+            print(f"TAG_PUSH_LOCAL_ERROR_RECONCILED=YES rc={push_rc}")
         return 0
     if direct or peeled:
         print(
@@ -259,7 +262,7 @@ def cmd_tag_push(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 83
-    if push.returncode != 0:
+    if push_rc != 0:
         print(f"TAG_PUSH_OUTCOME_RECONCILED_ABSENT tag={args.tag}", file=sys.stderr)
         return 78
     print(
@@ -313,8 +316,15 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
         blocked("PREVIEW_ASSET_SET")
     expected_digests = {path.name: sha256_file(path) for path in assets}
 
-    view_rc, _ = gh_release_view(args.repository, args.tag)
+    view_rc, existing = gh_release_view(args.repository, args.tag)
     if view_rc == 0:
+        if existing is None:
+            blocked("EXISTING_RELEASE_QUERY")
+        existing_errors = validate_release(
+            existing, preview, expect_draft=True, check_assets=False
+        )
+        if existing_errors:
+            blocked("EXISTING_RELEASE_NOT_DRAFT:" + ",".join(existing_errors), 83)
         mutation = run(
             [
                 "gh",
@@ -348,14 +358,18 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
             command.append("--prerelease")
         mutation = run(command)
 
+    mutation_rc = mutation.returncode
+    if args.simulate_local_error_after_action and mutation_rc == 0:
+        mutation_rc = 97
+
     try:
         release = reconcile_draft(
             args.repository, args.tag, preview, check_assets=False
         )
     except SystemExit:
-        if mutation.returncode != 0:
+        if mutation_rc != 0:
             print(
-                f"DRAFT_PROMOTION_OUTCOME_UNKNOWN:CREATE_OR_EDIT tag={args.tag} mutation_rc={mutation.returncode}",
+                f"DRAFT_PROMOTION_OUTCOME_UNKNOWN:CREATE_OR_EDIT tag={args.tag} mutation_rc={mutation_rc}",
                 file=sys.stderr,
             )
             return 82
@@ -373,14 +387,17 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
             "--clobber",
         ]
     )
+    upload_rc = upload.returncode
+    if args.simulate_local_error_after_action and upload_rc == 0:
+        upload_rc = 98
     try:
         release = reconcile_draft(
             args.repository, args.tag, preview, check_assets=True
         )
     except SystemExit:
-        if upload.returncode != 0:
+        if upload_rc != 0:
             print(
-                f"DRAFT_PROMOTION_OUTCOME_UNKNOWN:UPLOAD tag={args.tag} mutation_rc={upload.returncode}",
+                f"DRAFT_PROMOTION_OUTCOME_UNKNOWN:UPLOAD tag={args.tag} mutation_rc={upload_rc}",
                 file=sys.stderr,
             )
             return 82
@@ -420,12 +437,12 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
         if cleanup_download:
             shutil.rmtree(download_dir, ignore_errors=True)
 
-    if mutation.returncode != 0:
+    if mutation_rc != 0:
         print(
-            f"DRAFT_CREATE_OR_EDIT_LOCAL_ERROR_RECONCILED=YES rc={mutation.returncode}"
+            f"DRAFT_CREATE_OR_EDIT_LOCAL_ERROR_RECONCILED=YES rc={mutation_rc}"
         )
-    if upload.returncode != 0:
-        print(f"DRAFT_UPLOAD_LOCAL_ERROR_RECONCILED=YES rc={upload.returncode}")
+    if upload_rc != 0:
+        print(f"DRAFT_UPLOAD_LOCAL_ERROR_RECONCILED=YES rc={upload_rc}")
     print(
         f"DRAFT_PROMOTION_RECONCILE_PASS tag={args.tag} release_id={release.get('id')}"
     )
@@ -481,6 +498,9 @@ def cmd_publish(args: argparse.Namespace) -> int:
             str(notes),
         ]
     )
+    mutation_rc = mutation.returncode
+    if args.simulate_local_error_after_action and mutation_rc == 0:
+        mutation_rc = 99
 
     state = ""
     release_query_seen = False
@@ -502,7 +522,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
                 "PUBLISHED_PENDING_VISIBILITY",
             }:
                 print(
-                    f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag={args.tag} mutation_rc={mutation.returncode} state={state}",
+                    f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag={args.tag} mutation_rc={mutation_rc} state={state}",
                     file=sys.stderr,
                 )
                 return 83
@@ -511,19 +531,19 @@ def cmd_publish(args: argparse.Namespace) -> int:
 
     if not release_query_seen:
         print(
-            f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:RELEASE_QUERY_AFTER_ACTION tag={args.tag} mutation_rc={mutation.returncode}",
+            f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:RELEASE_QUERY_AFTER_ACTION tag={args.tag} mutation_rc={mutation_rc}",
             file=sys.stderr,
         )
         return 82
     if state == "DRAFT_UNCHANGED":
         print(
-            f"GUARDED_PUBLISH_NOT_APPLIED tag={args.tag} mutation_rc={mutation.returncode}",
+            f"GUARDED_PUBLISH_NOT_APPLIED tag={args.tag} mutation_rc={mutation_rc}",
             file=sys.stderr,
         )
         return 78
     if state != "PUBLISHED_EXACT":
         print(
-            f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag={args.tag} mutation_rc={mutation.returncode} state={state or 'none'}",
+            f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag={args.tag} mutation_rc={mutation_rc} state={state or 'none'}",
             file=sys.stderr,
         )
         return 83
@@ -553,8 +573,8 @@ def cmd_publish(args: argparse.Namespace) -> int:
     if not latest_ok:
         blocked("LATEST_RECONCILIATION", 83)
 
-    if mutation.returncode != 0:
-        print(f"PUBLISH_MUTATION_LOCAL_ERROR_RECONCILED=YES rc={mutation.returncode}")
+    if mutation_rc != 0:
+        print(f"PUBLISH_MUTATION_LOCAL_ERROR_RECONCILED=YES rc={mutation_rc}")
     print(f"GUARDED_PUBLISH_PASS tag={args.tag}")
     return 0
 
@@ -568,6 +588,7 @@ def build_parser() -> argparse.ArgumentParser:
     tag.add_argument("--remote", default="origin")
     tag.add_argument("--tag", required=True)
     tag.add_argument("--expected", required=True)
+    tag.add_argument("--simulate-local-error-after-action", action="store_true")
 
     draft = sub.add_parser("draft-promote")
     draft.add_argument("--repository", required=True)
@@ -578,6 +599,7 @@ def build_parser() -> argparse.ArgumentParser:
     draft.add_argument("--prerelease", action="store_true")
     draft.add_argument("--asset", action="append", required=True)
     draft.add_argument("--download-dir")
+    draft.add_argument("--simulate-local-error-after-action", action="store_true")
 
     publish = sub.add_parser("publish")
     publish.add_argument("--repository", required=True)
@@ -587,6 +609,7 @@ def build_parser() -> argparse.ArgumentParser:
     publish.add_argument("--preview-json", required=True)
     publish.add_argument("--apply", action="store_true")
     publish.add_argument("--allow-nonimmutable", action="store_true")
+    publish.add_argument("--simulate-local-error-after-action", action="store_true")
     return parser
 
 
