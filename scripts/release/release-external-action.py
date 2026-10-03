@@ -136,6 +136,27 @@ def parse_ls_remote(text: str, tag: str) -> tuple[str, str]:
     return direct, peeled
 
 
+def parse_release_collection_rows(text: str, tag: str) -> tuple[str, int | None]:
+    matches: list[int] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) != 2:
+            blocked("RELEASE_COLLECTION_ROW")
+        row_tag, raw_id = parts
+        if row_tag != tag:
+            continue
+        if not raw_id.isdigit():
+            blocked("RELEASE_COLLECTION_ID")
+        matches.append(int(raw_id))
+    if len(matches) > 1:
+        blocked("RELEASE_COLLECTION_DUPLICATE", 83)
+    if matches:
+        return "FOUND", matches[0]
+    return "ABSENT", None
+
+
 def self_test() -> int:
     preview = {
         "tag_name": "canary/test",
@@ -194,6 +215,27 @@ def self_test() -> int:
     )
     if direct != "a" * 40 or peeled != "b" * 40:
         raise SystemExit("SELF_TEST:LS_REMOTE")
+    state, release_id = parse_release_collection_rows(
+        "other/tag\t10\ncanary/test\t20\n",
+        "canary/test",
+    )
+    if state != "FOUND" or release_id != 20:
+        raise SystemExit("SELF_TEST:RELEASE_COLLECTION_FOUND")
+    state, release_id = parse_release_collection_rows(
+        "other/tag\t10\n",
+        "canary/test",
+    )
+    if state != "ABSENT" or release_id is not None:
+        raise SystemExit("SELF_TEST:RELEASE_COLLECTION_ABSENT")
+    try:
+        parse_release_collection_rows(
+            "canary/test\t20\ncanary/test\t21\n",
+            "canary/test",
+        )
+    except SystemExit:
+        pass
+    else:
+        raise SystemExit("SELF_TEST:RELEASE_COLLECTION_DUPLICATE_NOT_REJECTED")
     print("RELEASE_EXTERNAL_ACTION_SELF_TEST_PASS")
     return 0
 
@@ -227,6 +269,42 @@ def gh_release_view(repository: str, tag: str) -> tuple[int, dict | None]:
         return 0, json.loads(api.stdout)
     except json.JSONDecodeError:
         blocked("RELEASE_BY_ID_JSON")
+
+
+def gh_release_lookup_for_promote(repository: str, tag: str) -> tuple[str, dict | None]:
+    view_rc, release = gh_release_view(repository, tag)
+    if view_rc == 0:
+        if release is None:
+            blocked("RELEASE_LOOKUP_EMPTY")
+        return "FOUND", release
+
+    collection = run(
+        [
+            "gh",
+            "api",
+            "--paginate",
+            f"repos/{repository}/releases?per_page=100",
+            "--jq",
+            ".[] | [.tag_name, (.id|tostring)] | @tsv",
+        ]
+    )
+    if collection.returncode != 0:
+        blocked("RELEASE_LOOKUP_UNCERTAIN", 82)
+    state, release_id = parse_release_collection_rows(collection.stdout, tag)
+    if state == "ABSENT":
+        return "ABSENT", None
+    if release_id is None:
+        blocked("RELEASE_LOOKUP_ID")
+    api = run(["gh", "api", f"repos/{repository}/releases/{release_id}"])
+    if api.returncode != 0:
+        blocked("RELEASE_LOOKUP_BY_ID", 82)
+    try:
+        record = json.loads(api.stdout)
+    except json.JSONDecodeError:
+        blocked("RELEASE_LOOKUP_BY_ID_JSON")
+    if record.get("id") != release_id or record.get("tag_name") != tag:
+        blocked("RELEASE_LOOKUP_IDENTITY", 83)
+    return "FOUND", record
 
 
 def cmd_tag_push(args: argparse.Namespace) -> int:
@@ -316,8 +394,10 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
         blocked("PREVIEW_ASSET_SET")
     expected_digests = {path.name: sha256_file(path) for path in assets}
 
-    view_rc, existing = gh_release_view(args.repository, args.tag)
-    if view_rc == 0:
+    lookup_state, existing = gh_release_lookup_for_promote(
+        args.repository, args.tag
+    )
+    if lookup_state == "FOUND":
         if existing is None:
             blocked("EXISTING_RELEASE_QUERY")
         existing_errors = validate_release(
@@ -339,7 +419,7 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
                 str(notes),
             ]
         )
-    else:
+    elif lookup_state == "ABSENT":
         command = [
             "gh",
             "release",
@@ -357,6 +437,8 @@ def cmd_draft_promote(args: argparse.Namespace) -> int:
         if args.prerelease:
             command.append("--prerelease")
         mutation = run(command)
+    else:
+        blocked("RELEASE_LOOKUP_STATE")
 
     mutation_rc = mutation.returncode
     if args.simulate_local_error_after_action and mutation_rc == 0:
