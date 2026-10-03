@@ -43,11 +43,11 @@ python3 scripts/release/verify-pretag-stage.py \
   --reviewed-content-digest "$review_digest" \
   --codex-version "$CODEX_VERSION" --claude-version "$CLAUDE_VERSION" || fail "PRETAG_STAGE_BINDING"
 
+draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
+[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
+
 capture_and_validate_draft() {
   local output=$1
-  local draft_id
-  draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
-  [[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
   gh api "repos/$repository/releases/$draft_id" >"$output" || fail "DRAFT_QUERY"
   python3 - "$output" "$tmp/stage/publish-preview.json" "$tmp/stage/pretag-manifest.json" <<'PY'
 import hashlib, json, sys
@@ -109,45 +109,118 @@ import json, sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["release_title"])
 PY
 )
+set +e
 gh release edit "$tag" --draft=false --latest --verify-tag \
-  --title "$title" --notes-file "$tmp/stage/release-notes.md" || fail "PUBLISH_TRANSITION"
+  --title "$title" --notes-file "$tmp/stage/release-notes.md"
+publish_rc=$?
+set -e
 
-gh api "repos/$repository/releases/tags/$tag" >"$tmp/published.json" || fail "PUBLISHED_QUERY"
-python3 - "$tmp/published.json" "$tmp/stage/publish-preview.json" "$tmp/draft-action.json" <<'PY' || fail "PUBLISHED_RECONCILIATION"
-import json, sys
-published = json.load(open(sys.argv[1], encoding="utf-8"))
+if ! gh api "repos/$repository/releases/$draft_id" >"$tmp/release-after-action.json"; then
+  echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:RELEASE_QUERY_AFTER_ACTION tag=$tag mutation_rc=$publish_rc" >&2
+  exit 82
+fi
+
+set +e
+action_state=$(python3 - "$tmp/release-after-action.json" "$tmp/stage/publish-preview.json" "$tmp/draft-action.json" <<'PY'
+import hashlib, json, sys
+after = json.load(open(sys.argv[1], encoding="utf-8"))
 preview = json.load(open(sys.argv[2], encoding="utf-8"))
 before = json.load(open(sys.argv[3], encoding="utf-8"))
-if published.get("tag_name") != preview["tag_name"] or published.get("name") != preview["release_title"]:
-    raise SystemExit("identity")
-if published.get("draft") is not False or published.get("prerelease") is not preview["prerelease"]:
-    raise SystemExit("state")
-if not published.get("published_at") or published.get("immutable") is not True:
-    raise SystemExit("published-or-immutable")
-if (published.get("body") or "").rstrip() != preview["body"].rstrip():
-    raise SystemExit("body")
-before_assets = {
-    (item.get("name"), item.get("id"), item.get("size"), item.get("digest"))
-    for item in before.get("assets") or []
-}
-after_assets = {
-    (item.get("name"), item.get("id"), item.get("size"), item.get("digest"))
-    for item in published.get("assets") or []
-}
-if after_assets != before_assets:
-    raise SystemExit("asset-drift")
-PY
 
-gh release list --limit 100 --json tagName,isDraft,isPrerelease,isLatest,isImmutable,publishedAt >"$tmp/releases.json" || fail "LATEST_QUERY"
-python3 - "$tmp/releases.json" "$tag" <<'PY' || fail "LATEST_RECONCILIATION"
+def asset_set(record):
+    return {
+        (item.get("name"), item.get("id"), item.get("size"), item.get("digest"))
+        for item in record.get("assets") or []
+    }
+
+def fingerprint(record):
+    value = {
+        "id": record.get("id"),
+        "tag_name": record.get("tag_name"),
+        "name": record.get("name"),
+        "draft": record.get("draft"),
+        "prerelease": record.get("prerelease"),
+        "body": record.get("body"),
+        "updated_at": record.get("updated_at"),
+        "assets": sorted(
+            (
+                item.get("id"),
+                item.get("name"),
+                item.get("size"),
+                item.get("digest"),
+                item.get("updated_at"),
+            )
+            for item in record.get("assets") or []
+        ),
+    }
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+if after.get("draft") is True:
+    if fingerprint(after) == fingerprint(before):
+        print("DRAFT_UNCHANGED")
+        raise SystemExit(3)
+    print("DRAFT_DRIFT")
+    raise SystemExit(4)
+
+if after.get("tag_name") != preview["tag_name"] or after.get("name") != preview["release_title"]:
+    print("PUBLISHED_IDENTITY_MISMATCH")
+    raise SystemExit(5)
+if after.get("draft") is not False or after.get("prerelease") is not preview["prerelease"]:
+    print("PUBLISHED_STATE_MISMATCH")
+    raise SystemExit(6)
+if not after.get("published_at") or after.get("immutable") is not True:
+    print("PUBLISHED_IMMUTABILITY_MISMATCH")
+    raise SystemExit(7)
+if (after.get("body") or "").rstrip() != preview["body"].rstrip():
+    print("PUBLISHED_BODY_MISMATCH")
+    raise SystemExit(8)
+if asset_set(after) != asset_set(before):
+    print("PUBLISHED_ASSET_DRIFT")
+    raise SystemExit(9)
+print("PUBLISHED_EXACT")
+PY
+)
+action_state_rc=$?
+set -e
+
+case "$action_state_rc:$action_state" in
+  0:PUBLISHED_EXACT)
+    ;;
+  3:DRAFT_UNCHANGED)
+    echo "GUARDED_PUBLISH_NOT_APPLIED tag=$tag mutation_rc=$publish_rc" >&2
+    exit 78
+    ;;
+  *)
+    echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag=$tag mutation_rc=$publish_rc state=${action_state:-none}" >&2
+    exit 83
+    ;;
+esac
+
+latest_ok=false
+for attempt in 1 2 3 4 5; do
+  if gh api "repos/$repository/releases/latest" >"$tmp/latest.json" 2>/dev/null \
+    && python3 - "$tmp/latest.json" "$tag" <<'PY'
 import json, sys
-items, tag = json.load(open(sys.argv[1], encoding="utf-8")), sys.argv[2]
-matches = [item for item in items if item.get("tagName") == tag]
-if len(matches) != 1:
-    raise SystemExit("release-count")
-item = matches[0]
-if item.get("isDraft") or item.get("isPrerelease") or not item.get("isLatest") or not item.get("isImmutable") or not item.get("publishedAt"):
-    raise SystemExit("latest-state")
+release, tag = json.load(open(sys.argv[1], encoding="utf-8")), sys.argv[2]
+if (
+    release.get("tag_name") != tag
+    or release.get("draft") is not False
+    or release.get("prerelease") is not False
+    or release.get("immutable") is not True
+    or not release.get("published_at")
+):
+    raise SystemExit(1)
 PY
+  then
+    latest_ok=true
+    break
+  fi
+  sleep 1
+done
+[[ "$latest_ok" == true ]] || fail "LATEST_RECONCILIATION"
 
+if [[ "$publish_rc" -ne 0 ]]; then
+  echo "PUBLISH_MUTATION_LOCAL_ERROR_RECONCILED=YES rc=$publish_rc"
+fi
 echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"
