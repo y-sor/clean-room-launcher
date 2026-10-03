@@ -171,6 +171,11 @@ Status vocabulary:
 - `POST_BOUNDARY_ONLY`: the residue genuinely requires the boundary identity/effect itself.
 - `SYSTEM_GAP`: proof is missing; the next consequential release boundary is closed.
 
+Current Integration Lab-dependent rows remain `PRESERVED_PENDING_OWNER_GATE`
+until the separately approved bounded Lab lifecycle rehearsal is executed and
+its `INTEGRATION_FIDELITY_MATRIX` evidence is reconciled. This status is not a
+release PASS and does not authorize any Lab or target mutation.
+
 ### Boundary / First-Execution Map
 
 | Boundary | Exact external/system state | Future executable/helper/API branch | Failure mode | Earliest safe proof | Same canonical action path? | Representative external-state evidence | Genuinely boundary-only residue | Ambiguous-outcome reconciliation | Evidence identity / current status |
