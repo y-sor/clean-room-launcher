@@ -165,27 +165,62 @@ a release-harness escape.
 `FIRST_EXECUTION_MATRIX` is the durable CLROOM rule for release boundaries.
 A protected production release identity is never an integration-test trigger.
 
-| Boundary | Must already be proven before boundary | Allowed to execute first after boundary |
-| --- | --- | --- |
-| merge | changed product/runtime/provider/UI behavior on exact PR candidate; release harness/negative contracts | accepted-main identity-dependent staging only |
-| protected tag | accepted-main shipping bytes; public preview semantics; tag helper/tool capabilities; current-public-route mechanics; tag-promotion action path; all safely reproducible Draft/publish helper reads/branches; representative external release-state semantics | exact tag identity; tag-bound provenance/SBOM identity; promotion of already accepted bytes into guarded Draft |
-| publish | exact Draft/title/body/assets; tag-bound attestations; local publish tool capabilities; Draft lookup/fingerprint; same publish mutation semantics on disposable non-production release state; ambiguous-outcome reconciliation | the one exact production Draft→published mutation and exact new release/latest identity |
-| public install verification | installer semantics and current published latest/download route | exact newly published latest/download bytes/routing and isolated install from those public bytes |
+Status vocabulary:
+- `MOVED_LEFT`: the future production path is already exercised at the earliest safe proof point.
+- `LAB_REQUIRED`: the canonical path exists, but representative mutation evidence is still required from an approved disposable integration destination before the protected production boundary.
+- `POST_BOUNDARY_ONLY`: the residue genuinely requires the boundary identity/effect itself.
+- `SYSTEM_GAP`: proof is missing; the next consequential release boundary is closed.
+
+### Boundary / First-Execution Map
+
+| Boundary | Exact external/system state | Future executable/helper/API branch | Failure mode | Earliest safe proof | Same canonical action path? | Representative external-state evidence | Genuinely boundary-only residue | Ambiguous-outcome reconciliation | Evidence identity / current status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PR candidate → merge | exact PR HEAD + reviewed diff + provider/runtime/UI inputs | product/runtime/provider paths; release harness contracts | shipped behavior or harness defect survives review | exact PR CI, negative tests, provider/runtime/UI rehearsal before GPT acceptance | yes for changed product/runtime paths | exact PR checks + required local human-only evidence | accepted-main commit identity does not exist yet | merge result is reconciled against exact accepted HEAD/tree | exact PR HEAD; `MOVED_LEFT` |
+| accepted main staging | exact accepted main/tree + reviewed-content digest | `readiness.sh`, stage builder, resolver, preview, checksums, SBOM, installer, provider qualification | merge-byte/file-mode/stage drift | accepted-main Release-candidate workflow | yes | exact target Actions run and content-addressed stage | archive/source commit identity is accepted-main-specific | stage manifest/content digest readback | accepted main SHA + stage manifest; `MOVED_LEFT` |
+| pre-tag target guard | target main, tag/release absence, active tag ruleset, immutable-release policy, exact local gh capabilities | `push-release-tag.sh` before the effect seam | stale main, weak ruleset, existing identity, unsupported tool/API path | local tag helper before local tag creation/push; live target reads | yes up to remote tag push | authenticated target reads + `check-publish-toolchain.sh` | exact remote tag identity | no mutation yet | expected main SHA + live target/tool state; `MOVED_LEFT` |
+| remote tag push | absent remote canary/production tag + authenticated git remote | `release-external-action.py tag-push` | timeout/non-zero after remote tag may already exist; wrong peeled target | same helper against approved disposable canary before product tag | yes | approved Integration Lab/equivalent tag canary using the same helper | exact production protected tag identity | mandatory `git ls-remote` readback classifies PASS / absent / mismatch / unknown | helper content identity + Lab evidence; `LAB_REQUIRED` until approved rehearsal PASS |
+| tag workflow prepare | exact immutable tag + accepted pre-tag stage | Release workflow tag/annotation checks + `resolve-pretag-stage.sh` | tag/source/title mismatch; stage resolver/runtime drift | accepted-main promotion rehearsal executes the same resolver invocation and stage verification | resolver path yes; tag identity check requires tag | accepted-main Ubuntu promotion rehearsal | exact tag annotation/ref identity and tag-trigger event context | read-only failure; no retry mutation | accepted-main rehearsal + exact tag after boundary; `MOVED_LEFT` with tag identity `POST_BOUNDARY_ONLY` |
+| tag-bound attestations | exact tag source/ref + accepted staged subjects | pinned `actions/attest` + attestation verification | action/API/subject mismatch | accepted-main attestation mechanism rehearsal on exact staged subjects | mechanism yes; exact `refs/tags/<tag>` binding cannot exist before tag | target accepted-main attestation rehearsal | exact tag-bound source-ref/provenance identity | GitHub action result + later Draft/public attestation verification | staged subject digests; mechanism `MOVED_LEFT`, exact tag binding `POST_BOUNDARY_ONLY` |
+| Draft create/edit/upload/download | representative existing/absent Draft + release assets | `release-external-action.py draft-promote` used by Release workflow | Draft state split, create/edit ambiguity, partial upload, asset byte drift, download semantics | approved disposable Integration Lab/equivalent lifecycle rehearsal | yes | same helper performs create/edit/upload/download/reconcile on canary | exact production Draft id/tag and tag-bound attestation assets | every mutation is followed by authoritative Draft readback; downloaded bytes must equal uploaded bytes | helper content identity + Lab evidence; `LAB_REQUIRED` until approved rehearsal PASS |
+| production Draft verification | exact target Draft + tag-bound assets/attestations | `verify-draft-release.sh` + `release-external-action.py publish` without `--apply` | Draft lookup, numeric release-id fetch, body/assets/fingerprint parser first executes only at publish | immediately after Draft promotion and before publish approval | yes | exact target Draft plus prior Lab mutation semantics | none for read/validate/fingerprint path | no mutation; double fingerprint must remain stable | release id + exact Draft fingerprint; `MOVED_LEFT` once target Draft exists |
+| Draft → published mutation | representative Draft + desired title/body/assets | `release-external-action.py publish --apply` | local failure after remote publish; partial/mismatched published state; immutability delay | approved disposable Integration Lab/equivalent using same helper; target gets same-path dry-run before publish | yes | canary Draft→published transition with fidelity matrix; target-specific immutable policy remains separately proven | one exact production Draft→published effect | numeric release-id reconciliation classifies exact published / unchanged Draft / mismatch / unknown; no blind retry | helper content identity + Lab evidence; `LAB_REQUIRED` until approved rehearsal PASS |
+| latest propagation | newly published representative release | same publish helper reads `releases/latest` | publish succeeds but latest route lags or points elsewhere | Lab publish canary; current stable route rehearsal before provider work | yes for API/latest mechanics | Lab latest propagation + current target stable latest read | exact new product latest identity | bounded authoritative latest read; mismatch blocks completion | Lab evidence + target current stable rehearsal; `LAB_REQUIRED` for mutation semantics, new identity `POST_BOUNDARY_ONLY` |
+| rendered GitHub Releases identity | exact target Draft before publish; authenticated rendered Releases UI | human observation of version-first title/list/sidebar after machine Draft verification | API fields are correct but rendered identity is misleading/wrong | pre-publish observation after all machine gates; readiness cue must precede observation | UI is genuinely human-only; machine identity path is already exact | authenticated target Draft UI | public visibility of the newly published entry | no mutation; observation binds release id + Draft fingerprint | private human observation evidence; pre-publish required, new public visibility `POST_BOUNDARY_ONLY` |
+| public asset/download/install | current stable public route, then exact newly published release | `rehearse-public-route.sh` pre-publish; `verify-public-release.sh` post-publish | latest/download propagation, byte drift, attestation failure, isolated install failure | current stable route rehearsal before expensive provider lanes | verifier mechanics yes | current immutable stable public release | exact new public URLs/bytes and isolated install from those bytes | bounded release/download retries only after published identity is known | exact published tag + staged manifest; mechanics `MOVED_LEFT`, new route `POST_BOUNDARY_ONLY` |
+| resource lifecycle / cleanup | task-owned Lab canary tag/Release and task-owned local resources | bounded cleanup under project authority | leaked canary state, accidental deletion of non-task resources | ownership inventory is created before Lab mutation; destructive cleanup only after separate Owner gate | cleanup helper/process must use recorded identities | authoritative Lab state readback before and after cleanup | none | deletion/non-idempotent cleanup requires destination reconciliation; unknown preserves state | canary repository id + tag + release id; `LAB_REQUIRED` lifecycle evidence |
 
 A branch, CLI/API field/flag, permission assumption, parser or recovery path that
-can be safely executed earlier is not post-boundary-only. Static source markers
-or a sibling verifier do not establish execution evidence for the canonical
-action path.
+can be safely executed earlier is not post-boundary-only. Static source markers,
+a sibling verifier, or a separately rewritten mock do not establish execution
+evidence for the canonical action path.
+
+`release-external-action.py` is the canonical external state machine for the
+three mutation families that otherwise tended to escape late: remote tag push,
+Draft promotion, and Draft→published transition. Production wrappers and the
+Integration Lab rehearsal call this same helper. Product-specific guards remain
+outside it; external mutation/reconciliation semantics do not.
+
+`rehearse-external-release-lifecycle.py` is intentionally mutation-locked by
+an explicit Owner gate token and rejects the production repository. A normal
+run must use a non-product `canary/<id>` identity, a complete
+`clroom.integration-fidelity-matrix.v1`, synthetic payloads only, and the same
+canonical external action helper. It deliberately preserves the resulting
+remote canary until the separately authorized cleanup boundary.
 
 External platform semantics that cannot be proven by fixture must be rehearsed
 against representative non-production state before the production boundary.
-The rehearsal destination must be task-owned/disposable and must not become
-CLROOM product truth.
+Every fidelity mismatch remains an explicit exact-target proof obligation; a Lab
+PASS never inherits target rulesets, immutability, auth scope, runner/tool,
+network, UI, or resource-lifecycle properties that the Lab did not reproduce.
 
 For non-idempotent boundary actions, a local timeout/non-zero/transport loss is
-not the outcome. The canonical helper must query authoritative destination state
-and classify exact success, exact not-applied state, mismatch or
-`OUTCOME UNKNOWN` before any retry.
+not the outcome. The canonical helper queries authoritative destination state and
+classifies exact success, exact not-applied state, mismatch or `OUTCOME UNKNOWN`
+before any retry.
+
+The release train remains quarantined while any row above is `LAB_REQUIRED`
+without approved evidence or `SYSTEM_GAP`. A new version number, reseal, or
+protected tag cannot convert such a row to PASS.
 
 ## Publishable surface closure
 
