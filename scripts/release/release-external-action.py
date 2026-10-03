@@ -95,14 +95,18 @@ def validate_release(
     return errors
 
 
-def classify_publish_state(after: dict, before: dict, preview: dict) -> str:
+def classify_publish_state(
+    after: dict, before: dict, preview: dict, *, require_immutable: bool = True
+) -> str:
     if after.get("draft") is True:
         if release_fingerprint(after) == release_fingerprint(before):
             return "DRAFT_UNCHANGED"
         return "DRAFT_DRIFT"
     if validate_release(after, preview, expect_draft=False):
         return "PUBLISHED_MISMATCH"
-    if not after.get("published_at") or after.get("immutable") is not True:
+    if not after.get("published_at"):
+        return "PUBLISHED_PENDING_VISIBILITY"
+    if require_immutable and after.get("immutable") is not True:
         return "PUBLISHED_PENDING_IMMUTABILITY"
     before_assets = {
         (item.get("name"), item.get("id"), item.get("size"), item.get("digest"))
@@ -177,6 +181,10 @@ def self_test() -> int:
     pending["immutable"] = False
     if classify_publish_state(pending, before, preview) != "PUBLISHED_PENDING_IMMUTABILITY":
         raise SystemExit("SELF_TEST:PUBLISHED_PENDING")
+    if classify_publish_state(
+        pending, before, preview, require_immutable=False
+    ) != "PUBLISHED_EXACT":
+        raise SystemExit("SELF_TEST:NONIMMUTABLE_LAB")
     direct, peeled = parse_ls_remote(
         "a" * 40
         + "\trefs/tags/canary/test\n"
@@ -480,10 +488,19 @@ def cmd_publish(args: argparse.Namespace) -> int:
         rc, after = gh_release_view(args.repository, args.tag)
         if rc == 0 and after is not None:
             release_query_seen = True
-            state = classify_publish_state(after, action, preview)
+            state = classify_publish_state(
+                after,
+                action,
+                preview,
+                require_immutable=not args.allow_nonimmutable,
+            )
             if state == "PUBLISHED_EXACT":
                 break
-            if state not in {"DRAFT_UNCHANGED", "PUBLISHED_PENDING_IMMUTABILITY"}:
+            if state not in {
+                "DRAFT_UNCHANGED",
+                "PUBLISHED_PENDING_IMMUTABILITY",
+                "PUBLISHED_PENDING_VISIBILITY",
+            }:
                 print(
                     f"GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag={args.tag} mutation_rc={mutation.returncode} state={state}",
                     file=sys.stderr,
@@ -523,7 +540,10 @@ def cmd_publish(args: argparse.Namespace) -> int:
                 value.get("tag_name") == args.tag
                 and value.get("draft") is False
                 and value.get("prerelease") is False
-                and value.get("immutable") is True
+                and (
+                    args.allow_nonimmutable
+                    or value.get("immutable") is True
+                )
                 and value.get("published_at")
             ):
                 latest_ok = True
@@ -566,6 +586,7 @@ def build_parser() -> argparse.ArgumentParser:
     publish.add_argument("--notes-file", required=True)
     publish.add_argument("--preview-json", required=True)
     publish.add_argument("--apply", action="store_true")
+    publish.add_argument("--allow-nonimmutable", action="store_true")
     return parser
 
 
