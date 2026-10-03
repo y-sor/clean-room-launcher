@@ -992,7 +992,12 @@ def check(root: Path) -> list[str]:
     )
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
-    require(errors, "publish-preview.json" in release and "release-body" in release, "DRAFT_PREVIEW_RECONCILIATION")
+    require(
+        errors,
+        "--preview-json release-stage/publish-preview.json" in release
+        and "--notes-file release-stage/release-notes.md" in release,
+        "DRAFT_PREVIEW_RECONCILIATION",
+    )
     publish_toolchain_path = root / "scripts/release/check-publish-toolchain.sh"
     require(errors, publish_toolchain_path.is_file(), "PUBLISH_TOOLCHAIN_CHECK_MISSING")
     if publish_toolchain_path.is_file():
