@@ -54,6 +54,7 @@ allowed = {
     "scripts/release/provider-pins.sh",
     "scripts/release/resolve-pretag-stage.sh",
     "scripts/release/verify-pretag-stage.py",
+    "scripts/release/release-external-action.py",
 }
 unexpected = sorted(actual - allowed)
 if unexpected:
