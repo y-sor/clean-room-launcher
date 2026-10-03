@@ -234,7 +234,14 @@ outside it; external mutation/reconciliation semantics do not.
 an explicit Owner gate token and rejects the production repository. A normal
 run must use a non-product `canary/<id>` identity, a complete
 `clroom.integration-fidelity-matrix.v1`, synthetic payloads only, and the same
-canonical external action helper. It deliberately preserves the resulting
+canonical external action helper. Before any tag or Release mutation it also
+requires the expected disposable repository ID as a runtime input, resolves the
+actual destination repository ID from GitHub, and fail-closes on mismatch.
+The rehearsal binds its executable helper and rehearsal bytes to the exact
+reviewed public candidate HEAD by fetching those two files at that commit and
+comparing SHA-256 before the first mutation; the resulting private evidence
+records the candidate HEAD and both executable digests. No private Lab identity
+is hardcoded into the public repository. It deliberately preserves the resulting
 remote canary until the separately authorized cleanup boundary.
 
 External platform semantics that cannot be proven by fixture must be rehearsed
