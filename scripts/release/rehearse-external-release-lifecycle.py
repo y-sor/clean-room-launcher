@@ -203,7 +203,10 @@ def main_run(args: argparse.Namespace) -> int:
     if not re.fullmatch(r"[0-9a-f]{40}", args.candidate_head):
         blocked("CANDIDATE_HEAD")
     tag = f"canary/{args.canary_id}"
-    owner_token = f"YES:{repository}:{args.canary_id}"
+    owner_token = (
+        f"YES:{repository}:{args.expected_repository_id}:"
+        f"{args.candidate_head}:{args.canary_id}"
+    )
     if args.owner_gate_env not in ("CLROOM_OWNER_LAB_REHEARSAL_APPROVED",):
         blocked("OWNER_GATE_ENV")
     if __import__("os").environ.get(args.owner_gate_env) != owner_token:
