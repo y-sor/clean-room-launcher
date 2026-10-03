@@ -972,6 +972,7 @@ def check(root: Path) -> list[str]:
             "github_file_sha256",
             "expected_repository_id",
             "candidate_head",
+            'f"YES:{repository}:{args.expected_repository_id}:"',
             "IDENTITY_BINDING",
             "RELEASE_INTEGRATION_IDENTITY_BINDING_PASS",
             "tag-push",
