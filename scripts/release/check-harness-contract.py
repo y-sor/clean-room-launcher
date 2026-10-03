@@ -777,6 +777,23 @@ def check(root: Path) -> list[str]:
         'python3 scripts/release/check-provider-source-pins.py || fail "PROVIDER_SOURCE_PIN_CONTRACT"' in readiness,
         "PROVIDER_SOURCE_PIN_CHECK_DISCONNECTED",
     )
+    for literal_escape, code in (
+        ('PROVIDER_SOURCE_PIN_CONTRACT"\\npython3', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_PROVIDER_CONTRACT"),
+        ('RELEASE_EXTERNAL_ACTION_SELF_TEST"\\npython3', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_EXTERNAL_ACTION"),
+        ('PROVIDER_SOURCE_PIN_CHECKER_MISSING"\\n[[', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_PROVIDER_CHECK"),
+        ('RELEASE_EXTERNAL_ACTION_HELPER_MISSING"\\n[[', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_EXTERNAL_HELPER"),
+    ):
+        require(errors, literal_escape not in readiness, code)
+    require(
+        errors,
+        'python3 scripts/release/release-external-action.py self-test || fail "RELEASE_EXTERNAL_ACTION_SELF_TEST"' in readiness,
+        "RELEASE_EXTERNAL_ACTION_SELF_TEST_DISCONNECTED",
+    )
+    require(
+        errors,
+        'python3 scripts/release/rehearse-external-release-lifecycle.py --self-test || fail "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST"' in readiness,
+        "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST_DISCONNECTED",
+    )
 
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
