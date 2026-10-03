@@ -880,6 +880,24 @@ def check(root: Path) -> list[str]:
     ):
         require(errors, marker in docs, "RELEASE_FIRST_EXECUTION_MATRIX_CONTRACT:" + marker)
 
+    capability_step = release_candidate.find(
+        "Probe post-tag GitHub action capabilities on representative runner"
+    )
+    lifecycle_step = release_candidate.find("Resolve published release lifecycle")
+    require(
+        errors,
+        capability_step >= 0
+        and lifecycle_step >= 0
+        and capability_step < lifecycle_step,
+        "REPRESENTATIVE_RUNNER_TOOLCHAIN_ORDER",
+    )
+    require(
+        errors,
+        "bash scripts/release/check-publish-toolchain.sh --capabilities-only"
+        in release_candidate,
+        "REPRESENTATIVE_RUNNER_TOOLCHAIN_INVOCATION",
+    )
+
     promotion = workflow_text[".github/workflows/release-promotion-rehearsal.yml"]
     require(errors, "workflow_call:" in promotion, "PROMOTION_CHAIN_REUSABLE_TRIGGER")
     require(errors, "workflow_run:" not in promotion, "PROMOTION_CHAIN_PRIVILEGED_TRIGGER_FORBIDDEN")
@@ -978,8 +996,11 @@ def check(root: Path) -> list[str]:
         for marker in (
             "PUBLISH_TOOLCHAIN_SELF_TEST_PASS",
             "PUBLISH_TOOLCHAIN_CAPABILITY_PASS",
+            "RELEASE_CREATE_CAPABILITY",
             "RELEASE_EDIT_CAPABILITY",
+            "RELEASE_UPLOAD_CAPABILITY",
             "RELEASE_VIEW_JSON_CAPABILITY",
+            "RELEASE_BY_ID_API_CAPABILITY",
             "LATEST_API_CAPABILITY",
             "IMMUTABLE_POLICY_API_CAPABILITY",
         ):
