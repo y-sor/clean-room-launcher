@@ -985,6 +985,20 @@ def check(root: Path) -> list[str]:
                 marker in integration_rehearsal,
                 "RELEASE_INTEGRATION_REHEARSAL_CONTRACT:" + marker,
             )
+        require(
+            errors,
+            integration_rehearsal.count("--simulate-local-error-after-action") >= 3,
+            "RELEASE_INTEGRATION_AMBIGUOUS_OUTCOME_REHEARSAL",
+        )
+        for marker in (
+            "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED",
+            '"draft_upload": "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED"',
+        ):
+            require(
+                errors,
+                marker in integration_rehearsal,
+                "RELEASE_INTEGRATION_RECONCILIATION_EVIDENCE:" + marker,
+            )
         rehearsal_self_test = subprocess.run(
             [sys.executable, str(integration_rehearsal_path), "--self-test"],
             capture_output=True,
