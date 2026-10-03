@@ -42,6 +42,14 @@ jobs:
           python3 scripts/release/check-workflow-exec-contract.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py
           python3 scripts/release/check-release-contract.py --self-test
+      - name: Probe post-tag GitHub action capabilities on representative runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/check-publish-toolchain.sh --self-test
+          bash scripts/release/check-publish-toolchain.sh --capabilities-only
       - name: Resolve published release lifecycle
         id: lifecycle
         env:
