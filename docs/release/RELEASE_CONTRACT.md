@@ -230,15 +230,21 @@ For whole-plugin activation:
    The local smoke self-provisions the same pinned provider tuple from reviewed
    package integrities without re-querying latest, then machine preflight proves
    the exact skill-only selection is qualified. Clean and selected Claude
-   sessions run through a task-owned PTY supervisor. The operator sends zero
-   bytes inside Claude. The supervisor maintains a bounded rendered terminal
-   screen model, waits for trusted same-row composer readiness, injects only the
-   fixed non-submitting autocomplete probe, keeps the UI open for a bounded
-   observation window, restores physical terminal state and owns task-session
-   teardown before persistent-state verification. Unknown screen-mutating
-   controls fail closed before probe injection. Human work is limited to the
-   target absence/presence, sibling/plugin-error and no-inference observations
-   after the supervisor returns; provider exit UX is not part of the proof.
+   sessions run through a task-owned PTY supervisor. Immediately before each
+   clean or selected provider launch, the outer harness stops and requires one
+   explicit readiness Enter while the operator is looking at that terminal.
+   The acknowledgement is consumed before Claude starts and is never forwarded
+   to provider stdin. The operator then keeps the terminal visible through the
+   bounded observation window. The supervisor maintains a bounded rendered
+   terminal screen model, waits for trusted same-row composer readiness, injects
+   only the fixed non-submitting autocomplete probe, restores physical terminal
+   state and owns task-session teardown before persistent-state verification.
+   Unknown screen-mutating controls fail closed before probe injection. Human
+   work is limited to the target absence/presence, sibling/plugin-error and
+   no-inference observations; post-run y/N answers are accepted only when the
+   corresponding pre-launch readiness acknowledgement was recorded. Evidence
+   schema v6 binds both readiness acknowledgements, and the stage verifier
+   rejects legacy v5 evidence. Provider exit UX is not part of the proof.
 
    A screen-model failure is diagnosed only through the canonical
    `diagnose-screen` phase of
@@ -251,7 +257,7 @@ For whole-plugin activation:
    serialized by this diagnostic. The diagnostic result is evidence for a
    subsequent semantic model change; it is never itself a qualification PASS.
 
-   The Claude Code 2.1.287 incident captured DEC private mode 2031
+   The prior Claude Code terminal incident captured DEC private mode 2031
    (`CSI ? 2031 h`), which enables terminal color-scheme change reporting. It
    does not mutate rendered screen cells, so the screen model admits it without
    losing readiness trust. Because it changes terminal protocol/state, the
@@ -295,7 +301,13 @@ For standalone Codex MCP activation:
    selections, standalone-MCP/whole-plugin mixing, active non-session MCP
    layers, and selected-source mutation must all fail before an interactive
    provider/MCP runtime is admitted. The source-mutation oracle uses the
-   task-owned preflight creation seam rather than timing-only polling.
+   task-owned preflight creation seam rather than timing-only polling. Provider
+   processes observed while the task-owned `.mcp-preflight-*` directory exists
+   belong to the machine-owned config-layer preflight even when provider argv
+   presentation is not stable enough to preserve the `app-server` token.
+   After that directory disappears, any provider mode other than a bounded
+   version probe is an escape and fails the rehearsal. The final product launch
+   independently revalidates the selected MCP before `exec`.
 3. **Accepted-main exact-byte staging:** after merge identity is known, the same
    standalone-MCP capability is requalified against the exact future shipping
    archive and frozen pinned provider inputs before a protected tag can be
@@ -329,6 +341,16 @@ For Codex whole-plugin activation this means:
 A provider version change invalidates this lifecycle evidence and requires fresh
 qualification against the new exact provider tuple.
 
+The canonical release provider pins and the shipped product qualification
+constants are one tuple contract, not independent mirrors. Canonical readiness
+must derive the expected Codex/Claude version tuples from
+`scripts/release/provider-pins.sh` and fail unless both clean-launch and
+whole-plugin exact constants in `src/catalog/provider_inventory.rs` match.
+The checker must include a negative self-test that rejects a stale clean or
+plugin-activation tuple. Updating registry/package pins, public docs and a
+mirrored test expectation without updating the shipped qualification constants
+is therefore a pre-merge blocker.
+
 ## Provider ambient-input surface closure
 
 Provider version changes can add new instruction/configuration discovery
@@ -336,7 +358,7 @@ surfaces without changing CLROOM itself. Startup/version/byte checks alone are
 therefore insufficient for a clean-launch claim.
 
 For every newly pinned provider tuple, release qualification must re-prove the
-ambient input classes CLROOM claims to suppress. For Claude Code 2.1.287 the
+ambient input classes CLROOM claims to suppress. For Claude Code 2.1.288 the
 built-in `agents-md` surface reads `AGENTS.md` and `.claude/AGENTS.md`
 through ancestor directories. For Git projects, CLROOM uses the nearest real
 (non-symlink) `.git` file or directory as the project instruction boundary;

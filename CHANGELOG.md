@@ -25,7 +25,7 @@ Semantic Versioning after the first public release.
 ### Changed
 
 - Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
-  Claude Code `2.1.287`, with registry/package/native identities frozen into
+  Claude Code `2.1.288`, with registry/package/native identities frozen into
   accepted pre-tag evidence.
 - The current candidate changelog section is now active release input. Older
   changelog sections remain historical, but they can no longer exempt the
@@ -40,11 +40,20 @@ Semantic Versioning after the first public release.
   contain stale provider claims. Hash equality now proves identity only;
   machine-verifiable public claims receive an independent semantic PASS before
   tag creation.
+- Exact shipped clean/plugin provider tuples are now machine-bound to the
+  canonical release provider pins. A provider refresh that updates package
+  identities but leaves product qualification constants stale fails readiness
+  before local human-TTY rehearsal.
 - The protected `v0.4.5` tag and Draft remain unpublished incident evidence.
   They are not moved, reused, manually rewritten or promoted; this recovery
   advances under the new `v0.4.6` identity from published baseline `v0.4.4`.
 - Release-required topology and the tag helper now fail closed if the distinct
   publishable-content semantic predecessor/evidence is absent or unsuccessful.
+- Claude clean/selected human-TTY evidence now requires an explicit
+  pre-launch readiness acknowledgement while the operator is looking at the
+  terminal. The acknowledgement is consumed before Claude starts, never reaches
+  provider stdin, is bound into evidence schema v6, and post-hoc confirmations
+  without that readiness evidence are rejected.
 
 ### Dependencies
 
@@ -107,6 +116,10 @@ Semantic Versioning after the first public release.
 - The standalone-MCP source-mutation rehearsal is event-driven on macOS so the
   TOCTOU negative fails on the actual preflight creation seam instead of a
   polling race.
+- The source-mutation provider observer is bound to the task-owned preflight
+  directory lifecycle rather than provider argv spelling: provider processes
+  inside preflight are classified as machine preflight, while any non-version
+  provider birth after preflight teardown remains a fail-closed escape.
 
 ## [0.4.4] - 2026-09-23
 

@@ -57,7 +57,7 @@ for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) a
 do
   grep -Fq -- "$needle" "$codex_smoke" || fail "CODEX_STAGE_SMOKE_MISSING:$needle"
 done
-for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v5"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_tui_supervised'   'selected_tui_supervised'   'interactive_submit_bytes_blocked_by_supervisor'   'interactive_harness_owned_teardown'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'
+for needle in   '"$phase" == "rehearse" || "$phase" == "stage"'   '--artifact) artifact_input='   'STAGE_ARTIFACT_REQUIRED'   'HEAD_NOT_EXPECTED_CANDIDATE'   'review_path="reports/release/v${version}-review.json"'   '"schema_version":"clroom.plugin-release-smoke.v6"'   '"automated_probe_prompt_supplied":False'   'plugin_info_preflight_passed'   'clean_tui_confirmed'   'clean_tui_supervised'   'selected_tui_supervised'   'interactive_submit_bytes_blocked_by_supervisor'   'interactive_harness_owned_teardown'   'clean_target_plugin_absent_confirmed'   'selected_tui_confirmed'   'selected_target_plugin_visible_confirmed'   'no_new_sibling_plugins_confirmed'   'selected_plugin_errors_absent_confirmed'   'interactive_no_model_prompt_confirmed'   'clean_observation_ready_acknowledged'   'selected_observation_ready_acknowledged'
 do
   grep -Fq -- "$needle" "$claude_smoke" || fail "CLAUDE_STAGE_SMOKE_MISSING:$needle"
 done
@@ -69,9 +69,9 @@ if grep -Fq -- 'bash "$root/scripts/release/check-provider-pins.sh"' "$claude_sm
   fail "CLAUDE_HUMAN_TTY_MUTABLE_LATEST_LOOKUP"
 fi
 grep -Fq -- '"plugin_id": "frontend-design@claude-plugins-official"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_PLUGIN_IDENTITY"
-grep -Fq -- '"schema_version": "clroom.plugin-release-smoke.v5"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5"
+grep -Fq -- 'SCHEMA_VERSION = "clroom.plugin-release-smoke.v6"' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_SCHEMA_V5"
 grep -Fq -- '"automated_probe_prompt_supplied": False' "$claude_stage_verifier"   || fail "CLAUDE_STAGE_EVIDENCE_PROMPT_FALSE"
-for needle in   '"clean_tui_supervised": True'   '"selected_tui_supervised": True'   '"interactive_submit_bytes_blocked_by_supervisor": True'   '"interactive_harness_owned_teardown": True'
+for needle in   '"clean_tui_supervised": True'   '"selected_tui_supervised": True'   '"interactive_submit_bytes_blocked_by_supervisor": True'   '"interactive_harness_owned_teardown": True'   '"clean_observation_ready_acknowledged": True'   '"selected_observation_ready_acknowledged": True'
 do
   grep -Fq -- "$needle" "$claude_stage_verifier" || fail "CLAUDE_STAGE_SUPERVISOR_EVIDENCE:$needle"
 done
@@ -115,12 +115,15 @@ for needle in   'Provision pinned Codex for standalone MCP rehearsal'   'provisi
 do
   grep -Fq -- "$needle" "$release_candidate" || fail "CODEX_STANDALONE_MCP_WORKFLOW_MISSING:$needle"
 done
-for needle in   'clroom.codex-standalone-mcp-rehearsal.v1'   'provider_tool_call": "NOT_SAFE_WITHOUT_PROMPT"'   'synthetic_auth_only": True'   'selected_mcp_under_interactive_provider": True'   'selected_mcp_protocol_pid_correlated": True'   'provider_state_lifecycle_closed": True'   'synthetic_source_config_unchanged": True'   'ambient_provider_state_unchanged": True'   'CLROOM_MCP_SECRET_MATERIAL_REFUSED'   'CLROOM_ENV_SELECTOR_REQUIRED'   'CLROOM_CODEX_MCP_LAYER_CONFLICT'   'select.kqueue()'   'select.KQ_FILTER_VNODE'   'select.KQ_NOTE_WRITE'   'source_mutation requires macOS vnode synchronization'
+for needle in   'clroom.codex-standalone-mcp-rehearsal.v1'   'provider_tool_call": "NOT_SAFE_WITHOUT_PROMPT"'   'synthetic_auth_only": True'   'selected_mcp_under_interactive_provider": True'   'selected_mcp_protocol_pid_correlated": True'   'provider_state_lifecycle_closed": True'   'synthetic_source_config_unchanged": True'   'ambient_provider_state_unchanged": True'   'CLROOM_MCP_SECRET_MATERIAL_REFUSED'   'CLROOM_ENV_SELECTOR_REQUIRED'   'CLROOM_CODEX_MCP_LAYER_CONFLICT'   'select.kqueue()'   'select.KQ_FILTER_VNODE'   'select.KQ_NOTE_WRITE'   'source_mutation requires macOS vnode synchronization'   'source_mutation_partition_modes'   'source_mutation_preflight_active'   'preflight_runtime_modes_seen'   'escaped_runtime_modes_seen'   'source-mutation post-preflight interactive escape self-test'
 do
   grep -Fq -- "$needle" "$codex_standalone_mcp" || fail "CODEX_STANDALONE_MCP_FIXTURE_MISSING:$needle"
 done
 if grep -Fq -- 'time.sleep(0.02)' "$codex_standalone_mcp"; then
   fail "CODEX_STANDALONE_MCP_SOURCE_MUTATION_POLLING_RACE"
+fi
+if grep -Fq -- 'or "interactive" in modes_seen' "$codex_standalone_mcp"; then
+  fail "CODEX_STANDALONE_MCP_ARGV_ONLY_MUTATION_CLASSIFIER"
 fi
 for needle in   'Release candidate readiness'   '.github/workflows/release-candidate.yml'   'event": "pull_request"'   'conclusion": "success"'   'candidate_tree'   'SUCCESSFUL_PR_RUN_WITH_MATCHING_TREE_NOT_FOUND'
 do

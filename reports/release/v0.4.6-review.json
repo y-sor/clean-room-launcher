@@ -20,14 +20,17 @@
         "Claude TTY rehearsal separates human UI observation from provider lifecycle: the supervisor owns a task-specific PTY session, injects the fixed non-submitting autocomplete probe automatically after composer readiness, relays only recognized runtime terminal protocol, discards other runtime bytes, preserves bounded CPR correlation, and verifies teardown plus persistent-state restoration.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
-        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.287 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
+        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.288 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
         "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
         "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced.",
         "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection.",
-        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.287; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants.",
+        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.288; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants.",
         "Claude TTY readiness now uses a bounded dependency-free terminal screen-state model rather than linear PTY history. Executable regressions construct a differential cursor-overwrite stream whose linear visible text lacks every readiness token while the rendered same-row screen qualifies; clear/overwrite, cross-row, trust-like, split-CSI, alternate-screen and unsupported-mutation negatives are also enforced.",
         "Unknown Claude screen controls now have a canonical machine-owned diagnostic path: the supervisor records only a normalized control identity and SHA-256 fingerprint for the first fail-closed control, writes private 0600 O_EXCL evidence with no raw terminal transcript, verifies terminal restoration/task-session closure/zero human and submit bytes, and the release smoke exposes a clean-only diagnose-screen phase with no y/N confirmation.",
-        "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight."
+        "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight.",
+        "Claude human-TTY evidence now requires a shell-level readiness Enter immediately before each clean and selected provider launch while the operator is looking at that terminal. The acknowledgement is consumed before Claude starts, never reaches provider stdin, is recorded in schema v6, and the stage verifier rejects legacy v5 or missing readiness acknowledgements.",
+        "Provider tuple coherence is now cross-bound rather than mirrored: check-provider-source-pins.py derives Codex/Claude tuples from provider-pins.sh, requires both clean-launch and plugin-activation constants in src/catalog/provider_inventory.rs to match, and has negative self-tests for stale Claude clean/plugin and Codex clean tuples. Canonical readiness executes both the self-test and the live source-pin check, while the harness contract fails if either invocation is disconnected.",
+        "The standalone-MCP source-mutation observer no longer treats provider argv spelling as lifecycle authority. It partitions non-version provider observations by the task-owned .mcp-preflight-* directory lifetime: provider execution while that directory exists is machine-owned config preflight, while any non-version provider execution after preflight teardown is an escape. Pure self-tests require preflight interactive-alias tolerance and post-preflight interactive/app-server rejection."
       ]
     },
     "dependencies": {
@@ -50,9 +53,10 @@
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
-        "v0.4.6 refreshes exact provider qualification inputs to current stable Codex 0.160.0 and Claude Code 2.1.287, with registry integrity and native-byte identity still required before acceptance.",
+        "v0.4.6 refreshes exact provider qualification inputs to current stable Codex 0.160.0 and Claude Code 2.1.288, with registry integrity and native-byte identity still required before acceptance.",
         "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state.",
-        "Action-time current-stable resolution on 2026-10-02 moved the qualification tuple to Codex 0.160.0 and Claude Code 2.1.287. Exact registry SHA-512 values and the Codex macOS native SHA-256 were re-frozen before requalification; all prior provider/runtime evidence is invalidated until the exact refreshed candidate closes its machine and human gates."
+        "Action-time current-stable resolution on 2026-10-02 moved the qualification tuple to Codex 0.160.0 and Claude Code 2.1.288. Exact registry SHA-512 values and the Codex macOS native SHA-256 were re-frozen before requalification; all prior provider/runtime evidence is invalidated until the exact refreshed candidate closes its machine and human gates.",
+        "The 2.1.288 refresh exposed a source-pin split: registry pins and public claims had advanced while shipped Claude clean/plugin qualification constants remained 2.1.287, so local plugin preflight correctly failed PROVIDER_TUPLE_NOT_QUALIFIED before TUI. v0.4.6 now treats provider-pins.sh plus product exact tuples as one fail-closed release contract."
       ]
     },
     "public_claims": {
@@ -225,6 +229,30 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "Candidate source can embed lifecycle-relative wording such as “current published stable” or “current release-candidate”; the same immutable tagged bytes would make that wording false when the candidate is published.",
       "durable_control": "Release Contract now rejects lifecycle-volatile status phrases on active public documentation. SECURITY uses lifecycle-stable source/support wording, records v0.4.5 as tagged-but-unpublished incident evidence, and delegates authoritative live publication status to GitHub Releases."
+    },
+    {
+      "id": "claude-human-observation-posthoc-confirmation-gap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A bounded clean/selected Claude observation window could complete while the operator was focused on another window, after which post-run y/N confirmations could attest UI facts that were not actually observed.",
+      "durable_control": "The outer smoke now requires an explicit empty-line readiness acknowledgement immediately before each clean and selected Claude launch, before provider start. Both acknowledgements are bound into plugin-release-smoke schema v6; the stage verifier and its negative self-test reject legacy v5 evidence or either missing acknowledgement, while Claude still receives zero human bytes."
+    },
+    {
+      "id": "claude-21288-pretag-provider-drift",
+      "decision": "COVERED",
+      "failure_mode": "Before v0.4.6 reached the protected tag, the npm stable tuple moved from Claude Code 2.1.287 to 2.1.288, invalidating all provider-bound evidence tied to the previous tuple.",
+      "durable_control": "Release readiness failed closed on the latest-tag mismatch before tag creation. The candidate advances the exact Claude qualification pin to 2.1.288, refreshes wrapper and darwin-arm64 SHA-512 identities from the registry, updates current public claims, and requires full exact-candidate machine plus human-TTY requalification before acceptance."
+    },
+    {
+      "id": "provider-pin-product-tuple-split",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A provider refresh could update canonical registry pins, public claims and their mirrored expectations while shipped clean/plugin qualification constants remained on the previous provider version. Machine readiness could still pass, leaving the first failure to local plugin-info preflight.",
+      "durable_control": "Canonical readiness now runs check-provider-source-pins.py, which derives expected tuples from provider-pins.sh and requires both clean-launch and plugin-activation constants for Codex and Claude in src/catalog/provider_inventory.rs to match. Its negative self-test rejects stale clean/plugin tuples, and check-harness-contract.py requires the checker plus both readiness invocations so the gate cannot be silently disconnected."
+    },
+    {
+      "id": "standalone-mcp-preflight-argv-observer-race",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The source-mutation negative could observe the machine-owned Codex app-server preflight with argv that did not retain the app-server token and classify it as an interactive provider escape, even though CLROOM later emitted CLROOM_RESOURCE_STATE_CHANGED before the final provider exec and no selected or sibling MCP fixture was born.",
+      "durable_control": "Source-mutation provider observation is now bound to the task-owned .mcp-preflight-* lifecycle rather than argv spelling. Non-version provider modes are allowed only while that preflight directory exists; after teardown they fail closed. Pure self-tests cover an interactive-looking provider inside preflight as allowed evidence and interactive/app-server modes outside preflight as blocked, while product launch still revalidates the MCP immediately before exec."
     }
   ],
   "artifact_capability_gates": [
@@ -246,12 +274,12 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.6 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.287, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
+      "requirement": "Requalify exact v0.4.6 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.288, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
     },
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.6 archive with pinned Claude Code 2.1.287 and bind evidence to accepted source/tree/review/archive identity."
+      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.6 archive with pinned Claude Code 2.1.288 and bind evidence to accepted source/tree/review/archive identity."
     },
     {
       "id": "promotion-prepare-execution-parity",
@@ -286,7 +314,7 @@
       "provider-pin movement invalidates standalone MCP, whole-plugin, lifecycle and ambient-input evidence",
       "dependency-control classification for .github/dependabot.yml with release-contract self-test coverage",
       "ACTIVE_CANDIDATE supply-chain metadata validation provisions an exact Python 3.14 jsonschema verifier closure with reviewed wheel SHA-256 hashes before canonical readiness; harness self-tests reject missing/stale/unhashed provisioning",
-      "prompt-free Claude release rehearsal schema v5 with clean/selected supervised human-TTY evidence, machine-recorded submit blocking/harness-owned teardown, and no Claude print-mode model prompts",
+      "prompt-free Claude release rehearsal schema v6 with clean/selected supervised human-TTY evidence, explicit pre-launch human-observation readiness acknowledgements, machine-recorded submit blocking/harness-owned teardown, and no Claude print-mode model prompts",
       "Claude TTY evidence ownership contract: human work is autocomplete observation only; the supervisor owns the PTY lifecycle, injects the fixed probe automatically, relays recognized runtime terminal protocol, discards other runtime bytes, bounds CPR relay by observed queries, and restores terminal state.",
       "promotion current-run resolver guard: same-run rehearsal may consume its exact staged artifact only after trusted main-push identity and upstream PASS; tag-path resolver remains completed-success-only; executable admission self-test runs before provider provisioning",
       "Claude human-TTY provider freeze boundary: exact-PR machine readiness owns mutable latest resolution; local human evidence self-provisions the reviewed pinned tuple without re-querying latest; accepted-main staging refreshes current-stable state before tag",
@@ -304,8 +332,9 @@
       "Draft title/body/state/assets reconcile to exact accepted pretag preview",
       "canonical guarded publish helper owns final verification, action-time fingerprint, one publish transition and immediate reconciliation",
       "post-public verifier proves actual Latest/releases/latest/download routes and isolated install before PUBLIC_INSTALL_VERIFIED",
-      "active public documentation rejects lifecycle-relative current-published/current-candidate wording that would self-invalidate at publication; GitHub Releases remains publication-state authority"
+      "active public documentation rejects lifecycle-relative current-published/current-candidate wording that would self-invalidate at publication; GitHub Releases remains publication-state authority",
+      "Claude human-observation evidence cannot be created from post-hoc confirmations alone: an empty-line readiness acknowledgement must occur before each clean/selected provider launch, is never forwarded to Claude, and is required by the stage evidence verifier."
     ]
   },
-  "reviewed_content_digest": "23b4754ce842609e0c9f283f4a5bc6b3c1bc5e069cf538a40eeb68450496bbd8"
+  "reviewed_content_digest": "04479040dfc4c47e431ed963996632b251b29736d40f346c2db2e3cc57a69509"
 }

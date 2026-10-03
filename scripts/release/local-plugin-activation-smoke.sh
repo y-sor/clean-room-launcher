@@ -342,6 +342,8 @@ clean_tui_supervised=false
 selected_tui_supervised=false
 physical_terminal_preflight=false
 interactive_terminal_state_restored=false
+clean_observation_ready=false
+selected_observation_ready=false
 clean_target_plugin_absent=false
 selected_target_plugin_visible=false
 no_new_sibling_plugins=false
@@ -364,6 +366,12 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   physical_terminal_preflight=true
 
   echo
+  printf 'Look at this terminal now. Press Enter only when you are ready to observe the CLEAN autocomplete window: '
+  IFS= read -r clean_ready_answer
+  [[ -z "$clean_ready_answer" ]] || fail "CLEAN_OBSERVATION_READY_INVALID"
+  clean_observation_ready=true
+
+  echo
   echo "=== INTERACTIVE CLEAN TUI ==="
   echo "Do not send a model prompt."
   echo "This TUI runs from the exact candidate checkout."
@@ -372,7 +380,8 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Do not type into Claude."
   echo "The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
   echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, do not interact; the harness fails closed."
-  echo "Human work is observation only; no keypresses are required."
+  echo "The readiness Enter is consumed by the harness before Claude starts and is never forwarded to Claude."
+  echo "Keep this terminal visible until the bounded observation window ends and the confirmation questions appear."
   echo
   (
     cd "$root"
@@ -391,6 +400,12 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   clean_target_plugin_absent=true
 
   echo
+  printf 'Look at this terminal now. Press Enter only when you are ready to observe the SELECTED autocomplete window: '
+  IFS= read -r selected_ready_answer
+  [[ -z "$selected_ready_answer" ]] || fail "SELECTED_OBSERVATION_READY_INVALID"
+  selected_observation_ready=true
+
+  echo
   echo "=== INTERACTIVE SELECTED-PLUGIN TUI ==="
   echo "Do not send a model prompt."
   echo "This TUI runs from the same exact candidate checkout."
@@ -401,7 +416,8 @@ if [[ "$phase" == "rehearse" || "$phase" == "stage" ]]; then
   echo "Do not type into Claude."
   echo "The supervisor waits for the normal composer, injects the exact non-submitting probe automatically, keeps the TUI open for a bounded observation window, then owns teardown."
   echo "If Claude shows trust/onboarding/security confirmation instead of the normal composer, do not interact; the harness fails closed."
-  echo "Human work is observation only; no keypresses are required."
+  echo "The readiness Enter is consumed by the harness before Claude starts and is never forwarded to Claude."
+  echo "Keep this terminal visible until the bounded observation window ends and the confirmation questions appear."
   echo
   (
     cd "$root"
@@ -446,7 +462,8 @@ python3 - "$evidence" "$phase" "$version" "$source_head" "$source_tree" "$review
   "$clean_target_plugin_absent" "$interactive" "$selected_target_plugin_visible" "$no_new_sibling_plugins" \
   "$selected_plugin_errors_absent" "$no_model_prompt" "$external_ancestor_agents_absent" \
   "$project_agents_retained" "$agents_boundary_probe" "$physical_terminal_preflight" \
-  "$interactive_terminal_state_restored" "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
+  "$interactive_terminal_state_restored" "$clean_observation_ready" "$selected_observation_ready" \
+  "$claude_version_output" "$claude_version" "$claude_provider_sha" <<'PY'
 import datetime, json, sys
 (
     output, phase, version, source, source_tree, reviewed_content_digest, artifact_sha,
@@ -455,10 +472,11 @@ import datetime, json, sys
     no_new_sibling_plugins, selected_plugin_errors_absent,
     no_model_prompt, external_ancestor_agents_absent, project_agents_retained,
     agents_boundary_probe, physical_terminal_preflight, interactive_terminal_state_restored,
+    clean_observation_ready, selected_observation_ready,
     claude_version_output, claude_version, claude_provider_sha,
 ) = sys.argv[1:]
 record={
-  "schema_version":"clroom.plugin-release-smoke.v5",
+  "schema_version":"clroom.plugin-release-smoke.v6",
   "result":"PASS",
   "phase":phase,
   "release_version":version,
@@ -481,6 +499,8 @@ record={
   "interactive_harness_owned_teardown":True,
   "physical_terminal_preflight_passed":physical_terminal_preflight=="true",
   "interactive_terminal_state_restored":interactive_terminal_state_restored=="true",
+  "clean_observation_ready_acknowledged":clean_observation_ready=="true",
+  "selected_observation_ready_acknowledged":selected_observation_ready=="true",
   "clean_target_plugin_absent_confirmed":clean_target_plugin_absent=="true",
   "selected_tui_confirmed":interactive=="true",
   "selected_target_plugin_visible_confirmed":selected_target_plugin_visible=="true",
@@ -506,6 +526,8 @@ echo "SOURCE_TREE=$source_tree"
 echo "REVIEWED_CONTENT_DIGEST=$reviewed_content_digest"
 echo "ARTIFACT_SHA256=$artifact_sha"
 echo "PLUGIN_ID=$plugin_id"
+echo "CLEAN_OBSERVATION_READY_ACKNOWLEDGED=YES"
+echo "SELECTED_OBSERVATION_READY_ACKNOWLEDGED=YES"
 echo "MODEL_PROMPT_SENT=NO"
 echo "PERSISTENT_CONFIG_UNCHANGED=YES"
 echo "EVIDENCE_FILE=${evidence#$root/}"

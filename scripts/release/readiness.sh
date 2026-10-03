@@ -38,6 +38,9 @@ python3 scripts/release/check-workflow-exec-contract.py || fail "WORKFLOW_EXEC_C
 python3 scripts/release/check-harness-contract.py --self-test || fail "HARNESS_CONTRACT_SELF_TEST"
 python3 scripts/release/check-harness-contract.py || fail "HARNESS_CONTRACT"
 python3 scripts/release/stage-binding.py --self-test || fail "STAGE_BINDING_SELF_TEST"
+python3 scripts/release/verify-claude-stage-evidence.py --self-test || fail "CLAUDE_STAGE_EVIDENCE_SELF_TEST"
+python3 scripts/release/check-provider-source-pins.py --self-test || fail "PROVIDER_SOURCE_PIN_SELF_TEST"
+python3 scripts/release/check-provider-source-pins.py || fail "PROVIDER_SOURCE_PIN_CONTRACT"
 
 legacy_upper=$(printf '%s%s' TASK SEAL)
 legacy_lower=$(printf '%s%s' task seal)
@@ -70,6 +73,7 @@ fi
 [[ -f scripts/release/check-harness-contract.py ]] || fail "HARNESS_CONTRACT_MISSING"
 [[ -f scripts/release/stage-binding.py ]] || fail "STAGE_BINDING_HELPER_MISSING"
 [[ -f scripts/release/verify-claude-stage-evidence.py ]] || fail "CLAUDE_STAGE_VERIFIER_MISSING"
+[[ -f scripts/release/check-provider-source-pins.py ]] || fail "PROVIDER_SOURCE_PIN_CHECKER_MISSING"
 [[ -f scripts/release/render-release-notes.py ]] || fail "RELEASE_NOTES_RENDERER_MISSING"
 [[ -f scripts/release/release-facts.py ]] || fail "RELEASE_FACTS_MISSING"
 [[ -f scripts/release/render-publish-preview.py ]] || fail "PUBLISH_PREVIEW_RENDERER_MISSING"
