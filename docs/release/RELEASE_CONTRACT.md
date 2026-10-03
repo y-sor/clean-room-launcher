@@ -215,9 +215,14 @@ consequential boundary:
 No CLI flag, JSON field, API endpoint, Draft lookup/fingerprint parser, tag-push
 outcome classification, Draft create/edit/upload/download semantic, publish
 reconciliation branch, current-stable public-route mechanic, or release-identity
-rendering rule is permitted to appear here. Those are reproducible earlier and
-must be `MOVED_LEFT` or proven through the approved Integration Lab. Any new
-late path not listed above is `SYSTEM_GAP` and blocks the next release boundary.
+rendering rule is permitted to appear here. In particular, Draft creation may
+only follow an authoritative draft-capable absence proof; a non-zero
+`gh release view` result alone is never interpreted as absence. The canonical
+helper falls back to the authenticated release collection/numeric-id path and
+treats an unreadable collection as `OUTCOME UNKNOWN` before mutation. These
+semantics are reproducible earlier and must be `MOVED_LEFT` or proven through
+the approved Integration Lab. Any new late path not listed above is
+`SYSTEM_GAP` and blocks the next release boundary.
 
 A branch, CLI/API field/flag, permission assumption, parser or recovery path that
 can be safely executed earlier is not post-boundary-only. Static source markers,
