@@ -236,8 +236,11 @@ Integration Lab rehearsal call this same helper. Product-specific guards remain
 outside it; external mutation/reconciliation semantics do not.
 
 `rehearse-external-release-lifecycle.py` is intentionally mutation-locked by
-an explicit Owner gate token and rejects the production repository. A normal
-run must use a non-product `canary/<id>` identity, a complete
+an explicit Owner gate token and rejects the production repository. The gate
+token is bound to the exact destination repository name + expected repository
+ID + reviewed candidate HEAD + canary id, so approval cannot be replayed for a
+different candidate or destination tuple. A normal run must use a non-product
+`canary/<id>` identity, a complete
 `clroom.integration-fidelity-matrix.v1`, synthetic payloads only, and the same
 canonical external action helper. Before any tag or Release mutation it also
 requires the expected disposable repository ID as a runtime input, resolves the
