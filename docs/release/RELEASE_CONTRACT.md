@@ -50,18 +50,35 @@ the old ancestry-bound digest is rejected rather than silently reused. Changing 
 modes, symlinks, dispositions, near-misses, product outcome, contract-evolution
 decision, or capability gates therefore requires a fresh review seal.
 
-Release-candidate readiness has two explicit lifecycle states. When the manifest
+Release-candidate readiness has three explicit lifecycle states. When the manifest
 version still equals the latest immutable published stable release, readiness is
 in `POST_PUBLISH`: historical review evidence is left untouched, governance,
 negative-contract, regression, installer, and supply-chain checks still run, and
 candidate-only whole-delta/artifact qualification is skipped. Once the manifest
-version advances beyond that published release, readiness enters
-`ACTIVE_CANDIDATE`: the full whole-delta release contract is required against
-the latest published stable baseline, including a new versioned review snapshot
-and candidate artifact/provider qualification. The protected tag helper runs
-the final full contract check before the irreversible push. Post-tag automation
-does not re-run the mutable whole-release contract; it consumes the already
-accepted staged manifest and immutable tag identity.
+version advances beyond that published release and its candidate tag is still
+absent, readiness enters `ACTIVE_CANDIDATE`: the full whole-delta release
+contract is required against the latest published stable baseline, including a
+new versioned review snapshot and candidate artifact/provider qualification.
+
+If that same advanced manifest version already has a consumed protected tag
+bound to an older source commit, a different current source cannot truthfully
+remain `ACTIVE_CANDIDATE` under that identity. It enters
+`QUARANTINED_REPAIR` only when the consumed tag source is an ancestor of the
+current source and the complete delta from that tag is confined to the
+machine-checked harness-only repair scope: release workflows, `scripts/release/**`,
+`docs/release/**`, `schemas/release/**`, and release contract tests. Runtime
+source, product metadata/version, general CI, README/public product docs, or any
+other path fail closed. In `QUARANTINED_REPAIR`, stale review sealing and
+candidate artifact/provider lanes for the consumed identity are intentionally
+skipped; the required topology passes only after the quarantine scope gate
+passes. This is not release acceptance and never authorizes moving, reusing or
+publishing the consumed tag. The next new release identity must return to
+`ACTIVE_CANDIDATE` and complete the full release contract.
+
+The protected tag helper runs the final full contract check before any new
+irreversible tag push. Post-tag automation does not re-run the mutable
+whole-release contract; it consumes the already accepted staged manifest and
+immutable tag identity.
 
 ## Contract evolution review
 
