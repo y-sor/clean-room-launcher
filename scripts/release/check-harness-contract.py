@@ -913,7 +913,11 @@ def check(root: Path) -> list[str]:
 
     release = workflow_text[".github/workflows/release.yml"]
     require(errors, 'tags:\n      - "v*"' in release, "RELEASE_TAG_TRIGGER")
-    require(errors, 'release create "$tag" --draft' in release, "RELEASE_DRAFT_ONLY")
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py draft-promote" in release,
+        "RELEASE_DRAFT_ONLY_CANONICAL_PATH",
+    )
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
     require(errors, "publish-preview.json" in release and "release-body" in release, "DRAFT_PREVIEW_RECONCILIATION")
