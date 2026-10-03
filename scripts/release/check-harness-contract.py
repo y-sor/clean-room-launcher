@@ -979,8 +979,22 @@ def check(root: Path) -> list[str]:
     errors.extend(validate_publish_draft_lookup_contract(publish_helper))
     errors.extend(validate_publish_outcome_reconciliation_contract(publish_helper))
     public_verify = read(root, "scripts/release/verify-public-release.sh")
-    for item in ("releases/latest/download", "ISOLATED_PUBLIC_INSTALL", "PUBLIC_INSTALL_ROUTE_VERIFY_PASS"):
+    for item in (
+        "releases/latest/download",
+        "ISOLATED_PUBLIC_INSTALL",
+        "PUBLIC_INSTALL_ROUTE_VERIFY_PASS",
+        "PUBLIC_RELEASE_STATE_PROPAGATION",
+        "ASSET_DOWNLOAD_PROPAGATION",
+        "--retry 5 --retry-all-errors --retry-delay 1",
+    ):
         require(errors, item in public_verify, "PUBLIC_INSTALL_ROUTE_CONTRACT:" + item)
+    public_verify_syntax = subprocess.run(
+        ["bash", "-n", str(root / "scripts/release/verify-public-release.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(errors, public_verify_syntax.returncode == 0, "PUBLIC_INSTALL_ROUTE_BASH_SYNTAX")
 
     resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
     admission = read(root, "scripts/release/pretag-run-admission.py")
