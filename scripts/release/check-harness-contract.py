@@ -124,6 +124,8 @@ def validate_publish_outcome_reconciliation_contract(text: str) -> list[str]:
             ("PUBLISHED_EXACT", "GUARDED_PUBLISH_PUBLISHED_EXACT"),
             ("DRAFT_UNCHANGED", "GUARDED_PUBLISH_NOT_APPLIED_CLASS"),
             ("GUARDED_PUBLISH_OUTCOME_UNKNOWN", "GUARDED_PUBLISH_UNKNOWN_CLASS"),
+            ("for attempt in 1 2 3 4 5", "GUARDED_PUBLISH_BOUNDED_RECONCILIATION"),
+            ("PUBLISHED_PENDING_IMMUTABILITY", "GUARDED_PUBLISH_PENDING_IMMUTABILITY"),
             ('gh api "repos/$repository/releases/latest"', "GUARDED_PUBLISH_LATEST_BY_API"),
         ):
             require(errors, marker in block, code)
@@ -1013,9 +1015,12 @@ set +e
 gh release edit "$tag" --draft=false --latest --verify-tag
 publish_rc=$?
 set -e
-gh api "repos/$repository/releases/$draft_id"
+for attempt in 1 2 3 4 5; do
+  gh api "repos/$repository/releases/$draft_id"
+done
 PUBLISHED_EXACT
 DRAFT_UNCHANGED
+PUBLISHED_PENDING_IMMUTABILITY
 GUARDED_PUBLISH_OUTCOME_UNKNOWN
 gh api "repos/$repository/releases/latest"
 echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"
