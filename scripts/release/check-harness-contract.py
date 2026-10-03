@@ -619,6 +619,59 @@ def check(root: Path) -> list[str]:
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
     errors.extend(validate_supply_chain_verifier_contract(release_candidate))
 
+    public_route_rehearsal_path = root / "scripts/release/rehearse-public-route.sh"
+    require(errors, public_route_rehearsal_path.is_file(), "PUBLIC_ROUTE_REHEARSAL_MISSING")
+    if public_route_rehearsal_path.is_file():
+        public_route_rehearsal = public_route_rehearsal_path.read_text(encoding="utf-8")
+        for marker in (
+            "PUBLIC_ROUTE_REHEARSAL_SELF_TEST_PASS",
+            "PUBLIC_ROUTE_REHEARSAL_PASS",
+            'gh release view --repo "$repository"',
+            'gh release view "$tag" --repo "$repository"',
+            'gh release download "$tag"',
+            "releases/latest/download",
+            "ISOLATED_PUBLIC_INSTALL",
+        ):
+            require(errors, marker in public_route_rehearsal, "PUBLIC_ROUTE_REHEARSAL_CONTRACT:" + marker)
+        syntax = subprocess.run(
+            ["bash", "-n", str(public_route_rehearsal_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(errors, syntax.returncode == 0, "PUBLIC_ROUTE_REHEARSAL_BASH_SYNTAX")
+        rehearsal_self_test = subprocess.run(
+            ["bash", str(public_route_rehearsal_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if rehearsal_self_test.returncode != 0:
+            if rehearsal_self_test.stdout:
+                print(rehearsal_self_test.stdout, end="", file=sys.stderr)
+            if rehearsal_self_test.stderr:
+                print(rehearsal_self_test.stderr, end="", file=sys.stderr)
+        require(
+            errors,
+            rehearsal_self_test.returncode == 0
+            and "PUBLIC_ROUTE_REHEARSAL_SELF_TEST_PASS" in rehearsal_self_test.stdout,
+            "PUBLIC_ROUTE_REHEARSAL_SELF_TEST",
+        )
+    route_step = release_candidate.find("Rehearse current published public route before expensive lanes")
+    provider_step = release_candidate.find("Provision pinned real provider canaries")
+    require(errors, route_step >= 0, "PUBLIC_ROUTE_REHEARSAL_WORKFLOW_STEP")
+    require(
+        errors,
+        route_step >= 0 and provider_step >= 0 and route_step < provider_step,
+        "PUBLIC_ROUTE_REHEARSAL_BEFORE_PROVIDER",
+    )
+    require(
+        errors,
+        "bash scripts/release/rehearse-public-route.sh --self-test" in release_candidate
+        and "bash scripts/release/rehearse-public-route.sh" in release_candidate,
+        "PUBLIC_ROUTE_REHEARSAL_WORKFLOW_INVOCATION",
+    )
+
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
     claude_tty_supervisor_path = root / "scripts/release/claude-tty-supervisor.py"
@@ -860,6 +913,13 @@ def check(root: Path) -> list[str]:
     draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
     publish_helper = read(root, "scripts/release/publish-release.sh")
+    publish_syntax = subprocess.run(
+        ["bash", "-n", str(root / "scripts/release/publish-release.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(errors, publish_syntax.returncode == 0, "GUARDED_PUBLISH_BASH_SYNTAX")
     for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_EXACT", "GUARDED_PUBLISH_OUTCOME_UNKNOWN", "GUARDED_PUBLISH_PASS"):
         require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
     errors.extend(validate_publish_draft_lookup_contract(publish_helper))
