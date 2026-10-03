@@ -115,13 +115,14 @@ gh release edit "$tag" --draft=false --latest --verify-tag \
 publish_rc=$?
 set -e
 
-if ! gh api "repos/$repository/releases/$draft_id" >"$tmp/release-after-action.json"; then
-  echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:RELEASE_QUERY_AFTER_ACTION tag=$tag mutation_rc=$publish_rc" >&2
-  exit 82
-fi
-
-set +e
-action_state=$(python3 - "$tmp/release-after-action.json" "$tmp/stage/publish-preview.json" "$tmp/draft-action.json" <<'PY'
+action_state=""
+action_state_rc=0
+release_query_seen=false
+for attempt in 1 2 3 4 5; do
+  if gh api "repos/$repository/releases/$draft_id" >"$tmp/release-after-action.json" 2>/dev/null; then
+    release_query_seen=true
+    set +e
+    action_state=$(python3 - "$tmp/release-after-action.json" "$tmp/stage/publish-preview.json" "$tmp/draft-action.json" <<'PY'
 import hashlib, json, sys
 after = json.load(open(sys.argv[1], encoding="utf-8"))
 preview = json.load(open(sys.argv[2], encoding="utf-8"))
@@ -169,20 +170,39 @@ if after.get("tag_name") != preview["tag_name"] or after.get("name") != preview[
 if after.get("draft") is not False or after.get("prerelease") is not preview["prerelease"]:
     print("PUBLISHED_STATE_MISMATCH")
     raise SystemExit(6)
-if not after.get("published_at") or after.get("immutable") is not True:
-    print("PUBLISHED_IMMUTABILITY_MISMATCH")
-    raise SystemExit(7)
 if (after.get("body") or "").rstrip() != preview["body"].rstrip():
     print("PUBLISHED_BODY_MISMATCH")
     raise SystemExit(8)
 if asset_set(after) != asset_set(before):
     print("PUBLISHED_ASSET_DRIFT")
     raise SystemExit(9)
+if not after.get("published_at") or after.get("immutable") is not True:
+    print("PUBLISHED_PENDING_IMMUTABILITY")
+    raise SystemExit(7)
 print("PUBLISHED_EXACT")
 PY
 )
-action_state_rc=$?
-set -e
+    action_state_rc=$?
+    set -e
+    case "$action_state_rc:$action_state" in
+      0:PUBLISHED_EXACT)
+        break
+        ;;
+      3:DRAFT_UNCHANGED|7:PUBLISHED_PENDING_IMMUTABILITY)
+        ;;
+      *)
+        echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag=$tag mutation_rc=$publish_rc state=${action_state:-none}" >&2
+        exit 83
+        ;;
+    esac
+  fi
+  [[ "$attempt" -lt 5 ]] && sleep 1
+done
+
+if [[ "$release_query_seen" != true ]]; then
+  echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:RELEASE_QUERY_AFTER_ACTION tag=$tag mutation_rc=$publish_rc" >&2
+  exit 82
+fi
 
 case "$action_state_rc:$action_state" in
   0:PUBLISHED_EXACT)
@@ -190,6 +210,10 @@ case "$action_state_rc:$action_state" in
   3:DRAFT_UNCHANGED)
     echo "GUARDED_PUBLISH_NOT_APPLIED tag=$tag mutation_rc=$publish_rc" >&2
     exit 78
+    ;;
+  7:PUBLISHED_PENDING_IMMUTABILITY)
+    echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:PUBLISHED_PENDING_IMMUTABILITY tag=$tag mutation_rc=$publish_rc" >&2
+    exit 83
     ;;
   *)
     echo "GUARDED_PUBLISH_OUTCOME_UNKNOWN:STATE_RECONCILIATION tag=$tag mutation_rc=$publish_rc state=${action_state:-none}" >&2
