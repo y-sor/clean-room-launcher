@@ -76,6 +76,37 @@ def require(errors: list[str], condition: bool, code: str) -> None:
         errors.append(code)
 
 
+def validate_publish_draft_lookup_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    start = text.find("capture_and_validate_draft() {")
+    end = text.find("\ngit fetch --quiet origin main", start if start >= 0 else 0)
+    require(errors, start >= 0, "GUARDED_PUBLISH_DRAFT_CAPTURE_MISSING")
+    require(errors, end > start >= 0, "GUARDED_PUBLISH_DRAFT_CAPTURE_BOUNDARY")
+    if start >= 0 and end > start:
+        block = text[start:end]
+        require(
+            errors,
+            'draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)' in block,
+            "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG",
+        )
+        require(
+            errors,
+            '[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"' in block,
+            "GUARDED_PUBLISH_DRAFT_ID_VALIDATION",
+        )
+        require(
+            errors,
+            'gh api "repos/$repository/releases/$draft_id"' in block,
+            "GUARDED_PUBLISH_DRAFT_FETCH_BY_ID",
+        )
+        require(
+            errors,
+            'releases/tags/$tag' not in block,
+            "GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_FORBIDDEN",
+        )
+    return errors
+
+
 
 
 def validate_supply_chain_verifier_contract(text: str) -> list[str]:
@@ -794,6 +825,7 @@ def check(root: Path) -> list[str]:
     publish_helper = read(root, "scripts/release/publish-release.sh")
     for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_RECONCILIATION", "GUARDED_PUBLISH_PASS"):
         require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
+    errors.extend(validate_publish_draft_lookup_contract(publish_helper))
     public_verify = read(root, "scripts/release/verify-public-release.sh")
     for item in ("releases/latest/download", "ISOLATED_PUBLIC_INSTALL", "PUBLIC_INSTALL_ROUTE_VERIFY_PASS"):
         require(errors, item in public_verify, "PUBLIC_INSTALL_ROUTE_CONTRACT:" + item)
@@ -819,6 +851,32 @@ def check(root: Path) -> list[str]:
 
 
 def self_test() -> None:
+    publish_fixture = """
+capture_and_validate_draft() {
+  local output=$1
+  local draft_id
+  draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
+  [[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
+  gh api "repos/$repository/releases/$draft_id" >"$output" || fail "DRAFT_QUERY"
+}
+git fetch --quiet origin main
+"""
+    if validate_publish_draft_lookup_contract(publish_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_LOOKUP_CLEAN")
+    bad_draft_lookup = publish_fixture.replace(
+        'gh api "repos/$repository/releases/$draft_id"',
+        'gh api "repos/$repository/releases/tags/$tag"',
+    )
+    bad_errors = validate_publish_draft_lookup_contract(bad_draft_lookup)
+    if "GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_FORBIDDEN" not in bad_errors:
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_ACCEPTED")
+    missing_draft_view = publish_fixture.replace(
+        'draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)',
+        'draft_id=123',
+    )
+    if "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG" not in validate_publish_draft_lookup_contract(missing_draft_view):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:GUARDED_PUBLISH_DRAFT_VIEW_NOT_REQUIRED")
+
     sha_a = "a" * 40
     sha_b = "b" * 40
     clean = [("init", sha_a, "4.38.0"), ("analyze", sha_a, "4.38.0"), ("upload-sarif", sha_a, "4.38.0")]
