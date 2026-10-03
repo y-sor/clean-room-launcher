@@ -913,6 +913,52 @@ def check(root: Path) -> list[str]:
 
     release = workflow_text[".github/workflows/release.yml"]
     require(errors, 'tags:\n      - "v*"' in release, "RELEASE_TAG_TRIGGER")
+    integration_rehearsal_path = root / "scripts/release/rehearse-external-release-lifecycle.py"
+    require(
+        errors,
+        integration_rehearsal_path.is_file(),
+        "RELEASE_INTEGRATION_REHEARSAL_MISSING",
+    )
+    if integration_rehearsal_path.is_file():
+        integration_rehearsal = integration_rehearsal_path.read_text(encoding="utf-8")
+        for marker in (
+            "CLROOM_OWNER_LAB_REHEARSAL_APPROVED",
+            "PRODUCTION_REPOSITORY_FORBIDDEN",
+            "clroom.integration-fidelity-matrix.v1",
+            "release-external-action.py",
+            "tag-push",
+            "draft-promote",
+            "publish",
+            "PRESERVED_PENDING_OWNER_GATE",
+            "RELEASE_INTEGRATION_REHEARSAL_PASS",
+        ):
+            require(
+                errors,
+                marker in integration_rehearsal,
+                "RELEASE_INTEGRATION_REHEARSAL_CONTRACT:" + marker,
+            )
+        rehearsal_self_test = subprocess.run(
+            [sys.executable, str(integration_rehearsal_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            errors,
+            rehearsal_self_test.returncode == 0
+            and "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST_PASS"
+            in rehearsal_self_test.stdout,
+            "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST",
+        )
+
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py publish"
+        in draft_verifier
+        and '|| fail "PUBLISH_ACTION_REHEARSAL"' in draft_verifier,
+        "DRAFT_VERIFIER_PUBLISH_ACTION_REHEARSAL",
+    )
+
     require(
         errors,
         "python3 scripts/release/release-external-action.py draft-promote" in release,
