@@ -866,6 +866,14 @@ def check(root: Path) -> list[str]:
     docs = read(root, "docs/release/RELEASE_CONTRACT.md")
     for marker in AUTOMATION_MARKERS:
         require(errors, marker in docs, "AUTOMATION_MARKER_MISSING:" + marker)
+    require(errors, "FIRST_EXECUTION_MATRIX" in docs, "RELEASE_FIRST_EXECUTION_MATRIX_MISSING")
+    for marker in (
+        "same publish mutation semantics on disposable non-production release state",
+        "current-public-route mechanics",
+        "ambiguous-outcome reconciliation",
+        "exact newly published latest/download bytes/routing",
+    ):
+        require(errors, marker in docs, "RELEASE_FIRST_EXECUTION_MATRIX_CONTRACT:" + marker)
 
     promotion = workflow_text[".github/workflows/release-promotion-rehearsal.yml"]
     require(errors, "workflow_call:" in promotion, "PROMOTION_CHAIN_REUSABLE_TRIGGER")
