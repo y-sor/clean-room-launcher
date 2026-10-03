@@ -907,9 +907,53 @@ def check(root: Path) -> list[str]:
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
     require(errors, "publish-preview.json" in release and "release-body" in release, "DRAFT_PREVIEW_RECONCILIATION")
+    publish_toolchain_path = root / "scripts/release/check-publish-toolchain.sh"
+    require(errors, publish_toolchain_path.is_file(), "PUBLISH_TOOLCHAIN_CHECK_MISSING")
+    if publish_toolchain_path.is_file():
+        publish_toolchain = publish_toolchain_path.read_text(encoding="utf-8")
+        for marker in (
+            "PUBLISH_TOOLCHAIN_SELF_TEST_PASS",
+            "PUBLISH_TOOLCHAIN_CAPABILITY_PASS",
+            "RELEASE_EDIT_CAPABILITY",
+            "RELEASE_VIEW_JSON_CAPABILITY",
+            "LATEST_API_CAPABILITY",
+            "IMMUTABLE_POLICY_API_CAPABILITY",
+        ):
+            require(errors, marker in publish_toolchain, "PUBLISH_TOOLCHAIN_CONTRACT:" + marker)
+        syntax = subprocess.run(
+            ["bash", "-n", str(publish_toolchain_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(errors, syntax.returncode == 0, "PUBLISH_TOOLCHAIN_BASH_SYNTAX")
+        toolchain_self_test = subprocess.run(
+            ["bash", str(publish_toolchain_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if toolchain_self_test.returncode != 0:
+            if toolchain_self_test.stdout:
+                print(toolchain_self_test.stdout, end="", file=sys.stderr)
+            if toolchain_self_test.stderr:
+                print(toolchain_self_test.stderr, end="", file=sys.stderr)
+        require(
+            errors,
+            toolchain_self_test.returncode == 0
+            and "PUBLISH_TOOLCHAIN_SELF_TEST_PASS" in toolchain_self_test.stdout,
+            "PUBLISH_TOOLCHAIN_SELF_TEST",
+        )
+
     tag_helper = read(root, "scripts/release/push-release-tag.sh")
     require(errors, "PUBLISHABLE_CONTENT_JOB_PASS" in tag_helper, "TAG_HELPER_PUBLISHABLE_CONTENT_JOB")
     require(errors, "PUBLISH_PREVIEW_BINDING_PASS" in tag_helper, "TAG_HELPER_PUBLISH_PREVIEW_BINDING")
+    require(
+        errors,
+        "bash scripts/release/check-publish-toolchain.sh --self-test" in tag_helper
+        and "bash scripts/release/check-publish-toolchain.sh" in tag_helper,
+        "TAG_HELPER_PUBLISH_TOOLCHAIN_GATE",
+    )
     draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
     publish_helper = read(root, "scripts/release/publish-release.sh")
