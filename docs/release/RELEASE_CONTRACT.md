@@ -245,9 +245,13 @@ actual destination repository ID from GitHub, and fail-closes on mismatch.
 The rehearsal binds its executable helper and rehearsal bytes to the exact
 reviewed public candidate HEAD by fetching those two files at that commit and
 comparing SHA-256 before the first mutation; the resulting private evidence
-records the candidate HEAD and both executable digests. No private Lab identity
-is hardcoded into the public repository. It deliberately preserves the resulting
-remote canary until the separately authorized cleanup boundary.
+records the candidate HEAD and both executable digests. The Lab lifecycle also
+forces a simulated local error after each successful tag push, Draft create/edit,
+Draft upload and publish transition, so the canonical helper must prove the
+authoritative remote outcome rather than succeeding only on a clean local return.
+No private Lab identity is hardcoded into the public repository. It deliberately
+preserves the resulting remote canary until the separately authorized cleanup
+boundary.
 
 External platform semantics that cannot be proven by fixture must be rehearsed
 against representative non-production state before the production boundary.
