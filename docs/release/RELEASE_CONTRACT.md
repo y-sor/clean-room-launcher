@@ -160,6 +160,33 @@ accepted bytes. It does not justify moving the tag or consuming another version.
 Any deterministic post-tag blocker that was technically reproducible pre-tag is
 a release-harness escape.
 
+## Release first-execution closure
+
+`FIRST_EXECUTION_MATRIX` is the durable CLROOM rule for release boundaries.
+A protected production release identity is never an integration-test trigger.
+
+| Boundary | Must already be proven before boundary | Allowed to execute first after boundary |
+| --- | --- | --- |
+| merge | changed product/runtime/provider/UI behavior on exact PR candidate; release harness/negative contracts | accepted-main identity-dependent staging only |
+| protected tag | accepted-main shipping bytes; public preview semantics; tag helper/tool capabilities; current-public-route mechanics; tag-promotion action path; all safely reproducible Draft/publish helper reads/branches; representative external release-state semantics | exact tag identity; tag-bound provenance/SBOM identity; promotion of already accepted bytes into guarded Draft |
+| publish | exact Draft/title/body/assets; tag-bound attestations; local publish tool capabilities; Draft lookup/fingerprint; same publish mutation semantics on disposable non-production release state; ambiguous-outcome reconciliation | the one exact production Draft→published mutation and exact new release/latest identity |
+| public install verification | installer semantics and current published latest/download route | exact newly published latest/download bytes/routing and isolated install from those public bytes |
+
+A branch, CLI/API field/flag, permission assumption, parser or recovery path that
+can be safely executed earlier is not post-boundary-only. Static source markers
+or a sibling verifier do not establish execution evidence for the canonical
+action path.
+
+External platform semantics that cannot be proven by fixture must be rehearsed
+against representative non-production state before the production boundary.
+The rehearsal destination must be task-owned/disposable and must not become
+CLROOM product truth.
+
+For non-idempotent boundary actions, a local timeout/non-zero/transport loss is
+not the outcome. The canonical helper must query authoritative destination state
+and classify exact success, exact not-applied state, mismatch or
+`OUTCOME UNKNOWN` before any retry.
+
 ## Publishable surface closure
 
 Before a protected tag, accepted-main staging materializes structured
