@@ -186,9 +186,15 @@ Publication uses `scripts/release/publish-release.sh` only after a fresh Owner
 publish gate. That helper performs final Draft verification, refreshes the
 action-time Draft fingerprint immediately before the one publish mutation,
 writes the accepted title/body during that transition, and reconciles the
-immutable published object. GitHub REST does not support conditional unsafe
-PATCH for this endpoint, so the helper contains the unsupported CAS window in
-one process and treats any post-action content/asset drift as a release incident.
+immutable published object. A Draft must be resolved through the same
+draft-capable `gh release view` surface used by the canonical Draft verifier,
+then fetched by its numeric release id for the REST fingerprint. The
+`releases/tags/<tag>` REST lookup is forbidden for the pre-publish Draft
+fingerprint because it can return 404 while an authenticated Draft with that tag
+exists. The harness contract carries a negative regression for that lookup
+split. GitHub REST does not support conditional unsafe PATCH for this endpoint,
+so the helper contains the unsupported CAS window in one process and treats any
+post-action content/asset drift as a release incident.
 
 `PUBLISHED` is not end-to-end completion.
 `scripts/release/verify-public-release.sh` separately proves that the actual
