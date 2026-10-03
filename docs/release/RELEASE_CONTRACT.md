@@ -189,6 +189,31 @@ Status vocabulary:
 | public asset/download/install | current stable public route, then exact newly published release | `rehearse-public-route.sh` pre-publish; `verify-public-release.sh` post-publish | latest/download propagation, byte drift, attestation failure, isolated install failure | current stable route rehearsal before expensive provider lanes | verifier mechanics yes | current immutable stable public release | exact new public URLs/bytes and isolated install from those bytes | bounded release/download retries only after published identity is known | exact published tag + staged manifest; mechanics `MOVED_LEFT`, new route `POST_BOUNDARY_ONLY` |
 | resource lifecycle / cleanup | task-owned Lab canary tag/Release and task-owned local resources | bounded cleanup under project authority | leaked canary state, accidental deletion of non-task resources | ownership inventory is created before Lab mutation; destructive cleanup only after separate Owner gate | cleanup helper/process must use recorded identities | authoritative Lab state readback before and after cleanup | none | deletion/non-idempotent cleanup requires destination reconciliation; unknown preserves state | canary repository id + tag + release id; `LAB_REQUIRED` lifecycle evidence |
 
+### POST_BOUNDARY_ONLY_WHITELIST
+
+Only the following first observations/effects are allowed to remain after their
+consequential boundary:
+
+- after merge: the exact accepted-main commit identity and source-commit-bound
+  archive identity;
+- after protected tag: the exact remote protected tag object, tag-trigger event
+  context, and attestations whose subject source ref is that exact tag;
+- after Draft promotion: the exact production Draft numeric id and tag-bound
+  attestation assets created for that protected tag;
+- after publish: the one exact production Draft→published effect, the newly
+  published immutable Release identity, and whether that exact release becomes
+  the repository latest object;
+- after public visibility: the exact new `releases/latest/download` routes,
+  newly published public bytes, isolated install from those public bytes, and
+  rendered public Release visibility.
+
+No CLI flag, JSON field, API endpoint, Draft lookup/fingerprint parser, tag-push
+outcome classification, Draft create/edit/upload/download semantic, publish
+reconciliation branch, current-stable public-route mechanic, or release-identity
+rendering rule is permitted to appear here. Those are reproducible earlier and
+must be `MOVED_LEFT` or proven through the approved Integration Lab. Any new
+late path not listed above is `SYSTEM_GAP` and blocks the next release boundary.
+
 A branch, CLI/API field/flag, permission assumption, parser or recovery path that
 can be safely executed earlier is not post-boundary-only. Static source markers,
 a sibling verifier, or a separately rewritten mock do not establish execution
