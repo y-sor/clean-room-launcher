@@ -173,7 +173,21 @@ The Release-candidate workflow has a distinct
 pre-tag attestation path and promotion rehearsal transitively require it.
 Deleting, renaming or disconnecting that job is a harness-contract failure.
 The protected-tag helper independently requires the exact main-push job to have
-completed successfully and requires the staged publish-preview binding.
+completed successfully and requires the staged publish-preview binding. Before
+that helper may create a tag on the Owner machine, it also runs
+`check-publish-toolchain.sh`: the exact local `gh` action tool must expose the
+release-edit/view/download and attestation capabilities used later by guarded
+publish/public verification, and authenticated current-stable release/API reads
+must succeed. Tool presence alone is not capability evidence.
+
+For every active candidate, macOS release readiness also executes
+`rehearse-public-route.sh` before provider provisioning. That rehearsal uses
+the current immutable published stable release to prove the non-candidate-
+specific mechanics that post-public verification will later reuse: release
+view/JSON, release asset download, public `releases/latest/download` installer
+and checksum routing, and an isolated installer/first-use smoke. The exact new
+release identity and new public bytes remain genuinely post-publication-only;
+the tool/route mechanics do not.
 
 Post-tag automation remains promotion-only. It may bind tag-dependent
 attestations and promote the accepted bytes, but it does not run
@@ -193,8 +207,14 @@ then fetched by its numeric release id for the REST fingerprint. The
 fingerprint because it can return 404 while an authenticated Draft with that tag
 exists. The harness contract carries a negative regression for that lookup
 split. GitHub REST does not support conditional unsafe PATCH for this endpoint,
-so the helper contains the unsupported CAS window in one process and treats any
-post-action content/asset drift as a release incident.
+so the helper contains the unsupported CAS window in one process. The publish
+mutation's local exit status is never treated as destination truth: after the
+single mutation attempt the helper performs bounded authoritative reconciliation
+by numeric release id. Exact published state is accepted even if the local
+command reported failure; an exact unchanged Draft is classified as not
+applied; partial/mismatched/unreadable state is `OUTCOME UNKNOWN` and is never
+blind-retried. Latest-release reconciliation is separately bounded because
+routing visibility can lag the publish transition.
 
 `PUBLISHED` is not end-to-end completion.
 `scripts/release/verify-public-release.sh` separately proves that the actual
