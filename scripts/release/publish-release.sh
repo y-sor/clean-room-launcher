@@ -45,7 +45,10 @@ python3 scripts/release/verify-pretag-stage.py \
 
 capture_and_validate_draft() {
   local output=$1
-  gh api "repos/$repository/releases/tags/$tag" >"$output" || fail "DRAFT_QUERY"
+  local draft_id
+  draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId) || fail "DRAFT_QUERY"
+  [[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"
+  gh api "repos/$repository/releases/$draft_id" >"$output" || fail "DRAFT_QUERY"
   python3 - "$output" "$tmp/stage/publish-preview.json" "$tmp/stage/pretag-manifest.json" <<'PY'
 import hashlib, json, sys
 release = json.load(open(sys.argv[1], encoding="utf-8"))
