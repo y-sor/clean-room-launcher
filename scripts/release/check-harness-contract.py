@@ -114,7 +114,9 @@ def validate_publish_outcome_reconciliation_contract(text: str) -> list[str]:
     require(errors, mutation >= 0, "GUARDED_PUBLISH_MUTATION_MISSING")
     require(errors, final_pass > mutation >= 0, "GUARDED_PUBLISH_RECONCILIATION_BOUNDARY")
     if mutation >= 0 and final_pass > mutation:
-        block = text[mutation:final_pass]
+        action_start = text.rfind("set +e", 0, mutation + 1)
+        require(errors, action_start >= 0, "GUARDED_PUBLISH_MUTATION_RC_CAPTURE")
+        block = text[action_start if action_start >= 0 else mutation:final_pass]
         for marker, code in (
             ("set +e", "GUARDED_PUBLISH_MUTATION_RC_CAPTURE"),
             ("publish_rc=$?", "GUARDED_PUBLISH_MUTATION_RC"),
