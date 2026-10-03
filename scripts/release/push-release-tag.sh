@@ -30,6 +30,15 @@ gh auth status >/dev/null 2>&1 || {
   exit 74
 }
 
+bash scripts/release/check-publish-toolchain.sh --self-test || {
+  echo "TAG_GATE_BLOCKED:PUBLISH_TOOLCHAIN_SELF_TEST" >&2
+  exit 74
+}
+bash scripts/release/check-publish-toolchain.sh || {
+  echo "TAG_GATE_BLOCKED:PUBLISH_TOOLCHAIN_CAPABILITY" >&2
+  exit 74
+}
+
 git diff --quiet
 git diff --cached --quiet
 git fetch --quiet origin main
