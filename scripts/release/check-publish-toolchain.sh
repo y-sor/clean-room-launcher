@@ -8,6 +8,16 @@ fail() {
 
 repository="y-sor/clean-room-launcher"
 
+has_help_markers() {
+  local body=$1
+  shift
+  local marker
+  for marker in "$@"; do
+    grep -Fq -- "$marker" <<<"$body" || return 1
+  done
+  return 0
+}
+
 require_help_markers() {
   local label=$1
   local body=$2
@@ -27,7 +37,7 @@ self_test() {
   require_help_markers "SELF_VIEW" "$view_help" --json
   require_help_markers "SELF_DOWNLOAD" "$download_help" --dir --pattern
   require_help_markers "SELF_ATTEST" "$attest_help" --bundle --source-digest --source-ref --signer-workflow --deny-self-hosted-runners --predicate-type
-  if require_help_markers "SELF_NEGATIVE" "$edit_help" --missing-flag >/dev/null 2>&1; then
+  if has_help_markers "$edit_help" --missing-flag; then
     fail "SELF_TEST_NEGATIVE_ACCEPTED"
   fi
   echo "PUBLISH_TOOLCHAIN_SELF_TEST_PASS"
