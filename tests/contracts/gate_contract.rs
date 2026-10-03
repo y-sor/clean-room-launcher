@@ -443,14 +443,18 @@ fn tag_push_requires_complete_stage_then_refreshes_only_mutable_state() {
         .find("# Final mutable action-time guard.")
         .expect("tag helper must have a final mutable-state guard");
     let push = source
-        .find("git push origin \"refs/tags/$tag\"")
-        .expect("tag helper must perform a protected tag push");
+        .find("release-external-action.py tag-push")
+        .expect("tag helper must call the canonical protected tag-push action");
     let reconcile = source
-        .find("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED")
-        .expect("tag helper must reconcile push outcome");
+        .find("tag_push_rc=$?")
+        .expect("tag helper must consume the canonical tag-push reconciliation result");
 
     assert!(stage < claude && claude < final_remote && final_remote < push && push < reconcile);
-    assert_eq!(source.matches("git push origin \"refs/tags/$tag\"").count(), 1);
+    assert_eq!(source.matches("release-external-action.py tag-push").count(), 1);
+    assert!(
+        !source.contains("git push origin \"refs/tags/$tag\""),
+        "tag wrapper must not duplicate the canonical external tag-push mutation"
+    );
 
     for forbidden in [
         "check-provider-pins.sh",

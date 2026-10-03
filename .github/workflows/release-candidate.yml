@@ -23,6 +23,7 @@ jobs:
       version: ${{ steps.lifecycle.outputs.version }}
       lifecycle: ${{ steps.lifecycle.outputs.lifecycle }}
       baseline: ${{ steps.lifecycle.outputs.baseline }}
+      tag_source: ${{ steps.lifecycle.outputs.tag_source }}
     steps:
       - name: Check out exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,11 +38,21 @@ jobs:
           set -euo pipefail
           python3 scripts/release/check-harness-contract.py --self-test
           python3 scripts/release/check-harness-contract.py
+          python3 scripts/release/resolve-release-lifecycle.py --self-test
+          python3 scripts/release/check-quarantine-repair-scope.py --self-test
           python3 scripts/release/stage-binding.py --self-test
           python3 scripts/release/pretag-run-admission.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py
           python3 scripts/release/check-release-contract.py --self-test
+      - name: Probe post-tag GitHub action capabilities on representative runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/check-publish-toolchain.sh --self-test
+          bash scripts/release/check-publish-toolchain.sh --capabilities-only
       - name: Resolve published release lifecycle
         id: lifecycle
         env:
@@ -61,9 +72,21 @@ jobs:
           test "$(jq -r .draft <<<"$release_json")" = false
           test "$(jq -r .prerelease <<<"$release_json")" = false
           test "$(jq -r .immutable <<<"$release_json")" = true
-          lifecycle="$(python3 scripts/release/resolve-release-lifecycle.py \
-            --candidate-version "$candidate_version" \
-            --published-tag "$latest_tag")"
+          source_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          candidate_tag="v$candidate_version"
+          candidate_tag_source=""
+          if git rev-parse --verify "refs/tags/$candidate_tag^{commit}" >/dev/null 2>&1; then
+            candidate_tag_source="$(git rev-parse "refs/tags/$candidate_tag^{commit}")"
+          fi
+          lifecycle_args=(
+            --candidate-version "$candidate_version"
+            --published-tag "$latest_tag"
+            --candidate-source "$source_sha"
+          )
+          if [[ -n "$candidate_tag_source" ]]; then
+            lifecycle_args+=(--candidate-tag-source "$candidate_tag_source")
+          fi
+          lifecycle="$(python3 scripts/release/resolve-release-lifecycle.py "${lifecycle_args[@]}")"
           if ! git rev-parse --verify "refs/tags/$latest_tag^{commit}" >/dev/null 2>&1; then
             git fetch --no-tags origin "refs/tags/$latest_tag:refs/tags/$latest_tag"
           fi
@@ -71,7 +94,18 @@ jobs:
           echo "version=$candidate_version" >> "$GITHUB_OUTPUT"
           echo "lifecycle=$lifecycle" >> "$GITHUB_OUTPUT"
           echo "baseline=$latest_tag" >> "$GITHUB_OUTPUT"
-          printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s\n' "$lifecycle" "$candidate_version" "$latest_tag"
+          echo "tag_source=$candidate_tag_source" >> "$GITHUB_OUTPUT"
+          printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s tag_source=%s\n' \
+            "$lifecycle" "$candidate_version" "$latest_tag" "$candidate_tag_source"
+      - name: Validate quarantined release-harness repair scope
+        if: steps.lifecycle.outputs.lifecycle == 'QUARANTINED_REPAIR'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${{ steps.lifecycle.outputs.tag_source }}"
+          python3 scripts/release/check-quarantine-repair-scope.py \
+            --base "${{ steps.lifecycle.outputs.tag_source }}" \
+            --head "${{ github.event.pull_request.head.sha || github.sha }}"
       - name: Validate active candidate seal before expensive lanes
         if: steps.lifecycle.outputs.lifecycle == 'ACTIVE_CANDIDATE'
         env:
@@ -80,6 +114,7 @@ jobs:
   release-readiness:
     name: CLROOM release readiness
     needs: release-eligibility
+    if: needs.release-eligibility.outputs.lifecycle != 'QUARANTINED_REPAIR'
     runs-on: macos-14
     timeout-minutes: 45
     env:
@@ -116,6 +151,15 @@ jobs:
             exit 1
           fi
           grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_ACTION_PIN' "$output"
+      - name: Rehearse current published public route before expensive lanes
+        if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/release/rehearse-public-route.sh --self-test
+          bash scripts/release/rehearse-public-route.sh
       - name: Provision pinned Python supply-chain verifier
         if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
         shell: bash
@@ -455,27 +499,37 @@ jobs:
         run: |
           set -euo pipefail
           test "$ELIGIBILITY" = success
-          test "$READINESS" = success
           case "$LIFECYCLE:$EVENT" in
             ACTIVE_CANDIDATE:pull_request)
+              test "$READINESS" = success
               test "$STAGE" = success
               test "$PUBLISHABLE" = success
               test "$ATTEST" = skipped
               test "$PROMOTION" = skipped
               ;;
             ACTIVE_CANDIDATE:push)
+              test "$READINESS" = success
               test "$STAGE" = success
               test "$PUBLISHABLE" = success
               test "$ATTEST" = success
               test "$PROMOTION" = success
               ;;
             ACTIVE_CANDIDATE:workflow_dispatch)
+              test "$READINESS" = success
+              test "$STAGE" = skipped
+              test "$PUBLISHABLE" = skipped
+              test "$ATTEST" = skipped
+              test "$PROMOTION" = skipped
+              ;;
+            QUARANTINED_REPAIR:*)
+              test "$READINESS" = skipped
               test "$STAGE" = skipped
               test "$PUBLISHABLE" = skipped
               test "$ATTEST" = skipped
               test "$PROMOTION" = skipped
               ;;
             POST_PUBLISH:*)
+              test "$READINESS" = success
               test "$STAGE" = skipped
               test "$PUBLISHABLE" = skipped
               test "$ATTEST" = skipped
