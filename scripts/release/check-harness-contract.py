@@ -915,6 +915,7 @@ def check(root: Path) -> list[str]:
     require(errors, "contents: write" not in promotion, "PROMOTION_CHAIN_WRITE_PERMISSION")
 
     release = workflow_text[".github/workflows/release.yml"]
+    draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, 'tags:\n      - "v*"' in release, "RELEASE_TAG_TRIGGER")
     integration_rehearsal_path = root / "scripts/release/rehearse-external-release-lifecycle.py"
     require(
@@ -1017,7 +1018,6 @@ def check(root: Path) -> list[str]:
         and "bash scripts/release/check-publish-toolchain.sh" in tag_helper,
         "TAG_HELPER_PUBLISH_TOOLCHAIN_GATE",
     )
-    draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
 
     external_action_path = root / "scripts/release/release-external-action.py"
