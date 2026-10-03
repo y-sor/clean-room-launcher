@@ -870,10 +870,13 @@ def check(root: Path) -> list[str]:
         require(errors, marker in docs, "AUTOMATION_MARKER_MISSING:" + marker)
     require(errors, "FIRST_EXECUTION_MATRIX" in docs, "RELEASE_FIRST_EXECUTION_MATRIX_MISSING")
     for marker in (
-        "same publish mutation semantics on disposable non-production release state",
-        "current-public-route mechanics",
-        "ambiguous-outcome reconciliation",
-        "exact newly published latest/download bytes/routing",
+        "Boundary / First-Execution Map",
+        "release-external-action.py",
+        "rehearse-external-release-lifecycle.py",
+        "LAB_REQUIRED",
+        "rendered GitHub Releases identity",
+        "resource lifecycle / cleanup",
+        "PRESERVED_PENDING_OWNER_GATE",
     ):
         require(errors, marker in docs, "RELEASE_FIRST_EXECUTION_MATRIX_CONTRACT:" + marker)
 
