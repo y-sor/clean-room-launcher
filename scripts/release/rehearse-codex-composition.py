@@ -691,6 +691,20 @@ def self_test() -> None:
                 fail(f"root MCP fixture self-test: {marker}")
         if not plugin_server.is_file() or not root_server.is_file():
             fail("composition server fixture self-test")
+
+        cleanup_root = root / "readonly-cleanup"
+        locked = cleanup_root / "plugins" / "cache" / "fixture"
+        locked.mkdir(parents=True)
+        locked_file = locked / "projected.txt"
+        locked_file.write_text("projected\n", encoding="utf-8")
+        locked_file.chmod(0o444)
+        locked.chmod(0o555)
+        (cleanup_root / "plugins" / "cache").chmod(0o555)
+        (cleanup_root / "plugins").chmod(0o555)
+        cleanup_root.chmod(0o555)
+        remove_synthetic_home(cleanup_root)
+        if cleanup_root.exists() or cleanup_root.is_symlink():
+            fail("read-only synthetic cleanup self-test")
     print("CODEX_COMPOSITION_REHEARSAL_SELF_TEST_PASS")
 
 
