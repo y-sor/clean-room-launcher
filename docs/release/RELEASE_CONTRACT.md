@@ -60,20 +60,24 @@ absent, readiness enters `ACTIVE_CANDIDATE`: the full whole-delta release
 contract is required against the latest published stable baseline, including a
 new versioned review snapshot and candidate artifact/provider qualification.
 
-If that same advanced manifest version already has a consumed protected tag
-bound to an older source commit, a different current source cannot truthfully
-remain `ACTIVE_CANDIDATE` under that identity. It enters
-`QUARANTINED_REPAIR` only when the consumed tag source is an ancestor of the
-current source and the complete delta from that tag is confined to the
-machine-checked harness-only repair scope: release workflows, `scripts/release/**`,
-`docs/release/**`, `schemas/release/**`, and release contract tests. Runtime
-source, product metadata/version, general CI, README/public product docs, or any
-other path fail closed. In `QUARANTINED_REPAIR`, stale review sealing and
-candidate artifact/provider lanes for the consumed identity are intentionally
-skipped; the required topology passes only after the quarantine scope gate
-passes. This is not release acceptance and never authorizes moving, reusing or
-publishing the consumed tag. The next new release identity must return to
-`ACTIVE_CANDIDATE` and complete the full release contract.
+If that advanced manifest version already has a consumed protected tag, the
+manifest identity is no longer eligible for another release regardless of
+whether the current source still equals the tag source. Readiness enters
+`RELEASE_QUARANTINED`. This state is a release-boundary circuit breaker, not a
+repository-wide development freeze: ordinary source, docs, CI and maintenance
+changes continue through the normal protected PR gates, while stale review
+sealing and candidate artifact/provider lanes for the consumed identity remain
+disabled. The consumed tag may not be moved, deleted, reused or published as a
+repair path. Canonical tag creation still fails closed because a new tag must be
+absent immediately before the one-shot action. The next fresh manifest version
+with no existing protected tag returns to `ACTIVE_CANDIDATE` and must complete
+the full whole-release contract over the complete published-baseline delta.
+
+This separation keeps `RELEASE_SYSTEM_QUARANTINE` attached to the consequential
+release boundary where it belongs. It must not be reimplemented as a path
+allowlist for normal development; normal protected PR gates remain authoritative
+for merge safety, while release eligibility remains fail-closed until a fresh
+release identity satisfies the full release topology.
 
 The protected tag helper runs the final full contract check before any new
 irreversible tag push. Post-tag automation does not re-run the mutable
