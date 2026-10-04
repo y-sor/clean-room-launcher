@@ -54,6 +54,41 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     }
 }
 
+
+#[test]
+fn discovery_descriptions_stay_concise_and_specific() {
+    let config = read("docs/_config.yml");
+    let home = read("docs/index.md");
+
+    for (surface, text) in [("site", &config), ("homepage", &home)] {
+        let description = text
+            .lines()
+            .find_map(|line| line.strip_prefix("description: "))
+            .expect("missing discovery description")
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'');
+
+        assert!(
+            description.chars().count() <= 160,
+            "{surface} discovery description exceeds the project concise-snippet target"
+        );
+        for required in [
+            "Clean Room Launcher (CLROOM)",
+            "Codex",
+            "Claude Code",
+            "clean, selective launch",
+            "project context",
+            "normal setup",
+        ] {
+            assert!(
+                description.contains(required),
+                "{surface} discovery description lost required signal: {required}"
+            );
+        }
+    }
+}
+
 #[test]
 fn homepage_metadata_exposes_analytics_preview_and_free_app_facts() {
     let head = read("docs/_includes/head.html");
