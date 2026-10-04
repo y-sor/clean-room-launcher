@@ -8,17 +8,24 @@ fail() {
 
 usage() {
   echo "usage: bash scripts/release/run-accepted-main-claude-stage.sh --version X.Y.Z" >&2
+  echo "       bash scripts/release/run-accepted-main-claude-stage.sh --prepare-only" >&2
   exit 64
 }
 
+mode=stage
 version=
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) version=${2:-}; shift 2 ;;
+    --prepare-only) mode=prepare; shift ;;
     *) usage ;;
   esac
 done
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || usage
+if [[ "$mode" == stage ]]; then
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || usage
+else
+  [[ -z "$version" ]] || usage
+fi
 
 repository="y-sor/clean-room-launcher"
 plugin_id="frontend-design@claude-plugins-official"
@@ -48,8 +55,7 @@ accepted_after_fetch=$(gh api "repos/$repository/git/ref/heads/main" --jq .objec
 : "${HOME:?HOME is required}"
 worktree_root=${CLROOM_RELEASE_WORKTREE_ROOT:-"$HOME/projects-worktrees/clean-room-launcher"}
 stage_root=${CLROOM_RELEASE_STAGE_ROOT:-"$worktree_root/.release-stage"}
-worktree="$worktree_root/release-v${version}-${accepted_before:0:12}"
-stage_dir="$stage_root/v${version}-${accepted_before}"
+worktree="$worktree_root/release-${version:-accepted-main}-${accepted_before:0:12}"
 
 mkdir -p "$worktree_root" "$stage_root"
 
@@ -107,6 +113,22 @@ PY
 ) || fail "PRETAG_MANIFEST_BINDING"
 artifact="$stage_dir/$artifact_name"
 [[ -f "$artifact" ]] || fail "STAGED_ARTIFACT_MISSING:$artifact"
+artifact_sha=$(python3 - "$stage_dir/pretag-manifest.json" "$artifact_name" <<'PY'
+import json, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+print(record["files"][sys.argv[2]])
+PY
+) || fail "ARTIFACT_SHA"
+
+if [[ "$mode" == prepare ]]; then
+  accepted_final=$(gh api "repos/$repository/git/ref/heads/main" --jq .object.sha) \
+    || fail "MAIN_QUERY_FINAL"
+  [[ "$accepted_final" == "$accepted_before" ]] \
+    || fail "MAIN_MOVED_AFTER_PREPARE:before=$accepted_before:after=$accepted_final"
+  printf 'ACCEPTED_MAIN_CLAUDE_STAGE_PREPARE_PASS version=%s source=%s artifact_sha256=%s\n' \
+    "$version" "$accepted_before" "$artifact_sha"
+  exit 0
+fi
 
 (
   cd "$worktree"
@@ -120,12 +142,6 @@ import json, sys
 print(json.load(open(sys.argv[1], encoding="utf-8"))["reviewed_content_digest"])
 PY
 ) || fail "REVIEW_DIGEST"
-artifact_sha=$(python3 - "$stage_dir/pretag-manifest.json" "$artifact_name" <<'PY'
-import json, sys
-record = json.load(open(sys.argv[1], encoding="utf-8"))
-print(record["files"][sys.argv[2]])
-PY
-) || fail "ARTIFACT_SHA"
 claude_provider_sha=$(python3 - "$stage_dir/pretag-manifest.json" <<'PY'
 import json, sys
 record = json.load(open(sys.argv[1], encoding="utf-8"))
