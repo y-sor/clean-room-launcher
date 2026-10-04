@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Clean Room Launcher (CLROOM)
-description: Open-source macOS launcher for cleaner, selective Codex and Claude Code sessions. Clean Room Launcher keeps project context while unrelated personal-global instructions and unselected personal-global skills stay out, and adds back the skills you choose.
+description: Clean Room Launcher (CLROOM) gives Codex and Claude Code a repeatable clean, selective launch with project context preserved and your normal setup intact.
 image:
   path: /assets/clean-room-launcher-hero.png
   alt: Clean Room Launcher (CLROOM)
