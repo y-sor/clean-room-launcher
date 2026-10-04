@@ -1010,10 +1010,10 @@ def rehearse(args):
                 f"--with=mcp:{MCP_NAME}", f"--with=mcp:{SIBLING_NAME}",
                 f"--pass-env={ALLOWED_ENV}", "--no-alt-screen",
             ],
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4", selected_log, sibling_log,
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE", selected_log, sibling_log,
         )
-        negatives["mcp_plus_plugin"] = negative_probe(
-            "mcp_plus_plugin", candidate, project, home, provider,
+        negatives["overlapping_plugin_mcp_identity"] = negative_probe(
+            "overlapping_plugin_mcp_identity", candidate, project, home, provider,
             [
                 f"--with=mcp:{MCP_NAME}", f"--with=plugin:{fixture.PLUGIN_ID}",
                 f"--pass-env={ALLOWED_ENV}", "--no-alt-screen",
