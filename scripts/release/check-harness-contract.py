@@ -1244,6 +1244,10 @@ def check(root: Path) -> list[str]:
     for item in (
         "CLROOM_OWNER_PUBLISH_APPROVED",
         "verify-draft-release.sh",
+        "resolve-pretag-stage.sh",
+        "PRETAG_STAGE_BINDING",
+        "MAIN_DRIFT_ACTION_TIME",
+        "TAG_TARGET_ACTION_TIME",
         "IMMUTABLE_RELEASE_POLICY_ACTION_TIME",
         "python3 scripts/release/release-external-action.py publish",
         "--preview-json",
