@@ -722,6 +722,49 @@ def check(root: Path) -> list[str]:
         "PUBLIC_ROUTE_REHEARSAL_WORKFLOW_INVOCATION",
     )
 
+    accepted_main_claude_stage_path = root / "scripts/release/run-accepted-main-claude-stage.sh"
+    require(errors, accepted_main_claude_stage_path.is_file(), "ACCEPTED_MAIN_CLAUDE_STAGE_ENTRYPOINT_MISSING")
+    if accepted_main_claude_stage_path.is_file():
+        accepted_main_claude_stage = accepted_main_claude_stage_path.read_text(encoding="utf-8")
+        for marker in (
+            'git rev-parse --show-toplevel',
+            'gh repo view --json nameWithOwner --jq .nameWithOwner',
+            'gh api "repos/$repository/git/ref/heads/main" --jq .object.sha',
+            'git fetch --quiet --tags "https://github.com/$repository.git" main',
+            'git worktree add --detach "$worktree" "$accepted_before"',
+            'scripts/release/resolve-pretag-stage.sh',
+            '"artifact_name"',
+            'scripts/release/local-plugin-activation-smoke.sh stage',
+            'scripts/release/verify-claude-stage-evidence.py',
+            'MAIN_MOVED_DURING_FETCH',
+            'MAIN_MOVED_AFTER_EVIDENCE',
+            'ACCEPTED_MAIN_CLAUDE_STAGE_PASS',
+        ):
+            require(
+                errors,
+                marker in accepted_main_claude_stage,
+                "ACCEPTED_MAIN_CLAUDE_STAGE_ENTRYPOINT_CONTRACT:" + marker,
+            )
+        for forbidden in (
+            "/path/to/",
+            "git reset",
+            "git clean",
+            "git stash",
+            'rm -rf "$worktree"',
+        ):
+            require(
+                errors,
+                forbidden not in accepted_main_claude_stage,
+                "ACCEPTED_MAIN_CLAUDE_STAGE_ENTRYPOINT_FORBIDDEN:" + forbidden,
+            )
+        syntax = subprocess.run(
+            ["bash", "-n", str(accepted_main_claude_stage_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(errors, syntax.returncode == 0, "ACCEPTED_MAIN_CLAUDE_STAGE_ENTRYPOINT_BASH_SYNTAX")
+
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
     claude_tty_supervisor_path = root / "scripts/release/claude-tty-supervisor.py"
