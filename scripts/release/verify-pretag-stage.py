@@ -12,6 +12,7 @@ REQUIRED_CLOSURE = {
     "exact_shipping_archive",
     "generic_provider_qualification",
     "codex_exact_archive_runtime",
+    "codex_composition_exact_archive_runtime",
     "installer_contract",
     "release_notes_render",
     "release_facts",
@@ -57,6 +58,7 @@ def main() -> int:
         "provider_registry_freshness": "PASS",
         "generic_provider_qualification": "PASS",
         "codex_exact_archive_runtime": "PASS",
+        "codex_composition_exact_archive_runtime": "PASS",
         "publishable_surface_semantic": "PASS",
     }
     if args.source_tree:
@@ -110,6 +112,7 @@ def main() -> int:
         "codex-qualification.json",
         "claude-qualification.json",
         "codex-stage.json",
+        "codex-composition-stage.json",
     }
     if set(files) != required_files:
         raise SystemExit("PRETAG_STAGE_BLOCKED:FILE_SET")
@@ -180,6 +183,44 @@ def main() -> int:
             raise SystemExit(f"PRETAG_STAGE_BLOCKED:CODEX_RUNTIME:{key}")
     if codex.get("codex_provider_sha256") != providers["codex"]["executable_sha256"]:
         raise SystemExit("PRETAG_STAGE_BLOCKED:CODEX_RUNTIME:provider_bytes")
+
+    composition = json.loads(
+        (root / "codex-composition-stage.json").read_text(encoding="utf-8")
+    )
+    composition_required = {
+        "schema_version": "clroom.codex-composition-rehearsal.v1",
+        "result": "PASS",
+        "source_head": args.source_head,
+        "artifact_sha256": files[record["artifact_name"]],
+        "platform": "macos-aarch64",
+        "plugin_id": "composition@clroom-fixture",
+        "plugin_mcp_id": "clroom_plugin",
+        "standalone_mcp_id": "clroom_standalone",
+        "overlap_conflict_refused": True,
+        "ambient_provider_state_unchanged": True,
+        "plugin_source_unchanged": True,
+        "human_inspection_sanitized": True,
+        "json_inspection_sanitized": True,
+        "inspection_same_resource_identities": True,
+        "interactive_provider_birth": True,
+        "plugin_mcp_under_interactive_provider": True,
+        "standalone_mcp_under_interactive_provider": True,
+        "plugin_mcp_initialize": True,
+        "plugin_mcp_tools_list": True,
+        "standalone_mcp_initialize": True,
+        "standalone_mcp_tools_list": True,
+        "standalone_env_admission": True,
+        "blocked_env_absent": True,
+        "unselected_siblings_absent": True,
+        "task_owned_processes_closed": True,
+        "model_prompt_sent": False,
+        "clean_after_absent": True,
+    }
+    for key, value in composition_required.items():
+        if composition.get(key) != value:
+            raise SystemExit(f"PRETAG_STAGE_BLOCKED:CODEX_COMPOSITION:{key}")
+    if composition.get("codex_provider_sha256") != providers["codex"]["executable_sha256"]:
+        raise SystemExit("PRETAG_STAGE_BLOCKED:CODEX_COMPOSITION:provider_bytes")
 
     print(
         f"PRETAG_STAGE_VERIFY_PASS version={args.version} "
