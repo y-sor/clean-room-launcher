@@ -68,9 +68,9 @@ CLROOM preflights this capability and injects the flag for its qualified
 selected-skill inventory. Interactive Codex uses the same existing isolation
 path without that exec-only flag.
 
-## v0.4.6: select one installed whole plugin
+## v0.4.7: select one installed whole plugin
 
-The v0.4.6 source adds one bounded Codex whole-plugin selector for the
+The v0.4.7 source adds one bounded Codex whole-plugin selector for the
 interactive launch path:
 
 ```sh
@@ -94,7 +94,7 @@ Raw Codex configuration/plugin controls such as `-c`, `--config`,
 `--profile`, `--enable`, `--disable`, and `--plugin` are refused while a
 CLROOM plugin selection is active, so there is only one activation authority.
 
-The exact v0.4.6 qualification target is Codex CLI `0.160.0` on macOS Apple
+The exact v0.4.7 qualification target is Codex CLI `0.160.0` on macOS Apple
 Silicon. Release qualification uses a task-owned standalone MCP plugin fixture
 with the real provider and requires provider startup, MCP `initialize`,
 `tools/list` with at least one tool, and a real fixture tool call; `mcp list`
@@ -108,9 +108,9 @@ This whole-plugin path does not add multi-plugin selection, `--with=all`,
 component-level plugin surgery, persistent Codex configuration mutation, or
 marketplace installation/update behavior.
 
-## v0.4.6: select one standalone stdio MCP server
+## v0.4.7: select one standalone stdio MCP server
 
-v0.4.6 adds a separate bounded standalone MCP path:
+v0.4.7 adds a separate bounded standalone MCP path:
 
 ```sh
 clroom codex --with=mcp:my-server
