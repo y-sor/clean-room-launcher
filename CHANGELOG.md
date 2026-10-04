@@ -11,9 +11,9 @@ Semantic Versioning after the first public release.
 
 ### Changed
 
-- Advances the release identity beyond the consumed unpublished `v0.4.5` and
-  `v0.4.6` incident tags without moving, deleting, reusing, rewriting or
-  publishing either preserved identity.
+- Advances the release identity beyond the two consumed unpublished incident
+  tags without moving, deleting, reusing, rewriting or publishing either
+  preserved identity.
 - Release lifecycle now separates normal protected development from
   release-system quarantine: a consumed manifest identity is
   `RELEASE_QUARANTINED`, while a fresh version with no existing protected tag
@@ -23,7 +23,7 @@ Semantic Versioning after the first public release.
 
 ### Fixed
 
-- Closed the post-tag release-harness incident exposed by `v0.4.6`: canonical
+- Closed the latest post-tag release-harness incident: canonical
   external actions now reconcile ambiguous remote outcomes, Draft lookup proves
   absence before creation, and release rehearsal binds destination identity,
   exact candidate source and executable helper bytes before any mutation.
