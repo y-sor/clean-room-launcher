@@ -28,9 +28,9 @@ use clroom::adapters::claude::{
 };
 use clroom::catalog::selection::SelectionRequest;
 use clroom::adapters::codex::{
-    activation::{self as codex_activation, ActivationError as CodexActivationError},
+    activation::ActivationError as CodexActivationError,
     isolation::{IsolationError, IsolationInputs, plan_with_skills},
-    mcp::{self as codex_mcp, ActivationError as CodexMcpActivationError},
+    mcp::ActivationError as CodexMcpActivationError,
 };
 
 pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode {
