@@ -93,9 +93,20 @@ with open(sys.argv[1], "rb") as handle:
     print(tomllib.load(handle)["package"]["version"])
 PY
 ) || fail "MANIFEST_VERSION"
-[[ "$manifest_version" == "$version" ]]   || fail "VERSION_MISMATCH:expected=$version:manifest=$manifest_version"
+if [[ "$mode" == prepare ]]; then
+  version="$manifest_version"
+else
+  [[ "$manifest_version" == "$version" ]] \
+    || fail "VERSION_MISMATCH:expected=$version:manifest=$manifest_version"
+fi
 
-bash "$worktree/scripts/release/resolve-pretag-stage.sh"   "$version" "$accepted_before" "$stage_dir"   || fail "PRETAG_STAGE_RESOLVE"
+stage_dir="$stage_root/v${version}-${accepted_before}"
+stage_resolver="$worktree/scripts/release/resolve-pretag-stage.sh"
+if [[ "$mode" == prepare && -n "${CLROOM_PRETAG_STAGE_RESOLVER:-}" ]]; then
+  stage_resolver="$CLROOM_PRETAG_STAGE_RESOLVER"
+fi
+bash "$stage_resolver" "$version" "$accepted_before" "$stage_dir" \
+  || fail "PRETAG_STAGE_RESOLVE"
 
 artifact_name=$(python3 - "$stage_dir/pretag-manifest.json" "$version" "$accepted_before" <<'PY'
 import json, sys
