@@ -16,7 +16,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
     let mut provider_args = Vec::with_capacity(args.len() + 1);
     let mut launcher_options = true;
     let mut raw_chrome_override = false;
-    let mut raw_plugin_activation = false;
+    let mut raw_resource_activation = false;
 
     for argument in args {
         if launcher_options && argument == "--" {
@@ -42,7 +42,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                         || argument.starts_with("--plugin-dir=")
                         || argument.starts_with("--plugin-url=")
                     {
-                        raw_plugin_activation = true;
+                        raw_resource_activation = true;
                     }
                 } else if provider == Provider::Codex
                     && (matches!(
@@ -63,7 +63,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                         || argument.starts_with("--disable=")
                         || argument.starts_with("--plugin="))
                 {
-                    raw_plugin_activation = true;
+                    raw_resource_activation = true;
                 }
             }
             provider_args.push(argument.clone());
@@ -104,9 +104,9 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .to_owned());
     }
 
-    if !request.is_empty() && raw_plugin_activation {
+    if !request.is_empty() && raw_resource_activation {
         return Err(
-            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: raw provider plugin/config activation controls cannot be combined with CLROOM --with/--without selection"
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: raw provider config/plugin/MCP activation controls cannot be combined with CLROOM --with/--without selection"
                 .to_owned(),
         );
     }
@@ -238,6 +238,30 @@ mod tests {
     }
 
     #[test]
+    fn codex_plugin_and_mcp_are_preserved_in_one_structured_request() {
+        let prepared = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=plugin:codex-app-tools@openai-bundled",
+                "--with=mcp:local-tools",
+                "--model",
+                "gpt-5",
+            ]),
+        )
+        .unwrap();
+
+        assert!(prepared.request.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::Plugin,
+            id: "codex-app-tools@openai-bundled".to_owned(),
+        }));
+        assert!(prepared.request.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::McpServer,
+            id: "local-tools".to_owned(),
+        }));
+        assert_eq!(prepared.provider_args, strings(&["--model", "gpt-5"]));
+    }
+
+    #[test]
     fn codex_exact_plugin_is_preserved_as_structured_selection() {
         let prepared = prepare(
             Provider::Codex,
@@ -291,6 +315,20 @@ mod tests {
                 "{flag}: {error}"
             );
         }
+
+        let raw_mcp = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=mcp:local-tools",
+                "-c",
+                "mcp_servers.synthetic={command=\"false\"}",
+            ]),
+        )
+        .unwrap_err();
+        assert!(
+            raw_mcp.starts_with("CLROOM_RESOURCE_ACTIVATION_CONFLICT:"),
+            "{raw_mcp}"
+        );
 
         let literal = prepare(
             Provider::Codex,
