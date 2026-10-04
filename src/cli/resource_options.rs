@@ -77,7 +77,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .any(|target| matches!(target, SelectionTarget::All))
     {
         return Err(
-            "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4: --with=all/--without=all is unavailable in v0.4.x"
+            "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4: --with=all/--without=all is not available in this bounded selector"
                 .to_owned(),
         );
     }
@@ -98,8 +98,8 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         });
     if unsupported_exact {
         return Err(match provider {
-            Provider::Codex => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin or standalone MCP selection is available in v0.4.x; continue locally",
-            Provider::Claude => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available in v0.4.x; continue locally",
+            Provider::Codex => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin or standalone MCP selection is available; continue locally",
+            Provider::Claude => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available; continue locally",
         }
         .to_owned());
     }

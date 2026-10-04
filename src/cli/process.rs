@@ -711,7 +711,7 @@ fn codex_plugin_activation_error(error: codex_activation::ActivationError) -> St
             selection.code()
         ),
         codex_activation::ActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Codex plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this bounded selector admits one exact Codex plugin per launch".to_owned()
         }
         codex_activation::ActivationError::UnsupportedRequest => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: only exact Codex whole-plugin selection is available for this request; continue locally".to_owned()

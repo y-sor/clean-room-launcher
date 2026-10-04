@@ -7,6 +7,48 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-04
+
+### Added
+
+- Added one typed shared Codex `ResolvedLaunch` truth for bounded resource
+  composition, sanitized human/JSON effective-launch inspection, and the real
+  launch path.
+- Added bounded composition of exactly one qualified installed whole Codex
+  plugin with exactly one qualified root-user standalone stdio MCP server in the
+  same interactive launch.
+- Added exact-candidate real-provider composition rehearsal covering selected
+  plugin and MCP runtime visibility, sibling exclusion, environment admission,
+  source drift, and task-owned lifecycle closure.
+
+### Changed
+
+- Codex resource planning now resolves plugin and standalone MCP selections from
+  one structured request, composes provider activation deterministically, and
+  action-time revalidates every selected source before provider birth.
+- Raw provider config/plugin/MCP activation controls remain mutually exclusive
+  with CLROOM resource selection, preserving one activation authority.
+- Effective launch inspection reports only bounded identities, decisions,
+  qualification state, admitted environment-variable names, boundary controls,
+  and a redacted provider-argv count; provider arguments, secret values and
+  private paths are not emitted.
+
+### Security
+
+- A source change on either side of a composed Codex launch invalidates the
+  whole resolved launch. Plugin/MCP identity overlap and ambient MCP sibling
+  layers fail closed.
+- Literal MCP environment values remain refused; every MCP environment-variable
+  reference still requires explicit `--pass-env=NAME` admission.
+- Composition does not add persistent provider configuration mutation,
+  marketplace/network installation, remote/OAuth MCP, multiple plugins or MCP
+  servers, Claude standalone MCP, `--with=all`, presets, or component-level
+  plugin surgery.
+
+### Dependencies
+
+- No runtime or build dependency changes.
+
 ## [0.4.7] - 2026-10-04
 
 ### Added

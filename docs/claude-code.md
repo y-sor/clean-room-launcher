@@ -41,9 +41,9 @@ internal teammate independently.
 
 For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-sets.md).
 
-## v0.4.x: select one installed whole plugin
+## Select one installed whole plugin
 
-v0.4.7 includes one bounded whole-plugin selector:
+CLROOM includes one bounded whole-plugin selector:
 
 ```sh
 claude plugin list
@@ -66,7 +66,7 @@ Whole-plugin still means the provider-native bundle is atomic: CLROOM either
 admits the qualified bundle root or refuses the plugin; it does not extract
 individual files or components.
 
-The v0.4.x qualification is intentionally narrower than Claude's full
+The qualified activation path is intentionally narrower than Claude's full
 plugin format. Inventory follows Claude provider semantics broadly enough to
 observe provider-visible plugin surfaces, but activation requires a matching
 `.claude-plugin/plugin.json` identity and only the default one-level
@@ -84,7 +84,7 @@ While a CLROOM resource selection is active, raw `--plugin-dir` and
 `--plugin-url` arguments are refused to avoid two competing activation
 authorities. More than one selected whole plugin is also refused.
 
-v0.4.7 requalifies both the ordinary clean launch and this whole-plugin path on
+The ordinary clean launch and this whole-plugin path are exactly qualified on
 the current stable Claude Code `2.1.289` for macOS Apple Silicon. Release
 qualification includes the provider's built-in `agents-md` behavior: AGENTS
 instructions above the Git project boundary must stay outside the launch while
@@ -94,7 +94,7 @@ the candidate is tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
 This Claude slice still does not add standalone MCP resource activation,
 `--with=all`, presets, installation/update/removal, or component-level
-selection. Codex whole-plugin activation is a separate v0.4.7 provider-specific
+selection. Codex whole-plugin activation is a separate provider-specific
 path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?

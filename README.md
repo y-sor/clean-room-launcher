@@ -121,7 +121,7 @@ summary of the active filesystem restrictions:
 - developer instructions and notifications are cleared by default.
 
 ```text
-╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.7 ─────────╮
+╓──○──╖ ╭─ CLEAN ROOM ─ v0.5.0 ─────────╮
 ║░░░░░║⠒│                               │
 ║░░░░░║⠒│     Global AGENTS.md  off     │
 ║░░░░░║⠒│     Global skills    3 on     │
@@ -217,56 +217,80 @@ clroom codex --help
 clroom codex --version
 ```
 
-The v0.4.7 source can also admit exactly one already-installed whole Codex
-plugin for one interactive launch:
+CLROOM can admit exactly one already-installed whole Codex plugin for one
+interactive launch:
 
 ```sh
 codex plugin list --json
 clroom codex --with=plugin:plugin-name@marketplace-name
 ```
 
-CLROOM preserves the provider-native plugin ID, revalidates the exact installed
+It preserves the provider-native plugin ID, revalidates the exact installed
 bundle, projects only that bundle into its private shadow `CODEX_HOME`
 `PluginStore`, makes the projection non-writable, and enables only that plugin
 for the process. Sibling plugins remain absent and the next ordinary clean launch
 removes only the verified CLROOM-owned projection. CLROOM does not install,
 update, remove, or refresh Codex plugins or marketplaces.
 
-While this selection is active, raw Codex config/plugin controls such as
-`-c`, `--config`, `--profile`, `--enable`, `--disable`, and
-`--plugin` are refused before provider birth. The exact v0.4.7 qualification
-target for this path is Codex CLI `0.160.0` on macOS Apple Silicon. A plugin
-whose effective MCP surface includes the app-owned `codex_app` server is
-host-required and fails closed for standalone CLROOM activation; configuration
-visibility is not treated as proof that app-hosted tools exist.
-
-v0.4.7 also adds a deliberately narrower standalone Codex MCP selector for
-interactive launches:
+CLROOM can also admit exactly one root-user standalone stdio MCP server:
 
 ```sh
 clroom codex --with=mcp:my-server
 clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
 ```
 
-This path selects exactly one root-user `mcp_servers.<id>` entry from the
-normal Codex `config.toml` and supports stdio transport only. Literal MCP
-environment values are refused. Every plain `env_vars` reference must also be
-admitted explicitly with `--pass-env=NAME`. Command/argument interpolation and
-relative MCP working directories are refused in this first slice.
+The MCP definition comes from `mcp_servers.<id>` in the normal Codex
+`config.toml`. Literal MCP environment values are refused, and every plain
+`env_vars` reference must also be admitted explicitly with
+`--pass-env=NAME`. Command/argument interpolation and relative MCP working
+directories are refused.
 
-Before the real Codex process starts, CLROOM performs a no-model provider-native
-`config/read` check with the selected MCP already present in the session layer.
-The check fails closed unless that selected session MCP is visible and no active
-project, system, enterprise, or legacy-managed layer contributes another MCP
-surface. Raw configuration values are discarded during this check. The selected
-ambient source is digest-bound and revalidated again before provider birth.
+In v0.5.0 the two bounded selectors can be composed in the same interactive
+launch:
 
-This path does not support multiple standalone MCP servers, HTTP/SSE/
-WebSocket transports, OAuth or helper-based authentication, project/local MCP
-restore, standalone MCP exclusions, mixing standalone MCP with whole-plugin
-selection, or `--with=all`. Claude standalone MCP remains unqualified and
-fails closed. The exact v0.4.7 qualification target for this path is Codex CLI `0.160.0`
-on macOS Apple Silicon.
+```sh
+clroom codex \
+  --with=plugin:plugin-name@marketplace-name \
+  --with=mcp:my-server \
+  --pass-env=MY_TOKEN
+```
+
+The composed launch still admits at most one whole plugin and one standalone
+MCP. CLROOM resolves both through one typed launch plan, refuses overlapping
+plugin/MCP identities, composes provider arguments deterministically, and
+revalidates both selected sources before provider birth. A change on either side
+invalidates the whole launch.
+
+Before a launch containing a standalone MCP, CLROOM performs a no-model
+provider-native `config/read` check with the selected MCP in the session layer.
+The check fails closed unless that MCP is visible and no active project, system,
+enterprise, or legacy-managed layer contributes another MCP surface. Raw
+configuration values are discarded during this check.
+
+Raw Codex config/plugin/MCP activation controls such as `-c`, `--config`,
+`--profile`, `--enable`, `--disable`, and `--plugin` are refused while
+CLROOM resource selection is active. The exact qualification target is Codex
+CLI `0.160.0` on macOS Apple Silicon. A plugin whose effective MCP surface
+includes the app-owned `codex_app` server remains host-required and fails
+closed; configuration visibility is not treated as proof that app-hosted tools
+exist.
+
+Inspect the same resolved launch truth without starting the real provider
+session:
+
+```sh
+clroom inspect codex --with=plugin:plugin-name@marketplace-name --with=mcp:my-server
+clroom --output json inspect codex --with=plugin:plugin-name@marketplace-name --with=mcp:my-server
+```
+
+Inspection exposes selected identities, decisions, qualification state, admitted
+environment-variable names and boundary controls, but redacts provider argument
+values and does not expose secret values or private source paths.
+
+Multiple plugins, multiple standalone MCP servers, HTTP/SSE/WebSocket transports,
+OAuth or helper-based authentication, project/local MCP restore, standalone MCP
+exclusions, and `--with=all` remain unsupported. Claude standalone MCP remains
+unqualified and fails closed.
 
 ### Claude Code
 
@@ -284,7 +308,7 @@ global skills for this launch with the same skill choice:
 clroom claude --skill-set=my-skill,@my-skill-set
 ```
 
-The v0.4.7 source can also admit exactly one already-installed whole Claude
+The v0.5.0 source can also admit exactly one already-installed whole Claude
 plugin for one launch:
 
 ```sh
@@ -312,7 +336,7 @@ activation-qualified in v0.4.x. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-v0.4.7 targets Claude Code `2.1.289` for both ordinary clean launch and the
+v0.5.0 targets Claude Code `2.1.289` for both ordinary clean launch and the
 whole-plugin activation path. Codex whole-plugin activation is separately
 qualified through its own shadow-PluginStore mechanism. Standalone MCP
 selection, `--with=all`, multi-plugin selection, and component-level plugin
@@ -526,14 +550,14 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.4.7` on macOS Apple Silicon. See the
+This source tree is prepared for `v0.5.0` on macOS Apple Silicon. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
 for publication status and downloadable artifacts. Real-provider qualification
 is bound to the exact behavior-specific provider versions above. The macOS
 archive is unsigned and unnotarized.
 
 It supports the documented Codex interactive and exec clean paths, the bounded
-v0.4.7 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
+v0.5.0 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
 and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
 Apple Silicon paths.
 
