@@ -707,13 +707,204 @@ fn analyze(
 mod tests {
     use super::{
         partition_codex_request, BoundaryState, CODEX_CLEAN_DEFAULTS, LaunchContract, Presence,
-        ResolveCodexError,
+        ResolveCodexError, ResolvedLaunch,
     };
-    use clroom::catalog::{
-        resource::ResourceKind,
-        selection::{SelectionRequest, SelectionTarget},
+    use clroom::{
+        adapters::{
+            codex::isolation::IsolationPlan,
+            identity::ProviderIdentity,
+        },
+        catalog::{
+            provider_inventory::CODEX_PLUGIN_ACTIVATION_EXACT,
+            resource::ResourceKind,
+            selection::{SelectionRequest, SelectionTarget},
+        },
     };
-    use std::path::Path;
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        sync::atomic::{AtomicU64, Ordering},
+    };
+
+    static RESOLVED_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+    fn resolved_fixture(standalone_id: &str, config_extra: &str) -> (PathBuf, PathBuf, IsolationPlan, ProviderIdentity) {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-resolved-launch-{}-{}",
+            std::process::id(),
+            RESOLVED_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let home = root.join("home");
+        let codex_home = home.join(".codex");
+        let plugin = codex_home.join("plugins/cache/openai-bundled/codex-app-tools/0.1.4");
+        fs::create_dir_all(plugin.join(".codex-plugin")).unwrap();
+        fs::create_dir_all(plugin.join("skills/review")).unwrap();
+        fs::write(
+            plugin.join(".codex-plugin/plugin.json"),
+            r#"{"name":"codex-app-tools","skills":["./skills"]}"#,
+        )
+        .unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            r#"{"mcpServers":{"alpha.server":{"command":"node","args":[]},"zeta":{"command":"node","args":[]}}}"#,
+        )
+        .unwrap();
+        fs::write(plugin.join("skills/review/SKILL.md"), "fixture\n").unwrap();
+        fs::write(
+            codex_home.join("config.toml"),
+            format!(
+                "[mcp_servers.{standalone_id}]\ncommand = \"/usr/bin/docs-mcp\"\n{config_extra}"
+            ),
+        )
+        .unwrap();
+        let project = root.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let isolation = IsolationPlan {
+            profile: "(version 1) (allow default)".to_owned(),
+            project,
+            selected_global_skills: 0,
+            selected_global_skill_paths: Vec::new(),
+        };
+        let identity = ProviderIdentity {
+            provider_id: "codex".to_owned(),
+            real_executable: PathBuf::from("/usr/bin/codex"),
+            artifact_digest: "0".repeat(64),
+            version: CODEX_PLUGIN_ACTIVATION_EXACT,
+            os: "macos".to_owned(),
+            arch: "aarch64".to_owned(),
+            interpreter: None,
+        };
+        (home, codex_home, isolation, identity)
+    }
+
+    fn mixed_request(mcp: &str) -> SelectionRequest {
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        request.include_value(&format!("mcp:{mcp}")).unwrap();
+        request
+    }
+
+    #[test]
+    fn resolved_codex_launch_composes_plugin_and_standalone_mcp_from_one_truth() {
+        let (home, codex_home, isolation, identity) = resolved_fixture("docs", "");
+        let resolved = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("docs"),
+            &[],
+            2,
+        )
+        .unwrap();
+
+        assert_eq!(
+            resolved.plugin_activation().map(|plan| plan.plugin_id()),
+            Some("codex-app-tools@openai-bundled")
+        );
+        assert_eq!(resolved.mcp_activation().map(|plan| plan.id()), Some("docs"));
+        assert_eq!(resolved.contract().boundary_controls, vec!["plugin", "mcp"]);
+        let plugin = resolved
+            .contract()
+            .argv
+            .iter()
+            .position(|arg| arg == "features.plugins=true")
+            .unwrap();
+        let mcp = resolved
+            .contract()
+            .argv
+            .iter()
+            .position(|arg| arg.contains("mcp_servers={\"docs\""))
+            .unwrap();
+        let model = resolved
+            .contract()
+            .argv
+            .iter()
+            .position(|arg| arg == "--model")
+            .unwrap();
+        assert!(plugin < mcp && mcp < model);
+        assert_eq!(resolved.revalidate_codex_sources(&home, &codex_home), Ok(()));
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn resolved_codex_launch_refuses_plugin_mcp_identity_overlap() {
+        let (home, codex_home, isolation, identity) = resolved_fixture("alpha.server", "");
+        let result = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex(&[]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("alpha.server"),
+            &[],
+            0,
+        );
+        assert!(matches!(result, Err(ResolveCodexError::ActivationConflict)));
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn drift_on_one_side_invalidates_the_whole_resolved_launch() {
+        let (home, codex_home, isolation, identity) = resolved_fixture("docs", "");
+        let resolved = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex(&[]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("docs"),
+            &[],
+            0,
+        )
+        .unwrap();
+
+        fs::write(
+            codex_home.join("config.toml"),
+            "[mcp_servers.docs]\ncommand = \"changed\"\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            resolved.revalidate_codex_sources(&home, &codex_home),
+            Err(ResolveCodexError::Mcp(
+                clroom::adapters::codex::mcp::ActivationError::StateChanged
+            ))
+        ));
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn resolved_summary_is_sanitized_and_keeps_only_env_names() {
+        let (home, codex_home, isolation, identity) =
+            resolved_fixture("docs", "env_vars = [\"DOCS_TOKEN\"]\ncwd = \"/private/tmp/hidden-work\"\n");
+        let resolved = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex_with_pass_env(&["safe-prompt".to_owned()], &["DOCS_TOKEN".to_owned()]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("docs"),
+            &["DOCS_TOKEN".to_owned()],
+            1,
+        )
+        .unwrap();
+
+        let json = serde_json::to_string(&resolved.summary()).unwrap();
+        assert!(json.contains("codex-app-tools@openai-bundled"));
+        assert!(json.contains("\"docs\""));
+        assert!(json.contains("DOCS_TOKEN"));
+        assert!(json.contains("\"values_exposed\":false"));
+        assert!(!json.contains("safe-prompt"));
+        assert!(!json.contains("/usr/bin/docs-mcp"));
+        assert!(!json.contains("/private/tmp/hidden-work"));
+        assert!(!json.contains(codex_home.to_string_lossy().as_ref()));
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
 
     #[test]
     fn codex_request_partition_preserves_one_plugin_and_one_mcp_independently() {
