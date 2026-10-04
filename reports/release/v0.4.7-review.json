@@ -70,7 +70,7 @@
     "public_claims": {
       "decision": "COVERED",
       "evidence": [
-        "Current README, provider matrix, provider guides, limitations and security source-contract claims advance to v0.4.6 and the exact provider targets while keeping unsupported transports, Claude standalone MCP, extra platforms, signing and notarization unclaimed.",
+        "Current README, provider matrix, provider guides, limitations and security source-contract claims advance to v0.4.7 and the exact provider targets while keeping unsupported transports, Claude standalone MCP, extra platforms, signing and notarization unclaimed.",
         "Standalone MCP wording no longer describes already-accepted source behavior as an unaccepted PR candidate; publication status remains separately owned by GitHub Releases.",
         "Active README/provider/configuration/limitations surfaces advance their source-contract version to v0.4.7 while historical changelog sections remain historical; the current candidate changelog avoids presenting preserved incident identities as current product-version claims.",
         "The public Pages surface adds independent Bing site-verification metadata under the canonical y-sor namespace with regression coverage and no change to the canonical URL set."
@@ -293,27 +293,27 @@
     {
       "id": "codex-whole-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.6 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.160.0, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
+      "requirement": "Requalify exact v0.4.7 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.160.0, preserving clean→selected→clean real-provider MCP runtime and lifecycle closure."
     },
     {
       "id": "codex-standalone-mcp-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Exercise exact v0.4.6 PR-candidate bytes with pinned Codex 0.160.0; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
+      "requirement": "Exercise exact v0.4.7 PR-candidate bytes with pinned Codex 0.160.0; require one selected root-user stdio MCP under the interactive provider, initialize/tools-list, independent fixture tools/call, admitted-env canary only, sibling absence, all fail-closed negatives, source-mutation refusal, and task-owned lifecycle closure."
     },
     {
       "id": "codex-provider-capabilities",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Build the exact future shipping v0.4.6 archive once from accepted main and requalify clean, whole-plugin and standalone-MCP Codex capabilities against the frozen exact provider inputs before tag creation; post-tag provider runtime is forbidden."
+      "requirement": "Build the exact future shipping v0.4.7 archive once from accepted main and requalify clean, whole-plugin and standalone-MCP Codex capabilities against the frozen exact provider inputs before tag creation; post-tag provider runtime is forbidden."
     },
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.6 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.288, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
+      "requirement": "Requalify exact v0.4.7 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.288, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
     },
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.6 archive with pinned Claude Code 2.1.288 and bind evidence to accepted source/tree/review/archive identity."
+      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.7 archive with pinned Claude Code 2.1.288 and bind evidence to accepted source/tree/review/archive identity."
     },
     {
       "id": "promotion-prepare-execution-parity",
@@ -323,7 +323,7 @@
     {
       "id": "publishable-surface-semantic-closure",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Materialize exact release facts, release notes and publish preview for v0.4.6, require semantic public-claim PASS against authoritative provider/product facts, and bind all digests into pretag-manifest v2 plus Release-required topology before tag."
+      "requirement": "Materialize exact release facts, release notes and publish preview for v0.4.7, require semantic public-claim PASS against authoritative provider/product facts, and bind all digests into pretag-manifest v2 plus Release-required topology before tag."
     },
     {
       "id": "guarded-publish-action",
