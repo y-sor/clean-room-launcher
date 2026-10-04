@@ -28,7 +28,7 @@ Semantic Versioning after the first public release.
 ### Changed
 
 - Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
-  Claude Code `2.1.288`, with registry/package/native identities frozen into
+  Claude Code `2.1.289`, with registry/package/native identities frozen into
   accepted pre-tag evidence.
 - A consumed protected release identity now resolves to
   `RELEASE_QUARANTINED`: release-only candidate lanes remain disabled for that
