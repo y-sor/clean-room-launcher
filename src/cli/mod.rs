@@ -280,6 +280,7 @@ fn launch_isolated_codex(
     let resolved = launch_contract::ResolvedLaunch::resolve_codex(
         contract,
         identity,
+        plan,
         &home,
         &inputs.codex_home,
         resource_request,
@@ -302,13 +303,13 @@ fn launch_isolated_codex(
         // Reject project-local sibling MCP layers before preparing persistent
         // provider state. The full provider-layer preflight repeats this check
         // immediately before provider birth to close the action-time boundary.
-        process::preflight_codex_project_mcp_layers(&plan.project)?;
+        process::preflight_codex_project_mcp_layers(&resolved.isolation().project)?;
     }
     let state = if invocation == launch_contract::CodexInvocation::Interactive {
         Some(process::prepare_codex_state(
             &home,
             &inputs.codex_home,
-            &plan.selected_global_skill_paths,
+            &resolved.isolation().selected_global_skill_paths,
             resolved.plugin_activation(),
         )?)
     } else {
@@ -321,22 +322,21 @@ fn launch_isolated_codex(
         let state = state
             .as_ref()
             .ok_or_else(|| "CLROOM_CODEX_MCP_PREFLIGHT_FAILED: clean Codex state is unavailable; continue locally".to_owned())?;
-        process::preflight_codex_mcp_layers(&plan, &resolved, state)?;
+        process::preflight_codex_mcp_layers(&resolved, state)?;
     }
     if std::io::stderr().is_terminal() {
         let feature_state = screen::PlaqueFeatureState::from_provider_args(&provider_args);
         eprintln!(
             "{}",
             screen::render_isolated_preview(
-                &plan.project,
-                plan.selected_global_skills,
+                &resolved.isolation().project,
+                resolved.isolation().selected_global_skills,
                 feature_state,
             )
             .join("\n")
         );
     }
     process::launch_isolated_codex(
-        &plan,
         &executable,
         &resolved,
         pass_env,
