@@ -1150,6 +1150,19 @@ def check(root: Path) -> list[str]:
         )
 
     tag_helper = read(root, "scripts/release/push-release-tag.sh")
+    for marker, code in (
+        ("ensure_remote_tag_absent INITIAL || exit 68", "TAG_HELPER_CONSUMED_TAG_BLOCK_INITIAL"),
+        ("ensure_release_absent INITIAL || exit 68", "TAG_HELPER_CONSUMED_RELEASE_BLOCK_INITIAL"),
+        (
+            "ensure_remote_tag_absent ACTION_TIME || { cleanup_local_tag; exit 76; }",
+            "TAG_HELPER_CONSUMED_TAG_BLOCK_ACTION_TIME",
+        ),
+        (
+            "ensure_release_absent ACTION_TIME || { cleanup_local_tag; exit 76; }",
+            "TAG_HELPER_CONSUMED_RELEASE_BLOCK_ACTION_TIME",
+        ),
+    ):
+        require(errors, marker in tag_helper, code)
     require(errors, "PUBLISHABLE_CONTENT_JOB_PASS" in tag_helper, "TAG_HELPER_PUBLISHABLE_CONTENT_JOB")
     require(errors, "PUBLISH_PREVIEW_BINDING_PASS" in tag_helper, "TAG_HELPER_PUBLISH_PREVIEW_BINDING")
     require(
