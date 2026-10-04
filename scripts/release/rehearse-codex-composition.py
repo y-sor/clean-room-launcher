@@ -39,6 +39,20 @@ def fail(message: str) -> None:
     raise RuntimeError(message)
 
 
+def remove_synthetic_home(home: pathlib.Path) -> None:
+    # CLROOM deliberately hardens the projected plugin tree read-only. The
+    # rehearsal owns this synthetic HOME, so restore directory write bits only
+    # after all evidence checks, then remove the task-owned tree.
+    for root, dirnames, _filenames in os.walk(home, topdown=False, followlinks=False):
+        root_path = pathlib.Path(root)
+        for dirname in dirnames:
+            child = root_path / dirname
+            if not child.is_symlink():
+                child.chmod(0o700)
+        root_path.chmod(0o700)
+    shutil.rmtree(home)
+
+
 def sha256_file(path: pathlib.Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -612,7 +626,7 @@ def rehearse(args: argparse.Namespace) -> None:
             fail("ambient provider config/plugin source changed during composition rehearsal")
     finally:
         if home.exists() and not home.is_symlink():
-            shutil.rmtree(home)
+            remove_synthetic_home(home)
         clean_after = not home.exists() and not home.is_symlink()
 
     if not clean_after:
