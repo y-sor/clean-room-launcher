@@ -33,7 +33,8 @@
         "The standalone-MCP source-mutation observer no longer treats provider argv spelling as lifecycle authority. It partitions non-version provider observations by the task-owned .mcp-preflight-* directory lifetime: provider execution while that directory exists is machine-owned config preflight, while any non-version provider execution after preflight teardown is an escape. Pure self-tests require preflight interactive-alias tolerance and post-preflight interactive/app-server rejection.",
         "Release-harness regressions now require consumed-identity tag/Release absence guards at both initial and action-time boundaries, preserve exact-source publish guards, reject reintroduction of the repository-wide quarantine path allowlist, and reject the former IndexNow fixed retry deadline.",
         "Discovery-surface coverage requires a non-empty non-placeholder Bing verification setting and the exact escaped msvalidate.01 head projection while preserving canonical namespace checks.",
-        "Attestation-contract regression now rejects a tag workflow that omits the canonical draft-promote helper, so the contract cannot regress to the obsolete direct gh release upload requirement."
+        "Attestation-contract regression now rejects a tag workflow that omits the canonical draft-promote helper, so the contract cannot regress to the obsolete direct gh release upload requirement.",
+        "Accepted main now enforces concise discovery descriptions on both docs/_config.yml and docs/index.md: each description is capped at 160 characters and must retain Clean Room Launcher (CLROOM), Codex, Claude Code, clean/selective launch, project-context and normal-setup signals."
       ]
     },
     "dependencies": {
@@ -76,7 +77,8 @@
         "Current README, provider matrix, provider guides, limitations and security source-contract claims advance to v0.4.7 and the exact provider targets while keeping unsupported transports, Claude standalone MCP, extra platforms, signing and notarization unclaimed.",
         "Standalone MCP wording no longer describes already-accepted source behavior as an unaccepted PR candidate; publication status remains separately owned by GitHub Releases.",
         "Current README, SECURITY and provider/source-contract documentation advance coherently to v0.4.7 while retaining v0.4.4 as the published review baseline and v0.4.5/v0.4.6 only as explicitly classified unpublished incident references.",
-        "The documentation surface adds independent Bing site verification through a Jekyll-configured msvalidate.01 meta tag; repository tests reject missing/placeholder verification material and legacy namespace leakage."
+        "The documentation surface adds independent Bing site verification through a Jekyll-configured msvalidate.01 meta tag; repository tests reject missing/placeholder verification material and legacy namespace leakage.",
+        "Accepted main #120 tightens the site/homepage meta description to a concise lifecycle-stable CLROOM positioning while preserving the product acronym, both qualified providers, clean/selective launch semantics, project-context preservation and normal-setup claim; dedicated discovery-surface tests bind those claims."
       ]
     }
   },
@@ -308,6 +310,12 @@
       "decision": "CONTRACT_EXPAND",
       "failure_mode": "The attestation contract still required the obsolete literal gh release upload after Draft promotion moved to the canonical release-external-action.py helper, causing ACTIVE_CANDIDATE readiness to fail even though the guarded promotion path was present.",
       "durable_control": "The checker requires the canonical release-external-action.py draft-promote invocation, and the release-candidate negative fixture removes that invocation and requires a fail-closed TAG_ATTEST_CONTRACT result."
+    },
+    {
+      "id": "discovery-description-drift",
+      "decision": "COVERED",
+      "failure_mode": "Homepage/site discovery copy can become oversized, generic, or lose the durable CLROOM/provider/project-context signals while ordinary build and sitemap checks still pass.",
+      "durable_control": "Discovery-surface regression checks both docs/_config.yml and docs/index.md, caps each description at 160 characters, and requires the canonical CLROOM name/acronym, Codex, Claude Code, clean/selective launch, project context and normal setup signals."
     }
   ],
   "artifact_capability_gates": [
@@ -357,7 +365,7 @@
       "requirement": "Verify the actual Latest Release and releases/latest/download bytes, attestations and isolated public installer path before reporting PUBLIC_INSTALL_VERIFIED."
     }
   ],
-  "product_outcome": "Ship the complete post-v0.4.4 standalone Codex MCP delta plus the accepted release-system reliability repairs and independent Bing verification as v0.4.7, while retaining v0.4.5 and v0.4.6 as protected unpublished incident evidence.",
+  "product_outcome": "Ship the complete post-v0.4.4 standalone Codex MCP delta plus the accepted release-system reliability repairs, Bing verification and accepted current-main discovery metadata as v0.4.7, while retaining v0.4.5 and v0.4.6 as protected unpublished incident evidence.",
   "contract_evolution_review": {
     "decision": "EXPAND",
     "rationale": "The post-v0.4.4 release train exposed two protected-tag harness incidents plus a post-merge dependency-wait false failure. v0.4.7 retains the existing publishable-surface controls and additionally promotes authoritative Draft-absence proof, ambiguous-outcome reconciliation, consumed-identity release-boundary quarantine, exact-source publish guards and single-deadline IndexNow waiting into durable machine-checked contracts.",
@@ -394,7 +402,8 @@
       "RELEASE_QUARANTINED is a release-boundary circuit breaker, not a repository-wide development path allowlist; existing tag/Release absence and publish exact-source guards are regression-locked.",
       "IndexNow same-SHA CI+Pages wait uses one job-level bounded deadline; the previous fixed retry-count timeout is regression-forbidden.",
       "Bing verification is a tested discovery-surface contract: configured value must be non-empty/non-placeholder and render through the escaped msvalidate.01 meta tag.",
-      "attestation contract binds Draft promotion to the canonical release-external-action.py draft-promote invocation, with a negative fixture that removes the helper call and must fail closed"
+      "attestation contract binds Draft promotion to the canonical release-external-action.py draft-promote invocation, with a negative fixture that removes the helper call and must fail closed",
+      "site/homepage discovery descriptions are bounded to 160 characters and regression-locked to durable CLROOM/provider/project-context positioning"
     ]
   },
   "reviewed_content_digest": "5cd13ca33974d637f9fb307cb1ecfe3cd7e91b31c69b7333834a936fab04442c"

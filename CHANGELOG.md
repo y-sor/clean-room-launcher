@@ -41,6 +41,9 @@ Semantic Versioning after the first public release.
 - The current candidate changelog section remains active semantic release input.
   Older changelog sections are historical, while current publishable claims are
   validated against the exact candidate/provider facts.
+- Tightens the site and homepage discovery descriptions to a concise CLROOM
+  positioning while preserving the product/provider/project-context signals
+  enforced by discovery-surface regression tests.
 
 ### Fixed
 
