@@ -705,8 +705,46 @@ fn analyze(
 
 #[cfg(test)]
 mod tests {
-    use super::{BoundaryState, CODEX_CLEAN_DEFAULTS, LaunchContract, Presence};
+    use super::{
+        partition_codex_request, BoundaryState, CODEX_CLEAN_DEFAULTS, LaunchContract, Presence,
+        ResolveCodexError,
+    };
+    use clroom::catalog::{
+        resource::ResourceKind,
+        selection::{SelectionRequest, SelectionTarget},
+    };
     use std::path::Path;
+
+    #[test]
+    fn codex_request_partition_preserves_one_plugin_and_one_mcp_independently() {
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        request.include_value("mcp:review").unwrap();
+
+        let (plugins, mcp) = partition_codex_request(&request).unwrap();
+        assert_eq!(plugins.includes.len(), 1);
+        assert_eq!(mcp.includes.len(), 1);
+        assert!(plugins.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::Plugin,
+            id: "codex-app-tools@openai-bundled".to_owned(),
+        }));
+        assert!(mcp.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::McpServer,
+            id: "review".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn codex_request_partition_keeps_all_and_unsupported_kinds_closed() {
+        let mut request = SelectionRequest::default();
+        request.include_value("all").unwrap();
+        assert_eq!(
+            partition_codex_request(&request),
+            Err(ResolveCodexError::UnsupportedRequest)
+        );
+    }
 
     #[test]
     fn standalone_mcp_top_level_guard_refuses_provider_subcommands() {
