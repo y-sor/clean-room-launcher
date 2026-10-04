@@ -742,6 +742,31 @@ def check(root: Path) -> list[str]:
         "CODEX_COMPOSITION_REHEARSAL_UPLOAD",
     )
 
+    stage_release = read(root, "scripts/release/stage-release.sh")
+    verify_pretag = read(root, "scripts/release/verify-pretag-stage.py")
+    for marker in (
+        "rehearse-codex-composition.py",
+        "CODEX_COMPOSITION_EXACT_ARCHIVE_RUNTIME",
+        "codex-composition-stage.json",
+        '"codex_composition_exact_archive_runtime": "PASS"',
+    ):
+        require(
+            errors,
+            marker in stage_release,
+            "CODEX_COMPOSITION_STAGE_CONTRACT:" + marker,
+        )
+    for marker in (
+        "codex-composition-stage.json",
+        "clroom.codex-composition-rehearsal.v1",
+        "CODEX_COMPOSITION",
+        '"codex_composition_exact_archive_runtime": "PASS"',
+    ):
+        require(
+            errors,
+            marker in verify_pretag,
+            "CODEX_COMPOSITION_STAGE_VERIFY_CONTRACT:" + marker,
+        )
+
     public_route_rehearsal_path = root / "scripts/release/rehearse-public-route.sh"
     require(errors, public_route_rehearsal_path.is_file(), "PUBLIC_ROUTE_REHEARSAL_MISSING")
     if public_route_rehearsal_path.is_file():
