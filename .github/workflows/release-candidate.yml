@@ -39,7 +39,6 @@ jobs:
           python3 scripts/release/check-harness-contract.py --self-test
           python3 scripts/release/check-harness-contract.py
           python3 scripts/release/resolve-release-lifecycle.py --self-test
-          python3 scripts/release/check-quarantine-repair-scope.py --self-test
           python3 scripts/release/stage-binding.py --self-test
           python3 scripts/release/pretag-run-admission.py --self-test
           python3 scripts/release/check-workflow-exec-contract.py --self-test
@@ -97,15 +96,16 @@ jobs:
           echo "tag_source=$candidate_tag_source" >> "$GITHUB_OUTPUT"
           printf 'RELEASE_LIFECYCLE=%s version=%s baseline=%s tag_source=%s\n' \
             "$lifecycle" "$candidate_version" "$latest_tag" "$candidate_tag_source"
-      - name: Validate quarantined release-harness repair scope
-        if: steps.lifecycle.outputs.lifecycle == 'QUARANTINED_REPAIR'
+      - name: Validate consumed release identity quarantine
+        if: steps.lifecycle.outputs.lifecycle == 'RELEASE_QUARANTINED'
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${{ steps.lifecycle.outputs.tag_source }}"
-          python3 scripts/release/check-quarantine-repair-scope.py \
-            --base "${{ steps.lifecycle.outputs.tag_source }}" \
-            --head "${{ github.event.pull_request.head.sha || github.sha }}"
+          version="${{ steps.lifecycle.outputs.version }}"
+          tag_source="${{ steps.lifecycle.outputs.tag_source }}"
+          test -n "$tag_source"
+          test "$(git rev-parse "refs/tags/v$version^{commit}")" = "$tag_source"
+          echo "RELEASE_QUARANTINE_PASS version=$version tag_source=$tag_source"
       - name: Validate active candidate seal before expensive lanes
         if: steps.lifecycle.outputs.lifecycle == 'ACTIVE_CANDIDATE'
         env:
@@ -114,7 +114,7 @@ jobs:
   release-readiness:
     name: CLROOM release readiness
     needs: release-eligibility
-    if: needs.release-eligibility.outputs.lifecycle != 'QUARANTINED_REPAIR'
+    if: needs.release-eligibility.outputs.lifecycle != 'RELEASE_QUARANTINED'
     runs-on: macos-14
     timeout-minutes: 45
     env:
@@ -521,7 +521,7 @@ jobs:
               test "$ATTEST" = skipped
               test "$PROMOTION" = skipped
               ;;
-            QUARANTINED_REPAIR:*)
+            RELEASE_QUARANTINED:*)
               test "$READINESS" = skipped
               test "$STAGE" = skipped
               test "$PUBLISHABLE" = skipped
