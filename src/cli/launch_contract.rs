@@ -518,10 +518,12 @@ impl LaunchContract {
         }
     }
 
+    #[cfg(test)]
     pub fn add_codex_plugin_activation(&mut self, activation_args: &[String]) {
         self.add_codex_resource_activations(activation_args, &[]);
     }
 
+    #[cfg(test)]
     pub fn add_codex_mcp_activation(&mut self, activation_args: &[String]) {
         self.add_codex_resource_activations(&[], activation_args);
     }
