@@ -397,5 +397,5 @@
       "attestation contract binds Draft promotion to the canonical release-external-action.py draft-promote invocation, with a negative fixture that removes the helper call and must fail closed"
     ]
   },
-  "reviewed_content_digest": "96c6585577a040327b73548c1ae8b988cf55c59abe65cb4da855b18ece0e9137"
+  "reviewed_content_digest": "5cd13ca33974d637f9fb307cb1ecfe3cd7e91b31c69b7333834a936fab04442c"
 }
