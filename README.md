@@ -269,8 +269,7 @@ configuration values are discarded during this check.
 
 Raw Codex config/plugin/MCP activation controls such as `-c`, `--config`,
 `--profile`, `--enable`, `--disable`, and `--plugin` are refused while
-CLROOM resource selection is active. The exact qualification target is Codex
-CLI `0.160.0` on macOS Apple Silicon. A plugin whose effective MCP surface
+CLROOM resource selection is active. The exact qualification target is Codex CLI `0.160.0` on macOS Apple Silicon. A plugin whose effective MCP surface
 includes the app-owned `codex_app` server remains host-required and fails
 closed; configuration visibility is not treated as proof that app-hosted tools
 exist.
