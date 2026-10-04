@@ -9,46 +9,78 @@ Semantic Versioning after the first public release.
 
 ## [0.4.7] - 2026-10-04
 
+### Added
+
+- Added bounded standalone Codex MCP selection for one exact root-user stdio
+  server per interactive launch, with fail-closed environment admission,
+  layer-conflict checks, source revalidation, real-provider initialization and
+  task-owned lifecycle closure.
+- Added pre-tag publishable-surface closure: exact release facts, rendered
+  release notes and the publish preview are materialized, semantically checked
+  against authoritative product/provider facts, content-addressed and required
+  by release topology before a protected tag can be created.
+- Added canonical guarded tag, Draft and publish action paths with authoritative
+  reconciliation for ambiguous local outcomes, plus post-public verification of
+  the real `releases/latest/download` installer route and an isolated install.
+- Added independent Bing site verification to the generated documentation head,
+  with repository tests rejecting a missing or placeholder verification value.
+
 ### Changed
 
-- Advances the release identity beyond the two consumed unpublished incident
-  tags without moving, deleting, reusing, rewriting or publishing either
-  preserved identity.
-- Release lifecycle now separates normal protected development from
-  release-system quarantine: a consumed manifest identity is
-  `RELEASE_QUARANTINED`, while a fresh version with no existing protected tag
-  returns to the full `ACTIVE_CANDIDATE` topology.
-- Public discovery metadata now includes independent Bing site verification,
-  with regression coverage for the canonical Pages namespace.
+- Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
+  Claude Code `2.1.289`, with registry/package/native identities frozen into
+  accepted pre-tag evidence.
+- A consumed protected release identity now resolves to
+  `RELEASE_QUARANTINED`: release-only candidate lanes remain disabled for that
+  identity while ordinary source/docs/CI maintenance continues through normal
+  protected-PR gates. A fresh version whose tag is absent returns to the full
+  `ACTIVE_CANDIDATE` topology.
+- IndexNow keeps the same-SHA CI + Pages success dependency but removes the
+  duplicate fixed polling deadline; the job-level bounded timeout is the single
+  deadline and actual dependency failures still fail immediately.
+- The current candidate changelog section remains active semantic release input.
+  Older changelog sections are historical, while current publishable claims are
+  validated against the exact candidate/provider facts.
 
 ### Fixed
 
-- Closed the latest post-tag release-harness incident: canonical
-  external actions now reconcile ambiguous remote outcomes, Draft lookup proves
-  absence before creation, and release rehearsal binds destination identity,
-  exact candidate source and executable helper bytes before any mutation.
-- Removed the temporary release-repair path allowlist that accidentally froze
-  unrelated development while an incident identity was quarantined. Release
-  quarantine now applies at the release boundary instead of acting as a
-  repository-wide path policy.
-- IndexNow same-SHA CI and Pages gating now has one bounded job deadline instead
-  of a shorter independent polling cutoff, avoiding false failures when a
-  successful Pages deployment is merely slow.
+- The protected `v0.4.5` and `v0.4.6` tags and their unpublished Drafts
+  remain incident evidence. They are not moved, reused, manually rewritten or
+  promoted; this recovery advances under the fresh `v0.4.7` identity from the
+  published `v0.4.4` baseline.
+- Draft promotion no longer interprets an arbitrary release-by-tag lookup
+  failure as proof of absence. The canonical helper proves absence through the
+  authenticated release collection, fails closed on uncertainty, and recovers
+  existing matching Drafts by numeric release ID.
+- Tag push, Draft create/edit/upload and publish transitions reconcile the
+  authoritative destination after simulated or real local post-action errors,
+  preventing blind retries after an effect may already have succeeded.
+- Guarded publication remains exact-source-bound: accepted main, protected tag
+  target, staged bytes and Draft identity must agree immediately before the one
+  publish transition, so an older incident Draft cannot be promoted after main
+  has moved.
+- Release quarantine is enforced at the release boundary instead of by a
+  repository-wide path allowlist, preventing both consumed-identity reuse and
+  accidental freezing of unrelated protected development.
 
 ### Dependencies
 
-- No runtime or build dependency is added or replaced by the `v0.4.7`
-  recovery. The dependency graph remains the one already qualified on the
-  published-`v0.4.4` to current-main delta.
+- The runtime delta from published `v0.4.4` includes bounded TOML parsing for
+  standalone Codex MCP configuration. The `v0.4.7` recovery adds no further
+  runtime or build dependency.
 
 ### Security
 
-- Existing protected tags and Releases remain fail-closed at both initial and
-  action-time release guards. The guarded publish path remains bound to the
-  exact accepted source, pre-tag stage and tag target, so preserved incident
-  Drafts cannot be promoted after `main` has moved away from their source.
-- The next fresh release identity must complete the full exact-candidate and
-  accepted-main release topology before any protected tag is created.
+- Before a protected tag, the exact public body/title/state/asset contract is
+  rendered and bound to structured provider/product/platform facts; stale or
+  unclassified volatile claims block the candidate even when file hashes match.
+- Release-system first-execution closure now covers the canonical external
+  action branches before a product tag is consumed, including failure/ambiguity
+  reconciliation. Tag and publish remain separate Owner-authorized boundaries.
+- Publication is executed through one checked-in helper that re-verifies the
+  Draft and action-time fingerprint immediately before the irreversible
+  transition, then reconciles the published object. Public-route install
+  verification remains a distinct post-publication state.
 
 ## [0.4.6] - 2026-10-02
 

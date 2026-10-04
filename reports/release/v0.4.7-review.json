@@ -6,7 +6,7 @@
     "runtime": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Post-v0.4.4 main adds one exact root-user Codex stdio MCP selective-restore path with source fingerprinting, action-time revalidation, explicit environment-name admission, provider-native config-layer preflight, and fail-closed conflict handling; v0.4.6 also removes patch-version-coupled human diagnostic prose without changing error markers.",
+        "Post-v0.4.4 main adds one exact root-user Codex stdio MCP selective-restore path with source fingerprinting, action-time revalidation, explicit environment-name admission, provider-native config-layer preflight, and fail-closed conflict handling; v0.4.7 also removes patch-version-coupled human diagnostic prose without changing error markers.",
         "The existing clean and whole-plugin launch contracts remain bounded; this candidate adds no multi-resource, remote/OAuth MCP, Claude standalone MCP, Agent Plugins activation, or --with=all authority."
       ]
     },
@@ -20,20 +20,20 @@
         "Claude TTY rehearsal separates human UI observation from provider lifecycle: the supervisor owns a task-specific PTY session, injects the fixed non-submitting autocomplete probe automatically after composer readiness, relays only recognized runtime terminal protocol, discards other runtime bytes, preserves bounded CPR correlation, and verifies teardown plus persistent-state restoration.",
         "Accepted-main promotion rehearsal now permits the exact same in-progress main-push run only when the resolver independently proves GitHub Actions/run/repository/ref/SHA identity and completed-success eligibility, readiness, exact-byte stage and pre-tag attestation jobs; the tag workflow remains completed-success-run-only. A deterministic synthetic admission self-test runs in release eligibility before provider provisioning.",
         "Codex standalone-MCP unit fixtures now derive their provider identity from canonical CODEX_CLEAN_EXACT instead of a stale patch-version literal, so provider pin movement re-exercises MCP semantics rather than failing all fixture cases at tuple admission.",
-        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.288 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
+        "Provider-info JSON integration coverage now expects the refreshed Claude Code 2.1.289 exact qualification target, preventing the source-visible exact target from drifting behind the canonical provider tuple.",
         "Claude human-TTY rehearsal reuses the exact pinned provider tuple already exercised by exact-PR machine readiness: the local smoke self-provisions reviewed package/native bytes with frozen version+integrity checks and does not re-query mutable npm latest. Accepted-main staging remains the pre-tag freshness authority.",
         "Provider-canary contract coverage now follows machine-owned AGENTS-boundary evidence and explicitly rejects the superseded human AGENTS confirmation markers, so release readiness fails if that choreography is reintroduced.",
         "Claude composer readiness no longer depends only on one contiguous output-stream phrase. The supervisor retains exact-marker detection and adds a bounded recent-visible-window detector for normal composer status tokens, records the detection method, and has executable regressions for differential redraw, false-positive rejection, and stale-window rejection.",
-        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.288; provider-info integration coverage requires the source-visible qualification target to match those production tuple constants.",
+        "The canonical runtime provider inventory exact tuples advance with the refreshed pins to Codex 0.160.0 and Claude Code 2.1.289; provider-info integration coverage requires the source-visible exact target to match those production tuple constants.",
         "Claude TTY readiness now uses a bounded dependency-free terminal screen-state model rather than linear PTY history. Executable regressions construct a differential cursor-overwrite stream whose linear visible text lacks every readiness token while the rendered same-row screen qualifies; clear/overwrite, cross-row, trust-like, split-CSI, alternate-screen and unsupported-mutation negatives are also enforced.",
         "Unknown Claude screen controls now have a canonical machine-owned diagnostic path: the supervisor records only a normalized control identity and SHA-256 fingerprint for the first fail-closed control, writes private 0600 O_EXCL evidence with no raw terminal transcript, verifies terminal restoration/task-session closure/zero human and submit bytes, and the release smoke exposes a clean-only diagnose-screen phase with no y/N confirmation.",
         "The captured Claude Code 2.1.287 control CSI ?2031h (SHA-256 d85469a8a3a9ab6e9cd79bbfcdd4007d817a475162774c463410e5087778c791) is replayed in supervisor self-tests. Mode 2031 remains rendered-screen-neutral while terminal color-scheme reports CSI ?997n / ?997;1n / ?997;2n are recognized as machine traffic; invalid ?997;3n is rejected. Mode 2031 is included in physical terminal DECRQM snapshot/restore and terminal-state preflight.",
         "Claude human-TTY evidence now requires a shell-level readiness Enter immediately before each clean and selected provider launch while the operator is looking at that terminal. The acknowledgement is consumed before Claude starts, never reaches provider stdin, is recorded in schema v6, and the stage verifier rejects legacy v5 or missing readiness acknowledgements.",
         "Provider tuple coherence is now cross-bound rather than mirrored: check-provider-source-pins.py derives Codex/Claude tuples from provider-pins.sh, requires both clean-launch and plugin-activation constants in src/catalog/provider_inventory.rs to match, and has negative self-tests for stale Claude clean/plugin and Codex clean tuples. Canonical readiness executes both the self-test and the live source-pin check, while the harness contract fails if either invocation is disconnected.",
         "The standalone-MCP source-mutation observer no longer treats provider argv spelling as lifecycle authority. It partitions non-version provider observations by the task-owned .mcp-preflight-* directory lifetime: provider execution while that directory exists is machine-owned config preflight, while any non-version provider execution after preflight teardown is an escape. Pure self-tests require preflight interactive-alias tolerance and post-preflight interactive/app-server rejection.",
-        "Post-v0.4.6 harness regressions require canonical tag creation to reject existing tag/Release identities at both initial and action-time guards, canonical publish to remain bound to exact accepted main plus exact tag target, and release quarantine to remain independent from ordinary protected PR development.",
-        "IndexNow workflow contract coverage rejects reintroduction of the former fixed retry window and second timeout while preserving same-SHA CI/Pages success binding and fail-fast behavior on actual dependency failure.",
-        "Discovery-surface regression coverage requires the configured Bing verification value to be non-empty/non-placeholder and rendered through the canonical Pages head include without reintroducing legacy repository namespaces."
+        "Release-harness regressions now require consumed-identity tag/Release absence guards at both initial and action-time boundaries, preserve exact-source publish guards, reject reintroduction of the repository-wide quarantine path allowlist, and reject the former IndexNow fixed retry deadline.",
+        "Discovery-surface coverage requires a non-empty non-placeholder Bing verification setting and the exact escaped msvalidate.01 head projection while preserving canonical namespace checks.",
+        "Attestation-contract regression now rejects a tag workflow that omits the canonical draft-promote helper, so the contract cannot regress to the obsolete direct gh release upload requirement."
       ]
     },
     "dependencies": {
@@ -49,22 +49,25 @@
       "evidence": [
         "The post-v0.4.4 delta retains release/promotion trust-boundary and gate-topology hardening, adds the standalone MCP macOS rehearsal to PR readiness, repairs its source-mutation synchronization, and keeps the grouped CodeQL family update atomic at v4.38.2.",
         "Release eligibility continues to run cheap contract/harness checks before expensive provider and artifact lanes.",
-        "ACTIVE_CANDIDATE readiness exposed that post-v0.4.4 hardening had incorrectly removed the Python CycloneDX schema verifier as unused: exact provider qualification and artifact validation passed, then supply-chain metadata generation failed because Python jsonschema was absent. v0.4.6 restores that verifier in a task-owned venv and freezes its Python 3.14 wheel closure with exact versions and SHA-256 hashes under pip --require-hashes/--only-binary before canonical readiness.",
-        "Release lifecycle now classifies an advanced manifest identity with an already-consumed protected tag as RELEASE_QUARANTINED, skips release-only staging/provider lanes for that identity, and permits unrelated development to continue only through the normal protected-main CI/security gates.",
-        "IndexNow now has one bounded job-level deadline instead of a shorter independent polling deadline; exact same-SHA CI and Pages success remain mandatory before the live sitemap canary and notification step."
+        "ACTIVE_CANDIDATE readiness exposed that post-v0.4.4 hardening had incorrectly removed the Python CycloneDX schema verifier as unused: exact provider qualification and artifact validation passed, then supply-chain metadata generation failed because Python jsonschema was absent. v0.4.7 restores that verifier in a task-owned venv and freezes its Python 3.14 wheel closure with exact versions and SHA-256 hashes under pip --require-hashes/--only-binary before canonical readiness.",
+        "Release lifecycle separates RELEASE_QUARANTINED from ordinary protected development: release-only staging/publishable/attestation/promotion lanes skip for a consumed identity, while the stable Release required aggregator still passes only the explicit quarantined topology.",
+        "IndexNow same-SHA CI and Pages dependency waiting now has one bounded job timeout instead of a second internal fixed retry window; real dependency failure still exits immediately.",
+        "The tag-attestation contract now binds Draft promotion to the canonical release-external-action.py draft-promote path instead of requiring the obsolete direct gh release upload command."
       ]
     },
     "release": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
         "Release Contract v1 now explicitly makes standalone Codex MCP exact-PR real-provider evidence and accepted-main exact-shipping-byte requalification durable pre-tag blockers; provider pin movement invalidates the evidence.",
-        "v0.4.6 refreshes exact provider qualification inputs to current stable Codex 0.160.0 and Claude Code 2.1.288, with registry integrity and native-byte identity still required before acceptance.",
+        "v0.4.7 refreshes exact provider qualification inputs to current stable Codex 0.160.0 and Claude Code 2.1.289, with registry integrity and provider-byte identity still required before acceptance.",
         "Provider provisioning keeps digest failures fail-closed while reporting only the expected and observed Codex executable SHA-256, making provider-byte refresh actionable without exposing credentials, prompts, private paths or provider state.",
         "Action-time current-stable resolution on 2026-10-02 moved the qualification tuple to Codex 0.160.0 and Claude Code 2.1.288. Exact registry SHA-512 values and the Codex macOS native SHA-256 were re-frozen before requalification; all prior provider/runtime evidence is invalidated until the exact refreshed candidate closes its machine and human gates.",
-        "The 2.1.288 refresh exposed a source-pin split: registry pins and public claims had advanced while shipped Claude clean/plugin qualification constants remained 2.1.287, so local plugin preflight correctly failed PROVIDER_TUPLE_NOT_QUALIFIED before TUI. v0.4.6 now treats provider-pins.sh plus product exact tuples as one fail-closed release contract.",
-        "The canonical external-action helper reconciles authoritative destination state after simulated local post-effect ambiguity for protected-tag push, Draft mutation/upload and publish transition; a local error after a remote effect cannot be treated as proof that the effect did not occur.",
-        "Draft promotion no longer interprets an arbitrary release-by-tag lookup failure as absence. Creation requires an authenticated paginated release collection to prove absence; uncertain or duplicate state fails closed and existing Drafts are recovered by numeric release identity.",
-        "Consumed release identities are release-boundary state rather than repository-wide path policy. A fresh manifest version with no existing protected tag returns to ACTIVE_CANDIDATE and must complete the full exact-candidate/accepted-main topology."
+        "The 2.1.288 refresh exposed a source-pin split: registry pins and public claims had advanced while shipped Claude clean/plugin qualification constants remained 2.1.287, so local plugin preflight correctly failed PROVIDER_TUPLE_NOT_QUALIFIED before TUI. v0.4.7 now treats provider-pins.sh plus product exact tuples as one fail-closed release contract.",
+        "The v0.4.6 protected-tag publish attempt exposed a Draft lookup contract escape before mutation. The canonical helper now treats arbitrary release-by-tag failure as uncertainty, proves absence through the authenticated paginated release collection, rejects duplicate/malformed collection state, and recovers existing Drafts by numeric release ID.",
+        "Canonical tag push, Draft promote/upload and publish paths reconcile authoritative destination state after simulated local post-action errors, so an ambiguous local result cannot trigger a blind second mutation.",
+        "Consumed release identity is now a release-boundary state, RELEASE_QUARANTINED, rather than a development path allowlist. Existing tag/Release guards and exact-source publish checks prevent reuse or publication of preserved incident identities, while a fresh absent tag returns the manifest to ACTIVE_CANDIDATE.",
+        "Action-time provider freshness on 2026-10-04 detected Claude Code latest moving from 2.1.288 to 2.1.289 before runtime qualification. The candidate advances the exact production/source/test tuple to 2.1.289 and invalidates prior Claude-bound evidence until registry integrity and full exact-candidate machine plus human-TTY qualification close again.",
+        "For Claude Code 2.1.289, ACTIVE_CANDIDATE runner metadata resolved and re-froze exact npm registry SHA-512 identities for both @anthropic-ai/claude-code and @anthropic-ai/claude-code-darwin-arm64 before provider execution; stale 2.1.288 hashes failed closed and were not reused."
       ]
     },
     "public_claims": {
@@ -72,8 +75,8 @@
       "evidence": [
         "Current README, provider matrix, provider guides, limitations and security source-contract claims advance to v0.4.7 and the exact provider targets while keeping unsupported transports, Claude standalone MCP, extra platforms, signing and notarization unclaimed.",
         "Standalone MCP wording no longer describes already-accepted source behavior as an unaccepted PR candidate; publication status remains separately owned by GitHub Releases.",
-        "Active README/provider/configuration/limitations surfaces advance their source-contract version to v0.4.7 while historical changelog sections remain historical; the current candidate changelog avoids presenting preserved incident identities as current product-version claims.",
-        "The public Pages surface adds independent Bing site-verification metadata under the canonical y-sor namespace with regression coverage and no change to the canonical URL set."
+        "Current README, SECURITY and provider/source-contract documentation advance coherently to v0.4.7 while retaining v0.4.4 as the published review baseline and v0.4.5/v0.4.6 only as explicitly classified unpublished incident references.",
+        "The documentation surface adds independent Bing site verification through a Jekyll-configured msvalidate.01 meta tag; repository tests reject missing/placeholder verification material and legacy namespace leakage."
       ]
     }
   },
@@ -249,7 +252,7 @@
     {
       "id": "claude-21288-pretag-provider-drift",
       "decision": "COVERED",
-      "failure_mode": "Before v0.4.6 reached the protected tag, the npm stable tuple moved from Claude Code 2.1.287 to 2.1.288, invalidating all provider-bound evidence tied to the previous tuple.",
+      "failure_mode": "Before v0.4.7 reached the protected tag, the npm stable tuple moved from Claude Code 2.1.287 to 2.1.288, invalidating all provider-bound evidence tied to the previous tuple.",
       "durable_control": "Release readiness failed closed on the latest-tag mismatch before tag creation. The candidate advances the exact Claude qualification pin to 2.1.288, refreshes wrapper and darwin-arm64 SHA-512 identities from the registry, updates current public claims, and requires full exact-candidate machine plus human-TTY requalification before acceptance."
     },
     {
@@ -265,28 +268,46 @@
       "durable_control": "Source-mutation provider observation is now bound to the task-owned .mcp-preflight-* lifecycle rather than argv spelling. Non-version provider modes are allowed only while that preflight directory exists; after teardown they fail closed. Pure self-tests cover an interactive-looking provider inside preflight as allowed evidence and interactive/app-server modes outside preflight as blocked, while product launch still revalidates the MCP immediately before exec."
     },
     {
-      "id": "posttag-draft-lookup-visibility-escape",
+      "id": "draft-lookup-failure-misclassified-as-absence",
       "decision": "CONTRACT_EXPAND",
-      "failure_mode": "The guarded publish path used a release-by-tag lookup that does not reliably expose Draft Releases; a nonzero lookup could therefore be misread as absence and make the create path ambiguous after a protected tag already existed.",
-      "durable_control": "Draft promotion now proves absence through the authenticated paginated releases collection before create, fails closed on unreadable or duplicate state, and recovers existing Drafts by validated numeric release identity."
+      "failure_mode": "A non-zero release-by-tag lookup can mean Draft invisibility, transport/API failure, or true absence; treating all failures as absence can create the wrong release object or duplicate a recoverable Draft.",
+      "durable_control": "Before Draft creation the canonical helper queries the authenticated paginated release collection, accepts creation only after proven absence, rejects uncertainty/duplicate/malformed state, and recovers a matching Draft through its exact numeric release ID."
     },
     {
-      "id": "external-action-ambiguous-outcome-reconciliation",
+      "id": "external-release-action-local-error-after-effect",
       "decision": "CONTRACT_EXPAND",
-      "failure_mode": "A remote tag/Draft/upload/publish effect can succeed while the local client reports an error afterward, leaving the caller unable to know whether retrying would duplicate or conflict with the already-applied effect.",
-      "durable_control": "The canonical external-action helper classifies the authoritative destination state after the action seam. Synthetic rehearsal forces simulated local post-effect errors for tag push, Draft mutation, Draft asset upload and publish transition and accepts only exact reconciled outcomes."
+      "failure_mode": "Tag push, Draft mutation/upload, or publish can succeed remotely and then surface a local non-zero/timeout; blind retry can duplicate or corrupt the release transaction.",
+      "durable_control": "The canonical action helper reconciles authoritative destination state after each ambiguous mutation class, and executable rehearsal covers simulated local post-action errors for tag push, Draft promote/upload, and publish transition."
     },
     {
-      "id": "consumed-identity-development-freeze-deadlock",
+      "id": "consumed-release-identity-quarantine-layer-confusion",
       "decision": "CONTRACT_EXPAND",
-      "failure_mode": "The first consumed-tag repair lifecycle encoded release quarantine as a path allowlist, which unintentionally blocked unrelated protected development while the manifest still named the consumed identity.",
-      "durable_control": "RELEASE_QUARANTINED now freezes only release eligibility for an already-consumed manifest identity. Ordinary changes remain governed by protected-main CI/security checks; removing the path allowlist is harness-enforced, while a fresh tag-free version returns to full ACTIVE_CANDIDATE topology."
+      "failure_mode": "Quarantining a consumed release identity through a repository-wide file allowlist can freeze unrelated development, while relaxing it without release-boundary guards could allow tag reuse or publication of an incident Draft.",
+      "durable_control": "RELEASE_QUARANTINED disables release-only candidate lanes for a consumed identity but leaves normal protected PR gates authoritative; canonical tag absence checks and publish exact-main/tag-source binding remain mandatory and regression-locked."
     },
     {
-      "id": "indexnow-second-deadline-false-failure",
+      "id": "indexnow-duplicate-deadline-false-failure",
       "decision": "CONTRACT_EXPAND",
-      "failure_mode": "IndexNow had both a job timeout and a shorter fixed polling retry window; a successful Pages deployment finishing just after the inner window produced a false workflow failure before the sitemap or notification steps ran.",
-      "durable_control": "IndexNow keeps same-SHA CI/Pages fail-closed polling but removes the independent fixed retry count. The job-level timeout is the sole deadline, and harness self-tests reject reintroduction of the old fixed window or timeout message."
+      "failure_mode": "A second fixed polling deadline can fail IndexNow shortly before the same-SHA Pages deployment succeeds, producing a false red post-merge signal without executing the live sitemap/notify steps.",
+      "durable_control": "The workflow keeps same-SHA CI+Pages terminal-success polling and fail-fast dependency errors but relies on the job-level bounded timeout as the sole deadline; harness regression forbids the previous fixed retry window and timeout message."
+    },
+    {
+      "id": "bing-verification-surface-could-silently-disappear",
+      "decision": "COVERED",
+      "failure_mode": "A missing, placeholder, or unrendered Bing verification token would leave the published discovery surface unverifiable while ordinary sitemap checks could remain green.",
+      "durable_control": "Discovery-surface tests require a non-empty non-placeholder configured value and the exact escaped msvalidate.01 meta projection, alongside existing canonical namespace and crawler-surface assertions."
+    },
+    {
+      "id": "claude-21289-pretag-provider-drift",
+      "decision": "COVERED",
+      "failure_mode": "Before v0.4.7 acceptance, the npm stable Claude tuple moved from 2.1.288 to 2.1.289, invalidating provider-bound evidence tied to the earlier tuple.",
+      "durable_control": "ACTIVE_CANDIDATE readiness checks npm latest and exact registry integrity before provider runtime. The drift failed closed before tag creation; v0.4.7 advances production/source/test claims to 2.1.289, freezes the exact wrapper and darwin-arm64 registry SHA-512 identities observed by the release runner, and requires fresh exact-candidate machine plus human-TTY requalification before acceptance."
+    },
+    {
+      "id": "attestation-contract-obsolete-direct-upload-requirement",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The attestation contract still required the obsolete literal gh release upload after Draft promotion moved to the canonical release-external-action.py helper, causing ACTIVE_CANDIDATE readiness to fail even though the guarded promotion path was present.",
+      "durable_control": "The checker requires the canonical release-external-action.py draft-promote invocation, and the release-candidate negative fixture removes that invocation and requires a fail-closed TAG_ATTEST_CONTRACT result."
     }
   ],
   "artifact_capability_gates": [
@@ -308,12 +329,12 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "PR_CANDIDATE_REHEARSAL",
-      "requirement": "Requalify exact v0.4.7 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.288, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
+      "requirement": "Requalify exact v0.4.7 PR-candidate source on macOS Apple Silicon with pinned Claude Code 2.1.289, including clean launch, bounded skill-only whole-plugin activation, managed/AGENTS boundary evidence and no model prompt for release rehearsal."
     },
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.7 archive with pinned Claude Code 2.1.288 and bind evidence to accepted source/tree/review/archive identity."
+      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.7 archive with pinned Claude Code 2.1.289 and bind evidence to accepted source/tree/review/archive identity."
     },
     {
       "id": "promotion-prepare-execution-parity",
@@ -336,10 +357,10 @@
       "requirement": "Verify the actual Latest Release and releases/latest/download bytes, attestations and isolated public installer path before reporting PUBLIC_INSTALL_VERIFIED."
     }
   ],
-  "product_outcome": "Publish the complete post-v0.4.4 product and release-system delta under a fresh v0.4.7 identity, preserving the consumed unpublished incident tags while proving that the repaired exact-byte promotion/publish path and normal protected development can coexist without weakening release boundaries.",
+  "product_outcome": "Ship the complete post-v0.4.4 standalone Codex MCP delta plus the accepted release-system reliability repairs and independent Bing verification as v0.4.7, while retaining v0.4.5 and v0.4.6 as protected unpublished incident evidence.",
   "contract_evolution_review": {
     "decision": "EXPAND",
-    "rationale": "The consumed v0.4.6 identity exposed additional lifecycle failures after the prior candidate: Draft lookup could not safely prove absence, remote effects needed authoritative ambiguous-outcome reconciliation, and the first quarantine repair accidentally coupled release incident state to unrelated development. v0.4.7 promotes those repairs plus the IndexNow single-deadline regression into durable contract coverage before any fresh protected tag is allowed.",
+    "rationale": "The post-v0.4.4 release train exposed two protected-tag harness incidents plus a post-merge dependency-wait false failure. v0.4.7 retains the existing publishable-surface controls and additionally promotes authoritative Draft-absence proof, ambiguous-outcome reconciliation, consumed-identity release-boundary quarantine, exact-source publish guards and single-deadline IndexNow waiting into durable machine-checked contracts.",
     "promoted_controls": [
       "standalone Codex MCP exact-PR macOS real-provider rehearsal bound to exact candidate/provider bytes",
       "standalone MCP fail-closed negative matrix for literal/unadmitted environment, provider subcommands, multi-MCP, plugin+MCP, non-session MCP layers and source mutation",
@@ -368,14 +389,13 @@
       "post-public verifier proves actual Latest/releases/latest/download routes and isolated install before PUBLIC_INSTALL_VERIFIED",
       "active public documentation rejects lifecycle-relative current-published/current-candidate wording that would self-invalidate at publication; GitHub Releases remains publication-state authority",
       "Claude human-observation evidence cannot be created from post-hoc confirmations alone: an empty-line readiness acknowledgement must occur before each clean/selected provider launch, is never forwarded to Claude, and is required by the stage evidence verifier.",
-      "authoritative Draft absence proof through authenticated paginated release collection before create; uncertain and duplicate state fail closed",
-      "irreversible external-action outcome reconciliation for protected tag push, Draft create/edit, Draft asset upload and publish transition after simulated local post-effect errors",
-      "RELEASE_QUARANTINED as a release-boundary circuit breaker rather than a repository-wide path allowlist; normal development remains under protected-main checks and fresh tag-free versions return to ACTIVE_CANDIDATE",
-      "canonical tag helper must reject existing tag/Release identity at initial and action-time guards",
-      "canonical publish helper remains bound to exact accepted main, exact pre-tag stage and exact tag target so preserved incident Drafts cannot be promoted from a later main",
-      "IndexNow same-SHA dependency wait uses one job-level bounded deadline and regression-forbids the former fixed retry window",
-      "public Bing site-verification value/rendering is regression-covered inside the canonical Pages namespace"
+      "Draft creation requires authenticated release-collection proof of absence; arbitrary release-by-tag failure is RELEASE_LOOKUP_UNCERTAIN and cannot authorize mutation.",
+      "Canonical external release actions reconcile authoritative destination state after ambiguous local post-action errors; blind retry is forbidden when effect status is unresolved.",
+      "RELEASE_QUARANTINED is a release-boundary circuit breaker, not a repository-wide development path allowlist; existing tag/Release absence and publish exact-source guards are regression-locked.",
+      "IndexNow same-SHA CI+Pages wait uses one job-level bounded deadline; the previous fixed retry-count timeout is regression-forbidden.",
+      "Bing verification is a tested discovery-surface contract: configured value must be non-empty/non-placeholder and render through the escaped msvalidate.01 meta tag.",
+      "attestation contract binds Draft promotion to the canonical release-external-action.py draft-promote invocation, with a negative fixture that removes the helper call and must fail closed"
     ]
   },
-  "reviewed_content_digest": "79f7d6fe642748abe87bcfb0584c31cdda34d05855d70ec9a28f7e2d3ab6e227"
+  "reviewed_content_digest": "96c6585577a040327b73548c1ae8b988cf55c59abe65cb4da855b18ece0e9137"
 }

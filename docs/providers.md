@@ -12,7 +12,7 @@ for release qualification:
 | Coding-agent CLI | Minimum accepted range | Exact release qualification |
 | --- | --- | --- |
 | Codex CLI | 0.147.0+ | 0.160.0 |
-| Claude Code CLI | 2.1.223+ | 2.1.288 |
+| Claude Code CLI | 2.1.223+ | 2.1.289 |
 
 The exact qualified launch paths for this source tree are:
 
@@ -22,9 +22,9 @@ The exact qualified launch paths for this source tree are:
 | `clroom codex exec ...` | Codex CLI 0.160.0 | Non-interactive clean launch |
 | `clroom codex --with=plugin:<id>` | Codex CLI 0.160.0 | One installed standalone-capable whole plugin |
 | `clroom codex --with=mcp:<id>` | Codex CLI 0.160.0 | One exact root-user stdio standalone MCP server |
-| `clroom claude` | Claude Code CLI 2.1.288 | Interactive clean launch |
-| `clroom claude --with=plugin:<id>` | Claude Code CLI 2.1.288 | One installed skill-only whole plugin |
-| Claude Code `-p` response-output semantics | Claude Code CLI 2.1.288 | Launch path exercised; response-output contract is not independently qualified |
+| `clroom claude` | Claude Code CLI 2.1.289 | Interactive clean launch |
+| `clroom claude --with=plugin:<id>` | Claude Code CLI 2.1.289 | One installed skill-only whole plugin |
+| Claude Code `-p` response-output semantics | Claude Code CLI 2.1.289 | Launch path exercised; response-output contract is not independently qualified |
 
 For provider diagnostics, use the top-level forms:
 
