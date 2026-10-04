@@ -7,6 +7,49 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-10-04
+
+### Changed
+
+- Advances the release identity beyond the consumed unpublished `v0.4.5` and
+  `v0.4.6` incident tags without moving, deleting, reusing, rewriting or
+  publishing either preserved identity.
+- Release lifecycle now separates normal protected development from
+  release-system quarantine: a consumed manifest identity is
+  `RELEASE_QUARANTINED`, while a fresh version with no existing protected tag
+  returns to the full `ACTIVE_CANDIDATE` topology.
+- Public discovery metadata now includes independent Bing site verification,
+  with regression coverage for the canonical Pages namespace.
+
+### Fixed
+
+- Closed the post-tag release-harness incident exposed by `v0.4.6`: canonical
+  external actions now reconcile ambiguous remote outcomes, Draft lookup proves
+  absence before creation, and release rehearsal binds destination identity,
+  exact candidate source and executable helper bytes before any mutation.
+- Removed the temporary release-repair path allowlist that accidentally froze
+  unrelated development while an incident identity was quarantined. Release
+  quarantine now applies at the release boundary instead of acting as a
+  repository-wide path policy.
+- IndexNow same-SHA CI and Pages gating now has one bounded job deadline instead
+  of a shorter independent polling cutoff, avoiding false failures when a
+  successful Pages deployment is merely slow.
+
+### Dependencies
+
+- No runtime or build dependency is added or replaced by the `v0.4.7`
+  recovery. The dependency graph remains the one already qualified on the
+  published-`v0.4.4` to current-main delta.
+
+### Security
+
+- Existing protected tags and Releases remain fail-closed at both initial and
+  action-time release guards. The guarded publish path remains bound to the
+  exact accepted source, pre-tag stage and tag target, so preserved incident
+  Drafts cannot be promoted after `main` has moved away from their source.
+- The next fresh release identity must complete the full exact-candidate and
+  accepted-main release topology before any protected tag is created.
+
 ## [0.4.6] - 2026-10-02
 
 ### Added
