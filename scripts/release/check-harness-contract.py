@@ -76,6 +76,49 @@ def require(errors: list[str], condition: bool, code: str) -> None:
         errors.append(code)
 
 
+def validate_indexnow_dependency_wait_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    require(errors, "timeout-minutes: 20" in text, "INDEXNOW_JOB_TIMEOUT")
+    require(errors, "while true; do" in text, "INDEXNOW_WAIT_UNTIL_DEPENDENCY_TERMINAL")
+    require(errors, "sleep 10" in text, "INDEXNOW_WAIT_POLL_INTERVAL")
+    require(
+        errors,
+        'actions/runs?head_sha=$GITHUB_SHA&per_page=100' in text,
+        "INDEXNOW_SAME_SHA_QUERY",
+    )
+    require(errors, '$1 == "CI"' in text, "INDEXNOW_CI_BINDING")
+    require(
+        errors,
+        '$1 == "pages build and deployment"' in text,
+        "INDEXNOW_PAGES_BINDING",
+    )
+    require(
+        errors,
+        'if [ "$ci_status" = completed ] && [ "$ci_conclusion" != success ]' in text,
+        "INDEXNOW_CI_FAIL_FAST",
+    )
+    require(
+        errors,
+        'if [ "$pages_status" = completed ] && [ "$pages_conclusion" != success ]' in text,
+        "INDEXNOW_PAGES_FAIL_FAST",
+    )
+    require(
+        errors,
+        '[ "$ci_status" = completed ] && [ "$ci_conclusion" = success ]'
+        in text
+        and '[ "$pages_status" = completed ] && [ "$pages_conclusion" = success ]'
+        in text,
+        "INDEXNOW_BOTH_DEPENDENCIES_REQUIRED",
+    )
+    require(errors, "seq 1 60" not in text, "INDEXNOW_FIXED_RETRY_WINDOW_FORBIDDEN")
+    require(
+        errors,
+        "Timed out waiting for same-SHA CI and Pages deployment" not in text,
+        "INDEXNOW_SECOND_DEADLINE_FORBIDDEN",
+    )
+    return errors
+
+
 def validate_publish_draft_lookup_contract(text: str) -> list[str]:
     errors: list[str] = []
     start = text.find('draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)')
@@ -609,6 +652,11 @@ def check(root: Path) -> list[str]:
     for text in workflow_text.values():
         records.extend(CODEQL_RE.findall(text))
     errors.extend(validate_codeql_records(records))
+    errors.extend(
+        validate_indexnow_dependency_wait_contract(
+            workflow_text[".github/workflows/indexnow.yml"]
+        )
+    )
 
     dependabot = read(root, ".github/dependabot.yml")
     require(errors, "codeql-family:" in dependabot, "DEPENDABOT_CODEQL_GROUP_MISSING")
@@ -856,17 +904,17 @@ def check(root: Path) -> list[str]:
     require(errors, "runs-on: ubuntu-latest" in eligibility, "RELEASE_ELIGIBILITY_RUNNER")
     require(errors, "check-release-contract.py --self-test" in eligibility, "RELEASE_ELIGIBILITY_SELF_TEST")
     require(errors, "resolve-release-lifecycle.py --self-test" in eligibility, "RELEASE_LIFECYCLE_SELF_TEST_EARLY")
-    require(errors, "check-quarantine-repair-scope.py --self-test" in eligibility, "QUARANTINE_REPAIR_SCOPE_SELF_TEST_EARLY")
-    require(errors, "tag_source: ${{ steps.lifecycle.outputs.tag_source }}" in eligibility, "QUARANTINE_REPAIR_TAG_SOURCE_OUTPUT")
-    require(errors, "QUARANTINED_REPAIR" in eligibility, "QUARANTINE_REPAIR_ELIGIBILITY_BRANCH")
-    require(errors, "check-quarantine-repair-scope.py" in eligibility, "QUARANTINE_REPAIR_SCOPE_GATE")
+    require(errors, "tag_source: ${{ steps.lifecycle.outputs.tag_source }}" in eligibility, "RELEASE_QUARANTINE_TAG_SOURCE_OUTPUT")
+    require(errors, "RELEASE_QUARANTINED" in eligibility, "RELEASE_QUARANTINE_ELIGIBILITY_BRANCH")
+    require(errors, "RELEASE_QUARANTINE_PASS" in eligibility, "RELEASE_QUARANTINE_IDENTITY_GATE")
+    require(errors, "check-quarantine-repair-scope.py" not in eligibility, "RELEASE_QUARANTINE_PATH_ALLOWLIST_FORBIDDEN")
     require(errors, "check-release-contract.py --report" in eligibility, "RELEASE_ELIGIBILITY_SEAL")
     readiness = release_jobs.get("release-readiness", "")
     require(errors, "needs: release-eligibility" in readiness, "RELEASE_READINESS_NEEDS_ELIGIBILITY")
     require(
         errors,
-        "if: needs.release-eligibility.outputs.lifecycle != 'QUARANTINED_REPAIR'" in readiness,
-        "QUARANTINE_REPAIR_EXPENSIVE_READINESS_SKIP",
+        "if: needs.release-eligibility.outputs.lifecycle != 'RELEASE_QUARANTINED'" in readiness,
+        "RELEASE_QUARANTINE_EXPENSIVE_READINESS_SKIP",
     )
     stage = release_jobs.get("pretag-stage", "")
     require(
@@ -891,41 +939,18 @@ def check(root: Path) -> list[str]:
     require(errors, "publishable-content" in release_required, "PUBLISHABLE_CONTENT_RELEASE_REQUIRED")
     require(errors, 'PUBLISHABLE: ${{ needs.publishable-content.result }}' in release_required, "PUBLISHABLE_CONTENT_RESULT_BINDING")
     require(errors, 'test "$PUBLISHABLE" = success' in release_required, "PUBLISHABLE_CONTENT_SUCCESS_REQUIRED")
-    require(errors, "QUARANTINED_REPAIR:*" in release_required, "QUARANTINE_REPAIR_REQUIRED_CASE")
+    require(errors, "RELEASE_QUARANTINED:*" in release_required, "RELEASE_QUARANTINE_REQUIRED_CASE")
     require(
         errors,
         release_required.count('test "$READINESS" = skipped') >= 1
         and release_required.count('test "$STAGE" = skipped') >= 2,
-        "QUARANTINE_REPAIR_REQUIRED_SKIPS",
+        "RELEASE_QUARANTINE_REQUIRED_SKIPS",
     )
-
-    quarantine_scope_path = root / "scripts/release/check-quarantine-repair-scope.py"
-    require(errors, quarantine_scope_path.is_file(), "QUARANTINE_REPAIR_SCOPE_CHECK_MISSING")
-    if quarantine_scope_path.is_file():
-        quarantine_scope = quarantine_scope_path.read_text(encoding="utf-8")
-        for marker in (
-            "QUARANTINE_REPAIR_SCOPE_PASS",
-            "QUARANTINE_REPAIR_SCOPE_BLOCKED",
-            "BASE_NOT_ANCESTOR",
-            ".github/workflows/release*.yml",
-            "scripts/release/**",
-            "docs/release/**",
-            "schemas/release/**",
-            "tests/contracts/**",
-        ):
-            require(errors, marker in quarantine_scope, "QUARANTINE_REPAIR_SCOPE_CONTRACT:" + marker)
-        quarantine_self_test = subprocess.run(
-            [sys.executable, str(quarantine_scope_path), "--self-test"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        require(
-            errors,
-            quarantine_self_test.returncode == 0
-            and "QUARANTINE_REPAIR_SCOPE_SELF_TEST_PASS" in quarantine_self_test.stdout,
-            "QUARANTINE_REPAIR_SCOPE_SELF_TEST",
-        )
+    require(
+        errors,
+        not (root / "scripts/release/check-quarantine-repair-scope.py").exists(),
+        "RELEASE_QUARANTINE_PATH_ALLOWLIST_MUST_BE_REMOVED",
+    )
 
     docs = read(root, "docs/release/RELEASE_CONTRACT.md")
     for marker in AUTOMATION_MARKERS:
@@ -943,9 +968,9 @@ def check(root: Path) -> list[str]:
         "rendered GitHub Releases identity",
         "resource lifecycle / cleanup",
         "PRESERVED_PENDING_OWNER_GATE",
-        "QUARANTINED_REPAIR",
+        "RELEASE_QUARANTINED",
         "consumed protected tag",
-        "harness-only repair scope",
+        "normal protected PR gates",
     ):
         require(errors, marker in docs, "RELEASE_FIRST_EXECUTION_MATRIX_CONTRACT:" + marker)
 
@@ -1268,6 +1293,30 @@ def self_test() -> None:
     missing = [("init", sha_a, "4.38.0"), ("analyze", sha_a, "4.38.0")]
     if not any(item.startswith("CODEQL_FAMILY_MISSING:") for item in validate_codeql_records(missing)):
         raise SystemExit("HARNESS_SELF_TEST_FAIL:MISSING_CODEQL")
+
+    indexnow_fixture = """
+timeout-minutes: 20
+while true; do
+  runs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&per_page=100")
+  ci=$(printf '%s\\n' "$runs" | awk -F '\\t' '$1 == "CI" { print; exit }')
+  pages=$(printf '%s\\n' "$runs" | awk -F '\\t' '$1 == "pages build and deployment" { print; exit }')
+  if [ "$ci_status" = completed ] && [ "$ci_conclusion" != success ]; then exit 1; fi
+  if [ "$pages_status" = completed ] && [ "$pages_conclusion" != success ]; then exit 1; fi
+  if [ "$ci_status" = completed ] && [ "$ci_conclusion" = success ] && [ "$pages_status" = completed ] && [ "$pages_conclusion" = success ]; then exit 0; fi
+  sleep 10
+done
+"""
+    if validate_indexnow_dependency_wait_contract(indexnow_fixture):
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:INDEXNOW_WAIT_CLEAN")
+    stale_indexnow = indexnow_fixture.replace(
+        "while true; do",
+        "for attempt in $(seq 1 60); do",
+    ) + "\\nTimed out waiting for same-SHA CI and Pages deployment\\n"
+    stale_errors = validate_indexnow_dependency_wait_contract(stale_indexnow)
+    if "INDEXNOW_FIXED_RETRY_WINDOW_FORBIDDEN" not in stale_errors:
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:INDEXNOW_FIXED_WINDOW")
+    if "INDEXNOW_SECOND_DEADLINE_FORBIDDEN" not in stale_errors:
+        raise SystemExit("HARNESS_SELF_TEST_FAIL:INDEXNOW_SECOND_DEADLINE")
     verifier_fixture = """
       - name: Provision pinned Python supply-chain verifier
         if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
