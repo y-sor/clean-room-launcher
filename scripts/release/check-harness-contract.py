@@ -738,6 +738,9 @@ def check(root: Path) -> list[str]:
             'scripts/release/verify-claude-stage-evidence.py',
             'MAIN_MOVED_DURING_FETCH',
             'MAIN_MOVED_AFTER_EVIDENCE',
+            '--prepare-only',
+            'ACCEPTED_MAIN_CLAUDE_STAGE_PREPARE_PASS',
+            'MAIN_MOVED_AFTER_PREPARE',
             'ACCEPTED_MAIN_CLAUDE_STAGE_PASS',
         ):
             require(
