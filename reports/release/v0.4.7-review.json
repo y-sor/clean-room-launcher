@@ -64,7 +64,8 @@
         "The v0.4.6 protected-tag publish attempt exposed a Draft lookup contract escape before mutation. The canonical helper now treats arbitrary release-by-tag failure as uncertainty, proves absence through the authenticated paginated release collection, rejects duplicate/malformed collection state, and recovers existing Drafts by numeric release ID.",
         "Canonical tag push, Draft promote/upload and publish paths reconcile authoritative destination state after simulated local post-action errors, so an ambiguous local result cannot trigger a blind second mutation.",
         "Consumed release identity is now a release-boundary state, RELEASE_QUARANTINED, rather than a development path allowlist. Existing tag/Release guards and exact-source publish checks prevent reuse or publication of preserved incident identities, while a fresh absent tag returns the manifest to ACTIVE_CANDIDATE.",
-        "Action-time provider freshness on 2026-10-04 detected Claude Code latest moving from 2.1.288 to 2.1.289 before runtime qualification. The candidate advances the exact production/source/test tuple to 2.1.289 and invalidates prior Claude-bound evidence until registry integrity and full exact-candidate machine plus human-TTY qualification close again."
+        "Action-time provider freshness on 2026-10-04 detected Claude Code latest moving from 2.1.288 to 2.1.289 before runtime qualification. The candidate advances the exact production/source/test tuple to 2.1.289 and invalidates prior Claude-bound evidence until registry integrity and full exact-candidate machine plus human-TTY qualification close again.",
+        "For Claude Code 2.1.289, ACTIVE_CANDIDATE runner metadata resolved and re-froze exact npm registry SHA-512 identities for both @anthropic-ai/claude-code and @anthropic-ai/claude-code-darwin-arm64 before provider execution; stale 2.1.288 hashes failed closed and were not reused."
       ]
     },
     "public_claims": {
@@ -298,7 +299,7 @@
       "id": "claude-21289-pretag-provider-drift",
       "decision": "COVERED",
       "failure_mode": "Before v0.4.7 acceptance, the npm stable Claude tuple moved from 2.1.288 to 2.1.289, invalidating provider-bound evidence tied to the earlier tuple.",
-      "durable_control": "ACTIVE_CANDIDATE readiness checks npm latest and exact registry integrity before provider runtime, so the drift failed closed before tag creation. v0.4.7 advances production/source/test claims to 2.1.289 and requires fresh exact-candidate provider qualification before acceptance."
+      "durable_control": "ACTIVE_CANDIDATE readiness checks npm latest and exact registry integrity before provider runtime. The drift failed closed before tag creation; v0.4.7 advances production/source/test claims to 2.1.289, freezes the exact wrapper and darwin-arm64 registry SHA-512 identities observed by the release runner, and requires fresh exact-candidate machine plus human-TTY requalification before acceptance."
     }
   ],
   "artifact_capability_gates": [
@@ -387,5 +388,5 @@
       "Bing verification is a tested discovery-surface contract: configured value must be non-empty/non-placeholder and render through the escaped msvalidate.01 meta tag."
     ]
   },
-  "reviewed_content_digest": "8bcfc0399035d6754b849f91103a6d9b8510d9e10daa92c8b88abbbe0835ff0b"
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
 }
