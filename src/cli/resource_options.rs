@@ -196,7 +196,7 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_resource_kinds_and_all_remain_closed_in_v0_4_x() {
+    fn unsupported_resource_kinds_and_all_remain_closed() {
         for (provider, selector, code) in [
             (
                 Provider::Claude,
@@ -215,8 +215,11 @@ mod tests {
 
         let all_error =
             prepare(Provider::Claude, &strings(&["--with=all"])).unwrap_err();
-        assert!(all_error.contains("unavailable in v0.4.x"), "{all_error}");
-        assert!(!all_error.contains("unavailable in v0.4.0"), "{all_error}");
+        assert!(
+            all_error.contains("not available in this bounded selector"),
+            "{all_error}"
+        );
+        assert!(!all_error.contains("v0.4.x"), "{all_error}");
     }
 
     #[test]
