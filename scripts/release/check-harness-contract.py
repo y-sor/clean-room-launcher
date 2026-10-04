@@ -739,6 +739,8 @@ def check(root: Path) -> list[str]:
             'MAIN_MOVED_DURING_FETCH',
             'MAIN_MOVED_AFTER_EVIDENCE',
             '--prepare-only',
+            'stage_resolver="$worktree/scripts/release/resolve-pretag-stage.sh"',
+            '[[ "$mode" == prepare && -n "${CLROOM_PRETAG_STAGE_RESOLVER:-}" ]]',
             'ACCEPTED_MAIN_CLAUDE_STAGE_PREPARE_PASS',
             'MAIN_MOVED_AFTER_PREPARE',
             'ACCEPTED_MAIN_CLAUDE_STAGE_PASS',
@@ -767,6 +769,17 @@ def check(root: Path) -> list[str]:
             check=False,
         )
         require(errors, syntax.returncode == 0, "ACCEPTED_MAIN_CLAUDE_STAGE_ENTRYPOINT_BASH_SYNTAX")
+
+    require(
+        errors,
+        "Rehearse accepted-main Claude stage entrypoint glue when changed" in release_candidate,
+        "ACCEPTED_MAIN_CLAUDE_STAGE_PREPARE_WORKFLOW_STEP",
+    )
+    require(
+        errors,
+        "bash scripts/release/run-accepted-main-claude-stage.sh --prepare-only" in release_candidate,
+        "ACCEPTED_MAIN_CLAUDE_STAGE_PREPARE_WORKFLOW_INVOCATION",
+    )
 
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
