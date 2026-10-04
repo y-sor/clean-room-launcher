@@ -76,6 +76,76 @@ def require(errors: list[str], condition: bool, code: str) -> None:
         errors.append(code)
 
 
+def validate_publish_draft_lookup_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    start = text.find('draft_id=$(gh release view "$tag" --json databaseId --jq .databaseId)')
+    end = text.find("\ngit fetch --quiet origin main", start if start >= 0 else 0)
+    require(errors, start >= 0, "GUARDED_PUBLISH_DRAFT_VIEW_BY_TAG")
+    require(errors, end > start >= 0, "GUARDED_PUBLISH_DRAFT_CAPTURE_BOUNDARY")
+    if start >= 0 and end > start:
+        block = text[start:end]
+        require(
+            errors,
+            '[[ "$draft_id" =~ ^[0-9]+$ ]] || fail "DRAFT_ID_INVALID"' in block,
+            "GUARDED_PUBLISH_DRAFT_ID_VALIDATION",
+        )
+        require(
+            errors,
+            "capture_and_validate_draft() {" in block,
+            "GUARDED_PUBLISH_DRAFT_CAPTURE_MISSING",
+        )
+        require(
+            errors,
+            'gh api "repos/$repository/releases/$draft_id"' in block,
+            "GUARDED_PUBLISH_DRAFT_FETCH_BY_ID",
+        )
+        require(
+            errors,
+            'releases/tags/$tag' not in block,
+            "GUARDED_PUBLISH_DRAFT_TAG_LOOKUP_FORBIDDEN",
+        )
+    return errors
+
+
+def validate_publish_outcome_reconciliation_contract(text: str) -> list[str]:
+    errors: list[str] = []
+    mutation = text.find('gh release edit "$tag" --draft=false --latest --verify-tag')
+    final_pass = text.find('echo "GUARDED_PUBLISH_PASS tag=$tag target=$expected"')
+    require(errors, mutation >= 0, "GUARDED_PUBLISH_MUTATION_MISSING")
+    require(errors, final_pass > mutation >= 0, "GUARDED_PUBLISH_RECONCILIATION_BOUNDARY")
+    if mutation >= 0 and final_pass > mutation:
+        action_start = text.rfind("set +e", 0, mutation + 1)
+        require(errors, action_start >= 0, "GUARDED_PUBLISH_MUTATION_RC_CAPTURE")
+        block = text[action_start if action_start >= 0 else mutation:final_pass]
+        for marker, code in (
+            ("set +e", "GUARDED_PUBLISH_MUTATION_RC_CAPTURE"),
+            ("publish_rc=$?", "GUARDED_PUBLISH_MUTATION_RC"),
+            ('gh api "repos/$repository/releases/$draft_id"', "GUARDED_PUBLISH_RELEASE_ID_RECONCILE"),
+            ("PUBLISHED_EXACT", "GUARDED_PUBLISH_PUBLISHED_EXACT"),
+            ("DRAFT_UNCHANGED", "GUARDED_PUBLISH_NOT_APPLIED_CLASS"),
+            ("GUARDED_PUBLISH_OUTCOME_UNKNOWN", "GUARDED_PUBLISH_UNKNOWN_CLASS"),
+            ("for attempt in 1 2 3 4 5", "GUARDED_PUBLISH_BOUNDED_RECONCILIATION"),
+            ("PUBLISHED_PENDING_IMMUTABILITY", "GUARDED_PUBLISH_PENDING_IMMUTABILITY"),
+            ('gh api "repos/$repository/releases/latest"', "GUARDED_PUBLISH_LATEST_BY_API"),
+        ):
+            require(errors, marker in block, code)
+        require(
+            errors,
+            "gh release list" not in block,
+            "GUARDED_PUBLISH_POST_MUTATION_CLI_LIST_FORBIDDEN",
+        )
+        mutation_fail_pattern = re.search(
+            r'gh release edit[\s\S]{0,300}\|\|\s*fail\s+"PUBLISH_TRANSITION"',
+            block,
+        )
+        require(
+            errors,
+            mutation_fail_pattern is None,
+            "GUARDED_PUBLISH_MUTATION_EARLY_FAIL_FORBIDDEN",
+        )
+    return errors
+
+
 
 
 def validate_supply_chain_verifier_contract(text: str) -> list[str]:
@@ -551,6 +621,59 @@ def check(root: Path) -> list[str]:
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
     errors.extend(validate_supply_chain_verifier_contract(release_candidate))
 
+    public_route_rehearsal_path = root / "scripts/release/rehearse-public-route.sh"
+    require(errors, public_route_rehearsal_path.is_file(), "PUBLIC_ROUTE_REHEARSAL_MISSING")
+    if public_route_rehearsal_path.is_file():
+        public_route_rehearsal = public_route_rehearsal_path.read_text(encoding="utf-8")
+        for marker in (
+            "PUBLIC_ROUTE_REHEARSAL_SELF_TEST_PASS",
+            "PUBLIC_ROUTE_REHEARSAL_PASS",
+            'gh release view --repo "$repository"',
+            'gh release view "$tag" --repo "$repository"',
+            'gh release download "$tag"',
+            "releases/latest/download",
+            "ISOLATED_PUBLIC_INSTALL",
+        ):
+            require(errors, marker in public_route_rehearsal, "PUBLIC_ROUTE_REHEARSAL_CONTRACT:" + marker)
+        syntax = subprocess.run(
+            ["bash", "-n", str(public_route_rehearsal_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(errors, syntax.returncode == 0, "PUBLIC_ROUTE_REHEARSAL_BASH_SYNTAX")
+        rehearsal_self_test = subprocess.run(
+            ["bash", str(public_route_rehearsal_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if rehearsal_self_test.returncode != 0:
+            if rehearsal_self_test.stdout:
+                print(rehearsal_self_test.stdout, end="", file=sys.stderr)
+            if rehearsal_self_test.stderr:
+                print(rehearsal_self_test.stderr, end="", file=sys.stderr)
+        require(
+            errors,
+            rehearsal_self_test.returncode == 0
+            and "PUBLIC_ROUTE_REHEARSAL_SELF_TEST_PASS" in rehearsal_self_test.stdout,
+            "PUBLIC_ROUTE_REHEARSAL_SELF_TEST",
+        )
+    route_step = release_candidate.find("Rehearse current published public route before expensive lanes")
+    provider_step = release_candidate.find("Provision pinned real provider canaries")
+    require(errors, route_step >= 0, "PUBLIC_ROUTE_REHEARSAL_WORKFLOW_STEP")
+    require(
+        errors,
+        route_step >= 0 and provider_step >= 0 and route_step < provider_step,
+        "PUBLIC_ROUTE_REHEARSAL_BEFORE_PROVIDER",
+    )
+    require(
+        errors,
+        "bash scripts/release/rehearse-public-route.sh --self-test" in release_candidate
+        and "bash scripts/release/rehearse-public-route.sh" in release_candidate,
+        "PUBLIC_ROUTE_REHEARSAL_WORKFLOW_INVOCATION",
+    )
+
     claude_release_smoke = read(root, "scripts/release/local-plugin-activation-smoke.sh")
     errors.extend(validate_claude_release_smoke_contract(claude_release_smoke))
     claude_tty_supervisor_path = root / "scripts/release/claude-tty-supervisor.py"
@@ -654,6 +777,23 @@ def check(root: Path) -> list[str]:
         'python3 scripts/release/check-provider-source-pins.py || fail "PROVIDER_SOURCE_PIN_CONTRACT"' in readiness,
         "PROVIDER_SOURCE_PIN_CHECK_DISCONNECTED",
     )
+    for literal_escape, code in (
+        ('PROVIDER_SOURCE_PIN_CONTRACT"\\npython3', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_PROVIDER_CONTRACT"),
+        ('RELEASE_EXTERNAL_ACTION_SELF_TEST"\\npython3', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_EXTERNAL_ACTION"),
+        ('PROVIDER_SOURCE_PIN_CHECKER_MISSING"\\n[[', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_PROVIDER_CHECK"),
+        ('RELEASE_EXTERNAL_ACTION_HELPER_MISSING"\\n[[', "RELEASE_READINESS_LITERAL_NEWLINE_AFTER_EXTERNAL_HELPER"),
+    ):
+        require(errors, literal_escape not in readiness, code)
+    require(
+        errors,
+        'python3 scripts/release/release-external-action.py self-test || fail "RELEASE_EXTERNAL_ACTION_SELF_TEST"' in readiness,
+        "RELEASE_EXTERNAL_ACTION_SELF_TEST_DISCONNECTED",
+    )
+    require(
+        errors,
+        'python3 scripts/release/rehearse-external-release-lifecycle.py --self-test || fail "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST"' in readiness,
+        "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST_DISCONNECTED",
+    )
 
     claude_stage_verifier = read(root, "scripts/release/verify-claude-stage-evidence.py")
     require(
@@ -715,9 +855,19 @@ def check(root: Path) -> list[str]:
     eligibility = release_jobs.get("release-eligibility", "")
     require(errors, "runs-on: ubuntu-latest" in eligibility, "RELEASE_ELIGIBILITY_RUNNER")
     require(errors, "check-release-contract.py --self-test" in eligibility, "RELEASE_ELIGIBILITY_SELF_TEST")
+    require(errors, "resolve-release-lifecycle.py --self-test" in eligibility, "RELEASE_LIFECYCLE_SELF_TEST_EARLY")
+    require(errors, "check-quarantine-repair-scope.py --self-test" in eligibility, "QUARANTINE_REPAIR_SCOPE_SELF_TEST_EARLY")
+    require(errors, "tag_source: ${{ steps.lifecycle.outputs.tag_source }}" in eligibility, "QUARANTINE_REPAIR_TAG_SOURCE_OUTPUT")
+    require(errors, "QUARANTINED_REPAIR" in eligibility, "QUARANTINE_REPAIR_ELIGIBILITY_BRANCH")
+    require(errors, "check-quarantine-repair-scope.py" in eligibility, "QUARANTINE_REPAIR_SCOPE_GATE")
     require(errors, "check-release-contract.py --report" in eligibility, "RELEASE_ELIGIBILITY_SEAL")
     readiness = release_jobs.get("release-readiness", "")
     require(errors, "needs: release-eligibility" in readiness, "RELEASE_READINESS_NEEDS_ELIGIBILITY")
+    require(
+        errors,
+        "if: needs.release-eligibility.outputs.lifecycle != 'QUARANTINED_REPAIR'" in readiness,
+        "QUARANTINE_REPAIR_EXPENSIVE_READINESS_SKIP",
+    )
     stage = release_jobs.get("pretag-stage", "")
     require(
         errors,
@@ -741,10 +891,81 @@ def check(root: Path) -> list[str]:
     require(errors, "publishable-content" in release_required, "PUBLISHABLE_CONTENT_RELEASE_REQUIRED")
     require(errors, 'PUBLISHABLE: ${{ needs.publishable-content.result }}' in release_required, "PUBLISHABLE_CONTENT_RESULT_BINDING")
     require(errors, 'test "$PUBLISHABLE" = success' in release_required, "PUBLISHABLE_CONTENT_SUCCESS_REQUIRED")
+    require(errors, "QUARANTINED_REPAIR:*" in release_required, "QUARANTINE_REPAIR_REQUIRED_CASE")
+    require(
+        errors,
+        release_required.count('test "$READINESS" = skipped') >= 1
+        and release_required.count('test "$STAGE" = skipped') >= 2,
+        "QUARANTINE_REPAIR_REQUIRED_SKIPS",
+    )
+
+    quarantine_scope_path = root / "scripts/release/check-quarantine-repair-scope.py"
+    require(errors, quarantine_scope_path.is_file(), "QUARANTINE_REPAIR_SCOPE_CHECK_MISSING")
+    if quarantine_scope_path.is_file():
+        quarantine_scope = quarantine_scope_path.read_text(encoding="utf-8")
+        for marker in (
+            "QUARANTINE_REPAIR_SCOPE_PASS",
+            "QUARANTINE_REPAIR_SCOPE_BLOCKED",
+            "BASE_NOT_ANCESTOR",
+            ".github/workflows/release*.yml",
+            "scripts/release/**",
+            "docs/release/**",
+            "schemas/release/**",
+            "tests/contracts/**",
+        ):
+            require(errors, marker in quarantine_scope, "QUARANTINE_REPAIR_SCOPE_CONTRACT:" + marker)
+        quarantine_self_test = subprocess.run(
+            [sys.executable, str(quarantine_scope_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            errors,
+            quarantine_self_test.returncode == 0
+            and "QUARANTINE_REPAIR_SCOPE_SELF_TEST_PASS" in quarantine_self_test.stdout,
+            "QUARANTINE_REPAIR_SCOPE_SELF_TEST",
+        )
 
     docs = read(root, "docs/release/RELEASE_CONTRACT.md")
     for marker in AUTOMATION_MARKERS:
         require(errors, marker in docs, "AUTOMATION_MARKER_MISSING:" + marker)
+    require(errors, "FIRST_EXECUTION_MATRIX" in docs, "RELEASE_FIRST_EXECUTION_MATRIX_MISSING")
+    for marker in (
+        "Boundary / First-Execution Map",
+        "POST_BOUNDARY_ONLY_WHITELIST",
+        "release-external-action.py",
+        "rehearse-external-release-lifecycle.py",
+        "LAB_REQUIRED",
+        "exact remote protected tag object",
+        "the one exact production Draft→published effect",
+        "exact new `releases/latest/download` routes",
+        "rendered GitHub Releases identity",
+        "resource lifecycle / cleanup",
+        "PRESERVED_PENDING_OWNER_GATE",
+        "QUARANTINED_REPAIR",
+        "consumed protected tag",
+        "harness-only repair scope",
+    ):
+        require(errors, marker in docs, "RELEASE_FIRST_EXECUTION_MATRIX_CONTRACT:" + marker)
+
+    capability_step = release_candidate.find(
+        "Probe post-tag GitHub action capabilities on representative runner"
+    )
+    lifecycle_step = release_candidate.find("Resolve published release lifecycle")
+    require(
+        errors,
+        capability_step >= 0
+        and lifecycle_step >= 0
+        and capability_step < lifecycle_step,
+        "REPRESENTATIVE_RUNNER_TOOLCHAIN_ORDER",
+    )
+    require(
+        errors,
+        "bash scripts/release/check-publish-toolchain.sh --capabilities-only"
+        in release_candidate,
+        "REPRESENTATIVE_RUNNER_TOOLCHAIN_INVOCATION",
+    )
 
     promotion = workflow_text[".github/workflows/release-promotion-rehearsal.yml"]
     require(errors, "workflow_call:" in promotion, "PROMOTION_CHAIN_REUSABLE_TRIGGER")
@@ -781,22 +1002,239 @@ def check(root: Path) -> list[str]:
     require(errors, "contents: write" not in promotion, "PROMOTION_CHAIN_WRITE_PERMISSION")
 
     release = workflow_text[".github/workflows/release.yml"]
+    draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
     require(errors, 'tags:\n      - "v*"' in release, "RELEASE_TAG_TRIGGER")
-    require(errors, 'release create "$tag" --draft' in release, "RELEASE_DRAFT_ONLY")
+    integration_rehearsal_path = root / "scripts/release/rehearse-external-release-lifecycle.py"
+    require(
+        errors,
+        integration_rehearsal_path.is_file(),
+        "RELEASE_INTEGRATION_REHEARSAL_MISSING",
+    )
+    if integration_rehearsal_path.is_file():
+        integration_rehearsal = integration_rehearsal_path.read_text(encoding="utf-8")
+        for marker in (
+            "CLROOM_OWNER_LAB_REHEARSAL_APPROVED",
+            "PRODUCTION_REPOSITORY_FORBIDDEN",
+            "clroom.integration-fidelity-matrix.v1",
+            "release-external-action.py",
+            "github_file_sha256",
+            "expected_repository_id",
+            "candidate_head",
+            'f"YES:{repository}:{args.expected_repository_id}:"',
+            "IDENTITY_BINDING",
+            "RELEASE_INTEGRATION_IDENTITY_BINDING_PASS",
+            "tag-push",
+            "draft-promote",
+            "publish",
+            "PRESERVED_PENDING_OWNER_GATE",
+            "RELEASE_INTEGRATION_REHEARSAL_PASS",
+        ):
+            require(
+                errors,
+                marker in integration_rehearsal,
+                "RELEASE_INTEGRATION_REHEARSAL_CONTRACT:" + marker,
+            )
+        require(
+            errors,
+            integration_rehearsal.count("--simulate-local-error-after-action") >= 3,
+            "RELEASE_INTEGRATION_AMBIGUOUS_OUTCOME_REHEARSAL",
+        )
+        for marker in (
+            "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED",
+            '"draft_upload": "PASS_WITH_SIMULATED_LOCAL_ERROR_RECONCILED"',
+        ):
+            require(
+                errors,
+                marker in integration_rehearsal,
+                "RELEASE_INTEGRATION_RECONCILIATION_EVIDENCE:" + marker,
+            )
+        rehearsal_self_test = subprocess.run(
+            [sys.executable, str(integration_rehearsal_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            errors,
+            rehearsal_self_test.returncode == 0
+            and "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST_PASS"
+            in rehearsal_self_test.stdout,
+            "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST",
+        )
+
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py publish"
+        in draft_verifier
+        and '|| fail "PUBLISH_ACTION_REHEARSAL"' in draft_verifier,
+        "DRAFT_VERIFIER_PUBLISH_ACTION_REHEARSAL",
+    )
+
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py draft-promote" in release,
+        "RELEASE_DRAFT_ONLY_CANONICAL_PATH",
+    )
     require(errors, "--draft=false" not in release, "RELEASE_AUTO_PUBLISH_FORBIDDEN")
     require(errors, "gh release publish" not in release, "RELEASE_AUTO_PUBLISH_COMMAND")
-    require(errors, "publish-preview.json" in release and "release-body" in release, "DRAFT_PREVIEW_RECONCILIATION")
+    require(
+        errors,
+        "--preview-json release-stage/publish-preview.json" in release
+        and "--notes-file release-stage/release-notes.md" in release,
+        "DRAFT_PREVIEW_RECONCILIATION",
+    )
+    publish_toolchain_path = root / "scripts/release/check-publish-toolchain.sh"
+    require(errors, publish_toolchain_path.is_file(), "PUBLISH_TOOLCHAIN_CHECK_MISSING")
+    if publish_toolchain_path.is_file():
+        publish_toolchain = publish_toolchain_path.read_text(encoding="utf-8")
+        for marker in (
+            "PUBLISH_TOOLCHAIN_SELF_TEST_PASS",
+            "PUBLISH_TOOLCHAIN_CAPABILITY_PASS",
+            "RELEASE_CREATE_CAPABILITY",
+            "RELEASE_EDIT_CAPABILITY",
+            "RELEASE_UPLOAD_CAPABILITY",
+            "RELEASE_VIEW_JSON_CAPABILITY",
+            "RELEASE_BY_ID_API_CAPABILITY",
+            "LATEST_API_CAPABILITY",
+            "IMMUTABLE_POLICY_API_CAPABILITY",
+        ):
+            require(errors, marker in publish_toolchain, "PUBLISH_TOOLCHAIN_CONTRACT:" + marker)
+        syntax = subprocess.run(
+            ["bash", "-n", str(publish_toolchain_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(errors, syntax.returncode == 0, "PUBLISH_TOOLCHAIN_BASH_SYNTAX")
+        toolchain_self_test = subprocess.run(
+            ["bash", str(publish_toolchain_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if toolchain_self_test.returncode != 0:
+            if toolchain_self_test.stdout:
+                print(toolchain_self_test.stdout, end="", file=sys.stderr)
+            if toolchain_self_test.stderr:
+                print(toolchain_self_test.stderr, end="", file=sys.stderr)
+        require(
+            errors,
+            toolchain_self_test.returncode == 0
+            and "PUBLISH_TOOLCHAIN_SELF_TEST_PASS" in toolchain_self_test.stdout,
+            "PUBLISH_TOOLCHAIN_SELF_TEST",
+        )
+
     tag_helper = read(root, "scripts/release/push-release-tag.sh")
     require(errors, "PUBLISHABLE_CONTENT_JOB_PASS" in tag_helper, "TAG_HELPER_PUBLISHABLE_CONTENT_JOB")
     require(errors, "PUBLISH_PREVIEW_BINDING_PASS" in tag_helper, "TAG_HELPER_PUBLISH_PREVIEW_BINDING")
-    draft_verifier = read(root, "scripts/release/verify-draft-release.sh")
+    require(
+        errors,
+        "bash scripts/release/check-publish-toolchain.sh --self-test" in tag_helper
+        and "bash scripts/release/check-publish-toolchain.sh" in tag_helper,
+        "TAG_HELPER_PUBLISH_TOOLCHAIN_GATE",
+    )
     require(errors, "publish-preview.json" in draft_verifier, "DRAFT_VERIFIER_PUBLISH_PREVIEW")
+
+    external_action_path = root / "scripts/release/release-external-action.py"
+    require(errors, external_action_path.is_file(), "RELEASE_EXTERNAL_ACTION_HELPER_MISSING")
+    if external_action_path.is_file():
+        external_action = external_action_path.read_text(encoding="utf-8")
+        for marker in (
+            "RELEASE_EXTERNAL_ACTION_SELF_TEST_PASS",
+            "tag-push",
+            "draft-promote",
+            "publish",
+            "git\", \"push",
+            "TAG_PUSH_OUTCOME_RECONCILED_ABSENT",
+            "--clobber",
+            "DRAFT_DOWNLOAD_BYTE_DRIFT",
+            "gh_release_lookup_for_promote",
+            "RELEASE_LOOKUP_UNCERTAIN",
+            "RELEASE_COLLECTION_DUPLICATE",
+            "databaseId,tagName,name,isDraft,isPrerelease,isImmutable,publishedAt,body,assets",
+            "DRAFT_UNCHANGED",
+            "PUBLISHED_PENDING_IMMUTABILITY",
+            "PUBLISHED_EXACT",
+            "PUBLISH_ACTION_REHEARSAL_PASS",
+            "GUARDED_PUBLISH_OUTCOME_UNKNOWN",
+        ):
+            require(errors, marker in external_action, "RELEASE_EXTERNAL_ACTION_CONTRACT:" + marker)
+        external_self_test = subprocess.run(
+            [sys.executable, str(external_action_path), "self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        require(
+            errors,
+            external_self_test.returncode == 0
+            and "RELEASE_EXTERNAL_ACTION_SELF_TEST_PASS" in external_self_test.stdout,
+            "RELEASE_EXTERNAL_ACTION_SELF_TEST",
+        )
+
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py draft-promote" in release,
+        "RELEASE_DRAFT_CANONICAL_ACTION_PATH",
+    )
+    require(
+        errors,
+        'gh release upload "$tag"' not in release,
+        "RELEASE_DRAFT_INLINE_UPLOAD_FORBIDDEN",
+    )
+
+    tag_helper = read(root, "scripts/release/push-release-tag.sh")
+    require(
+        errors,
+        "python3 scripts/release/release-external-action.py tag-push" in tag_helper,
+        "TAG_HELPER_CANONICAL_EXTERNAL_ACTION",
+    )
+    require(
+        errors,
+        'git push origin "refs/tags/$tag"' not in tag_helper,
+        "TAG_HELPER_INLINE_PUSH_FORBIDDEN",
+    )
+
     publish_helper = read(root, "scripts/release/publish-release.sh")
-    for item in ("CLROOM_OWNER_PUBLISH_APPROVED", "verify-draft-release.sh", "DRAFT_FINGERPRINT_ACTION_TIME=PASS", 'gh release edit "$tag" --draft=false --latest', "PUBLISHED_RECONCILIATION", "GUARDED_PUBLISH_PASS"):
+    publish_syntax = subprocess.run(
+        ["bash", "-n", str(root / "scripts/release/publish-release.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(errors, publish_syntax.returncode == 0, "GUARDED_PUBLISH_BASH_SYNTAX")
+    for item in (
+        "CLROOM_OWNER_PUBLISH_APPROVED",
+        "verify-draft-release.sh",
+        "IMMUTABLE_RELEASE_POLICY_ACTION_TIME",
+        "python3 scripts/release/release-external-action.py publish",
+        "--preview-json",
+        "--apply",
+    ):
         require(errors, item in publish_helper, "GUARDED_PUBLISH_CONTRACT:" + item)
+    require(
+        errors,
+        'gh release edit "$tag" --draft=false --latest' not in publish_helper,
+        "GUARDED_PUBLISH_INLINE_MUTATION_FORBIDDEN",
+    )
+
     public_verify = read(root, "scripts/release/verify-public-release.sh")
-    for item in ("releases/latest/download", "ISOLATED_PUBLIC_INSTALL", "PUBLIC_INSTALL_ROUTE_VERIFY_PASS"):
+    for item in (
+        "releases/latest/download",
+        "ISOLATED_PUBLIC_INSTALL",
+        "PUBLIC_INSTALL_ROUTE_VERIFY_PASS",
+        "PUBLIC_RELEASE_STATE_PROPAGATION",
+        "ASSET_DOWNLOAD_PROPAGATION",
+        "--retry 5 --retry-all-errors --retry-delay 1",
+    ):
         require(errors, item in public_verify, "PUBLIC_INSTALL_ROUTE_CONTRACT:" + item)
+    public_verify_syntax = subprocess.run(
+        ["bash", "-n", str(root / "scripts/release/verify-public-release.sh")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    require(errors, public_verify_syntax.returncode == 0, "PUBLIC_INSTALL_ROUTE_BASH_SYNTAX")
 
     resolver = read(root, "scripts/release/resolve-pretag-stage.sh")
     admission = read(root, "scripts/release/pretag-run-admission.py")

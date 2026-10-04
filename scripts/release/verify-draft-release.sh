@@ -178,4 +178,18 @@ for subject in "$artifact" sbom.cdx.json install.sh; do
 done
 gh attestation verify "$tmp/assets/$artifact"   -R "$repository"   --bundle "$sbom_bundle"   --predicate-type https://cyclonedx.org/bom   --signer-workflow "$repository/.github/workflows/release.yml"   --source-digest "$expected"   --source-ref "refs/tags/$tag"   --deny-self-hosted-runners >/dev/null   || fail "DRAFT_SBOM_ATTESTATION"
 
+title=$(python3 - "$tmp/stage/publish-preview.json" <<'PY'
+import json, sys
+print(json.load(open(sys.argv[1], encoding="utf-8"))["release_title"])
+PY
+)
+python3 scripts/release/release-external-action.py publish \
+  --repository "$repository" \
+  --tag "$tag" \
+  --title "$title" \
+  --notes-file "$tmp/stage/release-notes.md" \
+  --preview-json "$tmp/stage/publish-preview.json" \
+  || fail "PUBLISH_ACTION_REHEARSAL"
+echo "PUBLISH_ACTION_TARGET_DRY_RUN=PASS tag=$tag"
+
 echo "DRAFT_RELEASE_VERIFY_PASS tag=$tag target=$expected artifact_sha256=$artifact_sha"

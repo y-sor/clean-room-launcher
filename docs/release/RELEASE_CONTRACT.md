@@ -50,18 +50,35 @@ the old ancestry-bound digest is rejected rather than silently reused. Changing 
 modes, symlinks, dispositions, near-misses, product outcome, contract-evolution
 decision, or capability gates therefore requires a fresh review seal.
 
-Release-candidate readiness has two explicit lifecycle states. When the manifest
+Release-candidate readiness has three explicit lifecycle states. When the manifest
 version still equals the latest immutable published stable release, readiness is
 in `POST_PUBLISH`: historical review evidence is left untouched, governance,
 negative-contract, regression, installer, and supply-chain checks still run, and
 candidate-only whole-delta/artifact qualification is skipped. Once the manifest
-version advances beyond that published release, readiness enters
-`ACTIVE_CANDIDATE`: the full whole-delta release contract is required against
-the latest published stable baseline, including a new versioned review snapshot
-and candidate artifact/provider qualification. The protected tag helper runs
-the final full contract check before the irreversible push. Post-tag automation
-does not re-run the mutable whole-release contract; it consumes the already
-accepted staged manifest and immutable tag identity.
+version advances beyond that published release and its candidate tag is still
+absent, readiness enters `ACTIVE_CANDIDATE`: the full whole-delta release
+contract is required against the latest published stable baseline, including a
+new versioned review snapshot and candidate artifact/provider qualification.
+
+If that same advanced manifest version already has a consumed protected tag
+bound to an older source commit, a different current source cannot truthfully
+remain `ACTIVE_CANDIDATE` under that identity. It enters
+`QUARANTINED_REPAIR` only when the consumed tag source is an ancestor of the
+current source and the complete delta from that tag is confined to the
+machine-checked harness-only repair scope: release workflows, `scripts/release/**`,
+`docs/release/**`, `schemas/release/**`, and release contract tests. Runtime
+source, product metadata/version, general CI, README/public product docs, or any
+other path fail closed. In `QUARANTINED_REPAIR`, stale review sealing and
+candidate artifact/provider lanes for the consumed identity are intentionally
+skipped; the required topology passes only after the quarantine scope gate
+passes. This is not release acceptance and never authorizes moving, reusing or
+publishing the consumed tag. The next new release identity must return to
+`ACTIVE_CANDIDATE` and complete the full release contract.
+
+The protected tag helper runs the final full contract check before any new
+irreversible tag push. Post-tag automation does not re-run the mutable
+whole-release contract; it consumes the already accepted staged manifest and
+immutable tag identity.
 
 ## Contract evolution review
 
@@ -160,6 +177,117 @@ accepted bytes. It does not justify moving the tag or consuming another version.
 Any deterministic post-tag blocker that was technically reproducible pre-tag is
 a release-harness escape.
 
+## Release first-execution closure
+
+`FIRST_EXECUTION_MATRIX` is the durable CLROOM rule for release boundaries.
+A protected production release identity is never an integration-test trigger.
+
+Status vocabulary:
+- `MOVED_LEFT`: the future production path is already exercised at the earliest safe proof point.
+- `LAB_REQUIRED`: the canonical path exists, but representative mutation evidence is still required from an approved disposable integration destination before the protected production boundary.
+- `POST_BOUNDARY_ONLY`: the residue genuinely requires the boundary identity/effect itself.
+- `SYSTEM_GAP`: proof is missing; the next consequential release boundary is closed.
+
+Current Integration Lab-dependent rows remain `PRESERVED_PENDING_OWNER_GATE`
+until the separately approved bounded Lab lifecycle rehearsal is executed and
+its `INTEGRATION_FIDELITY_MATRIX` evidence is reconciled. This status is not a
+release PASS and does not authorize any Lab or target mutation.
+
+### Boundary / First-Execution Map
+
+| Boundary | Exact external/system state | Future executable/helper/API branch | Failure mode | Earliest safe proof | Same canonical action path? | Representative external-state evidence | Genuinely boundary-only residue | Ambiguous-outcome reconciliation | Evidence identity / current status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PR candidate → merge | exact PR HEAD + reviewed diff + provider/runtime/UI inputs | product/runtime/provider paths; release harness contracts | shipped behavior or harness defect survives review | exact PR CI, negative tests, provider/runtime/UI rehearsal before GPT acceptance | yes for changed product/runtime paths | exact PR checks + required local human-only evidence | accepted-main commit identity does not exist yet | merge result is reconciled against exact accepted HEAD/tree | exact PR HEAD; `MOVED_LEFT` |
+| accepted main staging | exact accepted main/tree + reviewed-content digest | `readiness.sh`, stage builder, resolver, preview, checksums, SBOM, installer, provider qualification | merge-byte/file-mode/stage drift | accepted-main Release-candidate workflow | yes | exact target Actions run and content-addressed stage | archive/source commit identity is accepted-main-specific | stage manifest/content digest readback | accepted main SHA + stage manifest; `MOVED_LEFT` |
+| pre-tag target guard | target main, tag/release absence, active tag ruleset, immutable-release policy, exact local gh capabilities | `push-release-tag.sh` before the effect seam | stale main, weak ruleset, existing identity, unsupported tool/API path | local tag helper before local tag creation/push; live target reads | yes up to remote tag push | authenticated target reads + `check-publish-toolchain.sh` | exact remote tag identity | no mutation yet | expected main SHA + live target/tool state; `MOVED_LEFT` |
+| remote tag push | absent remote canary/production tag + authenticated git remote | `release-external-action.py tag-push` | timeout/non-zero after remote tag may already exist; wrong peeled target | same helper against approved disposable canary before product tag | yes | approved Integration Lab/equivalent tag canary using the same helper | exact production protected tag identity | mandatory `git ls-remote` readback classifies PASS / absent / mismatch / unknown | helper content identity + Lab evidence; `LAB_REQUIRED` until approved rehearsal PASS |
+| tag workflow prepare | exact immutable tag + accepted pre-tag stage | Release workflow tag/annotation checks + `resolve-pretag-stage.sh` | tag/source/title mismatch; stage resolver/runtime drift | accepted-main promotion rehearsal executes the same resolver invocation and stage verification | resolver path yes; tag identity check requires tag | accepted-main Ubuntu promotion rehearsal | exact tag annotation/ref identity and tag-trigger event context | read-only failure; no retry mutation | accepted-main rehearsal + exact tag after boundary; `MOVED_LEFT` with tag identity `POST_BOUNDARY_ONLY` |
+| tag-bound attestations | exact tag source/ref + accepted staged subjects | pinned `actions/attest` + attestation verification | action/API/subject mismatch | accepted-main attestation mechanism rehearsal on exact staged subjects | mechanism yes; exact `refs/tags/<tag>` binding cannot exist before tag | target accepted-main attestation rehearsal | exact tag-bound source-ref/provenance identity | GitHub action result + later Draft/public attestation verification | staged subject digests; mechanism `MOVED_LEFT`, exact tag binding `POST_BOUNDARY_ONLY` |
+| Draft create/edit/upload/download | representative existing/absent Draft + release assets | `release-external-action.py draft-promote` used by Release workflow | Draft state split, create/edit ambiguity, partial upload, asset byte drift, download semantics | approved disposable Integration Lab/equivalent lifecycle rehearsal | yes | same helper performs create/edit/upload/download/reconcile on canary | exact production Draft id/tag and tag-bound attestation assets | every mutation is followed by authoritative Draft readback; downloaded bytes must equal uploaded bytes | helper content identity + Lab evidence; `LAB_REQUIRED` until approved rehearsal PASS |
+| production Draft verification | exact target Draft + tag-bound assets/attestations | `verify-draft-release.sh` + `release-external-action.py publish` without `--apply` | Draft lookup, numeric release-id fetch, body/assets/fingerprint parser first executes only at publish | immediately after Draft promotion and before publish approval | yes | exact target Draft plus prior Lab mutation semantics | none for read/validate/fingerprint path | no mutation; double fingerprint must remain stable | release id + exact Draft fingerprint; `MOVED_LEFT` once target Draft exists |
+| Draft → published mutation | representative Draft + desired title/body/assets | `release-external-action.py publish --apply` | local failure after remote publish; partial/mismatched published state; immutability delay | approved disposable Integration Lab/equivalent using same helper; target gets same-path dry-run before publish | yes | canary Draft→published transition with fidelity matrix; target-specific immutable policy remains separately proven | one exact production Draft→published effect | numeric release-id reconciliation classifies exact published / unchanged Draft / mismatch / unknown; no blind retry | helper content identity + Lab evidence; `LAB_REQUIRED` until approved rehearsal PASS |
+| latest propagation | newly published representative release | same publish helper reads `releases/latest` | publish succeeds but latest route lags or points elsewhere | Lab publish canary; current stable route rehearsal before provider work | yes for API/latest mechanics | Lab latest propagation + current target stable latest read | exact new product latest identity | bounded authoritative latest read; mismatch blocks completion | Lab evidence + target current stable rehearsal; `LAB_REQUIRED` for mutation semantics, new identity `POST_BOUNDARY_ONLY` |
+| rendered GitHub Releases identity | exact target Draft before publish; authenticated rendered Releases UI | human observation of version-first title/list/sidebar after machine Draft verification | API fields are correct but rendered identity is misleading/wrong | pre-publish observation after all machine gates; readiness cue must precede observation | UI is genuinely human-only; machine identity path is already exact | authenticated target Draft UI | public visibility of the newly published entry | no mutation; observation binds release id + Draft fingerprint | private human observation evidence; pre-publish required, new public visibility `POST_BOUNDARY_ONLY` |
+| public asset/download/install | current stable public route, then exact newly published release | `rehearse-public-route.sh` pre-publish; `verify-public-release.sh` post-publish | latest/download propagation, byte drift, attestation failure, isolated install failure | current stable route rehearsal before expensive provider lanes | verifier mechanics yes | current immutable stable public release | exact new public URLs/bytes and isolated install from those bytes | bounded release/download retries only after published identity is known | exact published tag + staged manifest; mechanics `MOVED_LEFT`, new route `POST_BOUNDARY_ONLY` |
+| resource lifecycle / cleanup | task-owned Lab canary tag/Release and task-owned local resources | bounded cleanup under project authority | leaked canary state, accidental deletion of non-task resources | ownership inventory is created before Lab mutation; destructive cleanup only after separate Owner gate | cleanup helper/process must use recorded identities | authoritative Lab state readback before and after cleanup | none | deletion/non-idempotent cleanup requires destination reconciliation; unknown preserves state | canary repository id + tag + release id; `LAB_REQUIRED` lifecycle evidence |
+
+### POST_BOUNDARY_ONLY_WHITELIST
+
+Only the following first observations/effects are allowed to remain after their
+consequential boundary:
+
+- after merge: the exact accepted-main commit identity and source-commit-bound
+  archive identity;
+- after protected tag: the exact remote protected tag object, tag-trigger event
+  context, and attestations whose subject source ref is that exact tag;
+- after Draft promotion: the exact production Draft numeric id and tag-bound
+  attestation assets created for that protected tag;
+- after publish: the one exact production Draft→published effect, the newly
+  published immutable Release identity, and whether that exact release becomes
+  the repository latest object;
+- after public visibility: the exact new `releases/latest/download` routes,
+  newly published public bytes, isolated install from those public bytes, and
+  rendered public Release visibility.
+
+No CLI flag, JSON field, API endpoint, Draft lookup/fingerprint parser, tag-push
+outcome classification, Draft create/edit/upload/download semantic, publish
+reconciliation branch, current-stable public-route mechanic, or release-identity
+rendering rule is permitted to appear here. In particular, Draft creation may
+only follow an authoritative draft-capable absence proof; a non-zero
+`gh release view` result alone is never interpreted as absence. The canonical
+helper falls back to the authenticated release collection/numeric-id path and
+treats an unreadable collection as `OUTCOME UNKNOWN` before mutation. These
+semantics are reproducible earlier and must be `MOVED_LEFT` or proven through
+the approved Integration Lab. Any new late path not listed above is
+`SYSTEM_GAP` and blocks the next release boundary.
+
+A branch, CLI/API field/flag, permission assumption, parser or recovery path that
+can be safely executed earlier is not post-boundary-only. Static source markers,
+a sibling verifier, or a separately rewritten mock do not establish execution
+evidence for the canonical action path.
+
+`release-external-action.py` is the canonical external state machine for the
+three mutation families that otherwise tended to escape late: remote tag push,
+Draft promotion, and Draft→published transition. Production wrappers and the
+Integration Lab rehearsal call this same helper. Product-specific guards remain
+outside it; external mutation/reconciliation semantics do not.
+
+`rehearse-external-release-lifecycle.py` is intentionally mutation-locked by
+an explicit Owner gate token and rejects the production repository. The gate
+token is bound to the exact destination repository name + expected repository
+ID + reviewed candidate HEAD + canary id, so approval cannot be replayed for a
+different candidate or destination tuple. A normal run must use a non-product
+`canary/<id>` identity, a complete
+`clroom.integration-fidelity-matrix.v1`, synthetic payloads only, and the same
+canonical external action helper. Before any tag or Release mutation it also
+requires the expected disposable repository ID as a runtime input, resolves the
+actual destination repository ID from GitHub, and fail-closes on mismatch.
+The rehearsal binds its executable helper and rehearsal bytes to the exact
+reviewed public candidate HEAD by fetching those two files at that commit and
+comparing SHA-256 before the first mutation; the resulting private evidence
+records the candidate HEAD and both executable digests. The Lab lifecycle also
+forces a simulated local error after each successful tag push, Draft create/edit,
+Draft upload and publish transition, so the canonical helper must prove the
+authoritative remote outcome rather than succeeding only on a clean local return.
+No private Lab identity is hardcoded into the public repository. It deliberately
+preserves the resulting remote canary until the separately authorized cleanup
+boundary.
+
+External platform semantics that cannot be proven by fixture must be rehearsed
+against representative non-production state before the production boundary.
+Every fidelity mismatch remains an explicit exact-target proof obligation; a Lab
+PASS never inherits target rulesets, immutability, auth scope, runner/tool,
+network, UI, or resource-lifecycle properties that the Lab did not reproduce.
+
+For non-idempotent boundary actions, a local timeout/non-zero/transport loss is
+not the outcome. The canonical helper queries authoritative destination state and
+classifies exact success, exact not-applied state, mismatch or `OUTCOME UNKNOWN`
+before any retry.
+
+The release train remains quarantined while any row above is `LAB_REQUIRED`
+without approved evidence or `SYSTEM_GAP`. A new version number, reseal, or
+protected tag cannot convert such a row to PASS.
+
 ## Publishable surface closure
 
 Before a protected tag, accepted-main staging materializes structured
@@ -173,7 +301,21 @@ The Release-candidate workflow has a distinct
 pre-tag attestation path and promotion rehearsal transitively require it.
 Deleting, renaming or disconnecting that job is a harness-contract failure.
 The protected-tag helper independently requires the exact main-push job to have
-completed successfully and requires the staged publish-preview binding.
+completed successfully and requires the staged publish-preview binding. Before
+that helper may create a tag on the Owner machine, it also runs
+`check-publish-toolchain.sh`: the exact local `gh` action tool must expose the
+release-edit/view/download and attestation capabilities used later by guarded
+publish/public verification, and authenticated current-stable release/API reads
+must succeed. Tool presence alone is not capability evidence.
+
+For every active candidate, macOS release readiness also executes
+`rehearse-public-route.sh` before provider provisioning. That rehearsal uses
+the current immutable published stable release to prove the non-candidate-
+specific mechanics that post-public verification will later reuse: release
+view/JSON, release asset download, public `releases/latest/download` installer
+and checksum routing, and an isolated installer/first-use smoke. The exact new
+release identity and new public bytes remain genuinely post-publication-only;
+the tool/route mechanics do not.
 
 Post-tag automation remains promotion-only. It may bind tag-dependent
 attestations and promote the accepted bytes, but it does not run
@@ -186,9 +328,21 @@ Publication uses `scripts/release/publish-release.sh` only after a fresh Owner
 publish gate. That helper performs final Draft verification, refreshes the
 action-time Draft fingerprint immediately before the one publish mutation,
 writes the accepted title/body during that transition, and reconciles the
-immutable published object. GitHub REST does not support conditional unsafe
-PATCH for this endpoint, so the helper contains the unsupported CAS window in
-one process and treats any post-action content/asset drift as a release incident.
+immutable published object. A Draft must be resolved through the same
+draft-capable `gh release view` surface used by the canonical Draft verifier,
+then fetched by its numeric release id for the REST fingerprint. The
+`releases/tags/<tag>` REST lookup is forbidden for the pre-publish Draft
+fingerprint because it can return 404 while an authenticated Draft with that tag
+exists. The harness contract carries a negative regression for that lookup
+split. GitHub REST does not support conditional unsafe PATCH for this endpoint,
+so the helper contains the unsupported CAS window in one process. The publish
+mutation's local exit status is never treated as destination truth: after the
+single mutation attempt the helper performs bounded authoritative reconciliation
+by numeric release id. Exact published state is accepted even if the local
+command reported failure; an exact unchanged Draft is classified as not
+applied; partial/mismatched/unreadable state is `OUTCOME UNKNOWN` and is never
+blind-retried. Latest-release reconciliation is separately bounded because
+routing visibility can lag the publish transition.
 
 `PUBLISHED` is not end-to-end completion.
 `scripts/release/verify-public-release.sh` separately proves that the actual

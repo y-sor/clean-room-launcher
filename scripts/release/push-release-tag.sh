@@ -30,6 +30,15 @@ gh auth status >/dev/null 2>&1 || {
   exit 74
 }
 
+bash scripts/release/check-publish-toolchain.sh --self-test || {
+  echo "TAG_GATE_BLOCKED:PUBLISH_TOOLCHAIN_SELF_TEST" >&2
+  exit 74
+}
+bash scripts/release/check-publish-toolchain.sh || {
+  echo "TAG_GATE_BLOCKED:PUBLISH_TOOLCHAIN_CAPABILITY" >&2
+  exit 74
+}
+
 git diff --quiet
 git diff --cached --quiet
 git fetch --quiet origin main
@@ -429,33 +438,22 @@ pretag_stage_binding_now=$(stage_binding_digest) || {
 }
 echo "PRETAG_STAGE_BINDING_ACTION_TIME=PASS"
 set +e
-git push origin "refs/tags/$tag"
-push_rc=$?
+python3 scripts/release/release-external-action.py tag-push \
+  --remote origin \
+  --tag "$tag" \
+  --expected "$expected"
+tag_push_rc=$?
 set -e
-
-set +e
-remote_refs=$(git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}")
-reconcile_rc=$?
-set -e
-if [[ $reconcile_rc -ne 0 ]]; then
-  echo "TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_RECONCILIATION_FAILED tag=$tag push_rc=$push_rc" >&2
-  exit 82
-fi
-remote_direct=$(printf '%s\n' "$remote_refs" | awk -v ref="refs/tags/$tag" '$2 == ref {print $1}')
-remote_peeled=$(printf '%s\n' "$remote_refs" | awk -v ref="refs/tags/$tag^{}" '$2 == ref {print $1}')
-if [[ $remote_peeled == "$expected" ]]; then
-  echo "TAG_PUSH_PASS tag=$tag target=$expected"
-  exit 0
-fi
-if [[ -n "$remote_direct" || -n "$remote_peeled" ]]; then
-  cleanup_local_tag
-  echo "TAG_PUSH_BLOCKED:REMOTE_TARGET_MISMATCH tag=$tag direct=${remote_direct:-none} peeled=${remote_peeled:-none} expected=$expected" >&2
-  exit 83
-fi
-if [[ $push_rc -ne 0 ]]; then
-  cleanup_local_tag
-  echo "TAG_PUSH_OUTCOME_RECONCILED_ABSENT tag=$tag" >&2
-  exit "$push_rc"
-fi
-echo "TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED tag=$tag" >&2
-exit 73
+case "$tag_push_rc" in
+  0)
+    exit 0
+    ;;
+  82)
+    # Remote outcome could not be reconciled. Preserve the local tag for diagnosis.
+    exit 82
+    ;;
+  *)
+    cleanup_local_tag
+    exit "$tag_push_rc"
+    ;;
+esac

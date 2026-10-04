@@ -31,27 +31,45 @@ python3 scripts/release/verify-pretag-stage.py \
   --dir "$tmp/stage" --version "$version" --source-head "$expected" \
   --codex-version "$CODEX_VERSION" --claude-version "$CLAUDE_VERSION" || fail "PRETAG_STAGE_BINDING"
 
-gh release view "$tag" --json tagName,name,isDraft,isPrerelease,isImmutable,publishedAt,body,assets >"$tmp/release.json" || fail "RELEASE_QUERY"
-gh release view --json tagName,isDraft,isPrerelease,isImmutable,publishedAt >"$tmp/latest.json" || fail "LATEST_QUERY"
-python3 - "$tmp/release.json" "$tmp/latest.json" "$tmp/stage/publish-preview.json" <<'PY' || fail "PUBLIC_RELEASE_STATE"
+release_state_ready=false
+for attempt in 1 2 3 4 5; do
+  if gh release view "$tag" --json tagName,name,isDraft,isPrerelease,isImmutable,publishedAt,body,assets >"$tmp/release.json" 2>/dev/null \
+    && gh release view --json tagName,isDraft,isPrerelease,isImmutable,publishedAt >"$tmp/latest.json" 2>/dev/null \
+    && python3 - "$tmp/release.json" "$tmp/latest.json" "$tmp/stage/publish-preview.json" <<'PY'
 import json, sys
 release = json.load(open(sys.argv[1], encoding="utf-8"))
 latest = json.load(open(sys.argv[2], encoding="utf-8"))
 preview = json.load(open(sys.argv[3], encoding="utf-8"))
 if release.get("tagName") != preview["tag_name"] or release.get("name") != preview["release_title"]:
-    raise SystemExit("identity")
+    raise SystemExit(1)
 if release.get("isDraft") or release.get("isPrerelease") is not preview["prerelease"] or release.get("isImmutable") is not True or not release.get("publishedAt"):
-    raise SystemExit("state")
+    raise SystemExit(1)
 if (release.get("body") or "").rstrip() != preview["body"].rstrip():
-    raise SystemExit("body")
+    raise SystemExit(1)
 if {item.get("name") for item in release.get("assets", [])} != set(preview["expected_assets"]):
-    raise SystemExit("assets")
-if latest.get("tagName") != preview["tag_name"] or latest.get("isDraft") or latest.get("isImmutable") is not True:
-    raise SystemExit("latest")
+    raise SystemExit(1)
+if latest.get("tagName") != preview["tag_name"] or latest.get("isDraft") or latest.get("isImmutable") is not True or not latest.get("publishedAt"):
+    raise SystemExit(1)
 PY
+  then
+    release_state_ready=true
+    break
+  fi
+  [[ "$attempt" -lt 5 ]] && sleep 1
+done
+[[ "$release_state_ready" == true ]] || fail "PUBLIC_RELEASE_STATE_PROPAGATION"
 
-mkdir -p "$tmp/assets"
-gh release download "$tag" --dir "$tmp/assets" || fail "ASSET_DOWNLOAD"
+assets_ready=false
+for attempt in 1 2 3 4 5; do
+  rm -rf -- "$tmp/assets"
+  mkdir -p "$tmp/assets"
+  if gh release download "$tag" --dir "$tmp/assets" >/dev/null 2>&1; then
+    assets_ready=true
+    break
+  fi
+  [[ "$attempt" -lt 5 ]] && sleep 1
+done
+[[ "$assets_ready" == true ]] || fail "ASSET_DOWNLOAD_PROPAGATION"
 python3 - "$tmp/stage/pretag-manifest.json" "$tmp/assets" <<'PY' || fail "PUBLIC_ASSET_BYTES"
 import hashlib, json, pathlib, sys
 manifest = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -81,8 +99,10 @@ gh attestation verify "$tmp/assets/$artifact" \
 
 latest_base="https://github.com/$repository/releases/latest/download"
 curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+  --retry 5 --retry-all-errors --retry-delay 1 \
   "$latest_base/install.sh" -o "$tmp/latest-install.sh" || fail "LATEST_INSTALLER_DOWNLOAD"
 curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+  --retry 5 --retry-all-errors --retry-delay 1 \
   "$latest_base/SHA256SUMS" -o "$tmp/latest-SHA256SUMS" || fail "LATEST_CHECKSUM_DOWNLOAD"
 cmp -s "$tmp/latest-install.sh" "$tmp/stage/install.sh" || fail "LATEST_INSTALLER_DRIFT"
 cmp -s "$tmp/latest-SHA256SUMS" "$tmp/stage/SHA256SUMS" || fail "LATEST_CHECKSUM_DRIFT"
