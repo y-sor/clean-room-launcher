@@ -41,10 +41,10 @@ def resolve(
     if SHA_RE.fullmatch(candidate_tag_source) is None:
         raise ValueError("CANDIDATE_TAG_SOURCE")
 
-    if candidate_tag_source == candidate_source:
-        raise ValueError("CANDIDATE_TAG_ALREADY_BOUND")
-
-    return "QUARANTINED_REPAIR"
+    # A protected candidate identity that already exists is consumed regardless
+    # of whether the current source still equals the tag source. Development may
+    # continue, but release eligibility for this manifest identity is frozen.
+    return "RELEASE_QUARANTINED"
 
 
 def self_test() -> None:
@@ -59,7 +59,16 @@ def self_test() -> None:
             candidate_source="b" * 40,
             candidate_tag_source="a" * 40,
         )
-        == "QUARANTINED_REPAIR"
+        == "RELEASE_QUARANTINED"
+    )
+    assert (
+        resolve(
+            "0.4.1",
+            "v0.4.0",
+            candidate_source="a" * 40,
+            candidate_tag_source="a" * 40,
+        )
+        == "RELEASE_QUARANTINED"
     )
 
     blocked = (
@@ -68,8 +77,8 @@ def self_test() -> None:
         ("0.4.0", "0.4.0", None, None),
         ("next", "v0.4.0", None, None),
         ("0.4.1", "v0.4.0", None, "a" * 40),
-        ("0.4.1", "v0.4.0", "a" * 40, "a" * 40),
         ("0.4.1", "v0.4.0", "not-a-sha", "a" * 40),
+        ("0.4.1", "v0.4.0", "a" * 40, "not-a-sha"),
     )
     for candidate_version, published_tag, source, tag_source in blocked:
         try:
