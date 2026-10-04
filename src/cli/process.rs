@@ -49,10 +49,10 @@ const CODEX_MCP_PREFLIGHT_MAX_FRAMES: usize = 64;
 const CODEX_MCP_PREFLIGHT_MAX_FRAME_BYTES: usize = 1024 * 1024;
 
 pub(super) fn preflight_codex_mcp_layers(
-    plan: &IsolationPlan,
     resolved: &ResolvedLaunch,
     state: &CodexState,
 ) -> Result<(), String> {
+    let plan = resolved.isolation();
     let activation = resolved
         .mcp_activation()
         .ok_or_else(mcp_preflight::failed)?;
@@ -618,7 +618,6 @@ fn executable_is_current_clroom(candidate: &Path) -> bool {
 }
 
 pub fn launch_isolated_codex(
-    plan: &IsolationPlan,
     _executable: &Path,
     resolved: &ResolvedLaunch,
     requested_names: &[String],
@@ -626,6 +625,7 @@ pub fn launch_isolated_codex(
     ambient_codex_home: &Path,
     state: Option<&CodexState>,
 ) -> Result<ExitCode, String> {
+    let plan = resolved.isolation();
     let sandbox = Path::new("/usr/bin/sandbox-exec");
     if !fs::metadata(sandbox).is_ok_and(|metadata| metadata.is_file()) {
         return Err(
