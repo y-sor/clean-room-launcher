@@ -380,5 +380,5 @@
       "Bing verification is a tested discovery-surface contract: configured value must be non-empty/non-placeholder and render through the escaped msvalidate.01 meta tag."
     ]
   },
-  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+  "reviewed_content_digest": "eb21872aa8ec815e2ea6ec8291a2e6829fc9fe8e26295aa1b1b37c2e3c77aa18"
 }
