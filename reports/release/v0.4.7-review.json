@@ -416,5 +416,5 @@
       "workflow-local execution classifier distinguishes git diff path operands from direct local-script execution, with a negative/positive self-test preserving the executable-mode contract"
     ]
   },
-  "reviewed_content_digest": "ebc1d449438466e5189185196df6f8e7651a7dd08d6983aaed32bc71779bc4a9"
+  "reviewed_content_digest": "5e87541234ab51ea07e331e25c8d56017ae798da456096f8e20180f121833d85"
 }
