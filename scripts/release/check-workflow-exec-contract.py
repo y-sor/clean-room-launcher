@@ -32,6 +32,9 @@ def needs_exec(line: str, path_start: int) -> bool:
         return True
     # YAML's scalar marker is not part of the shell command.
     prefix = re.sub(r"^\s*run:\s*", "", prefix)
+    # A tracked script named after git diff's path separator is data, not an invocation.
+    if re.search(r"(?:^|[;&|()]|\bif\s+)\s*git\s+diff\b[^;&|()]*--\s+$", prefix):
+        return False
     # Shell control keywords may precede a direct command.
     prefix = re.sub(r"(?:^|[;|&])\s*(?:if|then|elif|while|until)\s+$", "", prefix)
     words = re.findall(r"(?:^|\s)([A-Za-z0-9_.-]+)\s*$", prefix)
@@ -82,6 +85,7 @@ run: |
         '  lifecycle="$(python3 scripts/release/tool.py arg)"',
         "run: scripts/release/exec.sh arg",
         "  source scripts/release/nonexec.sh",
+        '  if git diff --quiet "$BASE"...HEAD -- scripts/release/nonexec.sh; then',
     ):
         if violations_for_text(good, modes, "fixture.yml"):
             raise SystemExit("WORKFLOW_EXEC_CONTRACT_SELF_TEST_FAIL_WRAPPER")

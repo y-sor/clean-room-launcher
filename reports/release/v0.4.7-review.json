@@ -34,7 +34,10 @@
         "Release-harness regressions now require consumed-identity tag/Release absence guards at both initial and action-time boundaries, preserve exact-source publish guards, reject reintroduction of the repository-wide quarantine path allowlist, and reject the former IndexNow fixed retry deadline.",
         "Discovery-surface coverage requires a non-empty non-placeholder Bing verification setting and the exact escaped msvalidate.01 head projection while preserving canonical namespace checks.",
         "Attestation-contract regression now rejects a tag workflow that omits the canonical draft-promote helper, so the contract cannot regress to the obsolete direct gh release upload requirement.",
-        "Accepted main now enforces concise discovery descriptions on both docs/_config.yml and docs/index.md: each description is capped at 160 characters and must retain Clean Room Launcher (CLROOM), Codex, Claude Code, clean/selective launch, project-context and normal-setup signals."
+        "Accepted main now enforces concise discovery descriptions on both docs/_config.yml and docs/index.md: each description is capped at 160 characters and must retain Clean Room Launcher (CLROOM), Codex, Claude Code, clean/selective launch, project-context and normal-setup signals.",
+        "Accepted-main Claude pretag execution now has one canonical maintainer entrypoint that resolves authoritative main, fetches canonical tags/source without touching the primary checkout, creates or reuses one exact clean detached task worktree, resolves the verified pretag stage, derives the archive from pretag-manifest, runs the existing supervised human-TTY smoke, and immediately verifies the resulting stage evidence; harness contract coverage rejects placeholders, reset/clean/stash workarounds, manual worktree deletion, and disconnected helper composition.",
+        "The new accepted-main Claude entrypoint has PR-only macOS FIRST_EXECUTION_CLOSURE for its novel machine-owned glue: the actual helper resolves authoritative main, performs the canonical public fetch, creates/reuses the exact accepted-main worktree, derives the version, invokes a prepare-only resolver seam, parses the manifest/archive binding, and rechecks main. The resolver fixture is admitted only in --prepare-only; normal stage mode remains hard-bound to the accepted worktree's real resolve-pretag-stage.sh and existing supervised TTY smoke.",
+        "Workflow-local execution parity now distinguishes a tracked script path used as git diff data after the path separator from an actual direct script invocation; a self-test covers the exact conditional git-diff shape, while non-executable scripts still fail closed when executed without an explicit interpreter."
       ]
     },
     "dependencies": {
@@ -53,7 +56,9 @@
         "ACTIVE_CANDIDATE readiness exposed that post-v0.4.4 hardening had incorrectly removed the Python CycloneDX schema verifier as unused: exact provider qualification and artifact validation passed, then supply-chain metadata generation failed because Python jsonschema was absent. v0.4.7 restores that verifier in a task-owned venv and freezes its Python 3.14 wheel closure with exact versions and SHA-256 hashes under pip --require-hashes/--only-binary before canonical readiness.",
         "Release lifecycle separates RELEASE_QUARANTINED from ordinary protected development: release-only staging/publishable/attestation/promotion lanes skip for a consumed identity, while the stable Release required aggregator still passes only the explicit quarantined topology.",
         "IndexNow same-SHA CI and Pages dependency waiting now has one bounded job timeout instead of a second internal fixed retry window; real dependency failure still exits immediately.",
-        "The tag-attestation contract now binds Draft promotion to the canonical release-external-action.py draft-promote path instead of requiring the obsolete direct gh release upload command."
+        "The tag-attestation contract now binds Draft promotion to the canonical release-external-action.py draft-promote path instead of requiring the obsolete direct gh release upload command.",
+        "Release candidate readiness conditionally executes the accepted-main Claude entrypoint's prepare-only path on macOS whenever that helper changes, using task-owned runner-temp worktree/stage roots and a synthetic resolver output only at the resolver effect seam. This moves the new orchestration path left without widening workflow permissions or pretending that synthetic stage bytes prove the independently rehearsed real accepted-main stage resolver.",
+        "The workflow execution contract was repaired at the owning parser layer rather than by making the new helper executable or obscuring its path: git diff path arguments are classified as data, and actual 100644 direct invocations remain rejected."
       ]
     },
     "release": {
@@ -68,7 +73,9 @@
         "Canonical tag push, Draft promote/upload and publish paths reconcile authoritative destination state after simulated local post-action errors, so an ambiguous local result cannot trigger a blind second mutation.",
         "Consumed release identity is now a release-boundary state, RELEASE_QUARANTINED, rather than a development path allowlist. Existing tag/Release guards and exact-source publish checks prevent reuse or publication of preserved incident identities, while a fresh absent tag returns the manifest to ACTIVE_CANDIDATE.",
         "Action-time provider freshness on 2026-10-04 detected Claude Code latest moving from 2.1.288 to 2.1.289 before runtime qualification. The candidate advances the exact production/source/test tuple to 2.1.289 and invalidates prior Claude-bound evidence until registry integrity and full exact-candidate machine plus human-TTY qualification close again.",
-        "For Claude Code 2.1.289, ACTIVE_CANDIDATE runner metadata resolved and re-froze exact npm registry SHA-512 identities for both @anthropic-ai/claude-code and @anthropic-ai/claude-code-darwin-arm64 before provider execution; stale 2.1.288 hashes failed closed and were not reused."
+        "For Claude Code 2.1.289, ACTIVE_CANDIDATE runner metadata resolved and re-froze exact npm registry SHA-512 identities for both @anthropic-ai/claude-code and @anthropic-ai/claude-code-darwin-arm64 before provider execution; stale 2.1.288 hashes failed closed and were not reused.",
+        "The accepted-main Claude human-TTY gate is now executed through one canonical entrypoint, run-accepted-main-claude-stage.sh, which binds live main before/after fetch, exact isolated worktree identity, verified accepted-main pretag-stage resolution, manifest-derived archive identity, existing supervised Claude smoke, exact stage-evidence verification, and a final main-stability check; the Owner no longer assembles artifact/worktree paths by hand.",
+        "The accepted-main Claude entrypoint distinguishes machine rehearsal from the real human gate: --prepare-only exercises authoritative-main/fetch/worktree/version/resolver/manifest/main-stability orchestration before merge, while release stage mode forbids the resolver fixture override and continues through the real accepted-main stage resolver, supervised human-TTY smoke and exact evidence verifier."
       ]
     },
     "public_claims": {
@@ -342,7 +349,7 @@
     {
       "id": "claude-skill-only-plugin-activation",
       "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
-      "requirement": "Before a protected tag, run the required local human-TTY Claude smoke against the exact accepted-main staged v0.4.7 archive with pinned Claude Code 2.1.289 and bind evidence to accepted source/tree/review/archive identity."
+      "requirement": "Before a protected tag, use the canonical accepted-main Claude stage entrypoint to resolve authoritative main, create/reuse the exact isolated clean worktree, resolve and verify the accepted-main staged v0.4.7 archive, run the supervised local human-TTY Claude smoke with pinned Claude Code 2.1.289, verify the emitted evidence against accepted source/tree/review/archive identity, and fail if main moves during the evidence window."
     },
     {
       "id": "promotion-prepare-execution-parity",
@@ -403,8 +410,11 @@
       "IndexNow same-SHA CI+Pages wait uses one job-level bounded deadline; the previous fixed retry-count timeout is regression-forbidden.",
       "Bing verification is a tested discovery-surface contract: configured value must be non-empty/non-placeholder and render through the escaped msvalidate.01 meta tag.",
       "attestation contract binds Draft promotion to the canonical release-external-action.py draft-promote invocation, with a negative fixture that removes the helper call and must fail closed",
-      "site/homepage discovery descriptions are bounded to 160 characters and regression-locked to durable CLROOM/provider/project-context positioning"
+      "site/homepage discovery descriptions are bounded to 160 characters and regression-locked to durable CLROOM/provider/project-context positioning",
+      "accepted-main Claude stage single-entry execution contract: authoritative main resolution, canonical fetch, isolated exact worktree, verified pretag-stage/archive binding, supervised human-only autocomplete observation, exact evidence verification, no guessed paths/manual artifact plumbing, and final main-stability check",
+      "accepted-main Claude entrypoint FIRST_EXECUTION_CLOSURE: exact helper prepare path executes on PR macOS with a prepare-only synthetic resolver seam; production stage mode cannot take the fixture override and remains bound to the real accepted-main resolver plus supervised TTY/evidence path",
+      "workflow-local execution classifier distinguishes git diff path operands from direct local-script execution, with a negative/positive self-test preserving the executable-mode contract"
     ]
   },
-  "reviewed_content_digest": "bc4b1921aea2d46281e3dd3168f8333fa628ef818f469cc47bea5e07e80ad8c3"
+  "reviewed_content_digest": "5e87541234ab51ea07e331e25c8d56017ae798da456096f8e20180f121833d85"
 }

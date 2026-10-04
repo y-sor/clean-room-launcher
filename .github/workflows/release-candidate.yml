@@ -167,6 +167,49 @@ jobs:
           set -euo pipefail
           bash scripts/release/rehearse-public-route.sh --self-test
           bash scripts/release/rehearse-public-route.sh
+      - name: Rehearse accepted-main Claude stage entrypoint glue when changed
+        if: github.event_name == 'pull_request' && env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CLROOM_RELEASE_WORKTREE_ROOT: ${{ runner.temp }}/clroom-accepted-main-worktrees
+          CLROOM_RELEASE_STAGE_ROOT: ${{ runner.temp }}/clroom-accepted-main-stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet "$BASE_SHA"...HEAD -- scripts/release/run-accepted-main-claude-stage.sh; then
+            echo "ACCEPTED_MAIN_CLAUDE_STAGE_PREPARE_SKIPPED unchanged"
+            exit 0
+          fi
+          fixture="$RUNNER_TEMP/clroom-pretag-stage-resolver-fixture.sh"
+          cat >"$fixture" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          version=$1
+          source_head=$2
+          destination=$3
+          rm -rf -- "$destination"
+          mkdir -p "$destination"
+          artifact="clean-room-launcher-v${version}-aarch64-apple-darwin.tar.gz"
+          printf 'fixture:%s:%s\n' "$version" "$source_head" >"$destination/$artifact"
+          artifact_sha="$(shasum -a 256 "$destination/$artifact" | awk '{print $1}')"
+          python3 - "$destination/pretag-manifest.json" "$version" "$source_head" "$artifact" "$artifact_sha" <<'PY'
+          import json, sys
+          output, version, source, artifact, artifact_sha = sys.argv[1:]
+          record = {
+              "release_version": version,
+              "source_head": source,
+              "artifact_name": artifact,
+              "files": {artifact: artifact_sha},
+          }
+          with open(output, "w", encoding="utf-8") as handle:
+              json.dump(record, handle, sort_keys=True)
+              handle.write("\n")
+          PY
+          SH
+          chmod 0700 "$fixture"
+          CLROOM_PRETAG_STAGE_RESOLVER="$fixture" \
+            bash scripts/release/run-accepted-main-claude-stage.sh --prepare-only
       - name: Provision pinned Python supply-chain verifier
         if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
         shell: bash
