@@ -8,13 +8,13 @@ permalink: /limitations.html
 - Distributed macOS release artifacts are unsigned and unnotarized;
   qualification is limited to the documented macOS Apple Silicon release path.
 - Only macOS on Apple Silicon is supported. The minimum accepted versions are
-  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.6 exact
-  qualification targets are Codex `0.160.0` and Claude Code `2.1.288`.
+  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.7 exact
+  qualification targets are Codex `0.160.0` and Claude Code `2.1.289`.
   Release qualification fails closed if either stable provider version moves
   before tagging.
-- The v0.4.6 whole-plugin selector admits at most one already-installed
+- The v0.4.7 whole-plugin selector admits at most one already-installed
   provider-native plugin per launch. Codex `0.160.0` uses an exact private
-  shadow-PluginStore projection for the interactive path; Claude Code `2.1.288`
+  shadow-PluginStore projection for the interactive path; Claude Code `2.1.289`
   uses its separately qualified session-only plugin-directory path. Other
   provider tuples fail closed for activation. Codex plugins whose effective MCP
   surface includes the app-owned `codex_app` server are `HOST_REQUIRED` and
@@ -27,7 +27,7 @@ permalink: /limitations.html
   agents, LSP servers, background monitors, plugin executables, or plugin
   settings may still be observed by inventory but fail closed for activation.
   This avoids reopening broader ambient provider state.
-- v0.4.6 adds only one exact root-user Codex stdio MCP server per interactive
+- v0.4.7 adds only one exact root-user Codex stdio MCP server per interactive
   launch, subject to exact-candidate macOS rehearsal. Multiple
   MCP servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working
   directories, project/local restore, Claude standalone MCP, component-level

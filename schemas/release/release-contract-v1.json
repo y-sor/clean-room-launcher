@@ -56,8 +56,9 @@
         "current_section": "active",
         "older_sections": "historical",
         "allowed_release_references": {
-          "0.4.4": "published stable baseline used for v0.4.6 recovery",
-          "0.4.5": "protected tagged-but-unpublished release-harness incident"
+          "0.4.4": "published stable baseline used for v0.4.7 recovery",
+          "0.4.5": "protected tagged-but-unpublished release-harness incident",
+          "0.4.6": "protected tagged-but-unpublished release-harness incident"
         }
       }
     },

@@ -151,6 +151,13 @@ jobs:
             exit 1
           fi
           grep -Fq 'RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_ACTION_PIN' "$output"
+          helper=$(printf '%s%s' 'python3 scripts/release/release-' 'external-action.py draft-promote')
+          grep -Fv -- "$helper" .github/workflows/release.yml > "$probe"
+          if bash scripts/release/check-attestation-contract.sh "$probe" .github/workflows/release-candidate.yml >"$output" 2>&1; then
+            echo "release attestation contract unexpectedly passed without the canonical Draft promotion helper" >&2
+            exit 1
+          fi
+          grep -Fq "RELEASE_ATTESTATION_CONTRACT_BLOCKED:TAG_ATTEST_CONTRACT:$helper" "$output"
       - name: Rehearse current published public route before expensive lanes
         if: env.CLROOM_RELEASE_LIFECYCLE == 'ACTIVE_CANDIDATE'
         env:
