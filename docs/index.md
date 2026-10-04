@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Clean Room Launcher (CLROOM)
-description: Start Codex or Claude Code with CLROOM and keep project context while known unrelated global instructions and unselected personal-global skills stay out.
+description: Clean Room Launcher (CLROOM) gives Codex and Claude Code a repeatable clean, selective launch with project context preserved and your normal setup intact.
 image:
   path: /assets/clean-room-launcher-hero.png
   alt: Clean Room Launcher (CLROOM)

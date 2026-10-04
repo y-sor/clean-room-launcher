@@ -74,11 +74,12 @@ fn discovery_descriptions_stay_concise_and_specific() {
             "{surface} discovery description exceeds the project concise-snippet target"
         );
         for required in [
+            "Clean Room Launcher (CLROOM)",
             "Codex",
             "Claude Code",
+            "clean, selective launch",
             "project context",
-            "global instructions",
-            "global skills",
+            "normal setup",
         ] {
             assert!(
                 description.contains(required),
