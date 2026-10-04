@@ -5,6 +5,7 @@ use clroom::{
         claude::managed::Presence,
         codex::{
             activation::{self as codex_activation, PluginActivationPlan},
+            isolation::IsolationPlan,
             mcp::{self as codex_mcp, McpActivationPlan},
         },
         identity::ProviderIdentity,
@@ -163,6 +164,7 @@ pub struct ResolvedLaunchSummary {
     pub os: String,
     pub arch: String,
     pub resources: Vec<ResolvedResourceSummary>,
+    pub selected_global_skills: Vec<String>,
     pub pass_env: Vec<String>,
     pub boundary: &'static str,
     pub boundary_controls: Vec<&'static str>,
@@ -179,6 +181,7 @@ pub enum ResolveCodexError {
 pub struct ResolvedLaunch {
     contract: LaunchContract,
     identity: ProviderIdentity,
+    isolation: IsolationPlan,
     plugin_activation: Option<PluginActivationPlan>,
     mcp_activation: Option<McpActivationPlan>,
     plugin_activation_args: Vec<String>,
@@ -192,6 +195,7 @@ impl ResolvedLaunch {
     pub fn resolve_codex(
         mut contract: LaunchContract,
         identity: ProviderIdentity,
+        isolation: IsolationPlan,
         home: &Path,
         ambient_codex_home: &Path,
         request: &SelectionRequest,
@@ -236,6 +240,7 @@ impl ResolvedLaunch {
         Ok(Self {
             contract,
             identity,
+            isolation,
             plugin_activation,
             mcp_activation,
             plugin_activation_args,
@@ -252,6 +257,10 @@ impl ResolvedLaunch {
 
     pub fn identity(&self) -> &ProviderIdentity {
         &self.identity
+    }
+
+    pub fn isolation(&self) -> &IsolationPlan {
+        &self.isolation
     }
 
     pub fn plugin_activation(&self) -> Option<&PluginActivationPlan> {
@@ -297,6 +306,12 @@ impl ResolvedLaunch {
             os: self.identity.os.clone(),
             arch: self.identity.arch.clone(),
             resources: self.resources.clone(),
+            selected_global_skills: self
+                .isolation
+                .selected_global_skill_paths
+                .iter()
+                .map(|(id, _)| id.clone())
+                .collect(),
             pass_env: self.pass_env.clone(),
             boundary: self.contract.boundary_label(),
             boundary_controls: self.contract.boundary_controls.clone(),
@@ -313,24 +328,36 @@ fn partition_codex_request(
 ) -> Result<(SelectionRequest, SelectionRequest), ResolveCodexError> {
     let mut plugins = SelectionRequest::default();
     let mut mcp = SelectionRequest::default();
+    partition_codex_targets(
+        &request.includes,
+        &mut plugins.includes,
+        &mut mcp.includes,
+    )?;
+    partition_codex_targets(
+        &request.excludes,
+        &mut plugins.excludes,
+        &mut mcp.excludes,
+    )?;
+    Ok((plugins, mcp))
+}
 
-    for (source, plugin_target, mcp_target) in [
-        (&request.includes, &mut plugins.includes, &mut mcp.includes),
-        (&request.excludes, &mut plugins.excludes, &mut mcp.excludes),
-    ] {
-        for target in source {
-            match target {
-                SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::Plugin => {
-                    plugin_target.insert(target.clone());
-                }
-                SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::McpServer => {
-                    mcp_target.insert(target.clone());
-                }
-                _ => return Err(ResolveCodexError::UnsupportedRequest),
+fn partition_codex_targets(
+    source: &BTreeSet<SelectionTarget>,
+    plugins: &mut BTreeSet<SelectionTarget>,
+    mcp: &mut BTreeSet<SelectionTarget>,
+) -> Result<(), ResolveCodexError> {
+    for target in source {
+        match target {
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::Plugin => {
+                plugins.insert(target.clone());
             }
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::McpServer => {
+                mcp.insert(target.clone());
+            }
+            _ => return Err(ResolveCodexError::UnsupportedRequest),
         }
     }
-    Ok((plugins, mcp))
+    Ok(())
 }
 
 fn resolved_resource_summaries(request: &SelectionRequest) -> Vec<ResolvedResourceSummary> {
