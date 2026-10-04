@@ -3,6 +3,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {%- seo -%}
+  {%- if site.bing_site_verification -%}
+  <meta name="msvalidate.01" content="{{ site.bing_site_verification | escape }}">
+  {%- endif -%}
   <meta name="robots" content="max-image-preview:large">
   {%- if page.url == '/' -%}
   <script type="application/ld+json">

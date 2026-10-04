@@ -4,6 +4,7 @@ description: Clean Room Launcher is an open-source macOS launcher for cleaner, s
 url: "https://y-sor.github.io"
 baseurl: "/clean-room-launcher"
 repository: y-sor/clean-room-launcher
+bing_site_verification: "3C58D81E5C3A769DCEB313FA15D5B102"
 logo: /assets/brand/clroom-logo.png
 theme: minima
 

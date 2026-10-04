@@ -12,6 +12,23 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(config.contains("baseurl: \"/clean-room-launcher\""));
     assert!(config.contains("repository: y-sor/clean-room-launcher"));
 
+    let bing_verification = config
+        .lines()
+        .find_map(|line| line.strip_prefix("bing_site_verification:"))
+        .expect("missing Bing site verification setting")
+        .trim()
+        .trim_matches('"')
+        .trim_matches('\'');
+    assert!(!bing_verification.is_empty(), "Bing verification value is empty");
+    assert!(
+        !bing_verification.to_ascii_lowercase().contains("placeholder"),
+        "Bing verification value is a placeholder"
+    );
+
+    let head = read("docs/_includes/head.html");
+    assert!(head.contains("name=\"msvalidate.01\""));
+    assert!(head.contains("content=\"{{ site.bing_site_verification | escape }}\""));
+
     let sitemap = read("docs/sitemap.xml");
     assert!(sitemap.contains("permalink: /sitemap.xml"));
     assert!(sitemap.contains("page.url | absolute_url"));
@@ -31,7 +48,7 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     let legacy_owner = format!("{}{}", "ewgenij87sn", "work");
     let legacy_pages = format!("{legacy_owner}.github.io/clean-room-launcher");
     let legacy_repo = format!("github.com/{legacy_owner}/clean-room-launcher");
-    for surface in [&config, &sitemap, &robots, &llms] {
+    for surface in [&config, &head, &sitemap, &robots, &llms] {
         assert!(!surface.contains(&legacy_pages));
         assert!(!surface.contains(&legacy_repo));
     }
