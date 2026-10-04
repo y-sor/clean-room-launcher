@@ -541,6 +541,9 @@ def rehearse(args: argparse.Namespace) -> None:
     if re.fullmatch(r"[0-9a-f]{64}", args.expected_provider_sha256 or "") is None:
         fail("invalid expected provider digest")
 
+    if args.artifact_sha256 is not None and re.fullmatch(r"[0-9a-f]{64}", args.artifact_sha256) is None:
+        fail("invalid artifact digest")
+
     candidate = pathlib.Path(args.candidate).resolve()
     provider = pathlib.Path(args.provider).resolve()
     home = pathlib.Path(args.home).resolve()
@@ -621,6 +624,7 @@ def rehearse(args: argparse.Namespace) -> None:
         "evidence_binding": "exact-head-provider-v1",
         "source_head": args.source_head,
         "candidate_sha256": candidate_digest,
+        "artifact_sha256": args.artifact_sha256,
         "platform": "macos-aarch64",
         "codex_version": provider_version,
         "codex_provider_sha256": provider_digest,
@@ -684,6 +688,7 @@ def main() -> int:
     parser.add_argument("--source-head")
     parser.add_argument("--expected-provider-version")
     parser.add_argument("--expected-provider-sha256")
+    parser.add_argument("--artifact-sha256")
     parser.add_argument("--home")
     parser.add_argument("--output")
     args = parser.parse_args()
