@@ -154,7 +154,7 @@ fn render_human(summary: &launch_contract::ResolvedLaunchSummary) -> String {
 #[cfg(test)]
 mod tests {
     use super::render_human;
-    use crate::cli::launch_contract::{
+    use super::super::launch_contract::{
         ResolvedLaunchSummary, ResolvedProviderArgSummary, ResolvedResourceSummary,
     };
 
