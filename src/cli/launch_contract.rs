@@ -174,6 +174,7 @@ pub struct ResolvedLaunchSummary {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ResolveCodexError {
     UnsupportedRequest,
+    ActivationConflict,
     Plugin(codex_activation::ActivationError),
     Mcp(codex_mcp::ActivationError),
 }
@@ -217,6 +218,16 @@ impl ResolvedLaunch {
             pass_env,
         )
         .map_err(ResolveCodexError::Mcp)?;
+
+        if let (Some(plugin), Some(mcp)) =
+            (plugin_activation.as_ref(), mcp_activation.as_ref())
+            && plugin
+                .mcp_server_ids()
+                .iter()
+                .any(|server_id| server_id == mcp.id())
+        {
+            return Err(ResolveCodexError::ActivationConflict);
+        }
 
         let plugin_activation_args = plugin_activation
             .as_ref()
