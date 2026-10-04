@@ -652,6 +652,9 @@ fn codex_resolved_launch_error_message(error: launch_contract::ResolveCodexError
         launch_contract::ResolveCodexError::UnsupportedRequest => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified Codex whole-plugin and standalone MCP selection is available in this release; continue locally".to_owned()
         }
+        launch_contract::ResolveCodexError::ActivationConflict => {
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: selected Codex whole-plugin and standalone MCP overlap on a provider MCP identity".to_owned()
+        }
         launch_contract::ResolveCodexError::Plugin(error) => codex_activation_error_message(error),
         launch_contract::ResolveCodexError::Mcp(error) => codex_mcp_activation_error_message(error),
     }
