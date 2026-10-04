@@ -754,7 +754,7 @@ mod tests {
         fs::write(
             codex_home.join("config.toml"),
             format!(
-                "[mcp_servers.{standalone_id}]\ncommand = \"/usr/bin/docs-mcp\"\n{config_extra}"
+                "[mcp_servers.\\"{standalone_id}\\"]\ncommand = \"/usr/bin/docs-mcp\"\n{config_extra}"
             ),
         )
         .unwrap();
