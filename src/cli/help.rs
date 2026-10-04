@@ -128,9 +128,9 @@ const COMMANDS: &[CommandSpec] = &[
         command: Command::Inspect,
         canonical: "inspect",
         aliases: &[],
-        description: "Inspect one skill decision",
-        usage: "inspect <skill>",
-        example: "inspect skill:rust",
+        description: "Inspect the resolved Codex launch without starting a model",
+        usage: "inspect codex [CODEX_ARGS...]",
+        example: "inspect codex --with=plugin:<id> --with=mcp:<id>",
     },
     CommandSpec {
         command: Command::Doctor,
