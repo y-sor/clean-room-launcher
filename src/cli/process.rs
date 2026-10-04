@@ -15,7 +15,7 @@ use clroom::adapters::claude::{
 };
 use clroom::adapters::codex::{
     activation::{self as codex_activation, PluginActivationPlan},
-    isolation::{IsolationInputs, IsolationPlan, plan_with_skills},
+    isolation::{IsolationInputs, plan_with_skills},
     mcp::{self as codex_mcp, McpActivationPlan},
 };
 use clroom::adapters::{
