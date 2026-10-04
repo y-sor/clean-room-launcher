@@ -626,7 +626,7 @@ fn codex_activation_error_message(error: CodexActivationError) -> String {
             "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for whole-plugin activation; continue locally".to_owned()
         }
         CodexActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Codex plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE: this release admits one exact Codex plugin per launch".to_owned()
         }
         CodexActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
@@ -666,10 +666,10 @@ fn codex_mcp_activation_error_message(error: CodexMcpActivationError) -> String 
             "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for standalone MCP activation; continue locally".to_owned()
         }
         CodexMcpActivationError::MultipleMcp => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: first standalone MCP slice admits one exact Codex MCP server per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE: this release admits one exact standalone Codex MCP server per launch".to_owned()
         }
         CodexMcpActivationError::MixedSelection => {
-            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: standalone MCP and whole-plugin selection cannot be combined in this slice".to_owned()
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: the standalone MCP planner received a mixed resource request; continue locally".to_owned()
         }
         CodexMcpActivationError::UnsupportedRequest => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: use one exact --with=mcp:<id>; standalone MCP exclusions are unavailable in this slice".to_owned()
@@ -684,16 +684,16 @@ fn codex_mcp_activation_error_message(error: CodexMcpActivationError) -> String 
             format!("CLROOM_ENV_SELECTOR_REQUIRED: selected MCP references {name}; admit it explicitly with --pass-env={name}")
         }
         CodexMcpActivationError::UnsupportedEnvironmentReference => {
-            "CLROOM_MCP_ENV_REFERENCE_REFUSED: first standalone MCP slice admits only plain environment-variable names".to_owned()
+            "CLROOM_MCP_ENV_REFERENCE_REFUSED: the bounded standalone MCP contract admits only plain environment-variable names".to_owned()
         }
         CodexMcpActivationError::UnsupportedField(_) => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: selected MCP uses fields outside the first reference-only stdio contract; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: selected MCP uses fields outside the bounded reference-only stdio contract; continue locally".to_owned()
         }
         CodexMcpActivationError::InvalidIdentityField => {
             "CLROOM_MCP_IDENTITY_FIELD_REFUSED: MCP command/args/cwd are invalid or contain environment interpolation".to_owned()
         }
         CodexMcpActivationError::RelativeWorkingDirectory => {
-            "CLROOM_MCP_CWD_REFUSED: first standalone MCP slice requires an absolute cwd".to_owned()
+            "CLROOM_MCP_CWD_REFUSED: the bounded standalone MCP contract requires an absolute cwd".to_owned()
         }
         CodexMcpActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before launch; retry".to_owned()
@@ -707,7 +707,7 @@ fn claude_activation_error_message(error: ClaudeActivationError) -> String {
             "CLROOM_RESOURCE_NOT_SELECTABLE: installed Claude version/platform is not qualified for whole-plugin activation; continue locally".to_owned()
         }
         ClaudeActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Claude plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE: this release admits one exact Claude plugin per launch".to_owned()
         }
         ClaudeActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Claude plugin changed before launch; retry".to_owned()
