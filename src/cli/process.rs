@@ -24,7 +24,7 @@ use clroom::adapters::{
 };
 use clroom::contracts::adapter::parse_declaration;
 
-use super::launch_contract::{CodexInvocation, LaunchContract, classify_codex_invocation};
+use super::launch_contract::{CodexInvocation, LaunchContract, ResolvedLaunch, classify_codex_invocation};
 mod codex_state;
 mod mcp_preflight;
 pub(super) use codex_state::CodexState;
@@ -50,14 +50,16 @@ const CODEX_MCP_PREFLIGHT_MAX_FRAME_BYTES: usize = 1024 * 1024;
 
 pub(super) fn preflight_codex_mcp_layers(
     plan: &IsolationPlan,
-    identity: &ProviderIdentity,
+    resolved: &ResolvedLaunch,
     state: &CodexState,
-    activation: &McpActivationPlan,
 ) -> Result<(), String> {
+    let activation = resolved
+        .mcp_activation()
+        .ok_or_else(mcp_preflight::failed)?;
     activation
         .revalidate()
         .map_err(|_| "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before preflight; retry".to_owned())?;
-    revalidate_launch_identity(identity)?;
+    revalidate_launch_identity(resolved.identity())?;
     preflight_codex_project_mcp_layers(&plan.project)?;
 
     let project = plan
@@ -81,7 +83,10 @@ pub(super) fn preflight_codex_mcp_layers(
     create_private_preflight_dir(&sqlite_home)?;
 
     let mut contract = LaunchContract::codex(&[]);
-    contract.add_codex_mcp_activation(&activation.provider_config_args());
+    contract.add_codex_resource_activations(
+        resolved.plugin_activation_args(),
+        resolved.mcp_activation_args(),
+    );
     contract.argv.push("app-server".to_owned());
 
     let mut command = Command::new(sandbox);
@@ -90,7 +95,7 @@ pub(super) fn preflight_codex_mcp_layers(
         .arg("-p")
         .arg(&plan.profile)
         .arg("--")
-        .arg(&identity.real_executable)
+        .arg(&resolved.identity().real_executable)
         .env(INTERNAL_PROVIDER_CHAIN_GUARD, "1")
         .env("CODEX_HOME", &state.shadow_home)
         .env("CODEX_SQLITE_HOME", &sqlite_home)
@@ -541,7 +546,7 @@ fn verify_codex_exec_clean_user_config(
     let sandbox = Path::new("/usr/bin/sandbox-exec");
     let status = Command::new(sandbox)
         .args(["-p", &plan.profile, "--"])
-        .arg(&identity.real_executable)
+        .arg(&resolved.identity().real_executable)
         .args(["exec", "--ignore-user-config", "--help"])
         .env_clear()
         .env("HOME", &home)
@@ -615,14 +620,11 @@ fn executable_is_current_clroom(candidate: &Path) -> bool {
 pub fn launch_isolated_codex(
     plan: &IsolationPlan,
     _executable: &Path,
-    contract: &LaunchContract,
-    identity: &ProviderIdentity,
+    resolved: &ResolvedLaunch,
     requested_names: &[String],
     home: &Path,
     ambient_codex_home: &Path,
     state: Option<&CodexState>,
-    plugin_activation: Option<&PluginActivationPlan>,
-    mcp_activation: Option<&McpActivationPlan>,
 ) -> Result<ExitCode, String> {
     let sandbox = Path::new("/usr/bin/sandbox-exec");
     if !fs::metadata(sandbox).is_ok_and(|metadata| metadata.is_file()) {
@@ -637,9 +639,9 @@ pub fn launch_isolated_codex(
         .arg("-p")
         .arg(&plan.profile)
         .arg("--")
-        .arg(&identity.real_executable)
+        .arg(&resolved.identity().real_executable)
         .env(INTERNAL_PROVIDER_CHAIN_GUARD, "1")
-        .args(&contract.argv);
+        .args(&resolved.contract().argv);
     if let Some(state) = state {
         command
             .env("CODEX_HOME", &state.shadow_home)
@@ -651,10 +653,10 @@ pub fn launch_isolated_codex(
             home,
             ambient_codex_home,
             state,
-            plugin_activation,
+            resolved.plugin_activation(),
         )?;
-        revalidate_codex_mcp_activation(mcp_activation)?;
-        revalidate_launch_identity(identity)?;
+        revalidate_codex_mcp_activation(resolved.mcp_activation())?;
+        revalidate_launch_identity(resolved.identity())?;
         Err(isolated_launch_error(command.exec()))
     }
     #[cfg(not(unix))]
@@ -663,10 +665,10 @@ pub fn launch_isolated_codex(
             home,
             ambient_codex_home,
             state,
-            plugin_activation,
+            resolved.plugin_activation(),
         )?;
-        revalidate_codex_mcp_activation(mcp_activation)?;
-        revalidate_launch_identity(identity)?;
+        revalidate_codex_mcp_activation(resolved.mcp_activation())?;
+        revalidate_launch_identity(resolved.identity())?;
         let status = command.status().map_err(isolated_launch_error)?;
         Ok(ExitCode::from(status.code().unwrap_or(1) as u8))
     }
@@ -757,7 +759,7 @@ pub fn launch_claude(
             .arg("-p")
             .arg(&plan.profile)
             .arg("--")
-            .arg(&identity.real_executable)
+            .arg(&resolved.identity().real_executable)
             .env(INTERNAL_PROVIDER_CHAIN_GUARD, "1")
             .env("CLAUDE_CODE_DISABLE_AUTO_MEMORY", "1")
             .env("CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN", "1")
@@ -799,7 +801,7 @@ pub fn launch_claude(
             .arg("-p")
             .arg(&plan.profile)
             .arg("--")
-            .arg(&identity.real_executable)
+            .arg(&resolved.identity().real_executable)
             .env(INTERNAL_PROVIDER_CHAIN_GUARD, "1")
             .env("CLAUDE_CODE_DISABLE_AUTO_MEMORY", "1")
             .env("CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN", "1")
