@@ -77,7 +77,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .any(|target| matches!(target, SelectionTarget::All))
     {
         return Err(
-            "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4: --with=all/--without=all is not available in this bounded selector"
+            "CLROOM_RESOURCE_ALL_UNAVAILABLE: --with=all/--without=all is not available in this bounded selector"
                 .to_owned(),
         );
     }
@@ -206,7 +206,7 @@ mod tests {
             (
                 Provider::Claude,
                 "--with=all",
-                "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4:",
+                "CLROOM_RESOURCE_ALL_UNAVAILABLE:",
             ),
         ] {
             let error = prepare(provider, &strings(&[selector])).unwrap_err();
