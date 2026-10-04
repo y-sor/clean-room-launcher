@@ -44,6 +44,10 @@ impl PluginActivationPlan {
         &self.plugin_id
     }
 
+    pub fn mcp_server_ids(&self) -> &[String] {
+        &self.mcp_server_ids
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
