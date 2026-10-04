@@ -277,34 +277,28 @@ fn launch_isolated_codex(
                 .to_owned(),
         );
     }
-    let mcp_activation = codex_mcp::plan(
+    let resolved = launch_contract::ResolvedLaunch::resolve_codex(
+        contract,
+        identity,
+        &home,
         &inputs.codex_home,
         resource_request,
-        &identity,
         pass_env,
+        provider_args.len(),
     )
-    .map_err(codex_mcp_activation_error_message)?;
-    if mcp_activation.is_some() && !launch_contract::codex_top_level_interactive(provider_args) {
+    .map_err(codex_resolved_launch_error_message)?;
+    if resolved.mcp_activation().is_some()
+        && !launch_contract::codex_top_level_interactive(provider_args)
+    {
         return Err(
             "CLROOM_RESOURCE_NOT_SELECTABLE: standalone Codex MCP activation is qualified only for top-level interactive launch; provider subcommands are refused"
                 .to_owned(),
         );
     }
-    let activation = if resource_request.is_empty() || mcp_activation.is_some() {
-        None
-    } else {
-        codex_activation::plan(&home, &inputs.codex_home, resource_request, &identity)
-            .map_err(codex_activation_error_message)?
-    };
-    if let Some(activation) = activation.as_ref() {
-        activation
-            .revalidate(&home, &inputs.codex_home)
-            .map_err(codex_activation_error_message)?;
-    }
-    if let Some(mcp_activation) = mcp_activation.as_ref() {
-        mcp_activation
-            .revalidate()
-            .map_err(codex_mcp_activation_error_message)?;
+    resolved
+        .revalidate_codex_sources(&home, &inputs.codex_home)
+        .map_err(codex_resolved_launch_error_message)?;
+    if resolved.mcp_activation().is_some() {
         // Reject project-local sibling MCP layers before preparing persistent
         // provider state. The full provider-layer preflight repeats this check
         // immediately before provider birth to close the action-time boundary.
@@ -315,35 +309,19 @@ fn launch_isolated_codex(
             &home,
             &inputs.codex_home,
             &plan.selected_global_skill_paths,
-            activation.as_ref(),
+            resolved.plugin_activation(),
         )?)
     } else {
         None
     };
-    if let Some(activation) = activation.as_ref() {
-        activation
-            .revalidate(&home, &inputs.codex_home)
-            .map_err(codex_activation_error_message)?;
-        contract.add_codex_plugin_activation(
-            &activation
-                .provider_config_args()
-                .map_err(codex_activation_error_message)?,
-        );
-    }
-    if let Some(mcp_activation) = mcp_activation.as_ref() {
-        mcp_activation
-            .revalidate()
-            .map_err(codex_mcp_activation_error_message)?;
+    resolved
+        .revalidate_codex_sources(&home, &inputs.codex_home)
+        .map_err(codex_resolved_launch_error_message)?;
+    if resolved.mcp_activation().is_some() {
         let state = state
             .as_ref()
             .ok_or_else(|| "CLROOM_CODEX_MCP_PREFLIGHT_FAILED: clean Codex state is unavailable; continue locally".to_owned())?;
-        process::preflight_codex_mcp_layers(
-            &plan,
-            &identity,
-            state,
-            mcp_activation,
-        )?;
-        contract.add_codex_mcp_activation(&mcp_activation.provider_config_args());
+        process::preflight_codex_mcp_layers(&plan, &resolved, state)?;
     }
     if std::io::stderr().is_terminal() {
         let feature_state = screen::PlaqueFeatureState::from_provider_args(&provider_args);
@@ -360,14 +338,11 @@ fn launch_isolated_codex(
     process::launch_isolated_codex(
         &plan,
         &executable,
-        &contract,
-        &identity,
+        &resolved,
         pass_env,
         &home,
         &inputs.codex_home,
         state.as_ref(),
-        activation.as_ref(),
-        mcp_activation.as_ref(),
     )
 }
 
@@ -668,6 +643,16 @@ fn codex_activation_error_message(error: CodexActivationError) -> String {
             "{}: selected Codex plugin is unavailable or unqualified; continue locally",
             selection.code()
         ),
+    }
+}
+
+fn codex_resolved_launch_error_message(error: launch_contract::ResolveCodexError) -> String {
+    match error {
+        launch_contract::ResolveCodexError::UnsupportedRequest => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified Codex whole-plugin and standalone MCP selection is available in this release; continue locally".to_owned()
+        }
+        launch_contract::ResolveCodexError::Plugin(error) => codex_activation_error_message(error),
+        launch_contract::ResolveCodexError::Mcp(error) => codex_mcp_activation_error_message(error),
     }
 }
 
