@@ -549,16 +549,19 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.5.0` on macOS Apple Silicon. See the
+Current source version: `v0.5.0`. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
-for publication status and downloadable artifacts. Real-provider qualification
-is bound to the exact behavior-specific provider versions above. The macOS
-archive is unsigned and unnotarized.
+for authoritative publication status and downloadable artifacts. Real-provider
+qualification is bound to the exact behavior-specific provider versions above.
+The macOS archive is unsigned and unnotarized.
 
-It supports the documented Codex interactive and exec clean paths, the bounded
-v0.5.0 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
-and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
-Apple Silicon paths.
+The current source supports the documented Codex interactive and exec clean
+paths; bounded one-plugin and one-standalone-stdio-MCP selection; composition of
+one qualified Codex whole plugin with one qualified standalone MCP through the
+same resolved launch; sanitized human/JSON launch inspection; the ordinary
+interactive Claude Code clean launch; and the bounded Claude skill-only
+whole-plugin activation path. Qualification remains limited to the documented
+macOS Apple Silicon paths.
 
 External launchers can use `clroom-codex` or `clroom-claude` as their provider
 executable override. See the [agent runner guide](docs/agent-runners.md).
