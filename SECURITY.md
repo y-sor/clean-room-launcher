@@ -4,9 +4,10 @@
 
 | Version | Status |
 | --- | --- |
-| `0.4.7` | Supported source contract; authoritative publication status is in GitHub Releases |
+| `0.5.0` | Current source contract/candidate; authoritative publication status is in GitHub Releases |
+| `0.4.7` | Published stable predecessor |
 | `0.4.5` | Protected tagged Draft intentionally unpublished after a release-harness incident; not installable |
-| `0.4.4` | Published stable predecessor and v0.4.7 whole-release review baseline |
+| `0.4.4` | Prior published stable line and historical v0.4.7 recovery baseline |
 | `0.4.0` | Prior published stable line |
 | `0.3.1` | Superseded by `0.4.0` |
 | `0.3.0` | Superseded by `0.3.1` |
@@ -14,7 +15,7 @@
 | `0.2.0` | Superseded by `0.2.1` |
 | `0.1.0-alpha.4.2` | Prior published prerelease |
 
-The v0.4.7 qualification is limited to macOS on Apple Silicon. Minimum accepted
+The v0.5.0 qualification is limited to macOS on Apple Silicon. Minimum accepted
 provider ranges remain Codex CLI `0.147.0+` and Claude Code CLI `2.1.223+`.
 Exact release qualification targets are Codex `0.160.0` and Claude Code
 `2.1.289`, including the bounded provider-specific whole-plugin paths described

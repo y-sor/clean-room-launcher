@@ -669,6 +669,104 @@ def check(root: Path) -> list[str]:
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
     errors.extend(validate_supply_chain_verifier_contract(release_candidate))
 
+    composition_path = root / "scripts/release/rehearse-codex-composition.py"
+    require(
+        errors,
+        composition_path.is_file(),
+        "CODEX_COMPOSITION_REHEARSAL_MISSING",
+    )
+    if composition_path.is_file():
+        composition = composition_path.read_text(encoding="utf-8")
+        for marker in (
+            "CODEX_COMPOSITION_REHEARSAL_SELF_TEST_PASS",
+            "CODEX_COMPOSITION_REHEARSAL_PASS",
+            "clroom.codex-composition-rehearsal.v1",
+            'f"--with=plugin:{PLUGIN_ID}"',
+            'f"--with=mcp:{STANDALONE_MCP}"',
+            "overlap_conflict_refused",
+            "ambient_provider_state_unchanged",
+            "human_inspection_sanitized",
+            "json_inspection_sanitized",
+            "model_prompt_sent",
+        ):
+            require(
+                errors,
+                marker in composition,
+                "CODEX_COMPOSITION_REHEARSAL_CONTRACT:" + marker,
+            )
+        self_test = subprocess.run(
+            [sys.executable, str(composition_path), "--self-test"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if self_test.returncode != 0:
+            if self_test.stdout:
+                print(self_test.stdout, end="", file=sys.stderr)
+            if self_test.stderr:
+                print(self_test.stderr, end="", file=sys.stderr)
+        require(
+            errors,
+            self_test.returncode == 0
+            and "CODEX_COMPOSITION_REHEARSAL_SELF_TEST_PASS" in self_test.stdout,
+            "CODEX_COMPOSITION_REHEARSAL_SELF_TEST",
+        )
+    standalone_step = release_candidate.find(
+        "Rehearse standalone Codex MCP on exact PR candidate"
+    )
+    composition_step = release_candidate.find(
+        "Rehearse composed Codex plugin plus MCP on exact PR candidate"
+    )
+    require(
+        errors,
+        composition_step >= 0,
+        "CODEX_COMPOSITION_REHEARSAL_WORKFLOW_STEP",
+    )
+    require(
+        errors,
+        standalone_step >= 0
+        and composition_step > standalone_step,
+        "CODEX_COMPOSITION_REHEARSAL_AFTER_STANDALONE",
+    )
+    require(
+        errors,
+        "python3 scripts/release/rehearse-codex-composition.py --self-test"
+        in release_candidate
+        and "python3 scripts/release/rehearse-codex-composition.py \\" in release_candidate,
+        "CODEX_COMPOSITION_REHEARSAL_WORKFLOW_INVOCATION",
+    )
+    require(
+        errors,
+        "Upload composed Codex plugin plus MCP rehearsal evidence"
+        in release_candidate,
+        "CODEX_COMPOSITION_REHEARSAL_UPLOAD",
+    )
+
+    stage_release = read(root, "scripts/release/stage-release.sh")
+    verify_pretag = read(root, "scripts/release/verify-pretag-stage.py")
+    for marker in (
+        "rehearse-codex-composition.py",
+        "CODEX_COMPOSITION_EXACT_ARCHIVE_RUNTIME",
+        "codex-composition-stage.json",
+        '"codex_composition_exact_archive_runtime": "PASS"',
+    ):
+        require(
+            errors,
+            marker in stage_release,
+            "CODEX_COMPOSITION_STAGE_CONTRACT:" + marker,
+        )
+    for marker in (
+        "codex-composition-stage.json",
+        "clroom.codex-composition-rehearsal.v1",
+        "CODEX_COMPOSITION",
+        '"codex_composition_exact_archive_runtime": "PASS"',
+    ):
+        require(
+            errors,
+            marker in verify_pretag,
+            "CODEX_COMPOSITION_STAGE_VERIFY_CONTRACT:" + marker,
+        )
+
     public_route_rehearsal_path = root / "scripts/release/rehearse-public-route.sh"
     require(errors, public_route_rehearsal_path.is_file(), "PUBLIC_ROUTE_REHEARSAL_MISSING")
     if public_route_rehearsal_path.is_file():

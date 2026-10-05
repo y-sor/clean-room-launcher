@@ -22,6 +22,7 @@ The exact qualified launch paths for this source tree are:
 | `clroom codex exec ...` | Codex CLI 0.160.0 | Non-interactive clean launch |
 | `clroom codex --with=plugin:<id>` | Codex CLI 0.160.0 | One installed standalone-capable whole plugin |
 | `clroom codex --with=mcp:<id>` | Codex CLI 0.160.0 | One exact root-user stdio standalone MCP server |
+| `clroom codex --with=plugin:<id> --with=mcp:<id>` | Codex CLI 0.160.0 | Bounded one-plugin + one-stdio-MCP composition |
 | `clroom claude` | Claude Code CLI 2.1.289 | Interactive clean launch |
 | `clroom claude --with=plugin:<id>` | Claude Code CLI 2.1.289 | One installed skill-only whole plugin |
 | Claude Code `-p` response-output semantics | Claude Code CLI 2.1.289 | Launch path exercised; response-output contract is not independently qualified |
@@ -38,16 +39,18 @@ Clean Room Launcher resolves the installed provider from `PATH`; it does not
 install, replace, log in to, or copy credentials from either provider.
 
 Codex runs inside the CLROOM macOS isolation path. The `exec` path additionally
-injects native `--ignore-user-config`. The v0.4.7 Codex whole-plugin path
+injects native `--ignore-user-config`. The Codex whole-plugin path
 projects exactly one qualified installed bundle into a private shadow
 `CODEX_HOME` and fails closed on host-required app-owned MCP surfaces. Its
 separate standalone MCP path admits one exact root-user stdio server through a
 session-layer override with explicit environment-name admission and active-layer
-preflight.
+preflight. v0.5.0 can compose one qualified plugin with one qualified standalone
+MCP through the same typed resolved launch; either-side drift invalidates the
+whole launch.
 
 Claude runs with project/local settings retained, known personal-global inputs
 restricted, and selected global skills admitted only for that launch. The
-v0.4.7 whole-plugin path admits exactly one installed plugin whose observed
+whole-plugin path admits exactly one installed plugin whose observed
 effective surface is skill-only; hooks, commands, agents, MCP/LSP, monitors,
 executables, settings, custom skill paths, and other broader plugin surfaces
 remain unqualified for activation.

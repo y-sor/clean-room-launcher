@@ -999,6 +999,11 @@ def rehearse(args):
         )
 
         write_config(codex_home, server, selected_log, sibling_log)
+        # The overlap negative must exercise two independently selectable plans.
+        # Install the synthetic whole-plugin fixture before asking for the same
+        # MCP identity as a standalone server; otherwise the launch correctly
+        # fails earlier as an unavailable plugin and never reaches composition.
+        fixture.install(codex_home, home / "plugin-overlap.jsonl")
         negatives["provider_subcommand"] = negative_probe(
             "provider_subcommand", candidate, project, home, provider,
             [f"--with=mcp:{MCP_NAME}", f"--pass-env={ALLOWED_ENV}", "app-server"],
@@ -1010,10 +1015,10 @@ def rehearse(args):
                 f"--with=mcp:{MCP_NAME}", f"--with=mcp:{SIBLING_NAME}",
                 f"--pass-env={ALLOWED_ENV}", "--no-alt-screen",
             ],
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4", selected_log, sibling_log,
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE", selected_log, sibling_log,
         )
-        negatives["mcp_plus_plugin"] = negative_probe(
-            "mcp_plus_plugin", candidate, project, home, provider,
+        negatives["overlapping_plugin_mcp_identity"] = negative_probe(
+            "overlapping_plugin_mcp_identity", candidate, project, home, provider,
             [
                 f"--with=mcp:{MCP_NAME}", f"--with=plugin:{fixture.PLUGIN_ID}",
                 f"--pass-env={ALLOWED_ENV}", "--no-alt-screen",

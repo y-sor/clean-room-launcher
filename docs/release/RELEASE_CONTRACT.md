@@ -107,8 +107,9 @@ change because the archive records the accepted source commit. Therefore
 accepted-main Release-candidate automation builds the future shipping archive
 once, generates the installer copy, checksums, CycloneDX SBOM and release notes,
 freezes the current provider registry/integrity decision, qualifies the provider
-entrypoints extracted from that exact archive, and runs the real Codex whole-
-plugin MCP runtime against that exact archive.
+entrypoints extracted from that exact archive, and runs both the real Codex whole-
+plugin MCP runtime and the bounded whole-plugin + standalone-MCP composition
+runtime against that exact archive.
 
 The same accepted-main workflow also rehearses the GitHub attestation mechanism
 with the exact staged subjects before any tag exists. A successful workflow
@@ -456,9 +457,12 @@ For standalone Codex MCP activation:
    semantics. Evidence binds the exact candidate and provider bytes.
 2. **Fail-closed negative closure:** literal MCP environment values, missing
    `--pass-env` admission, provider-subcommand use, multiple standalone MCP
-   selections, standalone-MCP/whole-plugin mixing, active non-session MCP
+   selections, overlap between the standalone MCP identity and an MCP identity
+   already contributed by the selected whole plugin, active non-session MCP
    layers, and selected-source mutation must all fail before an interactive
-   provider/MCP runtime is admitted. The source-mutation oracle uses the
+   provider/MCP runtime is admitted. A distinct qualified whole plugin and
+   standalone MCP are not a conflict in v0.5; their positive composition closure
+   is defined below. The source-mutation oracle uses the
    task-owned preflight creation seam rather than timing-only polling. Provider
    processes observed while the task-owned `.mcp-preflight-*` directory exists
    belong to the machine-owned config-layer preflight even when provider argv
@@ -473,6 +477,38 @@ For standalone Codex MCP activation:
 4. **Provider-move invalidation:** changing the exact Codex provider tuple
    invalidates standalone-MCP runtime evidence and requires the pre-merge and
    accepted-main qualification paths to run again.
+
+For bounded Codex whole-plugin + standalone-MCP composition:
+
+1. **One resolved launch truth:** one typed resolved launch must own the exact
+   provider identity, isolation plan, selected whole-plugin plan, selected
+   standalone-MCP plan, admitted environment names, boundary controls and final
+   provider arguments. Human diagnostics, machine JSON inspection, provider
+   preflight and real launch must derive from that same resolved truth.
+2. **Pre-merge exact-provider rehearsal:** the exact PR candidate must select one
+   qualified whole plugin and one distinct qualified root-user stdio MCP in the
+   same interactive Codex launch. Both MCP servers must be observed under the
+   same interactive provider process and independently reach `initialize` and
+   `tools/list`; no model prompt is sent.
+3. **Composition negatives and privacy:** more than one plugin or standalone MCP,
+   unsupported resource kinds, raw provider activation overlap, plugin/MCP MCP-ID
+   overlap, unadmitted or literal MCP environment material, either-side source
+   drift, active sibling MCP layers and unselected sibling activation all fail
+   closed. Human/JSON evidence may expose selected identities, reasons and
+   admitted environment names, but never environment values, MCP commands/args,
+   private paths or raw provider argument values.
+4. **No persistent provider mutation:** the rehearsal fingerprints the ambient
+   root-user Codex config and plugin source before/after the composed runtime.
+   Only CLROOM-owned transient/projected state may be created, and task-owned
+   provider/MCP processes must close.
+5. **Accepted-main exact-byte staging:** the exact future shipping archive must
+   repeat the composed runtime and sanitized inspection against the frozen Codex
+   provider bytes. Its evidence is a required pre-tag stage file bound to source
+   SHA, archive SHA-256 and provider SHA-256. Post-tag runtime requalification is
+   forbidden.
+6. **Harness durability:** canonical harness validation must require both the
+   pre-merge composition rehearsal and the exact-archive composition stage so
+   neither proof can disappear silently in a later workflow edit.
 
 ## Stateful provider lifecycle closure
 

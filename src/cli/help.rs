@@ -128,9 +128,9 @@ const COMMANDS: &[CommandSpec] = &[
         command: Command::Inspect,
         canonical: "inspect",
         aliases: &[],
-        description: "Inspect one skill decision",
-        usage: "inspect <skill>",
-        example: "inspect skill:rust",
+        description: "Inspect the resolved Codex launch without starting a model",
+        usage: "inspect codex [CODEX_ARGS...]",
+        example: "inspect codex --with=plugin:<id> --with=mcp:<id>",
     },
     CommandSpec {
         command: Command::Doctor,
@@ -444,9 +444,14 @@ fn render_skill_set_card(invoked_as: &str) -> String {
 }
 
 fn render_card(invoked_as: &str, spec: &CommandSpec) -> String {
+    let description = if spec.command == Command::Inspect {
+        spec.description.to_owned()
+    } else {
+        format!("{} without changing state", spec.description)
+    };
     format!(
-        "Clean Room Launcher — {}\n\n{} without changing state.\n\nUsage: {invoked_as} {}\n\nExample:\n  {invoked_as} {}\n\nFor more: {invoked_as} help",
-        spec.canonical, spec.description, spec.usage, spec.example
+        "Clean Room Launcher — {}\n\n{description}.\n\nUsage: {invoked_as} {}\n\nExample:\n  {invoked_as} {}\n\nFor more: {invoked_as} help",
+        spec.canonical, spec.usage, spec.example
     )
 }
 

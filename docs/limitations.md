@@ -8,11 +8,11 @@ permalink: /limitations.html
 - Distributed macOS release artifacts are unsigned and unnotarized;
   qualification is limited to the documented macOS Apple Silicon release path.
 - Only macOS on Apple Silicon is supported. The minimum accepted versions are
-  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. v0.4.7 exact
+  Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. Exact
   qualification targets are Codex `0.160.0` and Claude Code `2.1.289`.
   Release qualification fails closed if either stable provider version moves
   before tagging.
-- The v0.4.7 whole-plugin selector admits at most one already-installed
+- The whole-plugin selector admits at most one already-installed
   provider-native plugin per launch. Codex `0.160.0` uses an exact private
   shadow-PluginStore projection for the interactive path; Claude Code `2.1.289`
   uses its separately qualified session-only plugin-directory path. Other
@@ -27,11 +27,12 @@ permalink: /limitations.html
   agents, LSP servers, background monitors, plugin executables, or plugin
   settings may still be observed by inventory but fail closed for activation.
   This avoids reopening broader ambient provider state.
-- v0.4.7 adds only one exact root-user Codex stdio MCP server per interactive
-  launch, subject to exact-candidate macOS rehearsal. Multiple
-  MCP servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working
-  directories, project/local restore, Claude standalone MCP, component-level
-  filtering, presets, and `--with=all` remain outside this slice.
+- Codex admits at most one exact root-user standalone stdio MCP server per
+  interactive launch. v0.5.0 can compose that server with at most one qualified
+  whole Codex plugin in the same typed resolved launch. Multiple plugins or MCP
+  servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working directories,
+  project/local restore, Claude standalone MCP, component-level filtering,
+  presets, and `--with=all` remain outside this slice.
 - The standalone Codex MCP path refuses literal environment values
   and identity-field interpolation. Every referenced environment-variable name
   also requires explicit `--pass-env=NAME`. It fails closed if an active
@@ -41,8 +42,8 @@ permalink: /limitations.html
   network sandbox or complete home-directory isolation.
 - A provider may visibly warn that reading a blocked global instruction is not
   permitted. This is expected and does not mean the provider itself failed.
-- User arguments are intentionally last for ordinary clean launches. During a
-  CLROOM whole-plugin selection, overlapping provider plugin/config activation
+- User arguments are intentionally last for ordinary clean launches. During
+  CLROOM resource selection, overlapping provider config/plugin/MCP activation
   controls are refused so they cannot override the exact selection claim.
 - The project directory and other host paths remain available unless macOS or
   the selected provider applies an additional restriction.

@@ -376,6 +376,38 @@ jobs:
           path: ${{ steps.codex_standalone_mcp_rehearsal.outputs.evidence }}
           if-no-files-found: error
           retention-days: 30
+      - name: Rehearse composed Codex plugin plus MCP on exact PR candidate
+        if: github.event_name == 'pull_request'
+        id: codex_composition_rehearsal
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_sha="${{ github.event.pull_request.head.sha }}"
+          test "$(git rev-parse HEAD)" = "$candidate_sha"
+          python3 scripts/release/rehearse-codex-composition.py --self-test
+          cargo build --locked --bin clroom
+          evidence_dir="$RUNNER_TEMP/clroom-composition-evidence"
+          mkdir -p "$evidence_dir"
+          evidence="$evidence_dir/codex-composition-$candidate_sha.json"
+          python3 scripts/release/rehearse-codex-composition.py \
+            --candidate "$PWD/target/debug/clroom" \
+            --provider "$CLROOM_PROVIDER_CODEX" \
+            --source-head "$candidate_sha" \
+            --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" \
+            --expected-provider-sha256 "$CLROOM_PROVIDER_CODEX_SHA256" \
+            --home "$RUNNER_TEMP/clroom-composition-home" \
+            --output "$evidence"
+          test -s "$evidence"
+          echo "artifact_name=codex-composition-$candidate_sha" >> "$GITHUB_OUTPUT"
+          echo "evidence=$evidence" >> "$GITHUB_OUTPUT"
+      - name: Upload composed Codex plugin plus MCP rehearsal evidence
+        if: github.event_name == 'pull_request' && steps.codex_composition_rehearsal.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.codex_composition_rehearsal.outputs.artifact_name }}
+          path: ${{ steps.codex_composition_rehearsal.outputs.evidence }}
+          if-no-files-found: error
+          retention-days: 30
 
   pretag-stage:
     name: Rehearse/stage exact release bytes
