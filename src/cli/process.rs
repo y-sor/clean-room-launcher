@@ -83,10 +83,14 @@ pub(super) fn preflight_codex_mcp_layers(
     create_private_preflight_dir(&sqlite_home)?;
 
     let mut contract = LaunchContract::codex(&[]);
-    contract.add_codex_resource_activations(
-        resolved.plugin_activation_args(),
-        resolved.mcp_activation_args(),
-    );
+    // This no-model probe exists only to prove that the selected standalone
+    // MCP occupies the session config layer and that no non-session MCP layer
+    // is active. Loading the whole plugin here would run the plugin lifecycle
+    // against the persistent launch shadow before the real provider birth.
+    // Plugin qualification, projection and source drift are independently
+    // revalidated, and the exact composed runtime proves both resources
+    // together.
+    contract.add_codex_resource_activations(&[], resolved.mcp_activation_args());
     contract.argv.push("app-server".to_owned());
 
     let mut command = Command::new(sandbox);
