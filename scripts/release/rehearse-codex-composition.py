@@ -152,6 +152,13 @@ def write_root_config(
     standalone.private_write(codex_home / "config.toml", "\n".join(rows))
 
 
+def projected_plugin_server_path(home: pathlib.Path, plugin_server: pathlib.Path) -> pathlib.Path:
+    codex_home = (home / ".codex").resolve()
+    cache_root = (codex_home / "plugins" / "cache").resolve()
+    relative = plugin_server.resolve().relative_to(cache_root)
+    return codex_home / ".clroom-clean-state-v2" / "home" / "plugins" / "cache" / relative
+
+
 def process_snapshot(
     root_pid: int,
     provider: pathlib.Path,
@@ -592,7 +599,10 @@ def positive_probe(
                 del tail[:-8192]
 
     servers = {
-        "plugin": (plugin_server, plugin_log),
+        # Whole-plugin activation runs the rebased copy from CLROOM's shadow
+        # projection, not the ambient source path. Observe the exact executable
+        # Codex will spawn so process evidence is not a false negative.
+        "plugin": (projected_plugin_server_path(home, plugin_server), plugin_log),
         "standalone": (root_server, standalone_log),
     }
     while time.monotonic() < deadline:
@@ -916,6 +926,20 @@ def self_test() -> None:
                 fail(f"root MCP fixture self-test: {marker}")
         if not plugin_server.is_file() or not root_server.is_file():
             fail("composition server fixture self-test")
+        projected = projected_plugin_server_path(root, plugin_server)
+        expected_projected = (
+            codex_home
+            / ".clroom-clean-state-v2"
+            / "home"
+            / "plugins"
+            / "cache"
+            / "clroom-fixture"
+            / "composition"
+            / "local"
+            / "server.py"
+        )
+        if projected != expected_projected:
+            fail("projected plugin server observer self-test")
 
         cleanup_root = root / "readonly-cleanup"
         locked = cleanup_root / "plugins" / "cache" / "fixture"
