@@ -41,6 +41,8 @@ CLROOM starts the installed `codex` or `claude` CLI without rewriting the setup 
 
 Use `clroom codex` or `clroom claude` directly, choose reusable skill sets for different kinds of work, or put CLROOM underneath software that starts coding-agent processes.
 
+On the current qualified Codex path, a launch can also combine one already-installed whole plugin with one standalone stdio MCP server, and `clroom inspect codex ...` can show the sanitized resolved launch before the provider starts.
+
 Each independently launched worker can get a different CLROOM setup while the outer tool keeps ownership of roles, missions, scheduling, worktrees, session reuse, and coordination.
 
 That makes the same launch model useful for daily development, clean skill testing, automated work, and multi-agent systems.
