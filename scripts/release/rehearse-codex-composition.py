@@ -612,8 +612,10 @@ def positive_probe(
                 wait_status = status
                 reaped = True
                 break
-            interactive, linked_now, owned_now = process_snapshot(pid, provider, servers)
+            interactive, linked_now, owned_now, argv_now = process_snapshot(pid, provider, servers)
             interactive_seen = interactive_seen or bool(interactive)
+            if provider_argv is None and argv_now is not None:
+                provider_argv = argv_now
             for name in linked:
                 linked[name].update(linked_now[name])
             owned.update(owned_now)
@@ -833,7 +835,25 @@ def rehearse(args: argparse.Namespace) -> None:
 
 
 def self_test() -> None:
+    import ast
     import tempfile
+
+    source_tree = ast.parse(pathlib.Path(__file__).read_text(encoding="utf-8"))
+    snapshot_calls = 0
+    for node in ast.walk(source_tree):
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
+            continue
+        if not isinstance(node.value.func, ast.Name) or node.value.func.id != "process_snapshot":
+            continue
+        snapshot_calls += 1
+        if (
+            len(node.targets) != 1
+            or not isinstance(node.targets[0], ast.Tuple)
+            or len(node.targets[0].elts) != 4
+        ):
+            fail("process_snapshot result arity self-test")
+    if snapshot_calls != 2:
+        fail("process_snapshot call-count self-test")
 
     with tempfile.TemporaryDirectory(prefix="clroom-composition-rehearsal-") as raw:
         root = pathlib.Path(raw)
