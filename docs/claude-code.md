@@ -41,6 +41,12 @@ internal teammate independently.
 
 For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-sets.md).
 
+## Native Claude skill controls vs CLROOM
+
+Claude Code now exposes useful native controls for individual skills. Anthropic documents `skillOverrides` states such as `name-only`, `user-invocable-only`, and `off`; `disable-model-invocation: true` prevents Claude from auto-invoking a skill and removes its description from the normal skill listing context; and `/skill-doctor` reports skill context cost and usage. Plugin-provided skills are managed separately rather than through `skillOverrides`.
+
+Use those native controls when they solve the actual problem. CLROOM is aimed at a different launch-level boundary: start a session without the ordinary personal-global instruction/skill set participating by default, then admit selected personal-global skills for that launch without rewriting the normal provider setup.
+
 ## Select one installed whole plugin
 
 CLROOM includes one bounded whole-plugin selector:
@@ -167,4 +173,4 @@ This is also why managed-policy interactions around selected skills require care
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
 - [Claude Code documentation index](https://code.claude.com/docs/llms.txt)
 
-Last verified against current Anthropic documentation: **2026-09-20**.
+Last verified against current Anthropic documentation: **2026-10-05**.
