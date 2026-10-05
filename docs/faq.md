@@ -48,7 +48,7 @@ No fixed token saving should be promised. Skill systems can use progressive disc
 
 ## I have many Agent Skills installed. Does that automatically mean they all fill the context window?
 
-No. Do not assume every installed skill body is fully loaded into the model context. The useful question for CLROOM is which personal-global skills are eligible to participate in the launch, not a universal token count per installed skill.
+No. Do not assume every installed skill body is fully loaded into the model context. Current Claude Code documentation distinguishes the skill listing from the full body: listed skills can contribute names/descriptions to context, while the full body loads when invoked. Claude also provides `skillOverrides`, `disable-model-invocation`, and `/skill-doctor` for native control and diagnosis. Other providers have different semantics. CLROOM's useful question remains which supported personal-global inputs are eligible to participate in this launch, not a universal token count per installed skill.
 
 ## Can I test one Agent Skill without my other personal-global skills?
 
@@ -71,6 +71,10 @@ Many things can explain that: repository instructions, project configuration, lo
 ## Can CLROOM tell me every instruction or influence the model saw?
 
 No. Use provider-native status/diagnostic tools for provider configuration and CLROOM's own launch summary for controls it owns. No honest tool should claim to enumerate every influence on a model response.
+
+## Can I use Claude Code native skill controls instead?
+
+Yes. If the problem is one or a few Claude skills, native `skillOverrides`, `disable-model-invocation`, or `/skill-doctor` may be the simpler answer. CLROOM is useful when the desired boundary is launch-wide and should keep ordinary personal-global instructions and unselected personal-global skills out without rewriting the normal setup.
 
 ## Can I use Claude Code `--safe-mode` instead?
 
@@ -106,7 +110,7 @@ Yes. OpenAI documents persistent skill-disable configuration. That can be simple
 
 ## What about hooks, plugins, apps, and MCP servers?
 
-Treat them separately by provider. They do not all share one universal scope model. CLROOM has provider-specific defaults; read the provider page and current limitations rather than assuming one generic rule.
+Treat them separately by provider. They do not all share one universal scope model. On the exact qualified Codex path, current CLROOM can admit one installed whole plugin, one standalone stdio MCP, or the bounded pair together and can inspect that resolved launch before provider birth. That is deliberately narrower than generic plugin/MCP support; read the provider page and current limitations before assuming another package shape, transport, authentication mode, or cardinality is supported.
 
 ## Can I keep different skill sets for planning, review, development, and fixes?
 
