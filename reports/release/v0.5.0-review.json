@@ -127,5 +127,5 @@
       "canonical release-baseline lookup uses the same qualified gh api transport as the guarded tag path; raw Python GitHub HTTP is forbidden by harness regression"
     ]
   },
-  "reviewed_content_digest": "f954328c7d72bd944fa7938713617d16885a33a97baafbc203d412fd2600914e"
+  "reviewed_content_digest": "4a7364a9bbf12e11d2e02899277f8e3a5e5fedaed68b94722a721750a9564219"
 }
