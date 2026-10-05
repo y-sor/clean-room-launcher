@@ -928,7 +928,7 @@ def self_test() -> None:
             fail("composition server fixture self-test")
         projected = projected_plugin_server_path(root, plugin_server)
         expected_projected = (
-            codex_home
+            codex_home.resolve()
             / ".clroom-clean-state-v2"
             / "home"
             / "plugins"
