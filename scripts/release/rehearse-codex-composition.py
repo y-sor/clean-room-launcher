@@ -598,11 +598,12 @@ def positive_probe(
             if len(tail) > 8192:
                 del tail[:-8192]
 
+    projected_plugin_server = projected_plugin_server_path(home, plugin_server)
     servers = {
         # Whole-plugin activation runs the rebased copy from CLROOM's shadow
         # projection, not the ambient source path. Observe the exact executable
         # Codex will spawn so process evidence is not a false negative.
-        "plugin": (projected_plugin_server_path(home, plugin_server), plugin_log),
+        "plugin": (projected_plugin_server, plugin_log),
         "standalone": (root_server, standalone_log),
     }
     while time.monotonic() < deadline:
@@ -681,7 +682,11 @@ def positive_probe(
 
     plugin_observed = standalone.read_observation(plugin_log, linked["plugin"])
     standalone_observed = standalone.read_observation(standalone_log, linked["standalone"])
-    lifecycle_closed = ensure_closed(owned, provider, [plugin_server, root_server])
+    lifecycle_closed = ensure_closed(
+        owned,
+        provider,
+        [projected_plugin_server, root_server],
+    )
     siblings_absent = not any(path.exists() for path in sibling_logs)
     success = (
         interactive_seen
