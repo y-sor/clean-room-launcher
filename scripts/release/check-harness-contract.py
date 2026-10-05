@@ -669,6 +669,28 @@ def check(root: Path) -> list[str]:
     release_candidate = workflow_text[".github/workflows/release-candidate.yml"]
     errors.extend(validate_supply_chain_verifier_contract(release_candidate))
 
+    release_contract_checker = read(root, "scripts/release/check-release-contract.py")
+    require(
+        errors,
+        "urllib.request" not in release_contract_checker
+        and "api.github.com" not in release_contract_checker,
+        "RELEASE_CONTRACT_RAW_PYTHON_GITHUB_HTTP_FORBIDDEN",
+    )
+    require(
+        errors,
+        'api("gh", "api", f"repos/{repository}/releases/latest")'
+        in release_contract_checker,
+        "RELEASE_CONTRACT_GH_API_TRANSPORT_REQUIRED",
+    )
+    require(
+        errors,
+        'latest_published_release("example/project", api=fake_release_api)'
+        in release_contract_checker
+        and "RELEASE_CONTRACT_SELF_TEST_FAIL_GH_API_TRANSPORT"
+        in release_contract_checker,
+        "RELEASE_CONTRACT_GH_API_TRANSPORT_SELF_TEST",
+    )
+
     composition_path = root / "scripts/release/rehearse-codex-composition.py"
     require(
         errors,
