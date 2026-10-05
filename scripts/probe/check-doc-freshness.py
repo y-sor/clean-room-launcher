@@ -25,7 +25,8 @@ def package_version(root: Path) -> str:
             value = tomllib.load(handle)["package"]["version"]
     except (OSError, KeyError, tomllib.TOMLDecodeError) as exc:
         fail(f"CARGO_VERSION_UNREADABLE:{exc}")
-    if not isinstance(value, str) or not re.fullmatch(r"\d+\.\d+\.\d+", value):
+    semver = r"\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?"
+    if not isinstance(value, str) or not re.fullmatch(semver, value):
         fail("CARGO_VERSION_INVALID")
     return value
 
@@ -116,6 +117,14 @@ def self_test() -> None:
             "Current source version; publication status and artifacts are authoritative in GitHub Releases",
         )
         validate(positive)
+
+        prerelease = fixture_root(
+            base / "prerelease",
+            "9.8.7-alpha.2",
+            "Current source version: `v9.8.7-alpha.2`.",
+            "Current source version; publication status and artifacts are authoritative in GitHub Releases",
+        )
+        validate(prerelease)
 
         stale_readme = fixture_root(
             base / "stale-readme",
