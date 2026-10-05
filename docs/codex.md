@@ -85,6 +85,8 @@ remove, or refresh plugins or marketplaces. App-owned `codex_app` surfaces
 remain `HOST_REQUIRED` rather than being emulated outside the Codex Desktop
 host.
 
+OpenAI's current plugin documentation also describes a portable package format with root `plugin.json`, optional `skills/` and `mcp.json`, plus `.codex-plugin/plugin.json` as a compatibility fallback. That upstream packaging evolution does not automatically widen CLROOM support: the current activation claim remains bound to the exact installed provider-native surface and provider tuple that CLROOM qualified.
+
 ## Select one standalone stdio MCP server
 
 CLROOM also admits exactly one root-user `mcp_servers.<id>` entry:
@@ -150,8 +152,9 @@ Administrator-managed behavior belongs to a different control plane from the per
 - [Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md/)
 - [Codex configuration reference](https://developers.openai.com/codex/config-reference/)
 - [Build skills](https://developers.openai.com/codex/skills/)
+- [Package plugins](https://developers.openai.com/plugins/build/plugins)
 - [OpenAI developer documentation index](https://developers.openai.com/llms.txt)
 
 The `developers.openai.com` Codex URLs can redirect to their current ChatGPT Learn canonical pages.
 
-Last verified against current OpenAI documentation: **2026-09-07**.
+Last verified against current OpenAI documentation: **2026-10-05**.
