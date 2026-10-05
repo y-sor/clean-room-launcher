@@ -62,6 +62,14 @@ CLROOM turns those personal-global inputs from **automatic** into **deliberate**
 
 Nothing has to be deleted or permanently reconfigured. The developer keeps the normal setup and can bring in the global skills that actually belong in that session.
 
+## Inspectable per-run composition, not only skill filtering
+
+On the current qualified Codex path, CLROOM can also admit one already-installed whole plugin and one root-user standalone stdio MCP server in the same interactive launch. Both selections resolve through one typed launch plan, overlapping identities fail closed, and a source change on either side invalidates the whole launch.
+
+Use `clroom inspect codex ...` to inspect the same resolved launch truth without starting the real provider session. The human and JSON views expose selected identities, decisions, qualification state, and admitted environment-variable names while keeping secret values, private source paths, and provider argument values out of the output.
+
+This is deliberately bounded rather than a promise of universal plugin/MCP composition. See [Codex and CLROOM](codex.md) and [Current limitations](limitations.md) for the exact supported surface.
+
 ## Reusable skill sets instead of rebuilding the setup
 
 Selected skills do not have to be chosen one by one every time.
