@@ -26,6 +26,12 @@ For a complete skill-author testing workflow, see [Use cases](use-cases.md). To 
 
 The normal setup remains on disk. CLROOM changes the launch, not the developer's permanent configuration.
 
+## Use Claude Code native skill visibility controls when one skill is the whole problem
+
+Current Claude Code provides native per-skill controls such as `skillOverrides`, `disable-model-invocation`, and `/skill-doctor`. If you only need to hide, narrow, or diagnose one or a few Claude skills, prefer those native controls.
+
+CLROOM is useful when the requirement is broader and launch-specific: start without the ordinary personal-global instruction/skill layer participating by default, keep the project-side context CLROOM is designed to retain, and deliberately admit the personal-global skills needed for this run.
+
 ## Use Claude Code `--safe-mode` first when you want broad customization disabled
 
 Claude Code has a native `--safe-mode` specifically for troubleshooting broken customizations. Anthropic documents that it disables a broad set of customizations for the session.
