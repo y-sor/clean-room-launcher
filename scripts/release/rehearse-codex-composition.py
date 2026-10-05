@@ -156,11 +156,11 @@ def process_snapshot(
     root_pid: int,
     provider: pathlib.Path,
     servers: dict[str, tuple[pathlib.Path, pathlib.Path]],
-) -> tuple[set[int], dict[str, set[int]], set[int]]:
+) -> tuple[set[int], dict[str, set[int]], set[int], list[str] | None]:
     try:
         rows = subprocess.check_output(["/bin/ps", "-axo", "pid=,ppid=,pgid="], text=True)
     except (OSError, subprocess.SubprocessError):
-        return set(), {name: set() for name in servers}, set()
+        return set(), {name: set() for name in servers}, set(), None
 
     processes: dict[int, tuple[int, int]] = {}
     for row in rows.splitlines():
@@ -187,6 +187,7 @@ def process_snapshot(
 
     provider_path = str(provider.resolve())
     interactive: set[int] = set()
+    interactive_argv: list[str] | None = None
     server_pids = {name: set() for name in servers}
     owned: set[int] = set()
     for pid in descendants:
@@ -195,6 +196,8 @@ def process_snapshot(
             owned.add(pid)
             if "app-server" not in argv[1:] and "--version" not in argv[1:]:
                 interactive.add(pid)
+                if interactive_argv is None and argv:
+                    interactive_argv = list(argv)
         if not argv:
             continue
         normalized = [
@@ -218,7 +221,7 @@ def process_snapshot(
                     linked[name].add(server_pid)
                     break
                 current = parent
-    return interactive, linked, owned
+    return interactive, linked, owned, interactive_argv
 
 
 def ensure_closed(
@@ -375,6 +378,133 @@ def overlap_negative(
     return True
 
 
+def structured_provider_diagnostic(
+    provider: pathlib.Path,
+    project: pathlib.Path,
+    home: pathlib.Path,
+    provider_argv: list[str] | None,
+) -> dict[str, object]:
+    if not provider_argv:
+        return {"provider_argv_observed": False}
+
+    args = list(provider_argv[1:])
+    args = [arg for arg in args if arg != "--no-alt-screen"]
+    if "app-server" in args:
+        return {"provider_argv_observed": True, "diagnostic_error": "unexpected-app-server-argv"}
+
+    contract = {
+        "provider_argv_observed": True,
+        "plugins_feature_enabled": "features.plugins=true" in args,
+        "plugin_selection_present": any(PLUGIN_ID in arg for arg in args),
+        "standalone_selection_present": any(STANDALONE_MCP in arg for arg in args),
+    }
+
+    shadow_home = home / ".codex" / ".clroom-clean-state-v2" / "home"
+    sqlite_home = home / ".codex"
+    env = standalone.child_env(home, provider)
+    env["CODEX_HOME"] = str(shadow_home)
+    env["CODEX_SQLITE_HOME"] = str(sqlite_home)
+    proc = subprocess.Popen(
+        [str(provider), *args, "app-server"],
+        cwd=project,
+        env=env,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        start_new_session=True,
+    )
+
+    def request(payload: dict[str, object], expected_id: int) -> dict[str, object]:
+        assert proc.stdin is not None
+        assert proc.stdout is not None
+        proc.stdin.write(json.dumps(payload, separators=(",", ":")) + "\n")
+        proc.stdin.flush()
+        import selectors
+        selector = selectors.DefaultSelector()
+        selector.register(proc.stdout, selectors.EVENT_READ)
+        deadline = time.monotonic() + 15
+        try:
+            while time.monotonic() < deadline:
+                events = selector.select(max(0, deadline - time.monotonic()))
+                if not events:
+                    break
+                line = proc.stdout.readline()
+                if not line:
+                    break
+                message = json.loads(line)
+                if message.get("id") == expected_id:
+                    return message
+        finally:
+            selector.close()
+        return {"error": {"message": f"timeout-id-{expected_id}"}}
+
+    try:
+        initialized = request({
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "clientInfo": {
+                    "name": "clroom-composition-diagnostic",
+                    "title": "CLROOM composition diagnostic",
+                    "version": "1.0.0",
+                },
+                "capabilities": {"experimentalApi": True},
+            },
+        }, 1)
+        if initialized.get("error") is not None:
+            return {**contract, "initialize_ok": False}
+
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps({"method": "initialized"}, separators=(",", ":")) + "\n")
+        proc.stdin.flush()
+        status = request({
+            "id": 2,
+            "method": "mcpServerStatus/list",
+            "params": {
+                "cursor": None,
+                "limit": 100,
+                "detail": "toolsAndAuthOnly",
+                "threadId": None,
+                "serverName": None,
+            },
+        }, 2)
+        result = status.get("result")
+        data = result.get("data") if isinstance(result, dict) else None
+        if not isinstance(data, list):
+            return {**contract, "initialize_ok": True, "status_ok": False}
+
+        servers = {}
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            if name not in {PLUGIN_MCP, STANDALONE_MCP, SIBLING_MCP}:
+                continue
+            servers[name] = {
+                "runtime_status": item.get("runtimeStatus"),
+                "plugin_id": item.get("pluginId"),
+                "server_info_present": isinstance(item.get("serverInfo"), dict),
+                "tools_error_present": isinstance(item.get("toolsError"), str),
+            }
+        return {
+            **contract,
+            "initialize_ok": True,
+            "status_ok": True,
+            "servers": servers,
+        }
+    finally:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=2)
+
+
 def positive_probe(
     candidate: pathlib.Path,
     project: pathlib.Path,
@@ -409,6 +539,7 @@ def positive_probe(
     interactive_seen = False
     linked = {"plugin": set(), "standalone": set()}
     owned: set[int] = set()
+    provider_argv: list[str] | None = None
     tail = bytearray()
     reaped = False
     wait_status = None
@@ -441,8 +572,10 @@ def positive_probe(
             wait_status = status
             reaped = True
             break
-        interactive, linked_now, owned_now = process_snapshot(pid, provider, servers)
+        interactive, linked_now, owned_now, argv_now = process_snapshot(pid, provider, servers)
         interactive_seen = interactive_seen or bool(interactive)
+        if provider_argv is None and argv_now is not None:
+            provider_argv = argv_now
         for name in linked:
             linked[name].update(linked_now[name])
         owned.update(owned_now)
@@ -530,13 +663,16 @@ def positive_probe(
             diagnostic = diagnostic.replace(value, replacement)
         if len(diagnostic) > 2048:
             diagnostic = diagnostic[-2048:]
+        structured = structured_provider_diagnostic(
+            provider, project, home, provider_argv
+        )
         fail(
             "composed runtime evidence incomplete "
             f"(interactive={interactive_seen}, plugin_pids={len(linked['plugin'])}, "
             f"standalone_pids={len(linked['standalone'])}, plugin={plugin_observed}, "
             f"standalone={standalone_observed}, siblings_absent={siblings_absent}, "
             f"lifecycle_closed={lifecycle_closed}, wait_status={wait_status}, "
-            f"pty_tail={diagnostic!r})"
+            f"structured={structured}, pty_tail={diagnostic!r})"
         )
     return {
         "interactive_provider_birth": True,
