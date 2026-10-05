@@ -488,13 +488,19 @@ def structured_provider_diagnostic(
             }, 3)
             result = status.get("result")
             data = result.get("data") if isinstance(result, dict) else None
-            if isinstance(data, list) and any(
-                isinstance(item, dict)
-                and item.get("name") in {PLUGIN_MCP, STANDALONE_MCP}
-                and item.get("runtimeStatus") is not None
-                for item in data
-            ):
-                break
+            if isinstance(data, list):
+                selected_statuses = {
+                    item.get("name"): item.get("runtimeStatus")
+                    for item in data
+                    if isinstance(item, dict)
+                    and item.get("name") in {PLUGIN_MCP, STANDALONE_MCP}
+                }
+                terminal = {"connected", "authenticationRequired", "failed", "cancelled", "disabled"}
+                if (
+                    set(selected_statuses) == {PLUGIN_MCP, STANDALONE_MCP}
+                    and all(status in terminal for status in selected_statuses.values())
+                ):
+                    break
             time.sleep(0.1)
         result = status.get("result")
         data = result.get("data") if isinstance(result, dict) else None
