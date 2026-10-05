@@ -4,7 +4,7 @@
 
 | Version | Status |
 | --- | --- |
-| `0.5.0` | Current source contract/candidate; authoritative publication status is in GitHub Releases |
+| `0.5.0` | Current source version; publication status and artifacts are authoritative in GitHub Releases |
 | `0.4.7` | Published stable predecessor |
 | `0.4.5` | Protected tagged Draft intentionally unpublished after a release-harness incident; not installable |
 | `0.4.4` | Prior published stable line and historical v0.4.7 recovery baseline |
