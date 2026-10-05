@@ -75,7 +75,7 @@ A fresh worker avoids inheriting assumptions from an earlier conversation. A res
 <a id="claude-code-and-codex"></a>
 ## Claude Code and Codex
 
-Codex and Claude Code expose different flags, configuration files, skill locations, MCP behavior, and session mechanisms. CLROOM provides one narrow shared idea: start the installed provider with a clean/selective session setup, then add only the personal-global skills this worker needs.
+Codex and Claude Code expose different flags, configuration files, skill locations, MCP behavior, and session mechanisms. CLROOM provides one narrow shared idea: start the installed provider with a clean/selective session setup, then deliberately add the supported personal-global inputs this worker needs. Resource activation remains provider-specific; current Codex qualification is broader than Claude's and must not be generalized across providers.
 
 <a id="subagents-and-agent-teams"></a>
 ## Separate worker processes vs provider-owned subagents
