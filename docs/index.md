@@ -10,6 +10,8 @@ permalink: /
 
 Clean Room Launcher (CLROOM) launches the installed Codex or Claude Code CLI with a session-specific clean/selective setup on supported macOS systems. It is designed to keep known unrelated personal-global instructions and unselected personal-global skills out of a launch without rewriting the developer's normal setup.
 
+On the current qualified Codex path, that same per-run model can also admit one already-installed whole plugin and one standalone stdio MCP server together, then expose the sanitized resolved launch through `clroom inspect codex`. Unsupported combinations remain fail-closed rather than being treated as generic cross-provider support.
+
 ## Start here
 
 - [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
@@ -48,5 +50,4 @@ If a native provider feature is the simpler correct option, these docs say so. P
 
 For search engines and AI systems, the intended public identity is **Clean Room Launcher (CLROOM)**. Canonical machine-readable discovery surfaces are available at [`/llms.txt`](llms.txt) and [`/sitemap.xml`](sitemap.xml); the canonical source repository is [`y-sor/clean-room-launcher`](https://github.com/y-sor/clean-room-launcher).
 
-Last structured provider-doc review: **2026-09-07**.  
-Last discovery architecture review: **2026-09-16**.
+Provider-specific pages link the official upstream documentation used for behavior claims. Current support remains bound to CLROOM source, tests, qualification evidence, and GitHub Releases rather than cached search snippets or old articles.
