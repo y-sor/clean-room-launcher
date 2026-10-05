@@ -458,17 +458,44 @@ def structured_provider_diagnostic(
         assert proc.stdin is not None
         proc.stdin.write(json.dumps({"method": "initialized"}, separators=(",", ":")) + "\n")
         proc.stdin.flush()
-        status = request({
+        thread = request({
             "id": 2,
-            "method": "mcpServerStatus/list",
+            "method": "thread/start",
             "params": {
-                "cursor": None,
-                "limit": 100,
-                "detail": "toolsAndAuthOnly",
-                "threadId": None,
-                "serverName": None,
+                "cwd": str(project),
+                "ephemeral": True,
             },
         }, 2)
+        thread_result = thread.get("result")
+        thread_record = thread_result.get("thread") if isinstance(thread_result, dict) else None
+        thread_id = thread_record.get("id") if isinstance(thread_record, dict) else None
+        if not isinstance(thread_id, str) or not thread_id:
+            return {**contract, "initialize_ok": True, "thread_start_ok": False}
+
+        status = {"result": {"data": []}}
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            status = request({
+                "id": 3,
+                "method": "mcpServerStatus/list",
+                "params": {
+                    "cursor": None,
+                    "limit": 100,
+                    "detail": "full",
+                    "threadId": thread_id,
+                    "serverName": None,
+                },
+            }, 3)
+            result = status.get("result")
+            data = result.get("data") if isinstance(result, dict) else None
+            if isinstance(data, list) and any(
+                isinstance(item, dict)
+                and item.get("name") in {PLUGIN_MCP, STANDALONE_MCP}
+                and item.get("runtimeStatus") is not None
+                for item in data
+            ):
+                break
+            time.sleep(0.1)
         result = status.get("result")
         data = result.get("data") if isinstance(result, dict) else None
         if not isinstance(data, list):
@@ -490,6 +517,7 @@ def structured_provider_diagnostic(
         return {
             **contract,
             "initialize_ok": True,
+            "thread_start_ok": True,
             "status_ok": True,
             "servers": servers,
         }
