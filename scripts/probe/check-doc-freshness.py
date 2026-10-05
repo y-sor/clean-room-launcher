@@ -120,18 +120,18 @@ def self_test() -> None:
         stale_readme = fixture_root(
             base / "stale-readme",
             "9.8.7",
-            "This source tree is prepared for `v9.8.7`.",
+            "Current source version: `v9.8.7`. This source tree is prepared for `v9.8.7`.",
             "Current source version; publication status and artifacts are authoritative in GitHub Releases",
         )
-        expect_failure(stale_readme, "README_CURRENT_SOURCE_VERSION_MISSING")
+        expect_failure(stale_readme, "README_BOUNDARY_UNSTABLE_STATUS")
 
         stale_security = fixture_root(
             base / "stale-security",
             "9.8.7",
             "Current source version: `v9.8.7`.",
-            "Current source contract/candidate; authoritative publication status is in GitHub Releases",
+            "Current source version candidate; publication status and artifacts are authoritative in GitHub Releases",
         )
-        expect_failure(stale_security, "SECURITY_CURRENT_SOURCE_STATUS_MISSING")
+        expect_failure(stale_security, "SECURITY_BOUNDARY_UNSTABLE_STATUS")
 
         wrong_version = fixture_root(
             base / "wrong-version",
