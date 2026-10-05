@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, datetime, fnmatch, hashlib, json, os, re, subprocess, sys, urllib.request
+import argparse, datetime, fnmatch, hashlib, json, os, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -14,32 +14,17 @@ def load_json(path):
 def matches(path, pattern):
     return fnmatch.fnmatchcase(path, pattern) or Path(path).match(pattern)
 
-def github_token():
-    for name in ("GITHUB_TOKEN", "GH_TOKEN"):
-        token = os.environ.get(name)
-        if token:
-            return token
+def latest_published_release(repository, api=run):
     try:
-        token = subprocess.check_output(
-            ["gh", "auth", "token"],
-            cwd=ROOT,
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        return None
-    return token or None
-
-def latest_published_release(repository):
-    req = urllib.request.Request(
-        f"https://api.github.com/repos/{repository}/releases/latest",
-        headers={"Accept":"application/vnd.github+json","User-Agent":"clroom-release-contract-v1"},
-    )
-    token = github_token()
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=20) as response:
-        data = json.load(response)
+        raw = api("gh", "api", f"repos/{repository}/releases/latest")
+    except FileNotFoundError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:GH_REQUIRED") from error
+    except subprocess.CalledProcessError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHED_BASELINE_QUERY") from error
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHED_BASELINE_JSON") from error
     if data.get("draft") or data.get("prerelease"):
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHED_BASELINE_NOT_STABLE")
     if not data.get("published_at") or not data.get("tag_name"):
@@ -395,6 +380,23 @@ def main():
     public_lifecycle_claim_policy(contract)
 
     if args.self_test:
+        transport_calls = []
+        def fake_release_api(*parts):
+            transport_calls.append(parts)
+            return json.dumps({
+                "tag_name": "v9.8.7",
+                "published_at": "2026-01-02T03:04:05Z",
+                "draft": False,
+                "prerelease": False,
+                "immutable": True,
+            })
+        if latest_published_release("example/project", api=fake_release_api) != (
+            "v9.8.7",
+            "2026-01-02T03:04:05Z",
+        ):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_GH_API_RESULT")
+        if transport_calls != [("gh", "api", "repos/example/project/releases/latest")]:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_GH_API_TRANSPORT")
         sample=["src/cli/mod.rs","Cargo.lock",".github/dependabot.yml",".github/workflows/ci.yml",".github/FUNDING.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
         classified, unknown=classify(sample,contract)
         if unknown or any(not classified[p] for p in sample):
