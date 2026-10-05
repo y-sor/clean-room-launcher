@@ -373,6 +373,15 @@ forbidden. The version history table in `SECURITY.md` remains historical.
 Provider claims inside `SECURITY.md`, however, are still checked against the
 current provider pins.
 
+Current-source status wording must also survive the publication boundary without
+becoming false. README and SECURITY use the exact Cargo package version while
+GitHub Releases remains authoritative for whether that source version is Draft,
+published, immutable, or Latest. Do not freeze boundary-sensitive words such as
+`candidate` or `prepared for vX` into the same source that will be published
+unchanged. `scripts/probe/check-doc-freshness.py` enforces this deterministic
+subset in required docs-discovery CI and carries negative fixtures for stale
+status and wrong-version drift.
+
 The release harness never edits documentation after provider tests. A provider
 pin move must be accompanied by the required qualification evidence and matching
 documentation changes in the same reviewed candidate. Release-candidate and
