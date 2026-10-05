@@ -283,10 +283,14 @@ CLROOM supports named user-created skill sets so a repeatable group of personal-
 - `keep only relevant skills`
 - `skills noise coding agent`
 - `skill discovery overhead`
+- `Claude skillOverrides`
+- `Claude /skill-doctor`
+- `disable-model-invocation`
+- `hide Claude skill from context`
 
 </details>
 
-Not necessarily. Providers can use progressive disclosure and metadata rather than loading every skill body at once. CLROOM does not promise a fixed token saving. Its stronger value is controlling which personal-global skills can participate and reducing unrelated or conflicting instruction paths.
+Not necessarily, and the answer is provider-specific. Current Claude Code documentation says full skill bodies load when invoked, while skills listed to Claude contribute their name/description to context on each turn. Claude now provides native controls such as `skillOverrides`, `disable-model-invocation`, and `/skill-doctor` for visibility and usage diagnosis. Codex has its own skill scopes and controls. CLROOM does not promise a fixed token saving; its stronger value is a repeatable launch boundary for which supported personal-global inputs can participate.
 
 **Go deeper:** [FAQ](faq.md) · [When to use CLROOM](when-to-use-clroom.md)
 
@@ -609,7 +613,7 @@ Codex skill scopes are separate from `AGENTS.md`. CLROOM's selected-skill workfl
 
 </details>
 
-They can, but Claude Code and Codex do not expose one universal scope model for all of them. CLROOM has provider-specific clean defaults; use the provider pages for what is off by default, what native controls exist, and what CLROOM does not claim.
+They can, but Claude Code and Codex do not expose one universal scope model for all of them. CLROOM has provider-specific clean defaults and only makes activation claims for exact qualified paths. The current Codex path can admit one qualified whole plugin, one standalone stdio MCP, or the bounded pair together; that does not imply generic support for every upstream plugin/MCP package or transport. Use the provider pages for exact behavior and current non-claims.
 
 **Go deeper:** [Claude Code](claude-code.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
 
@@ -785,7 +789,7 @@ Yes, through the work it causes rather than through a guaranteed fixed context b
 
 </details>
 
-Use provider-native status or inspection tools where they exist, and CLROOM's launch summary for the controls CLROOM owns. No tool should claim it can enumerate every influence on a model response.
+Use provider-native status or inspection tools where they exist, and CLROOM's launch summary for the controls CLROOM owns. For a selected Codex plugin/MCP launch, `clroom inspect codex ...` and the JSON output show the sanitized resolved launch that CLROOM itself would execute. No tool should claim it can enumerate every influence on a model response.
 
 **Go deeper:** [Claude Code](claude-code.md) · [Codex](codex.md) · [FAQ](faq.md)
 
