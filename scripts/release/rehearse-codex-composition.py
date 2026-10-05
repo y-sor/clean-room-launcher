@@ -126,6 +126,8 @@ def write_root_config(
     standalone_log: pathlib.Path,
     overlap_log: pathlib.Path,
     sibling_log: pathlib.Path,
+    *,
+    include_overlap: bool,
 ) -> None:
     rows = [
         f"[mcp_servers.{STANDALONE_MCP}]",
@@ -133,10 +135,15 @@ def write_root_config(
         f"args = [{standalone.toml_string('--log')}, {standalone.toml_string(standalone_log.resolve())}]",
         f'env_vars = ["{ALLOWED_ENV}"]',
         "",
-        f"[mcp_servers.{PLUGIN_MCP}]",
-        f"command = {standalone.toml_string(server)}",
-        f"args = [{standalone.toml_string('--log')}, {standalone.toml_string(overlap_log.resolve())}]",
-        "",
+    ]
+    if include_overlap:
+        rows += [
+            f"[mcp_servers.{PLUGIN_MCP}]",
+            f"command = {standalone.toml_string(server)}",
+            f"args = [{standalone.toml_string('--log')}, {standalone.toml_string(overlap_log.resolve())}]",
+            "",
+        ]
+    rows += [
         f"[mcp_servers.{SIBLING_MCP}]",
         f"command = {standalone.toml_string(server)}",
         f"args = [{standalone.toml_string('--log')}, {standalone.toml_string(sibling_log.resolve())}]",
@@ -595,12 +602,27 @@ def rehearse(args: argparse.Namespace) -> None:
         sibling_log = home / "sibling.jsonl"
         plugin_root, plugin_server = install_plugin(codex_home, plugin_log)
         root_server = install_server(codex_home / "composition-mcp")
-        write_root_config(codex_home, root_server, standalone_log, overlap_log, sibling_log)
+        write_root_config(
+            codex_home,
+            root_server,
+            standalone_log,
+            overlap_log,
+            sibling_log,
+            include_overlap=False,
+        )
 
         ambient_before = fingerprint([codex_home / "config.toml", codex_home / "plugins"])
         plugin_before = fingerprint([plugin_root])
         inspection = inspect_probe(
             candidate, project, home, provider, plugin_server, root_server
+        )
+        write_root_config(
+            codex_home,
+            root_server,
+            standalone_log,
+            overlap_log,
+            sibling_log,
+            include_overlap=True,
         )
         overlap_refused = overlap_negative(
             candidate,
@@ -608,6 +630,18 @@ def rehearse(args: argparse.Namespace) -> None:
             home,
             provider,
             [plugin_log, standalone_log, overlap_log, sibling_log],
+        )
+        # Restore the exact non-overlapping ambient fixture before the positive
+        # composition proof. Codex config registrations outrank plugin MCP
+        # registrations with the same name, so carrying the overlap fixture
+        # forward would invalidate the positive case by construction.
+        write_root_config(
+            codex_home,
+            root_server,
+            standalone_log,
+            overlap_log,
+            sibling_log,
+            include_overlap=False,
         )
         runtime = positive_probe(
             candidate,
@@ -678,6 +712,7 @@ def self_test() -> None:
             root / "standalone.jsonl",
             root / "overlap.jsonl",
             root / "sibling.jsonl",
+            include_overlap=True,
         )
         manifest = json.loads((plugin_root / ".codex-plugin" / "plugin.json").read_text())
         mcp = json.loads((plugin_root / ".mcp.json").read_text())
