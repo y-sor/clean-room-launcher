@@ -185,7 +185,6 @@ pub struct ResolvedLaunch {
     isolation: IsolationPlan,
     plugin_activation: Option<PluginActivationPlan>,
     mcp_activation: Option<McpActivationPlan>,
-    plugin_activation_args: Vec<String>,
     mcp_activation_args: Vec<String>,
     pass_env: Vec<String>,
     resources: Vec<ResolvedResourceSummary>,
@@ -254,7 +253,6 @@ impl ResolvedLaunch {
             isolation,
             plugin_activation,
             mcp_activation,
-            plugin_activation_args,
             mcp_activation_args,
             pass_env,
             resources: resolved_resource_summaries(request),
@@ -280,10 +278,6 @@ impl ResolvedLaunch {
 
     pub fn mcp_activation(&self) -> Option<&McpActivationPlan> {
         self.mcp_activation.as_ref()
-    }
-
-    pub fn plugin_activation_args(&self) -> &[String] {
-        &self.plugin_activation_args
     }
 
     pub fn mcp_activation_args(&self) -> &[String] {
