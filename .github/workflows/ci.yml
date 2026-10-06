@@ -133,6 +133,8 @@ jobs:
         run: python3 scripts/probe/check-problem-vectors.py --root "$PWD"
       - name: Validate discovery metadata and routing
         run: python3 scripts/probe/check-discovery-metadata.py --root "$PWD"
+      - name: Validate documentation link graph
+        run: python3 scripts/probe/check-doc-link-graph.py --root "$PWD"
       - name: Validate sitemap parser and negative cases
         run: python3 scripts/probe/check-sitemap.py --source-root "$PWD"
 
