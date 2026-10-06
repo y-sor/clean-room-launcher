@@ -28,7 +28,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [stale/auto memory](#claude-auto-memory), [subagent MCP/tools](#subagents-inherit-mcp-tools)
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [native `--profile` vs CLROOM](#codex-profile-vs-clroom), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [configured but tools unavailable](#mcp-configured-tools-unavailable), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
-- **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [stale Claude memory](#claude-auto-memory), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
+- **Diagnosis:** [troubleshoot an unknown CLROOM failure](#troubleshoot-clroom), [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [stale Claude memory](#claude-auto-memory), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 - **Trust/privacy/install:** [first-run/install failures](#install-first-run-failures), [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 - **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
 - **Platform/install/scope:** [Linux/Windows/Intel Mac support](#platform-support), [Homebrew/package-manager install](#package-manager-install), [upgrade/rollback/remove](#upgrade-rollback-remove), [CLROOM vs VM/container/network sandbox](#clroom-vs-container-sandbox), [other coding-agent providers](#other-coding-agents), [multiple/remote/OAuth MCP or multiple plugins](#multiple-remote-mcp)
@@ -1148,6 +1148,54 @@ Use the [Threat model](threat-model.md) for the security boundary. Keep provider
 A clean/selective launch can provide a more repeatable baseline without destructive renaming or editing of the normal setup. It does not make model output deterministic, but it can remove known personal-global variables from the comparison.
 
 **Go deeper:** [Use cases](use-cases.md) · [When to use CLROOM](when-to-use-clroom.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="troubleshoot-clroom"></a>
+
+## Is CLROOM failing and you do not yet know which layer is responsible?
+
+**Common ways people ask this:**
+
+- `troubleshoot CLROOM`
+- `CLROOM not working`
+- `CLROOM launch failed`
+- `why did CLROOM refuse launch`
+- `diagnose CLROOM`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM provider works directly but not through CLROOM`
+- `CLROOM error before provider starts`
+- `CLROOM selected skill not working`
+- `CLROOM selected MCP not working`
+- `CLROOM plugin launch failed`
+- `CLROOM inspect failed`
+- `is this a CLROOM bug or provider bug`
+- `isolate CLROOM vs Codex problem`
+- `isolate CLROOM vs Claude Code problem`
+- `CLROOM minimal reproduction`
+- `how to report CLROOM bug`
+- `CLROOM troubleshooting steps`
+- `coding agent launcher troubleshooting`
+- `CLROOM fail closed error`
+- `CLROOM provider runtime failure`
+
+</details>
+
+Start with the failure layer rather than changing configuration at random:
+
+1. verify CLROOM is installed and on `PATH`;
+2. verify the platform and provider version;
+3. verify the provider itself works before CLROOM is involved;
+4. distinguish a CLROOM pre-launch refusal from a later provider/runtime failure;
+5. for supported Codex resource selection, inspect the resolved launch before provider birth;
+6. separate selected personal-global skills from project/provider-owned skills;
+7. separate configured MCP state from provider-started and model-visible MCP tools;
+8. reduce the problem to a safe minimal reproduction before opening an Issue.
+
+The canonical troubleshooting page gives that decision tree and the safe evidence to collect without deleting your normal setup or exposing secrets.
+
+**Go deeper:** [Troubleshoot CLROOM](troubleshooting.md) · [Support](SUPPORT.md) · [How CLROOM works](how-clroom-works.md)
 
 <a id="install-first-run-failures"></a>
 
