@@ -116,6 +116,7 @@ def validate_llms(llms: str) -> None:
         "provider-owned subagent scoping",
         "OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces",
         "Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/",
+        "Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/",
         'rel="describedby"',
     )
     for item in required:
@@ -141,6 +142,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/threat-model.md",
         "docs/upgrade-rollback.md",
         "docs/use-cases.md",
+        "docs/verify-release.md",
         "docs/when-to-use-clroom.md",
         "docs/why-clroom.md",
     )
@@ -175,6 +177,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
         "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
+        "docs/verify-release.md": ("checksum", "provenance", "sbom", "immutable"),
     }
     for relative, terms in requirements.items():
         description = frontmatter_value(read(root, relative), "description")
@@ -183,6 +186,13 @@ def validate_descriptions(root: Path) -> None:
 
 def validate(root: Path) -> None:
     head = read(root, "docs/_includes/head.html")
+    footer = read(root, "docs/_includes/footer.html")
+    header = read(root, "docs/_includes/header.html")
+    analytics_marker = "static.cloudflareinsights.com/beacon.min.js"
+    if (head + footer).count(analytics_marker) != 1:
+        fail("ANALYTICS_BEACON_COUNT_DRIFT")
+    if '<nav class="site-nav" aria-label="Primary navigation">' not in header:
+        fail("PRIMARY_NAV_ACCESSIBLE_NAME_MISSING")
     validate_schema(head)
     if 'rel="describedby"' not in head or "'/llms.txt' | relative_url" not in head:
         fail("LLMS_DISCOVERY_RELATION_MISSING")
