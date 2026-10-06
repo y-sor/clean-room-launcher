@@ -106,8 +106,17 @@ fn homepage_metadata_exposes_analytics_preview_and_truthful_source_facts() {
     assert!(!head.contains("\"@type\": \"SoftwareApplication\""));
     assert!(!head.contains("\"aggregateRating\""));
     assert!(!head.contains("\"review\""));
-    assert!(head.contains("static.cloudflareinsights.com/beacon.min.js"));
-    assert!(head.contains("a18fd1827d4c48d2a22277f14eade9b2"));
+    let footer = read("docs/_includes/footer.html");
+    let analytics_marker = "static.cloudflareinsights.com/beacon.min.js";
+    assert_eq!(
+        head.matches(analytics_marker).count() + footer.matches(analytics_marker).count(),
+        1,
+        "Cloudflare Web Analytics must be loaded exactly once per page"
+    );
+    assert!(footer.contains("a18fd1827d4c48d2a22277f14eade9b2"));
+
+    let header = read("docs/_includes/header.html");
+    assert!(header.contains("<nav class=\"site-nav\" aria-label=\"Primary navigation\">"));
 
     let config = read("docs/_config.yml");
     assert!(config.contains("card: summary_large_image"));
