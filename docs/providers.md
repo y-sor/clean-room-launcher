@@ -49,6 +49,10 @@ Claude runs with project/local settings retained, known personal-global inputs r
 
 Provider-native features outside these qualified paths remain provider-owned. A feature appearing in current Codex or Claude documentation does not automatically become a CLROOM-supported surface.
 
+## Other coding-agent providers
+
+The current CLROOM release is qualified only for the installed Codex and Claude Code CLIs on the paths above. Gemini CLI, Cursor, Aider, OpenCode, and other coding-agent products are not implicitly supported because they expose similar concepts. Adding another provider requires separate process/configuration/security/platform qualification.
+
 ## Not qualified in this release
 
 - Linux and Windows;
