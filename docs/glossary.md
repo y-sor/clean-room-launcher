@@ -30,6 +30,7 @@ Use this page when a search phrase, provider term, or CLROOM term seems ambiguou
 | **Provider-owned / system** | Inputs or capabilities supplied by the provider itself rather than by the user's personal-global setup. A CLROOM global-skill count does not imply these disappear. |
 | **Admin / managed / organization policy** | Provider or machine policy controlled by an administrator or organization. CLROOM does not claim to bypass it. |
 | **Ambient state** | State that would normally be inherited or discovered from the surrounding user/provider environment. CLROOM only makes claims about the ambient inputs its qualified path explicitly controls. |
+| **Provider-native profile / configuration profile** | A reusable configuration mechanism owned by the provider. Current Codex, for example, supports named `--profile` configuration files in its own precedence chain. A provider profile is not a CLROOM skill set and should not be silently redefined as a CLROOM preset. |
 | **Auto-memory / `MEMORY.md`** | Claude Code provider-owned persistent memory state. A fresh conversation does not by itself prove this state is absent. Current qualified CLROOM Claude launches disable auto-memory for the launch but do not delete, edit, synchronize, or repair stored memory files. |
 
 ## Skills, plugins, and MCP
