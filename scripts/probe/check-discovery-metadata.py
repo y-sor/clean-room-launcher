@@ -202,6 +202,36 @@ def validate_descriptions(root: Path) -> None:
         require_terms(description, terms, relative)
 
 
+def validate_retrieval_structure(root: Path) -> None:
+    """Protect stable retrieval structure without pretending regex can judge semantics."""
+
+    requirements = {
+        "docs/providers.md": (
+            "## Provider versions",
+            "## Qualified launch paths",
+            "## What CLROOM owns vs what the provider owns",
+            "## Not qualified in this release",
+        ),
+        "docs/configuration-matrix.md": (
+            "## How to read the matrix",
+            "## Qualified skill source maps",
+            "## What this matrix does not prove",
+        ),
+        "docs/limitations.md": (
+            "## Platform and distribution limits",
+            "## Plugin and MCP limits",
+            "## Isolation and provider-state limits",
+            "## Security and trust non-claims",
+        ),
+    }
+
+    for relative, headings in requirements.items():
+        markdown = read(root, relative)
+        for heading in headings:
+            if heading not in markdown:
+                fail(f"RETRIEVAL_STRUCTURE_MISSING:{relative}:{heading}")
+
+
 def validate_crawler_policy(robots: str) -> None:
     required = (
         "Search / citation indexing.",
@@ -245,6 +275,7 @@ def validate(root: Path) -> None:
     validate_llms(read(root, "docs/llms.txt"))
     validate_crawler_policy(read(root, "docs/robots.txt"))
     validate_descriptions(root)
+    validate_retrieval_structure(root)
     print("DISCOVERY_METADATA_ROUTING_PASS")
 
 
