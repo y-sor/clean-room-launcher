@@ -122,12 +122,55 @@ def validate_llms(llms: str) -> None:
 
 
 def validate_descriptions(root: Path) -> None:
+    public_pages = (
+        "docs/agent-runners.md",
+        "docs/claude-code.md",
+        "docs/codex.md",
+        "docs/configuration-matrix.md",
+        "docs/demo.md",
+        "docs/faq.md",
+        "docs/index.md",
+        "docs/install.md",
+        "docs/limitations.md",
+        "docs/problem-index.md",
+        "docs/providers.md",
+        "docs/skill-sets.md",
+        "docs/threat-model.md",
+        "docs/upgrade-rollback.md",
+        "docs/use-cases.md",
+        "docs/when-to-use-clroom.md",
+        "docs/why-clroom.md",
+    )
+    seen_descriptions: dict[str, str] = {}
+    seen_titles: dict[str, str] = {}
+
+    for relative in public_pages:
+        markdown = read(root, relative)
+        title = frontmatter_value(markdown, "title")
+        description = frontmatter_value(markdown, "description")
+
+        if len(title) > 90:
+            fail(f"TITLE_TOO_LONG:{relative}:chars={len(title)}")
+        if not 70 <= len(description) <= 160:
+            fail(f"DESCRIPTION_LENGTH:{relative}:chars={len(description)}")
+
+        title_key = " ".join(title.casefold().split())
+        desc_key = " ".join(description.casefold().split())
+        if title_key in seen_titles:
+            fail(f"DUPLICATE_TITLE:{relative}:matches={seen_titles[title_key]}")
+        if desc_key in seen_descriptions:
+            fail(f"DUPLICATE_DESCRIPTION:{relative}:matches={seen_descriptions[desc_key]}")
+        seen_titles[title_key] = relative
+        seen_descriptions[desc_key] = relative
+
     requirements = {
         "docs/codex.md": ("mcp", "plugin", "inspect"),
         "docs/use-cases.md": ("mcp", "skill", "ci"),
         "docs/agent-runners.md": ("worker", "mcp"),
         "docs/demo.md": ("first-run", "codex", "claude", "inspect"),
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
+        "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
+        "docs/threat-model.md": ("prompt-injection", "clroom"),
     }
     for relative, terms in requirements.items():
         description = frontmatter_value(read(root, relative), "description")
@@ -195,6 +238,16 @@ def self_test() -> None:
         )),
         "BROKEN_TOP_ROUTING_ANCHOR",
     )
+
+    sample_desc = "A" * 70
+    sample_title = "Sample page"
+    fixture = f"""---
+title: {sample_title}
+description: {sample_desc}
+---
+"""
+    assert frontmatter_value(fixture, "title") == sample_title
+    assert frontmatter_value(fixture, "description") == sample_desc
 
     print("DISCOVERY_METADATA_ROUTING_SELF_TEST_PASS")
 
