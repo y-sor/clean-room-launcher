@@ -22,6 +22,7 @@ Start with the public documentation:
 - [Claude Code and CLROOM](docs/claude-code.md)
 - [Current limitations](docs/limitations.md)
 - [Verify a CLROOM release](docs/verify-release.md)
+- [Privacy and data flow](privacy-data-flow.md)
 
 If you do not know the provider's exact term, use the problem index first. It maps common symptoms and alternate wording to the canonical technical answer.
 
