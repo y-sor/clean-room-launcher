@@ -92,21 +92,42 @@ def relative_to_source(source: str, href: str, pages: dict[str, Path], root: Pat
         return mapped, mapped is not None
 
     source_path = root / "docs" / source
+    docs_root = (root / "docs").resolve()
     resolved = (source_path.parent / clean).resolve()
     try:
-        resolved.relative_to(root.resolve())
+        rel = resolved.relative_to(docs_root)
     except ValueError:
+        # Relative links that escape the Pages source tree do not become GitHub
+        # repository links in rendered Pages. Use an explicit GitHub URL instead.
         return None, False
 
     if clean.endswith("/"):
-        candidate = clean.strip("/") + ".md"
-        if candidate in pages:
-            return candidate, True
+        candidate_path = (source_path.parent / (clean.rstrip("/") + ".md")).resolve()
+        candidate_name = candidate_path.name
+        if (
+            len(candidate_path.relative_to(docs_root).parts) == 1
+            and candidate_name in pages
+            and candidate_path == pages[candidate_name].resolve()
+        ):
+            return candidate_name, True
 
     if clean.endswith(".html"):
-        md_name = Path(clean[:-5] + ".md").name
-        if md_name in pages:
-            return md_name, True
+        candidate_path = (source_path.parent / (clean[:-5] + ".md")).resolve()
+        candidate_name = candidate_path.name
+        if (
+            len(candidate_path.relative_to(docs_root).parts) == 1
+            and candidate_name in pages
+            and candidate_path == pages[candidate_name].resolve()
+        ):
+            return candidate_name, True
+
+    if (
+        len(rel.parts) == 1
+        and rel.suffix == ".md"
+        and rel.name in pages
+        and resolved == pages[rel.name].resolve()
+    ):
+        return rel.name, True
 
     return None, resolved.exists()
 
@@ -162,6 +183,7 @@ def write_fixture(
     broken: bool = False,
     orphan: bool = False,
     wrong_prefix: bool = False,
+    escape_docs: bool = False,
 ) -> None:
     docs = root / "docs"
     docs.mkdir(parents=True, exist_ok=True)
@@ -173,10 +195,19 @@ def write_fixture(
     )
     (docs / "a.md").write_text(
         "---\nlayout: page\n---\n"
-        + ("" if orphan else ("[B](docs/b.md)\n" if wrong_prefix else "[B](b.md)\n")),
+        + (
+            ""
+            if orphan
+            else (
+                "[root](../README.md)\n"
+                if escape_docs
+                else ("[B](docs/b.md)\n" if wrong_prefix else "[B](b.md)\n")
+            )
+        ),
         encoding="utf-8",
     )
     (docs / "b.md").write_text("---\nlayout: page\n---\n", encoding="utf-8")
+    (root / "README.md").write_text("# root\n", encoding="utf-8")
 
 
 def self_test() -> None:
@@ -196,6 +227,10 @@ def self_test() -> None:
         wrong_prefix = Path(temp) / "wrong-prefix"
         write_fixture(wrong_prefix, wrong_prefix=True)
         expect_failure(wrong_prefix, "BROKEN_INTERNAL_LINK")
+
+        escape_docs = Path(temp) / "escape-docs"
+        write_fixture(escape_docs, escape_docs=True)
+        expect_failure(escape_docs, "BROKEN_INTERNAL_LINK")
 
     print("DOC_LINK_GRAPH_SELF_TEST_PASS")
 
