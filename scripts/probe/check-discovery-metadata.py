@@ -99,6 +99,7 @@ def validate_problem_routing(problem_index: str) -> None:
         "subagents-inherit-mcp-tools",
         "inspect-resolved-launch",
         "codex-global-skills-keep-project-skills",
+        "install-first-run-failures",
         "privacy-data-flow",
         "license-commercial-use",
     }
@@ -117,6 +118,7 @@ def validate_llms(llms: str) -> None:
         "MCP/tool context overhead",
         "stale Claude auto-memory",
         "MCP configured/connected state where tools are still absent",
+        "first-run/install failures",
         "bounded Codex plugin + MCP composition",
         "top-level per-worker resource choices",
         "provider-owned subagent scoping",
@@ -189,7 +191,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/documentation-versions.md": ("current", "historical", "release", "qualification"),
         "docs/glossary.md": ("clean", "skill", "plugin", "mcp", "subagent", "qualified"),
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
-        "docs/problem-index.md": ("codex", "claude", "memory", "mcp", "clroom"),
+        "docs/problem-index.md": ("codex", "claude", "memory", "mcp", "install", "clroom"),
         "docs/privacy-data-flow.md": ("telemetry", "credentials", "network", "analytics", "provider-owned"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
         "docs/SUPPORT.md": ("support", "bug", "security", "version"),
@@ -281,6 +283,7 @@ def self_test() -> None:
 - [d](#subagents-inherit-mcp-tools)
 - [e](#inspect-resolved-launch)
 - [f](#codex-global-skills-keep-project-skills)
+- [g0](#install-first-run-failures)
 - [g](#privacy-data-flow)
 - [h](#license-commercial-use)
 
@@ -293,6 +296,7 @@ def self_test() -> None:
 <a id="subagents-inherit-mcp-tools"></a>
 <a id="inspect-resolved-launch"></a>
 <a id="codex-global-skills-keep-project-skills"></a>
+<a id="install-first-run-failures"></a>
 <a id="privacy-data-flow"></a>
 <a id="license-commercial-use"></a>
 """
