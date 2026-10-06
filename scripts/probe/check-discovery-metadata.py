@@ -93,6 +93,8 @@ def validate_problem_routing(problem_index: str) -> None:
     required_anchors = {
         "mcp-tool-context-overload",
         "mcp-env-var-not-in-process",
+        "mcp-configured-tools-unavailable",
+        "claude-auto-memory",
         "codex-plugin-mcp-composition",
         "subagents-inherit-mcp-tools",
         "inspect-resolved-launch",
@@ -113,6 +115,8 @@ def validate_problem_routing(problem_index: str) -> None:
 def validate_llms(llms: str) -> None:
     required = (
         "MCP/tool context overhead",
+        "stale Claude auto-memory",
+        "MCP configured/connected state where tools are still absent",
         "bounded Codex plugin + MCP composition",
         "top-level per-worker resource choices",
         "provider-owned subagent scoping",
@@ -178,13 +182,14 @@ def validate_descriptions(root: Path) -> None:
 
     requirements = {
         "docs/codex.md": ("mcp", "plugin", "inspect"),
+        "docs/claude-code.md": ("memory", "mcp", "subagent"),
         "docs/use-cases.md": ("mcp", "skill", "ci"),
         "docs/agent-runners.md": ("worker", "mcp"),
         "docs/demo.md": ("first-run", "codex", "claude", "inspect"),
         "docs/documentation-versions.md": ("current", "historical", "release", "qualification"),
         "docs/glossary.md": ("clean", "skill", "plugin", "mcp", "subagent", "qualified"),
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
-        "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
+        "docs/problem-index.md": ("codex", "claude", "memory", "mcp", "clroom"),
         "docs/privacy-data-flow.md": ("telemetry", "credentials", "network", "analytics", "provider-owned"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
         "docs/SUPPORT.md": ("support", "bug", "security", "version"),
@@ -201,6 +206,7 @@ def validate_crawler_policy(robots: str) -> None:
         "User-initiated retrieval",
         "Training / model-improvement controls are independent from search visibility.",
         "User-agent: OAI-SearchBot",
+        "User-agent: ChatGPT-User",
         "User-agent: Claude-SearchBot",
         "User-agent: PerplexityBot",
         "User-agent: GPTBot",
@@ -269,6 +275,8 @@ def self_test() -> None:
     good_problem = """## Start from the closest symptom
 - [a](#mcp-tool-context-overload)
 - [b](#mcp-env-var-not-in-process)
+- [b2](#mcp-configured-tools-unavailable)
+- [b3](#claude-auto-memory)
 - [c](#codex-plugin-mcp-composition)
 - [d](#subagents-inherit-mcp-tools)
 - [e](#inspect-resolved-launch)
@@ -279,6 +287,8 @@ def self_test() -> None:
 <a id="apps-runners-and-ci"></a>
 <a id="mcp-tool-context-overload"></a>
 <a id="mcp-env-var-not-in-process"></a>
+<a id="mcp-configured-tools-unavailable"></a>
+<a id="claude-auto-memory"></a>
 <a id="codex-plugin-mcp-composition"></a>
 <a id="subagents-inherit-mcp-tools"></a>
 <a id="inspect-resolved-launch"></a>
@@ -308,6 +318,8 @@ description: {sample_desc}
 # User-initiated retrieval
 # Training / model-improvement controls are independent from search visibility.
 User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
 Allow: /
 User-agent: Claude-SearchBot
 Allow: /
