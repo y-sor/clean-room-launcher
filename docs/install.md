@@ -3,6 +3,7 @@ layout: page
 title: Install CLROOM
 description: Install the current Clean Room Launcher release on macOS Apple Silicon, verify the release archive, or install the exact release tag with Cargo.
 permalink: /install.html
+nav_title: Install
 ---
 
 Prerequisites:
