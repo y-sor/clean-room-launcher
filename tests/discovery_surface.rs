@@ -41,6 +41,7 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
         "Googlebot",
         "Bingbot",
         "OAI-SearchBot",
+        "ChatGPT-User",
         "Claude-SearchBot",
         "Claude-User",
         "PerplexityBot",
