@@ -14,24 +14,35 @@ On the current qualified Codex path, that same per-run model can also admit one 
 
 ## Start here
 
-- [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
-- [Install CLROOM](install.md)
-- [Verify a release: checksums, provenance, SBOM, and trust boundaries](verify-release.md)
-- [Privacy and data flow: telemetry, credentials, network behavior, and website analytics](privacy-data-flow.md)
-- [Clean-launch walkthrough](demo.md)
-- [Problem index: find your symptom or half-remembered term](problem-index.md)
-- [Terminology glossary: map user wording to CLROOM/provider terms](glossary.md)
-- [Documentation versions: current vs exact release-tag docs](documentation-versions.md)
-- [Use cases: practical CLROOM workflows](use-cases.md)
-- [Agent runners: apps, scripts, CI, and multi-agent tools](agent-runners.md)
-- [Skill sets: create, use, combine, and edit reusable groups](skill-sets.md)
-- [When to use CLROOM — and when not to](when-to-use-clroom.md)
+### First 5 minutes
+
+1. [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
+2. [Install CLROOM](install.md)
+3. [Clean-launch walkthrough](demo.md)
+4. [When to use CLROOM — and when a native provider control is better](when-to-use-clroom.md)
+5. [Verify a release before you run it](verify-release.md)
+
+### Find or diagnose a problem
+
+- [Problem index: 600+ real phrasings routed to canonical answers](problem-index.md)
+- [FAQ: direct answers and non-claims](faq.md)
+- [Terminology glossary: user wording → stable CLROOM/provider terms](glossary.md)
+- [Support: safe bug reports, usage questions, and security routing](SUPPORT.md)
+- [Documentation versions: current site vs exact release-tag docs](documentation-versions.md)
+
+### Build a repeatable workflow
+
+- [Use cases: skill testing, MCP/tool diagnosis, workers, CI, and reproducibility](use-cases.md)
+- [Skill sets: create, combine, and reuse task-specific groups](skill-sets.md)
+- [Agent runners: apps, scripts, CI, and independently launched workers](agent-runners.md)
 - [Claude Code and CLROOM](claude-code.md)
 - [Codex and CLROOM](codex.md)
 - [Current provider support](providers.md)
 - [Configuration matrix](configuration-matrix.md)
-- [Frequently asked questions](faq.md)
-- [Support: help, safe bug reports, and security routing](SUPPORT.md)
+
+### Trust, privacy, and operations
+
+- [Privacy and data flow](privacy-data-flow.md)
 - [Current limitations](limitations.md)
 - [Threat model](threat-model.md)
 - [Upgrade, roll back, and remove](upgrade-rollback.md)
