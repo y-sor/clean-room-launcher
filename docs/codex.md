@@ -108,6 +108,8 @@ rewritten. Before provider birth CLROOM performs a no-model Codex
 `config/read` preflight and refuses active non-session MCP layers. The selected
 source remains digest-bound and is re-read before the real launch.
 
+If your problem is a large ambient MCP/tool inventory, use Codex's current native MCP/tool-search diagnostics where they solve it directly. CLROOM's narrower value is per-launch selection: the clean path does not rewrite the normal user configuration, and the qualified resource path can deliberately admit one supported standalone stdio MCP for this run. That can reduce configuration ambiguity, but it is not a claim of universal lazy MCP loading or control over every provider-owned tool surface.
+
 ## Compose one plugin with one standalone MCP
 
 v0.5.0 can resolve both bounded selectors in one interactive launch:
