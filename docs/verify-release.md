@@ -33,6 +33,7 @@ REPO="y-sor/clean-room-launcher"
 VERSION="vX.Y.Z"
 ASSET="clean-room-launcher-${VERSION}-aarch64-apple-darwin.tar.gz"
 DIR="$(mktemp -d "${TMPDIR:-/tmp}/clroom-verify.XXXXXX")"
+SOURCE="$(gh api "repos/$REPO/commits/$VERSION" --jq .sha)"
 
 gh release download "$VERSION" -R "$REPO" -D "$DIR"
 cd "$DIR"
@@ -71,11 +72,12 @@ gh attestation verify "$ASSET" \
   -R "$REPO" \
   --bundle "$PROVENANCE" \
   --signer-workflow "$REPO/.github/workflows/release.yml" \
+  --source-digest "$SOURCE" \
   --source-ref "refs/tags/$VERSION" \
   --deny-self-hosted-runners
 ```
 
-The CLROOM release workflow performs a stricter internal reconciliation as well: it binds the tag-run attestations to the exact source commit used by that release before Draft promotion. The public command above checks the published subject against the expected repository, signer workflow, tag ref, and bundle.
+The public command mirrors the material provenance constraints used by CLROOM's release workflow: expected repository, signer workflow, exact source commit, tag ref, and published bundle. The release workflow performs the same binding before Draft promotion and again against reconciled Draft bytes.
 
 The same provenance bundle covers the published `sbom.cdx.json` and `install.sh` subjects:
 
@@ -100,6 +102,7 @@ gh attestation verify "$ASSET" \
   --bundle "$SBOM_BUNDLE" \
   --predicate-type https://cyclonedx.org/bom \
   --signer-workflow "$REPO/.github/workflows/release.yml" \
+  --source-digest "$SOURCE" \
   --source-ref "refs/tags/$VERSION" \
   --deny-self-hosted-runners
 ```
@@ -112,10 +115,10 @@ GitHub Releases is the authoritative publication surface.
 
 ```sh
 gh release view "$VERSION" -R "$REPO" \
-  --json tagName,isDraft,isPrerelease,publishedAt,url
+  --json tagName,isDraft,isPrerelease,isImmutable,publishedAt,url
 ```
 
-For the release you intend to install, confirm that it is the expected tag, not a Draft, and not an unexpected prerelease.
+For the release you intend to install, confirm that it is the expected tag, not a Draft, not an unexpected prerelease, and reports `isImmutable: true` after publication.
 
 The project release process additionally requires the final published object to reconcile as immutable before the release is treated as published successfully.
 
