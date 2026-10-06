@@ -99,6 +99,7 @@ def validate_problem_routing(problem_index: str) -> None:
         "subagents-inherit-mcp-tools",
         "inspect-resolved-launch",
         "codex-global-skills-keep-project-skills",
+        "codex-profile-vs-clroom",
         "install-first-run-failures",
         "privacy-data-flow",
         "license-commercial-use",
@@ -123,6 +124,7 @@ def validate_llms(llms: str) -> None:
         "top-level per-worker resource choices",
         "provider-owned subagent scoping",
         "OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces",
+        "provider-native reusable configuration vs CLROOM skill sets / clean-selective per-launch composition",
         "Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/",
         "Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/",
         "Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/",
@@ -184,6 +186,9 @@ def validate_descriptions(root: Path) -> None:
 
     requirements = {
         "docs/codex.md": ("mcp", "plugin", "inspect"),
+        "docs/providers.md": ("codex", "claude", "mcp", "plugin"),
+        "docs/configuration-matrix.md": ("codex", "claude", "retains", "excludes"),
+        "docs/limitations.md": ("macos", "provider", "mcp", "plugin", "unsupported"),
         "docs/claude-code.md": ("memory", "mcp", "subagent"),
         "docs/use-cases.md": ("mcp", "skill", "ci"),
         "docs/agent-runners.md": ("worker", "mcp"),
