@@ -23,10 +23,11 @@ If you want the human explanation before the provider details, read [Why Clean R
 
 ## Start from the closest symptom
 
-- **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci)
-- **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [built-in/project skills in Codex](#codex-built-in-and-project-skills)
-- **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir)
-- **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes)
+- **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci), [different inputs per worker](#subagents-inherit-mcp-tools)
+- **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills)
+- **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [subagent MCP/tools](#subagents-inherit-mcp-tools)
+- **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
+- **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 
 <a id="apps-runners-and-ci"></a>
@@ -652,6 +653,37 @@ This is a real provider-scale problem, but the exact mitigation is provider-spec
 
 **Go deeper:** [Codex](codex.md) · [Claude Code](claude-code.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
 
+<a id="mcp-env-var-not-in-process"></a>
+
+## Is an MCP server configured but its token or environment variable missing from the active process?
+
+**Common ways people ask this:**
+
+- `Codex MCP bearer token env var missing`
+- `MCP configured but env var missing`
+- `MCP enabled but auth missing`
+- `MCP server configured but token not in process`
+- `MCP env var not inherited`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `pass MCP env var to Codex`
+- `Codex MCP config says bearer token but request unauthorized`
+- `MCP works in config but not active session`
+- `MCP server missing environment variable`
+- `MCP auth environment not visible to process`
+- `restart coding agent after setting MCP token`
+- `MCP configured but tools unavailable`
+
+</details>
+
+A configuration file can name an environment variable without proving that the active provider process actually has a usable value. Treat configuration presence, process environment, authentication, and tool availability as separate states.
+
+On CLROOM's qualified standalone Codex MCP path, referenced plain environment-variable **names** must also be explicitly admitted with `--pass-env=NAME`; CLROOM never stores or prints their secret values. That explicit admission does not turn unsupported remote/OAuth MCP forms into supported ones.
+
+**Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [Current limitations](limitations.md)
+
 <a id="codex-plugin-mcp-composition"></a>
 
 ## Do you want one Codex plugin and one MCP server together for only this launch?
@@ -744,7 +776,11 @@ That scope distinction is central to CLROOM. Selected personal-global skills are
 
 </details>
 
-Provider-owned subagents and teammates inherit according to the provider's own rules; a top-level CLROOM launch does not surgically rewrite every internal agent. If independent worker processes need different launch inputs, start them independently through CLROOM. On the current Codex path, each separate process can have its own supported skill/plugin/MCP selection.
+Provider-owned subagents and teammates follow the provider's own rules; CLROOM does not surgically rewrite them.
+
+For current Claude Code, use native subagent controls first when the problem is inside one Claude session: `tools` / `disallowedTools` can narrow inherited tools, including MCP server-level patterns, and `mcpServers` can attach servers to the subagent. An inline subagent MCP can stay out of the parent conversation entirely.
+
+If an external runner owns separate provider processes, each top-level process can instead get its own CLROOM launch. On the current Codex path, those separate launches can differ in the supported skill/plugin/MCP selections CLROOM qualifies.
 
 **Go deeper:** [Agent runners](agent-runners.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
 
@@ -803,6 +839,11 @@ Use `clroom inspect codex ...` or its JSON form. Inspection resolves through the
 - `reusable coding agent skill sets`
 - `agent setup per workflow`
 - `personal global rules conflict with repository rules`
+- `thread level plugin MCP profile`
+- `plugin profile per workflow`
+- `MCP profile per workflow`
+- `different plugins for coding design research`
+- `choose tools before first model request`
 
 </details>
 
