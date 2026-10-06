@@ -465,6 +465,7 @@ For exact provider behavior, native alternatives, current limitations, and commo
 
 - [Why CLROOM exists](docs/why-clroom.md)
 - [Coding-agent configuration problem index](docs/problem-index.md)
+- [Terminology glossary](docs/glossary.md)
 - [When to use Clean Room Launcher (CLROOM) — and when not to](docs/when-to-use-clroom.md)
 - [Use cases](docs/use-cases.md)
 - [Skill sets](docs/skill-sets.md)
