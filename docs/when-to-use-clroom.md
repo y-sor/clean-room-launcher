@@ -1,7 +1,7 @@
 ---
 layout: page
 title: When to use CLROOM — and when not to
-description: Choose between CLROOM and native Claude Code or Codex controls for clean sessions, skill visibility, settings scopes, subagent MCP tools, CODEX_HOME, profiles, plugins, and MCP.
+description: Choose between CLROOM and native Codex or Claude Code controls for clean sessions, skills, settings, subagent tools, CODEX_HOME, plugins, and MCP.
 permalink: /when-to-use-clroom/
 nav_title: When to use
 ---
