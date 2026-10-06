@@ -47,6 +47,11 @@ def require_terms(value: str, terms: tuple[str, ...], label: str) -> None:
 
 def validate_schema(head: str) -> None:
     required = (
+        '"@type": "SoftwareApplication"',
+        '"applicationCategory": "DeveloperApplication"',
+        '"operatingSystem": "macOS on Apple Silicon"',
+        '"price": 0',
+        '"priceCurrency": "USD"',
         '"@type": "SoftwareSourceCode"',
         '"codeRepository": "https://github.com/y-sor/clean-room-launcher"',
         '"programmingLanguage": "Rust"',
@@ -57,8 +62,6 @@ def validate_schema(head: str) -> None:
         if item not in head:
             fail(f"SOFTWARE_SOURCE_SCHEMA_MISSING:{item}")
 
-    if '"@type": "SoftwareApplication"' in head:
-        fail("STALE_SOFTWARE_APPLICATION_SCHEMA")
     if '"aggregateRating"' in head or '"review"' in head:
         fail("UNVERIFIED_REVIEW_MARKUP")
 
@@ -297,16 +300,26 @@ def expect_failure(fn, reason: str) -> None:
 def self_test() -> None:
     good_schema = """<script>
 {
-  "@type": "SoftwareSourceCode",
-  "codeRepository": "https://github.com/y-sor/clean-room-launcher",
-  "programmingLanguage": "Rust",
-  "runtimePlatform": "macOS on Apple Silicon",
-  "license": "https://www.mozilla.org/MPL/2.0/"
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS on Apple Silicon",
+      "offers": {"price": 0, "priceCurrency": "USD"}
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "codeRepository": "https://github.com/y-sor/clean-room-launcher",
+      "programmingLanguage": "Rust",
+      "runtimePlatform": "macOS on Apple Silicon",
+      "license": "https://www.mozilla.org/MPL/2.0/"
+    }
+  ]
 }
 </script>"""
     validate_schema(good_schema)
     expect_failure(
-        lambda: validate_schema(good_schema.replace("SoftwareSourceCode", "SoftwareApplication")),
+        lambda: validate_schema(good_schema.replace('"price": 0', '"price": 1')),
         "SOFTWARE_SOURCE_SCHEMA_MISSING",
     )
 
