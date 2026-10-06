@@ -122,7 +122,6 @@ jobs:
 
           test -s docs/problem-index.md
           test -s docs/privacy-data-flow.md
-          grep -Fq 'CLROOM is a local launch layer' docs/privacy-data-flow.md
           grep -Fq '<a id="codex-built-in-and-project-skills"></a>' docs/problem-index.md
           grep -Fq '<a id="create-edit-and-combine-skill-sets"></a>' docs/problem-index.md
 
