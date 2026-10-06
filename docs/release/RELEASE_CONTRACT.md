@@ -449,8 +449,12 @@ CLROOM's discovery architecture. Required docs-discovery CI verifies that:
 - installation remains visible in primary docs navigation;
 - high-value Codex/use-case/runner/comparison pages keep descriptions aligned with
   the current product surface;
-- the top problem router links to the current MCP/plugin/worker/inspection/privacy
-  clusters and every routed anchor exists;
+- provider-support, configuration-matrix and limitations pages retain explicit section
+  structure for qualified paths, provider-owned/non-qualified boundaries and major
+  support limits so focused human/search/AI retrieval does not depend on surrounding
+  site context;
+- the top problem router links to the current MCP/plugin/worker/inspection/privacy and
+  provider-profile comparison clusters and every routed anchor exists;
 - the privacy/data-flow page retains distinct telemetry/credential/network/analytics
   language rather than a misleading blanket privacy slogan;
 - project robots policy keeps explicit search/citation, user-fetch and
