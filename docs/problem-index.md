@@ -24,7 +24,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 ## Start from the closest symptom
 
 - **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci), [different inputs per worker](#subagents-inherit-mcp-tools)
-- **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills)
+- **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills), [Claude plugin skill controls](#claude-plugin-skill-controls)
 - **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [subagent MCP/tools](#subagents-inherit-mcp-tools)
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools)
@@ -618,6 +618,36 @@ They can, but Claude Code and Codex do not expose one universal scope model for 
 
 **Go deeper:** [Claude Code](claude-code.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
 
+<a id="claude-plugin-skill-controls"></a>
+
+## Do you want to disable or evaluate one skill that came from a Claude plugin?
+
+**Common ways people ask this:**
+
+- `disable one Claude plugin skill`
+- `Claude plugin skill individually disable`
+- `skillOverrides plugin skill`
+- `turn off skill from Claude plugin`
+- `test Claude plugin skill without plugin`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Claude plugin skill off`
+- `Claude /plugin manage skills`
+- `Claude plugin eval skill`
+- `evaluate plugin skill with and without plugin`
+- `Claude skillOverrides does not affect plugin skill`
+- `disable plugin skill keep plugin`
+
+</details>
+
+Current Claude Code documentation draws a real boundary here: `skillOverrides` applies to ordinary personal/project skills but does **not** control plugin-provided skills. Claude routes plugin management through `/plugin`, and `claude plugin eval` can compare a plugin skill with and without the plugin in isolated runs.
+
+CLROOM's current Claude plugin path is whole-plugin and atomic. It does not promise component-level surgery that disables one skill while keeping the rest of the selected plugin active.
+
+**Go deeper:** [Claude Code](claude-code.md) · [When to use CLROOM](when-to-use-clroom.md) · [Current limitations](limitations.md)
+
 <a id="mcp-tool-context-overload"></a>
 
 ## Are too many MCP servers or tool definitions consuming context or slowing startup?
@@ -646,10 +676,16 @@ They can, but Claude Code and Codex do not expose one universal scope model for 
 - `MCP tool noise`
 - `large MCP tools context`
 - `MCP tools use too many tokens`
+- `Claude /context MCP tools`
+- `MCP tool schemas counted as messages`
+- `global MCP starts every thread`
+- `too many Codex MCP processes`
 
 </details>
 
-This is a real provider-scale problem, but the exact mitigation is provider-specific. Current providers have their own tool-search/lazy-loading behavior and diagnostics. CLROOM's narrower role is to start from its qualified clean launch boundary and, on the current Codex path, deliberately admit one qualified standalone stdio MCP when that is the resource the task needs. It does not claim universal MCP lazy loading or provider-owned subagent tool filtering.
+This is a real provider-scale problem, but the mitigation is provider-specific. Current Claude Code has native MCP Tool Search that defers tool definitions on supported paths and can use threshold modes such as `auto`; use that first when the problem is Claude tool-definition context overhead. OpenAI documents tool search in its API/agent runtimes too, but that must not be assumed to describe the qualified Codex CLI path.
+
+CLROOM's narrower role is to provide its qualified clean/selective launch boundary and, on the current Codex path, deliberately admit one supported standalone stdio MCP when that is the resource the task needs. It does not claim universal lazy MCP loading, repair provider process-lifecycle bugs, or replace provider-owned subagent tool controls.
 
 **Go deeper:** [Codex](codex.md) · [Claude Code](claude-code.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
 
