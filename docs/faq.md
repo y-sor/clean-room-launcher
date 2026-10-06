@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Clean Room Launcher (CLROOM) FAQ — Codex, Claude Code, Agent Skills, clean sessions
-description: Direct answers about CLROOM, clean Codex and Claude Code sessions, global vs project instructions and skills, Agent Skills, Claude safe mode and bare mode, Codex AGENTS.md, CODEX_HOME, skill sets, and current limitations.
+title: CLROOM FAQ — Codex, Claude Code, skills, MCP, and clean sessions
+description: Direct CLROOM answers for clean Codex and Claude Code sessions, skills, AGENTS.md, CLAUDE.md, MCP, native alternatives, security boundaries, and limitations.
 permalink: /faq/
 nav_title: FAQ
 ---
