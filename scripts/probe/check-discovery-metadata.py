@@ -98,6 +98,7 @@ def validate_problem_routing(problem_index: str) -> None:
         "inspect-resolved-launch",
         "codex-global-skills-keep-project-skills",
         "privacy-data-flow",
+        "license-commercial-use",
     }
     routed = set(re.findall(r"\]\(#([^)]+)\)", routing))
     missing = sorted(required_anchors - routed)
@@ -273,6 +274,7 @@ def self_test() -> None:
 - [e](#inspect-resolved-launch)
 - [f](#codex-global-skills-keep-project-skills)
 - [g](#privacy-data-flow)
+- [h](#license-commercial-use)
 
 <a id="apps-runners-and-ci"></a>
 <a id="mcp-tool-context-overload"></a>
@@ -282,6 +284,7 @@ def self_test() -> None:
 <a id="inspect-resolved-launch"></a>
 <a id="codex-global-skills-keep-project-skills"></a>
 <a id="privacy-data-flow"></a>
+<a id="license-commercial-use"></a>
 """
     validate_problem_routing(good_problem)
     expect_failure(
