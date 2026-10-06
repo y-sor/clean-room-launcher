@@ -71,6 +71,8 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - agent runners, scripts, CI, and per-worker skill choices;
 - inspecting what configuration or skills were active.
 - privacy/data-flow questions such as telemetry, phone-home behavior, API keys, credentials, uploads, provider-owned network traffic, and website analytics.
+- licensing/work-use questions about MPL-2.0, company use, and the absence of a separate CLROOM commercial-edition account requirement.
+- evaluation/benchmark language for reproducible clean baselines and configuration-contamination testing.
 
 For exact technical behavior, follow the linked Claude Code or Codex page instead of inferring from a search phrase.
 
