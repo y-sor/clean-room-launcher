@@ -30,6 +30,7 @@ Use this page when a search phrase, provider term, or CLROOM term seems ambiguou
 | **Provider-owned / system** | Inputs or capabilities supplied by the provider itself rather than by the user's personal-global setup. A CLROOM global-skill count does not imply these disappear. |
 | **Admin / managed / organization policy** | Provider or machine policy controlled by an administrator or organization. CLROOM does not claim to bypass it. |
 | **Ambient state** | State that would normally be inherited or discovered from the surrounding user/provider environment. CLROOM only makes claims about the ambient inputs its qualified path explicitly controls. |
+| **Auto-memory / `MEMORY.md`** | Claude Code provider-owned persistent memory state. A fresh conversation does not by itself prove this state is absent. Current qualified CLROOM Claude launches disable auto-memory for the launch but do not delete, edit, synchronize, or repair stored memory files. |
 
 ## Skills, plugins, and MCP
 
@@ -44,6 +45,7 @@ Use this page when a search phrase, provider term, or CLROOM term seems ambiguou
 | **Standalone MCP** | An MCP definition selected independently rather than only as a component of a selected plugin. Current CLROOM qualification is provider-specific. |
 | **Plugin-bundled MCP** | An MCP surface contributed by a plugin. It is distinct from CLROOM's standalone MCP selector even if both ultimately expose MCP tools. |
 | **Tool context / tool overload** | User language for the cost or complexity created by large tool inventories or schemas. Provider-native tool search/lazy loading and CLROOM resource selection solve different parts of this problem. |
+| **Configured MCP vs model-visible tools** | A server can be present in configuration or even initialized while its tools are not exposed to the active model/session. CLROOM launch inspection proves only the bounded plan it owns; provider runtime/tool-discovery state must be diagnosed separately. |
 
 ## Workers and subagents
 
