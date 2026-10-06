@@ -411,6 +411,27 @@ the strongest new language into the corresponding canonical answer page when it
 improves comprehension or routing. A material release change with zero new vector
 findings requires evidence that this research was actually performed.
 
+## Discovery metadata and routing integrity
+
+`scripts/probe/check-discovery-metadata.py` protects the deterministic subset of
+CLROOM's discovery architecture. Required docs-discovery CI verifies that:
+
+- homepage custom entity markup describes the project honestly as
+  `SoftwareSourceCode` with canonical repository, Rust language, runtime platform
+  and license, rather than manufacturing review/rating data for a software-app
+  rich-result shape;
+- installation remains visible in primary docs navigation;
+- high-value Codex/use-case/runner/comparison pages keep descriptions aligned with
+  the current product surface;
+- the top problem router links to the current MCP/plugin/worker/inspection clusters
+  and every routed anchor exists;
+- `llms.txt` keeps current high-value intent routing and explicitly separates
+  provider-native behavior from CLROOM-qualified behavior.
+
+The machine gate does not decide ranking or AI citations. Semantic release review
+still owns whether descriptions, comparisons, headings, evidence and canonical
+answers are useful and current.
+
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
