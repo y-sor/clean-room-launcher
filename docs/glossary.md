@@ -1,7 +1,7 @@
 ---
 layout: page
 title: CLROOM terminology glossary
-description: Canonical CLROOM terminology for clean and selective launches, Agent Skills, plugins, MCP servers, workers, subagents, configuration scope, and qualification.
+description: Canonical CLROOM terms for clean/selective launches, Agent Skills, plugins, MCP, workers, subagents, configuration scope, and qualified support.
 permalink: /glossary/
 nav_title: Glossary
 ---
