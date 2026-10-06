@@ -1,7 +1,7 @@
 ---
 layout: page
 title: CLROOM privacy and data flow
-description: What CLROOM itself reads, stores, sends, or leaves provider-owned, including credentials, telemetry, MCP environment values, network traffic, and website analytics.
+description: How CLROOM handles telemetry, credentials, provider-owned network behavior, MCP environment values, release downloads, and website analytics.
 permalink: /privacy-data-flow/
 nav_title: Privacy & data flow
 ---
