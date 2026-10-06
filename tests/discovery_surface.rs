@@ -64,7 +64,7 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
 
     let privacy = read("docs/privacy-data-flow.md");
     for phrase in [
-        "CLROOM is a local launch layer",
+        "Clean Room Launcher (CLROOM) is a local launch layer",
         "CLROOM account",
         "provider authentication",
         "Cloudflare Web Analytics",
