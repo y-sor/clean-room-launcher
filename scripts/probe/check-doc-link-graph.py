@@ -103,10 +103,6 @@ def relative_to_source(source: str, href: str, pages: dict[str, Path], root: Pat
         if candidate in pages:
             return candidate, True
 
-    name = Path(clean).name
-    if name in pages:
-        return name, True
-
     if clean.endswith(".html"):
         md_name = Path(clean[:-5] + ".md").name
         if md_name in pages:
@@ -160,7 +156,13 @@ def expect_failure(root: Path, reason: str) -> None:
     fail(f"SELF_TEST_NEGATIVE_PASSED:{reason}")
 
 
-def write_fixture(root: Path, *, broken: bool = False, orphan: bool = False) -> None:
+def write_fixture(
+    root: Path,
+    *,
+    broken: bool = False,
+    orphan: bool = False,
+    wrong_prefix: bool = False,
+) -> None:
     docs = root / "docs"
     docs.mkdir(parents=True, exist_ok=True)
     (docs / "_config.yml").write_text("header_pages:\n  - a.md\n", encoding="utf-8")
@@ -171,7 +173,7 @@ def write_fixture(root: Path, *, broken: bool = False, orphan: bool = False) -> 
     )
     (docs / "a.md").write_text(
         "---\nlayout: page\n---\n"
-        + ("" if orphan else "[B](b.md)\n"),
+        + ("" if orphan else ("[B](docs/b.md)\n" if wrong_prefix else "[B](b.md)\n")),
         encoding="utf-8",
     )
     (docs / "b.md").write_text("---\nlayout: page\n---\n", encoding="utf-8")
@@ -190,6 +192,10 @@ def self_test() -> None:
         orphan = Path(temp) / "orphan"
         write_fixture(orphan, orphan=True)
         expect_failure(orphan, "ORPHAN_PUBLIC_PAGE")
+
+        wrong_prefix = Path(temp) / "wrong-prefix"
+        write_fixture(wrong_prefix, wrong_prefix=True)
+        expect_failure(wrong_prefix, "BROKEN_INTERNAL_LINK")
 
     print("DOC_LINK_GRAPH_SELF_TEST_PASS")
 
