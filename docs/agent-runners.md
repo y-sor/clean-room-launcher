@@ -65,6 +65,10 @@ clroom codex --skill-set=@review
 clroom claude --skill-set=@debugging
 ```
 
+On the current qualified Codex path, independently launched workers can also differ in the bounded provider resources admitted for that process. For example, one worker can start with a selected standalone stdio MCP while another uses the ordinary clean launch; a supported worker can also use the bounded one-plugin + one-MCP composition described in the Codex guide.
+
+That per-process boundary matters when a large global tool inventory would otherwise give every worker the same MCP/tool surface. It does **not** mean CLROOM can assign different MCP sets to provider-owned subagents inside one already-running provider session.
+
 Project-local skills remain part of the project. `--skill-set` controls the personal-global skills CLROOM deliberately adds for that launch.
 
 <a id="fresh-vs-resumable-workers"></a>
