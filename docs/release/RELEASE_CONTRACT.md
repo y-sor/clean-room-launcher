@@ -411,6 +411,32 @@ the strongest new language into the corresponding canonical answer page when it
 improves comprehension or routing. A material release change with zero new vector
 findings requires evidence that this research was actually performed.
 
+## Privacy, data-flow and crawler-purpose integrity
+
+Each release must keep one current canonical public answer that separates CLROOM
+launcher behavior from provider authentication/network behavior, selected
+plugin/MCP behavior, installer/release downloads and documentation-site analytics.
+Do not collapse those surfaces into a blanket "offline", "no data leaves the
+machine" or "zero telemetry" claim.
+
+The public answer must remain consistent with current source/runtime behavior and
+must cover credentials, admitted MCP environment names/values, inspection
+redaction, provider-owned network activity, website analytics and the explicit
+non-claim that CLROOM is not a network sandbox.
+
+Crawler policy is likewise purpose-specific. Search/citation indexing,
+user-initiated retrieval and model-training/model-improvement controls are
+independent. The project-level robots declaration must name the current intended
+categories and must not imply that a search allow proves a training opt-out.
+Because CLROOM is hosted as a GitHub Pages project site, live rendered discovery
+reconciliation separately checks the actual host-root `/robots.txt`, which is
+the policy standards-compliant crawlers receive.
+
+A future change to launcher telemetry, hosted-service/account requirements,
+credential handling, analytics instrumentation, crawler training policy or
+provider/network boundary is a material discovery/trust change and must update
+the corresponding public answer and gates in the same candidate.
+
 ## Discovery metadata and routing integrity
 
 `scripts/probe/check-discovery-metadata.py` protects the deterministic subset of
@@ -423,8 +449,12 @@ CLROOM's discovery architecture. Required docs-discovery CI verifies that:
 - installation remains visible in primary docs navigation;
 - high-value Codex/use-case/runner/comparison pages keep descriptions aligned with
   the current product surface;
-- the top problem router links to the current MCP/plugin/worker/inspection clusters
-  and every routed anchor exists;
+- the top problem router links to the current MCP/plugin/worker/inspection/privacy
+  clusters and every routed anchor exists;
+- the privacy/data-flow page retains distinct telemetry/credential/network/analytics
+  language rather than a misleading blanket privacy slogan;
+- project robots policy keeps explicit search/citation, user-fetch and
+  training/model-improvement categories aligned with the current intended allow state;
 - `llms.txt` keeps current high-value intent routing and explicitly separates
   provider-native behavior from CLROOM-qualified behavior.
 
