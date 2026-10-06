@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Coding-agent configuration problem index — Codex, Claude Code, skills, and MCP
-description: Find canonical answers for Codex and Claude Code clean sessions, skills, instructions, MCP, plugins, runners, context problems, native controls, and CLROOM.
+description: Find canonical answers for Codex and Claude Code clean sessions, skills, stale memory, MCP runtime/tool problems, plugins, runners, native controls, and CLROOM.
 permalink: /problem-index/
 nav_title: Problem index
 ---
@@ -25,10 +25,10 @@ If you want the human explanation before the provider details, read [Why Clean R
 
 - **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci), [different inputs per worker](#subagents-inherit-mcp-tools)
 - **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills), [Claude plugin skill controls](#claude-plugin-skill-controls)
-- **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [subagent MCP/tools](#subagents-inherit-mcp-tools)
+- **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [stale/auto memory](#claude-auto-memory), [subagent MCP/tools](#subagents-inherit-mcp-tools)
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
-- **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
-- **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
+- **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [configured but tools unavailable](#mcp-configured-tools-unavailable), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
+- **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [stale Claude memory](#claude-auto-memory), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 - **Trust/privacy/install:** [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 - **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
 
@@ -499,6 +499,45 @@ Current CLROOM intentionally retains Claude project and project-local setting so
 
 **Go deeper:** [Claude Code](claude-code.md) · [Configuration matrix](configuration-matrix.md) · [Limitations](limitations.md)
 
+<a id="claude-auto-memory"></a>
+
+## Is Claude Code carrying stale auto-memory or old `MEMORY.md` state into a fresh session?
+
+**Common ways people ask this:**
+
+- `Claude stale auto memory`
+- `Claude Code MEMORY.md stale`
+- `disable Claude auto memory one session`
+- `Claude remembers old project state`
+- `fresh Claude session without auto memory`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Claude memory from another session interfering`
+- `Claude MEMORY.md wrong instructions`
+- `Claude auto memory context`
+- `Claude project memory stale`
+- `Claude Code old memory loaded`
+- `Claude memory across worktrees`
+- `Claude memory shared between sessions`
+- `Claude Code memory race`
+- `test Claude without MEMORY.md`
+- `Claude memory contaminating new session`
+- `Claude auto memory disable temporarily`
+- `why does Claude remember old repository state`
+- `Claude memory stale after project changed`
+- `Claude concurrent sessions memory conflict`
+- `Claude worktree memory shared`
+
+</details>
+
+Claude Code auto-memory is provider-owned persistent state and has its own native controls and diagnostics. Use those when you want to inspect, edit, retain, or manage memory itself.
+
+The current qualified CLROOM Claude path disables auto-memory for the clean launch. That makes CLROOM useful as a diagnostic comparison when the question is **"does this behavior disappear without auto-memory participating in this launch?"** It does not delete, rewrite, repair, expire, or synchronize Claude's stored memory files, and it does not make a claim about every other provider-owned state surface.
+
+**Go deeper:** [Claude Code](claude-code.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md) · [When to use CLROOM](when-to-use-clroom.md)
+
 <a id="codex-agents-md"></a>
 
 ## Why is Codex reading global `AGENTS.md`?
@@ -726,6 +765,45 @@ A configuration file can name an environment variable without proving that the a
 On CLROOM's qualified standalone Codex MCP path, referenced plain environment-variable **names** must also be explicitly admitted with `--pass-env=NAME`; CLROOM never stores or prints their secret values. That explicit admission does not turn unsupported remote/OAuth MCP forms into supported ones.
 
 **Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [Current limitations](limitations.md)
+
+<a id="mcp-configured-tools-unavailable"></a>
+
+## Is an MCP server configured or connected, but its tools are still unavailable to the model?
+
+**Common ways people ask this:**
+
+- `MCP configured but tools missing`
+- `MCP server connected but tools unavailable`
+- `Codex MCP configured but tool_search missing`
+- `Codex MCP visible in settings but not chat`
+- `MCP client running but model cannot use tools`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `MCP settings vs runtime tools`
+- `MCP initialized but tools not callable`
+- `MCP server healthy but tools absent`
+- `Codex MCP connected no tool namespace`
+- `Codex MCP tools disappeared`
+- `MCP tool namespace missing`
+- `tool_search missing MCP`
+- `MCP works in TUI but not desktop`
+- `MCP listed but model cannot call it`
+- `configured MCP not exposed to model`
+- `MCP connection ok tool discovery failed`
+- `MCP runtime exposure failure`
+- `MCP tools missing after model change`
+- `MCP tools unavailable after provider update`
+- `MCP config valid but session tools missing`
+
+</details>
+
+Configuration presence, server initialization, and model-visible tool availability are separate states. A provider can successfully read an MCP configuration or keep a connection alive while the active session still lacks the tool namespace or discovery mechanism needed to call those tools.
+
+Use the provider's current MCP/status/tool-discovery diagnostics to establish the runtime state. CLROOM's qualified Codex resource path can prove the selected configuration and launch plan it owns, and `clroom inspect codex ...` can show that sanitized resolved plan before provider birth. Neither is a universal guarantee that every provider surface, model mode, desktop host, or later runtime state will expose the tool successfully.
+
+**Go deeper:** [Codex](codex.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md) · [Current limitations](limitations.md)
 
 <a id="codex-plugin-mcp-composition"></a>
 
