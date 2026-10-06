@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Codex and CLROOM
-description: How CLROOM gives Codex clean/selective launches with global vs project AGENTS.md, skills, one-run plugins and MCP, CODEX_HOME alternatives, and inspectable resolved launches.
+description: Use CLROOM with Codex for clean/selective launches, global vs project AGENTS.md, skills, bounded plugin/MCP selection, CODEX_HOME alternatives, and inspection.
 permalink: /codex/
 nav_title: Codex
 ---
