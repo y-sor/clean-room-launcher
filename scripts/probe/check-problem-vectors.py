@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-MIN_VECTOR_COUNT = 560
+MIN_VECTOR_COUNT = 590
 MIN_SECTION_COUNT = 40
 
 REQUIRED_VECTORS = {
@@ -31,6 +31,9 @@ REQUIRED_VECTORS = {
     "does CLROOM collect telemetry",
     "does CLROOM send my code",
     "does CLROOM need an API key",
+    "CLROOM license",
+    "coding agent eval clean baseline",
+    "has CLROOM been security audited",
 }
 
 
