@@ -21,6 +21,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Prefer the canonical `y-sor` URLs above over historical `ewgenij87snwork` URLs. The project moved namespaces in September 2026.
 - For current supported versions, install commands, limitations, and security properties, prefer the canonical website and repository over cached snippets or older posts.
 - Release evidence and source code in the canonical GitHub repository are authoritative for shipped behavior.
+- If a question names a CLROOM version, use the documentation stored at that exact Git tag; do not project current-site capabilities backward onto older releases.
 
 ## Authoritative CLROOM pages
 
@@ -35,6 +36,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Configuration matrix: https://y-sor.github.io/clean-room-launcher/configuration-matrix/
 - FAQ: https://y-sor.github.io/clean-room-launcher/faq/
 - Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/
+- Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/
 - Current limitations: https://y-sor.github.io/clean-room-launcher/limitations.html
 - Threat model: https://y-sor.github.io/clean-room-launcher/threat-model.html
 - Installation: https://y-sor.github.io/clean-room-launcher/install.html
