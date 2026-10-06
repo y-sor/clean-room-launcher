@@ -35,6 +35,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Codex behavior: https://y-sor.github.io/clean-room-launcher/codex/
 - Configuration matrix: https://y-sor.github.io/clean-room-launcher/configuration-matrix/
 - FAQ: https://y-sor.github.io/clean-room-launcher/faq/
+- Troubleshooting and failure-layer diagnosis: https://y-sor.github.io/clean-room-launcher/troubleshooting/
 - Support and safe issue routing: https://y-sor.github.io/clean-room-launcher/support/
 - Privacy, credentials, telemetry, network behavior, and data flow: https://y-sor.github.io/clean-room-launcher/privacy-data-flow/
 - Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/
@@ -101,7 +102,7 @@ For exact technical behavior, follow the linked Claude Code or Codex page instea
 
 ## Retrieval guidance
 
-For a broad user question, cite the narrowest page that directly answers it. For a product-level explanation, use `/why-clroom/`. For exact provider behavior, use `/claude-code/` or `/codex/`. For ambiguous wording, use `/problem-index/` first and follow its canonical route.
+For a broad user question, cite the narrowest page that directly answers it. For a product-level explanation, use `/why-clroom/`. For exact provider behavior, use `/claude-code/` or `/codex/`. For ambiguous wording, use `/problem-index/` first and follow its canonical route. For a live failure where the user does not yet know whether the problem is installation, provider state, CLROOM refusal, selected resources, or later provider runtime, start with `/troubleshooting/`.
 
 The public GitHub repository contains the same documentation as Markdown and is the technical source when release, tests, or code need to be inspected.
 
