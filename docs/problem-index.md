@@ -29,7 +29,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
-- **Trust/privacy/install:** [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
+- **Trust/privacy/install:** [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 - **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
 
 <a id="apps-runners-and-ci"></a>
@@ -1019,6 +1019,15 @@ Use the [Threat model](threat-model.md) for the security boundary. Keep provider
 - `compare two Agent Skills on the same task`
 - `compare same Agent Skill in Codex and Claude Code`
 - `compare Agent Skill results token use and time`
+- `coding agent eval clean baseline`
+- `Claude Code eval clean environment`
+- `Codex eval clean environment`
+- `benchmark coding agent configuration`
+- `benchmark Agent Skill`
+- `agent eval configuration contamination`
+- `reproducible coding agent benchmark`
+- `A/B test coding agent setup`
+- `evaluate skill without global config`
 
 </details>
 
@@ -1075,6 +1084,38 @@ That is **not** a promise that the whole session is offline or that no data leav
 Use the canonical privacy/data-flow page for the exact separation between launcher behavior, provider authentication, selected-resource environment admission, installer/release downloads, and website analytics.
 
 **Go deeper:** [Privacy and data flow](privacy-data-flow.md) · [Threat model](threat-model.md) · [Current limitations](limitations.md) · [Support](SUPPORT.md)
+
+<a id="license-commercial-use"></a>
+
+## Can I use CLROOM at work, and what license applies?
+
+**Common ways people ask this:**
+
+- `CLROOM license`
+- `Clean Room Launcher license`
+- `CLROOM MPL 2.0`
+- `CLROOM open source license`
+- `can I use CLROOM at work`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM commercial use`
+- `CLROOM enterprise use`
+- `does CLROOM require paid license`
+- `CLROOM company use`
+- `CLROOM commercial license`
+- `CLROOM open source`
+- `is CLROOM free software`
+- `MPL 2.0 CLROOM`
+
+</details>
+
+CLROOM is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. The license text controls the rights and obligations for using, modifying, and distributing the software; this documentation is not legal advice.
+
+The current project does not require a separate paid CLROOM account or commercial-edition license to run the CLI. That is separate from your organization's provider subscriptions, internal software policy, support requirements, or legal review.
+
+**Go deeper:** [LICENSE](https://github.com/y-sor/clean-room-launcher/blob/main/LICENSE) · [Governance](https://github.com/y-sor/clean-room-launcher/blob/main/GOVERNANCE.md) · [Support](SUPPORT.md)
 
 <a id="managed-enterprise-policy"></a>
 
@@ -1279,10 +1320,14 @@ The canonical website follows the current project state. A published Git tag pre
 - `software supply chain verify CLROOM`
 - `verify release before curl pipe sh`
 - `verify GitHub release Sigstore bundle`
+- `has CLROOM been security audited`
+- `CLROOM independent security audit`
+- `CLROOM security certification`
+- `CLROOM SOC 2`
 
 </details>
 
-Yes. The published release exposes separate evidence for separate trust questions: `SHA256SUMS` for byte equality, a tag-bound build-provenance bundle, a CycloneDX SBOM and SBOM attestation, plus GitHub's published release identity. The current macOS archive is still unsigned and unnotarized at the Apple code-signing layer, and none of these checks means the software is vulnerability-free.
+Yes. The published release exposes separate evidence for separate trust questions: `SHA256SUMS` for byte equality, a tag-bound build-provenance bundle, a CycloneDX SBOM and SBOM attestation, plus GitHub's published release identity. The current macOS archive is still unsigned and unnotarized at the Apple code-signing layer, and none of these checks means the software is vulnerability-free. The current threat model also records that no independent security audit has been completed; provenance, OpenSSF badges, CI, or attestations must not be presented as an audit or certification.
 
 Use the canonical [release verification guide](verify-release.md) for exercised commands and for the exact distinction between checksum, provenance, SBOM, immutable release state, provider qualification, and runtime/security non-claims.
 
