@@ -397,6 +397,7 @@ description: {sample_desc}
                 "## Provider versions\n"
                 "## Qualified launch paths\n"
                 "## What CLROOM owns vs what the provider owns\n"
+                "## Other coding-agent providers\n"
                 "## Not qualified in this release\n"
             ),
             "configuration-matrix.md": (
