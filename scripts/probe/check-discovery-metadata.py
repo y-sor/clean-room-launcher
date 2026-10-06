@@ -69,6 +69,17 @@ def validate_primary_navigation(config: str, install: str) -> None:
     if frontmatter_value(install, "nav_title") != "Install":
         fail("INSTALL_NAV_TITLE_DRIFT")
 
+    social_required = (
+        "card: summary_large_image",
+        "name: Clean Room Launcher (CLROOM)",
+        "https://github.com/y-sor/clean-room-launcher",
+        "path: /assets/clean-room-launcher-hero.png",
+        "alt: Clean Room Launcher (CLROOM) clean and selective coding-agent launch",
+    )
+    for item in social_required:
+        if item not in config:
+            fail(f"SOCIAL_DISCOVERY_DEFAULT_MISSING:{item}")
+
 
 def validate_problem_routing(problem_index: str) -> None:
     start = problem_index.find("## Start from the closest symptom")
