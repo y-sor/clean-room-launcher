@@ -11,6 +11,22 @@ If you want the short human explanation first, read [Why Clean Room Launcher (CL
 
 If you arrived with a symptom or half-remembered term rather than the product name, start with the [coding-agent configuration problem index](problem-index.md).
 
+## Pick the narrowest control that solves the problem
+
+| Need | Start with |
+| --- | --- |
+| Hide, narrow, or diagnose one or a few Claude skills | Claude `skillOverrides`, `disable-model-invocation`, `/skills`, and `/skill-doctor` |
+| Broad Claude troubleshooting with customizations disabled | Claude `--safe-mode` |
+| Minimal scripted Claude invocation | Claude `--bare` |
+| Choose which normal Claude settings scopes participate | Claude `--setting-sources` |
+| Give a Claude subagent a narrower tool set or MCP servers of its own | Claude subagent `tools`, `disallowedTools`, and `mcpServers` |
+| Suppress normal Codex user configuration for one non-interactive task | Native `codex exec --ignore-user-config` |
+| Maintain a persistent alternate provider setup | `CODEX_HOME`, Claude configuration directory, or provider-native profiles/settings |
+| Start a repeatable cleaner launch while preserving the project-side context CLROOM is designed to retain | CLROOM |
+| Select and inspect the currently qualified one-plugin / one-stdio-MCP Codex launch without rewriting persistent Codex configuration | CLROOM's bounded Codex resource path |
+
+The table is a routing aid, not a claim that the providers expose identical scope models. Use the provider-specific pages for exact behavior and version-qualified support.
+
 ## Use CLROOM when one launch should not inherit unrelated personal-global work
 
 CLROOM is useful when:
@@ -55,6 +71,14 @@ CLROOM is aimed at repeatable selective composition for normal work, not at repl
 Claude Code can choose filesystem settings sources for a session. A direct `--setting-sources` invocation may be enough when the only requirement is selecting which normal settings scopes participate.
 
 CLROOM adds provider-specific clean defaults, known filesystem controls, a selected-global-skill workflow, and its own launch summary. Read the provider page and limitations before assuming those differences matter to your case.
+
+## Use Claude subagent tool/MCP controls when the boundary is inside one Claude session
+
+Current Claude Code can narrow inherited subagent tools with `tools` or `disallowedTools`, including MCP server-level patterns, and can define MCP servers in a subagent's `mcpServers` field. An inline subagent MCP can stay out of the parent conversation entirely.
+
+Use those native controls when the actual requirement is **"this Claude subagent should get these tools or this MCP server."**
+
+CLROOM does not rewrite provider-owned subagent definitions. Use separate CLROOM top-level processes when an external runner owns the workers and each process needs its own CLROOM clean/selective boundary.
 
 ## Use another `CODEX_HOME`, Claude config directory, or provider profile when you want a persistent alternate setup
 
