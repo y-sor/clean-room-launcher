@@ -115,6 +115,8 @@ def validate_llms(llms: str) -> None:
         "top-level per-worker resource choices",
         "provider-owned subagent scoping",
         "OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces",
+        "Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/",
+        'rel="describedby"',
     )
     for item in required:
         if item not in llms:
@@ -129,6 +131,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/configuration-matrix.md",
         "docs/demo.md",
         "docs/faq.md",
+        "docs/glossary.md",
         "docs/index.md",
         "docs/install.md",
         "docs/limitations.md",
@@ -168,6 +171,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/use-cases.md": ("mcp", "skill", "ci"),
         "docs/agent-runners.md": ("worker", "mcp"),
         "docs/demo.md": ("first-run", "codex", "claude", "inspect"),
+        "docs/glossary.md": ("clean", "skill", "plugin", "mcp", "subagent", "qualified"),
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
         "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
@@ -178,7 +182,10 @@ def validate_descriptions(root: Path) -> None:
 
 
 def validate(root: Path) -> None:
-    validate_schema(read(root, "docs/_includes/head.html"))
+    head = read(root, "docs/_includes/head.html")
+    validate_schema(head)
+    if 'rel="describedby"' not in head or "'/llms.txt' | relative_url" not in head:
+        fail("LLMS_DISCOVERY_RELATION_MISSING")
     validate_primary_navigation(
         read(root, "docs/_config.yml"),
         read(root, "docs/install.md"),
