@@ -6,6 +6,24 @@ baseurl: "/clean-room-launcher"
 repository: y-sor/clean-room-launcher
 bing_site_verification: "3C58D81E5C3A769DCEB313FA15D5B102"
 logo: /assets/brand/clroom-logo.png
+locale: en_US
+
+twitter:
+  card: summary_large_image
+
+social:
+  name: Clean Room Launcher (CLROOM)
+  links:
+    - https://github.com/y-sor/clean-room-launcher
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      image:
+        path: /assets/clean-room-launcher-hero.png
+        alt: Clean Room Launcher (CLROOM) clean and selective coding-agent launch
+
 theme: minima
 
 plugins:
