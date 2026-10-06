@@ -25,7 +25,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 
 ### Find or diagnose a problem
 
-- [Problem index: 600+ real phrasings routed to canonical answers](problem-index.md)
+- [Problem index: hundreds of real phrasings routed to canonical answers](problem-index.md)
 - [FAQ: direct answers and non-claims](faq.md)
 - [Terminology glossary: user wording → stable CLROOM/provider terms](glossary.md)
 - [Support: safe bug reports, usage questions, and security routing](SUPPORT.md)
