@@ -27,6 +27,7 @@ REQUIRED_VECTORS = {
     "CLROOM provenance attestation",
     "Claude skillOverrides",
     "Claude subagent MCP tools missing",
+    "CLROOM docs don\'t match installed version",
 }
 
 
