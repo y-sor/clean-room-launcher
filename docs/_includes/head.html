@@ -11,24 +11,21 @@
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "@id": "{{ site.url }}{{ site.baseurl }}/#clroom",
+  "@type": "SoftwareSourceCode",
+  "@id": "{{ site.url }}{{ site.baseurl }}/#clroom-source",
   "name": "Clean Room Launcher (CLROOM)",
   "alternateName": ["CLROOM", "Clean Room Launcher"],
-  "description": "Open-source developer tool for launching Codex and Claude Code with a clean/selective session setup on macOS.",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS",
+  "description": "Open-source Rust launcher for repeatable clean/selective Codex and Claude Code sessions on supported macOS Apple Silicon systems.",
   "url": "{{ site.url }}{{ site.baseurl }}/",
+  "codeRepository": "https://github.com/y-sor/clean-room-launcher",
+  "programmingLanguage": "Rust",
+  "runtimePlatform": "macOS on Apple Silicon",
+  "license": "https://www.mozilla.org/MPL/2.0/",
+  "isAccessibleForFree": true,
   "sameAs": [
     "https://github.com/y-sor/clean-room-launcher"
   ],
-  "isAccessibleForFree": true,
-  "offers": {
-    "@type": "Offer",
-    "price": 0
-  },
-  "license": "https://www.mozilla.org/MPL/2.0/",
-  "keywords": "Codex, Claude Code, coding agents, Agent Skills, context management"
+  "keywords": "Clean Room Launcher, CLROOM, Codex, Claude Code, coding agents, Agent Skills, MCP, plugins, clean sessions, context management"
 }
 </script>
   {%- endif -%}
