@@ -28,7 +28,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [subagent MCP/tools](#subagents-inherit-mcp-tools)
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools)
-- **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
+- **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 
 <a id="apps-runners-and-ci"></a>
 ## Is an app, runner, script, or CI job launching the coding agent?
@@ -886,6 +886,70 @@ Use `clroom inspect codex ...` or its JSON form. Inspection resolves through the
 Often it does not. CLROOM is useful when instructions or skills that help one kind of work should not automatically participate in another, while reusable selected skill sets can still be brought in for the launch that needs them.
 
 **Go deeper:** [Skill sets](skill-sets.md) · [When to use CLROOM](when-to-use-clroom.md) · [FAQ](faq.md)
+
+<a id="configuration-sync-vs-clean-launch"></a>
+
+## Do you want one source of truth that keeps agent skills, MCP, or configuration synchronized?
+
+**Common ways people ask this:**
+
+- `sync coding agent config across tools`
+- `one config for Codex and Claude Code`
+- `sync MCP servers across agents`
+- `sync Agent Skills between Codex and Claude`
+- `coding agent configuration drift`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `single source of truth coding agent config`
+- `keep MCP config in sync across agents`
+- `same skills on every coding agent`
+- `manage agent config across machines`
+- `Codex Claude config synchronization`
+- `agent environment config drift`
+- `central MCP configuration`
+
+</details>
+
+That is a **persistent configuration-management/synchronization** problem. CLROOM deliberately does not rewrite normal Codex or Claude Code configuration to make both providers share one persistent source of truth.
+
+Use a configuration-management or provider-native synchronization approach when persistence and cross-machine convergence are the goal. Use CLROOM when the problem is narrower: keep the normal setup intact and choose the supported inputs for this **particular launch**.
+
+**Go deeper:** [Why CLROOM exists](why-clroom.md) · [When to use CLROOM](when-to-use-clroom.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="prompt-injection-vs-configuration-contamination"></a>
+
+## Is this configuration contamination or prompt injection?
+
+**Common ways people ask this:**
+
+- `coding agent prompt injection vs bad config`
+- `AGENTS.md prompt injection or configuration`
+- `CLAUDE.md prompt injection`
+- `MCP output prompt injection coding agent`
+- `untrusted repository instructions coding agent`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `clean session protect against prompt injection`
+- `does CLROOM stop prompt injection`
+- `malicious Agent Skill instructions`
+- `malicious MCP tool output instructions`
+- `repository prompt injection coding agent`
+- `coding agent untrusted README instructions`
+- `context contamination security vs configuration`
+
+</details>
+
+They are different threat classes.
+
+CLROOM can help test whether **known personal-global configuration it controls** influenced a launch. It does **not** make repository files, project instructions, fetched pages, skills you deliberately admit, MCP/tool output, or other provider-visible data trustworthy. A malicious instruction in one of those channels can still be prompt injection.
+
+Use the [Threat model](threat-model.md) for the security boundary. Keep provider sandbox/permissions, credential scope, network controls, source review, and normal prompt-injection defenses in place.
+
+**Go deeper:** [Threat model](threat-model.md) · [Current limitations](limitations.md)
 
 <a id="testing-and-reproducibility"></a>
 
