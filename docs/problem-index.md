@@ -521,6 +521,9 @@ Current CLROOM intentionally retains Claude project and project-local setting so
 - `project AGENTS.md plus global AGENTS.md`
 - `Codex old global instructions`
 - `Codex user instructions project instructions`
+- `Codex global AGENTS.md relative links wrong path`
+- `global AGENTS.md links resolve in project cwd`
+- `Codex global instructions wrong working directory`
 
 </details>
 
@@ -551,6 +554,8 @@ Codex has global instruction files under `CODEX_HOME` plus project instruction d
 - `Codex profiles vs CLROOM`
 - `CODEX_HOME vs CLROOM`
 - `Codex without default config`
+- `Codex profile disable global AGENTS.md`
+- `Codex profile different global instructions`
 
 </details>
 
