@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-MIN_VECTOR_COUNT = 500
+MIN_VECTOR_COUNT = 560
 MIN_SECTION_COUNT = 40
 
 REQUIRED_VECTORS = {
@@ -28,6 +28,9 @@ REQUIRED_VECTORS = {
     "Claude skillOverrides",
     "Claude subagent MCP tools missing",
     "CLROOM docs don\'t match installed version",
+    "does CLROOM collect telemetry",
+    "does CLROOM send my code",
+    "does CLROOM need an API key",
 }
 
 
