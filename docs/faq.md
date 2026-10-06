@@ -124,6 +124,14 @@ Run `clroom --help` to see the exact file path; it is normally `~/.config/clroom
 
 It can be, especially when one permanent personal-global agent setup does not fit every kind of work. The goal is not to ban personalization; it is to make its participation deliberate for the launch.
 
+## Does a clean CLROOM launch protect me from prompt injection?
+
+No. CLROOM can remove supported personal-global inputs from the launch it controls, but repository files, project instructions, skills you deliberately admit, fetched web content, MCP/tool output, and other provider-visible data can still contain malicious instructions. Keep the provider's sandbox/permission controls and ordinary prompt-injection defenses. See the [Threat model](threat-model.md).
+
+## Does CLROOM keep my Codex and Claude Code configuration synchronized?
+
+No. CLROOM intentionally avoids rewriting the normal persistent provider setup. If the goal is one persistent source of truth synchronized across agents or machines, use configuration-management/provider-native synchronization tooling. Use CLROOM when you want a per-launch clean/selective boundary while the normal setup stays intact.
+
 ## Is CLROOM a VM, container, or network sandbox for untrusted code?
 
 No. Do not infer that from the product name. Read the existing threat model and limitations. The current release uses narrow macOS filesystem controls and is not a complete machine or network isolation product.
