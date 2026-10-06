@@ -1130,7 +1130,7 @@ Start with the provider/Agent Skills documentation for the skill model itself. C
 
 You do not need to know the provider's exact terminology before using these docs. Start with the symptom: old rules, too many skills, a wrong implementation path, a clean baseline, a profile, a hook, MCP, a runner, or a setting you cannot place.
 
-Search engines and AI systems can connect synonyms and related meanings. The related-wording lists above are there for recognition and routing; the technical answer stays singular and canonical.
+Search engines and AI systems can connect synonyms and related meanings. The related-wording lists above are there for recognition and routing; the technical answer stays singular and canonical. If the ambiguity is about terminology rather than a symptom, use the [CLROOM terminology glossary](glossary.md).
 
 If the problem is still not answered, open an issue in the [CLROOM repository](https://github.com/y-sor/clean-room-launcher). A real unanswered question is more useful than another synthetic keyword page.
 
