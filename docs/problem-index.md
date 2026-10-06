@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Coding-agent configuration problem index — Codex, Claude Code, skills, and MCP
-description: Find canonical answers for Codex and Claude Code clean sessions, skills, stale memory, MCP runtime/tool problems, plugins, runners, native controls, and CLROOM.
+description: Find canonical answers for Codex and Claude Code clean sessions, skills, stale memory, MCP runtime problems, install failures, native controls, and CLROOM.
 permalink: /problem-index/
 nav_title: Problem index
 ---
