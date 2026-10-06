@@ -125,7 +125,7 @@ jobs:
           grep -Fq '<a id="codex-built-in-and-project-skills"></a>' docs/problem-index.md
           grep -Fq '<a id="create-edit-and-combine-skill-sets"></a>' docs/problem-index.md
           test "$(grep -Fc '<summary>More related wording and searches</summary>' docs/problem-index.md)" -ge 20
-          test "$(grep -Ec '^- `[^`]+`$' docs/problem-index.md)" -ge 590
+          test "$(grep -Ec '^- `[^`]+`
 
           grep -Fq 'Why does Codex show more skills than the CLROOM `Global skills` count?' docs/faq.md
 
@@ -184,8 +184,7 @@ jobs:
           test "$TARGET" = success
           test "$DOCS" = success
           test "$QUALIFIED" = success
-          echo "CI_REQUIRED_PASS"
- docs/problem-index.md)" -ge 590
+          echo "CI_REQUIRED_PASS" docs/problem-index.md)" -ge 630
 
           grep -Fq 'Why does Codex show more skills than the CLROOM `Global skills` count?' docs/faq.md
 
