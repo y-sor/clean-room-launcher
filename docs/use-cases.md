@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Use cases
+title: CLROOM use cases — skills, workers, Codex plugin + MCP, scripts, and CI
 description: Practical CLROOM workflows for clean Agent Skill tests, per-worker skill sets, bounded Codex plugin plus MCP launches, MCP-overload diagnosis, scripts, and CI.
 permalink: /use-cases/
 nav_title: Use cases
