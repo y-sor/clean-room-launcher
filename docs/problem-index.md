@@ -29,7 +29,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
-- **Trust/install:** [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
+- **Trust/privacy/install:** [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 - **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
 
 <a id="apps-runners-and-ci"></a>
@@ -1025,6 +1025,56 @@ Use the [Threat model](threat-model.md) for the security boundary. Keep provider
 A clean/selective launch can provide a more repeatable baseline without destructive renaming or editing of the normal setup. It does not make model output deterministic, but it can remove known personal-global variables from the comparison.
 
 **Go deeper:** [Use cases](use-cases.md) · [When to use CLROOM](when-to-use-clroom.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="privacy-data-flow"></a>
+
+## Does CLROOM send my code, collect telemetry, or need my API keys?
+
+**Common ways people ask this:**
+
+- `does CLROOM collect telemetry`
+- `does CLROOM phone home`
+- `does CLROOM send my code`
+- `does CLROOM upload prompts`
+- `does CLROOM need an API key`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `does CLROOM read credentials`
+- `does CLROOM copy Claude credentials`
+- `does CLROOM copy Codex credentials`
+- `does CLROOM store tokens`
+- `does CLROOM have a backend`
+- `does CLROOM require an account`
+- `is CLROOM local only`
+- `what network requests does CLROOM make`
+- `does CLROOM track users`
+- `CLROOM privacy`
+- `CLROOM data collection`
+- `CLROOM analytics`
+- `CLROOM Cloudflare analytics`
+- `does CLROOM upload repository files`
+- `does CLROOM send prompts to its own server`
+- `does CLROOM work offline`
+- `CLROOM offline mode`
+- `does CLROOM block provider network access`
+- `does CLROOM expose MCP environment variables`
+- `does clroom inspect show secrets`
+- `CLROOM plugin data privacy`
+- `CLROOM MCP data privacy`
+- `coding agent launcher telemetry`
+- `coding agent launcher privacy`
+
+</details>
+
+CLROOM is a local launch layer, not a hosted coding service. It does not require a CLROOM account, CLROOM API key, or CLROOM-hosted backend to start the installed provider. Provider authentication remains provider-owned.
+
+That is **not** a promise that the whole session is offline or that no data leaves the machine. Codex, Claude Code, a selected plugin, or a selected MCP server can use the network according to their own behavior and configuration. The documentation website also has its own analytics surface, separate from CLI runtime behavior.
+
+Use the canonical privacy/data-flow page for the exact separation between launcher behavior, provider authentication, selected-resource environment admission, installer/release downloads, and website analytics.
+
+**Go deeper:** [Privacy and data flow](privacy-data-flow.md) · [Threat model](threat-model.md) · [Current limitations](limitations.md) · [Support](SUPPORT.md)
 
 <a id="managed-enterprise-policy"></a>
 
