@@ -126,6 +126,12 @@ OpenAI documents a global instruction layer under `CODEX_HOME` and a project ins
 
 Use one when you want a persistent alternate Codex home. CLROOM is aimed at a repeatable per-launch choice without maintaining another normal setup.
 
+## Should I use a Codex `--profile` instead?
+
+Yes, when the problem is reusable Codex configuration. Current Codex profiles are a provider-native configuration layer selected with `--profile profile-name`, alongside project/user/managed/system configuration precedence.
+
+CLROOM should not duplicate that layer. Use CLROOM when the requirement is its qualified clean/selective launch boundary or supported per-run skill/resource selection. Any future CLROOM reusable-launch feature must stay distinct from provider-native profiles rather than becoming a renamed Codex profile.
+
 ## Can I disable a Codex skill natively?
 
 Yes. OpenAI documents persistent skill-disable configuration. That can be simpler for a permanent choice. CLROOM is aimed at per-launch selection.
