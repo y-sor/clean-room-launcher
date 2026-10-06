@@ -118,9 +118,13 @@ fn discovery_descriptions_stay_concise_and_specific() {
 }
 
 #[test]
-fn homepage_metadata_exposes_analytics_preview_and_truthful_source_facts() {
+fn homepage_metadata_exposes_analytics_preview_and_truthful_software_facts() {
     let head = read("docs/_includes/head.html");
     assert!(head.contains("max-image-preview:large"));
+    assert!(head.contains("\"@type\": \"SoftwareApplication\""));
+    assert!(head.contains("\"applicationCategory\": \"DeveloperApplication\""));
+    assert!(head.contains("\"operatingSystem\": \"macOS on Apple Silicon\""));
+    assert!(head.contains("\"price\": 0"));
     assert!(head.contains("\"@type\": \"SoftwareSourceCode\""));
     assert!(head.contains(
         "\"codeRepository\": \"https://github.com/y-sor/clean-room-launcher\""
@@ -128,7 +132,6 @@ fn homepage_metadata_exposes_analytics_preview_and_truthful_source_facts() {
     assert!(head.contains("\"programmingLanguage\": \"Rust\""));
     assert!(head.contains("\"runtimePlatform\": \"macOS on Apple Silicon\""));
     assert!(head.contains("\"license\": \"https://www.mozilla.org/MPL/2.0/\""));
-    assert!(!head.contains("\"@type\": \"SoftwareApplication\""));
     assert!(!head.contains("\"aggregateRating\""));
     assert!(!head.contains("\"review\""));
     let footer = read("docs/_includes/footer.html");
@@ -153,5 +156,6 @@ fn homepage_metadata_exposes_analytics_preview_and_truthful_source_facts() {
     let home = read("docs/index.md");
     assert!(home.contains("title: Clean Room Launcher (CLROOM)"));
     assert!(home.contains("path: /assets/clean-room-launcher-hero.png"));
+    assert!(home.contains("free, open-source local launcher"));
     assert!(home.contains("the intended public identity is **Clean Room Launcher (CLROOM)**"));
 }
