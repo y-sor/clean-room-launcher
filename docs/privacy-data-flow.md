@@ -8,7 +8,7 @@ nav_title: Privacy & data flow
 
 # Privacy and data flow
 
-**Short answer:** Clean Room Launcher (CLROOM) is a local launch layer. It does not require a CLROOM account, CLROOM API key, or CLROOM-hosted backend to start Codex or Claude Code. Provider authentication stays with the installed provider CLI.
+**Short answer:** Clean Room Launcher (CLROOM) is a local launch layer. It does not require a CLROOM account, CLROOM API key, or CLROOM-hosted backend to start Codex or Claude Code. Provider authentication and credentials remain provider-owned by the installed provider CLI.
 
 That does **not** mean the whole session is offline or that no data can leave the machine. Codex, Claude Code, a selected plugin, or a selected MCP server can use the network according to their own behavior and configuration. CLROOM is not a network sandbox.
 
