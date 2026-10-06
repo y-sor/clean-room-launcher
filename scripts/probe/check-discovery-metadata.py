@@ -104,6 +104,7 @@ def validate_problem_routing(problem_index: str) -> None:
         "codex-global-skills-keep-project-skills",
         "codex-profile-vs-clroom",
         "install-first-run-failures",
+        "troubleshoot-clroom",
         "privacy-data-flow",
         "license-commercial-use",
         "platform-support",
@@ -138,6 +139,7 @@ def validate_llms(llms: str) -> None:
         "Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/",
         "Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/",
         "Support and safe issue routing: https://y-sor.github.io/clean-room-launcher/support/",
+        "Troubleshooting and failure-layer diagnosis: https://y-sor.github.io/clean-room-launcher/troubleshooting/",
         "Privacy, credentials, telemetry, network behavior, and data flow: https://y-sor.github.io/clean-room-launcher/privacy-data-flow/",
         'rel="describedby"',
     )
@@ -165,6 +167,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/skill-sets.md",
         "docs/SUPPORT.md",
         "docs/threat-model.md",
+        "docs/troubleshooting.md",
         "docs/upgrade-rollback.md",
         "docs/use-cases.md",
         "docs/verify-release.md",
@@ -209,6 +212,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/privacy-data-flow.md": ("telemetry", "credentials", "network", "analytics", "provider-owned"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
         "docs/SUPPORT.md": ("support", "bug", "security", "version"),
+        "docs/troubleshooting.md": ("install", "provider", "skill", "mcp", "failures"),
         "docs/verify-release.md": ("checksum", "provenance", "sbom", "immutable"),
     }
     for relative, terms in requirements.items():
@@ -237,6 +241,12 @@ def validate_retrieval_structure(root: Path) -> None:
             "## Plugin and MCP limits",
             "## Isolation and provider-state limits",
             "## Security and trust non-claims",
+        ),
+        "docs/troubleshooting.md": (
+            "## 1. Is CLROOM installed and on PATH?",
+            "## 4. Did CLROOM refuse the launch before the provider started?",
+            "## 7. Is the MCP configured but the model still cannot use its tools?",
+            "## 11. Build a safe minimal reproduction",
         ),
     }
 
@@ -341,6 +351,7 @@ def self_test() -> None:
 - [f](#codex-global-skills-keep-project-skills)
 - [f2](#codex-profile-vs-clroom)
 - [g0](#install-first-run-failures)
+- [g00](#troubleshoot-clroom)
 - [g](#privacy-data-flow)
 - [h](#license-commercial-use)
 - [i](#platform-support)
@@ -361,6 +372,7 @@ def self_test() -> None:
 <a id="codex-global-skills-keep-project-skills"></a>
 <a id="codex-profile-vs-clroom"></a>
 <a id="install-first-run-failures"></a>
+<a id="troubleshoot-clroom"></a>
 <a id="privacy-data-flow"></a>
 <a id="license-commercial-use"></a>
 <a id="platform-support"></a>
