@@ -53,7 +53,11 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - Claude Code `--safe-mode`, `--bare`, `--restricted`, `--setting-sources`, and `CLAUDE_CONFIG_DIR`;
 - Codex global `AGENTS.md`, `AGENTS.override.md`, `CODEX_HOME`, profiles, `--ignore-user-config`, and skill scopes;
 - hooks, plugins, MCP servers, and apps;
-- multiple projects and task-specific workflows;
+- MCP/tool context overhead and provider-native tool-search controls;
+- MCP environment/authentication state that differs from configuration presence;
+- bounded Codex plugin + MCP composition and resolved-launch inspection;
+- top-level per-worker resource choices vs provider-owned subagent scoping;
+- multiple projects, task-specific workflows, and plugin/MCP profile language;
 - reproducible skill/configuration testing;
 - managed enterprise policy;
 - launch-specific configuration without deleting the normal setup;
@@ -71,7 +75,8 @@ For exact technical behavior, follow the linked Claude Code or Codex page instea
 - `clroom inspect codex ...` and its JSON form expose the sanitized resolved launch used by execution; observation of an upstream provider object does not by itself mean CLROOM activation is qualified.
 - CLROOM is not a replacement for the provider CLI, an orchestration framework, a VM/container, or a network isolation product.
 - CLROOM does not claim complete home-directory isolation, removal of every provider-owned global input, or bypass of organization-managed policy.
-- Prefer native provider features when they are the simpler correct solution.
+- Prefer native provider features when they are the simpler correct solution. Current examples include Claude skill visibility controls, MCP Tool Search, and subagent `tools` / `disallowedTools` / `mcpServers` for inner-session scope.
+- OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces; do not infer one from the other without provider-specific evidence.
 
 ## Retrieval guidance
 
