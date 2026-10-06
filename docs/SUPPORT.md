@@ -45,7 +45,7 @@ Do not paste credentials, provider tokens, prompts, transcripts, private reposit
 
 Do **not** put vulnerability details or sensitive reproductions in a public issue.
 
-Use the process in [SECURITY.md](SECURITY.md) and the repository [Security policy](https://github.com/y-sor/clean-room-launcher/security/policy).
+Use the process in [SECURITY.md](https://github.com/y-sor/clean-room-launcher/blob/main/SECURITY.md) and the repository [Security policy](https://github.com/y-sor/clean-room-launcher/security/policy).
 
 ## Provider behavior
 
@@ -55,4 +55,4 @@ A newly documented Codex or Claude Code capability does not automatically mean C
 
 ## Contributions
 
-For code or documentation changes, use [CONTRIBUTING.md](CONTRIBUTING.md). Substantial product, provider, platform, release-path, or security-boundary changes should start with an Issue so scope and evidence can be discussed before implementation.
+For code or documentation changes, use [CONTRIBUTING.md](https://github.com/y-sor/clean-room-launcher/blob/main/CONTRIBUTING.md). Substantial product, provider, platform, release-path, or security-boundary changes should start with an Issue so scope and evidence can be discussed before implementation.
