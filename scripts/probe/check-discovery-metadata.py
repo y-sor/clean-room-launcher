@@ -423,6 +423,12 @@ description: {sample_desc}
                 "## Isolation and provider-state limits\n"
                 "## Security and trust non-claims\n"
             ),
+            "troubleshooting.md": (
+                "## 1. Is CLROOM installed and on PATH?\n"
+                "## 4. Did CLROOM refuse the launch before the provider started?\n"
+                "## 7. Is the MCP configured but the model still cannot use its tools?\n"
+                "## 11. Build a safe minimal reproduction\n"
+            ),
         }
         for name, body in fixtures.items():
             (docs / name).write_text(body, encoding="utf-8")
