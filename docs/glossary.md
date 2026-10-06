@@ -64,6 +64,19 @@ Use this page when a search phrase, provider term, or CLROOM term seems ambiguou
 | **Provider tuple** | The exact provider version, platform, architecture, launch path, and other material dimensions to which qualification evidence is bound. |
 | **Fail closed** | Refuse the launch or feature when CLROOM cannot prove the supported invariant instead of silently falling back to a broader inherited configuration. |
 
+## Release trust and verification terms
+
+| Term | Meaning in CLROOM docs |
+| --- | --- |
+| **SHA-256 checksum** | A digest used to confirm that downloaded bytes match the digest published for that release asset. A checksum alone does not identify who produced the bytes. |
+| **Build provenance attestation** | GitHub artifact-attestation evidence that binds release subjects to the expected CLROOM repository, release workflow, source ref, and tag-run provenance. It is not Apple code signing or a security audit. |
+| **SBOM** | The published CycloneDX software bill of materials for the release archive: dependency/component inventory, not a claim that every component is vulnerability-free. |
+| **SBOM attestation** | An attestation binding the CycloneDX SBOM predicate to the release archive subject. |
+| **Immutable release** | A published GitHub Release state that protects the associated release identity/assets from ordinary later modification. It does not replace checksum or provenance verification. |
+| **Code signing / notarization** | Apple platform trust mechanisms. The current CLROOM macOS archive is unsigned and unnotarized; release provenance attestations must not be described as substitutes for them. |
+
+Use [Verify a CLROOM release](verify-release.md) for the concrete verification path and the limits of each evidence type.
+
 ## Similar phrases that are not the same claim
 
 ### Context pollution vs configuration contamination
