@@ -22,6 +22,7 @@ relative_links:
 
 header_pages:
   - why-clroom.md
+  - install.md
   - problem-index.md
   - use-cases.md
   - agent-runners.md
