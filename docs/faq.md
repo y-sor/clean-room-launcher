@@ -142,6 +142,10 @@ The current release documentation covers macOS on Apple Silicon and names exact
 provider qualification targets. Linux, Windows, and Intel macOS are not
 qualified by this release.
 
+## Which docs should I use for an older CLROOM release?
+
+Use the documentation stored at that exact Git tag, not the current website as a historical substitute. The canonical site follows the current project state, while each published tag preserves the README, provider pages, limitations, threat model, and configuration matrix for that source snapshot. See [Documentation versions](documentation-versions.md).
+
 ## Where should I verify provider behavior?
 
 Use the official Anthropic and OpenAI links on the provider pages. Provider behavior changes, so consequential technical claims should be rechecked when upstream documentation or tested provider versions change.
