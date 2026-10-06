@@ -46,6 +46,7 @@ def validate_text(
     min_vectors: int = MIN_VECTOR_COUNT,
     min_sections: int = MIN_SECTION_COUNT,
     required_vectors: set[str] = REQUIRED_VECTORS,
+    min_related_groups: int = 20,
 ) -> tuple[int, int]:
     vectors, sections = parse(markdown)
 
@@ -67,7 +68,7 @@ def validate_text(
     if missing:
         fail("REQUIRED_VECTOR_MISSING:" + ",".join(missing))
 
-    if markdown.count("<summary>More related wording and searches</summary>") < 20:
+    if markdown.count("<summary>More related wording and searches</summary>") < min_related_groups:
         fail("RELATED_WORDING_CLUSTER_COVERAGE_LOW")
 
     return len(vectors), len(sections)
@@ -114,7 +115,13 @@ def self_test() -> None:
 
     # For fixture purposes the production minimums are lowered, while the same
     # duplicate/required-vector parser and normalization path is exercised.
-    validate_text(positive, min_vectors=3, min_sections=2, required_vectors=required)
+    validate_text(
+        positive,
+        min_vectors=3,
+        min_sections=2,
+        required_vectors=required,
+        min_related_groups=1,
+    )
 
     expect_failure(
         positive + "- `Alpha   Problem`\n",
@@ -122,6 +129,7 @@ def self_test() -> None:
         min_vectors=3,
         min_sections=2,
         required_vectors=required,
+        min_related_groups=1,
     )
     expect_failure(
         positive,
@@ -129,6 +137,7 @@ def self_test() -> None:
         min_vectors=4,
         min_sections=2,
         required_vectors=required,
+        min_related_groups=1,
     )
     expect_failure(
         positive,
@@ -136,6 +145,7 @@ def self_test() -> None:
         min_vectors=3,
         min_sections=2,
         required_vectors={"missing problem"},
+        min_related_groups=1,
     )
 
     print("PROBLEM_VECTOR_COVERAGE_SELF_TEST_PASS")
