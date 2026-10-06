@@ -1,7 +1,7 @@
 ---
 layout: page
 title: When to use CLROOM — and when not to
-description: Compare Clean Room Launcher (CLROOM) with Claude Code safe mode, bare mode, setting sources, CODEX_HOME, profiles, and manual configuration.
+description: Choose between CLROOM and native Claude Code or Codex controls for clean sessions, skill visibility, settings scopes, subagent MCP tools, CODEX_HOME, profiles, plugins, and MCP.
 permalink: /when-to-use-clroom/
 nav_title: When to use
 ---
