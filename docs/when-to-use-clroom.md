@@ -76,7 +76,7 @@ CLROOM adds provider-specific clean defaults, known filesystem controls, a selec
 
 Current Claude Code can narrow inherited subagent tools with `tools` or `disallowedTools`, including MCP server-level patterns, and can define MCP servers in a subagent's `mcpServers` field. An inline subagent MCP can stay out of the parent conversation entirely.
 
-Use those native controls when the actual requirement is **"this Claude subagent should get these tools or this MCP server."**
+Use those native controls when the actual requirement is **"this Claude subagent should get these tools or this MCP server."** They are provider-native controls rather than a CLROOM-qualified inner-session contract; current provider behavior can vary by Claude version, agent type, and execution mode, so verify the exact current Claude path when MCP inheritance itself is the problem.
 
 CLROOM does not rewrite provider-owned subagent definitions. Use separate CLROOM top-level processes when an external runner owns the workers and each process needs its own CLROOM clean/selective boundary.
 
