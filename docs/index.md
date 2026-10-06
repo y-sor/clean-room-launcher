@@ -15,9 +15,10 @@ On the current qualified Codex path, that same per-run model can also admit one 
 ## Start here
 
 - [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
+- [Install CLROOM](install.md)
+- [Clean-launch walkthrough](demo.md)
 - [Problem index: find your symptom or half-remembered term](problem-index.md)
 - [Use cases: practical CLROOM workflows](use-cases.md)
-- [Clean-launch walkthrough](demo.md)
 - [Agent runners: apps, scripts, CI, and multi-agent tools](agent-runners.md)
 - [Skill sets: create, use, combine, and edit reusable groups](skill-sets.md)
 - [When to use CLROOM — and when not to](when-to-use-clroom.md)
@@ -28,7 +29,6 @@ On the current qualified Codex path, that same per-run model can also admit one 
 - [Frequently asked questions](faq.md)
 - [Current limitations](limitations.md)
 - [Threat model](threat-model.md)
-- [Installation](install.md)
 - [Upgrade, roll back, and remove](upgrade-rollback.md)
 
 ## Start from the problem, not the product name
