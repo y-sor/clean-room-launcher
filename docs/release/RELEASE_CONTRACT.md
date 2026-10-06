@@ -477,6 +477,34 @@ fails closed when an indexable top-level docs page becomes orphaned from both pr
 navigation and explicit inbound links. This proves the deterministic internal-link
 graph subset without pretending that link count itself is a ranking KPI.
 
+## Post-public discovery observation loop
+
+After publication, controllable discovery prerequisites are reconciled first:
+canonical/rendered pages, sitemap, host-root robots policy, public routes, and
+changed-URL notification. Search-engine crawling, ranking, snippet choice, AI citation,
+and traffic are external outcomes and are never release PASS thresholds.
+
+When first-party data is available, the next release baseline should review it as
+diagnostic evidence. Useful inputs include:
+
+- Google Search Console granular queries, query groups/themes, and meaningful
+  top/trending-up/trending-down changes;
+- Search Console generative-AI and other search-surface reporting when the property
+  exposes it;
+- Bing Webmaster Tools search and AI Performance evidence such as grounding queries,
+  cited pages, topics/intents, citation share, and trend changes;
+- privacy-safe referral/analytics signals and recurring support/community language.
+
+The purpose is not to chase every metric. Use the evidence to discover vocabulary gaps,
+missing canonical answers, weak internal routing, stale terminology, or pages whose
+content does not satisfy the intent that is actually reaching them. Feed those findings
+into the next `PROBLEM_LANGUAGE_VECTOR_COVERAGE`, discovery-impact map, and canonical
+answer review.
+
+Record insufficient or delayed data as such. Do not treat absence of impressions,
+clicks, citations, or crawler activity as proof that the documentation is correct, and
+do not manufacture content merely to move a dashboard number.
+
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
