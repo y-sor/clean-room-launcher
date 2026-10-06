@@ -63,6 +63,7 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - hooks, plugins, MCP servers, and apps;
 - MCP/tool context overhead and provider-native tool-search controls;
 - MCP environment/authentication state that differs from configuration presence;
+- MCP configured/connected state where tools are still absent from the active model/session;
 - bounded Codex plugin + MCP composition and resolved-launch inspection;
 - top-level per-worker resource choices vs provider-owned subagent scoping;
 - multiple projects, task-specific workflows, and plugin/MCP profile language;
