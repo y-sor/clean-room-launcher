@@ -586,7 +586,6 @@ Codex has global instruction files under `CODEX_HOME` plus project instruction d
 <summary>More related wording and searches</summary>
 
 - `Codex profiles`
-- `Codex profile per project`
 - `Codex clean profile`
 - `Codex alternate config`
 - `Codex config.toml profile`
