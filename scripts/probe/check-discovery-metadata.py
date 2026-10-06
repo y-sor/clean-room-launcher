@@ -97,6 +97,7 @@ def validate_problem_routing(problem_index: str) -> None:
         "subagents-inherit-mcp-tools",
         "inspect-resolved-launch",
         "codex-global-skills-keep-project-skills",
+        "privacy-data-flow",
     }
     routed = set(re.findall(r"\]\(#([^)]+)\)", routing))
     missing = sorted(required_anchors - routed)
@@ -119,6 +120,7 @@ def validate_llms(llms: str) -> None:
         "Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/",
         "Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/",
         "Support and safe issue routing: https://y-sor.github.io/clean-room-launcher/support/",
+        "Privacy, credentials, telemetry, network behavior, and data flow: https://y-sor.github.io/clean-room-launcher/privacy-data-flow/",
         'rel="describedby"',
     )
     for item in required:
@@ -140,6 +142,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/install.md",
         "docs/limitations.md",
         "docs/problem-index.md",
+        "docs/privacy-data-flow.md",
         "docs/providers.md",
         "docs/skill-sets.md",
         "docs/SUPPORT.md",
@@ -181,6 +184,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/glossary.md": ("clean", "skill", "plugin", "mcp", "subagent", "qualified"),
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
         "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
+        "docs/privacy-data-flow.md": ("telemetry", "credentials", "network", "analytics", "provider-owned"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
         "docs/SUPPORT.md": ("support", "bug", "security", "version"),
         "docs/verify-release.md": ("checksum", "provenance", "sbom", "immutable"),
@@ -188,6 +192,28 @@ def validate_descriptions(root: Path) -> None:
     for relative, terms in requirements.items():
         description = frontmatter_value(read(root, relative), "description")
         require_terms(description, terms, relative)
+
+
+def validate_crawler_policy(robots: str) -> None:
+    required = (
+        "Search / citation indexing.",
+        "User-initiated retrieval",
+        "Training / model-improvement controls are independent from search visibility.",
+        "User-agent: OAI-SearchBot",
+        "User-agent: Claude-SearchBot",
+        "User-agent: PerplexityBot",
+        "User-agent: GPTBot",
+        "User-agent: ClaudeBot",
+        "User-agent: Google-Extended",
+        "User-agent: *",
+        "Sitemap: https://y-sor.github.io/clean-room-launcher/sitemap.xml",
+    )
+    for item in required:
+        if item not in robots:
+            fail(f"CRAWLER_PURPOSE_POLICY_MISSING:{item}")
+
+    if robots.count("Allow: /") < 10:
+        fail("CRAWLER_CURRENT_ALLOW_POLICY_DRIFT")
 
 
 def validate(root: Path) -> None:
@@ -208,6 +234,7 @@ def validate(root: Path) -> None:
     )
     validate_problem_routing(read(root, "docs/problem-index.md"))
     validate_llms(read(root, "docs/llms.txt"))
+    validate_crawler_policy(read(root, "docs/robots.txt"))
     validate_descriptions(root)
     print("DISCOVERY_METADATA_ROUTING_PASS")
 
@@ -245,6 +272,7 @@ def self_test() -> None:
 - [d](#subagents-inherit-mcp-tools)
 - [e](#inspect-resolved-launch)
 - [f](#codex-global-skills-keep-project-skills)
+- [g](#privacy-data-flow)
 
 <a id="apps-runners-and-ci"></a>
 <a id="mcp-tool-context-overload"></a>
@@ -253,6 +281,7 @@ def self_test() -> None:
 <a id="subagents-inherit-mcp-tools"></a>
 <a id="inspect-resolved-launch"></a>
 <a id="codex-global-skills-keep-project-skills"></a>
+<a id="privacy-data-flow"></a>
 """
     validate_problem_routing(good_problem)
     expect_failure(
@@ -271,6 +300,37 @@ description: {sample_desc}
 """
     assert frontmatter_value(fixture, "title") == sample_title
     assert frontmatter_value(fixture, "description") == sample_desc
+
+    good_robots = """# Search / citation indexing.
+# User-initiated retrieval
+# Training / model-improvement controls are independent from search visibility.
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: GPTBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+User-agent: Googlebot
+Allow: /
+User-agent: Bingbot
+Allow: /
+User-agent: Claude-User
+Allow: /
+User-agent: *
+Allow: /
+Sitemap: https://y-sor.github.io/clean-room-launcher/sitemap.xml
+"""
+    validate_crawler_policy(good_robots)
+    expect_failure(
+        lambda: validate_crawler_policy(good_robots.replace("User-agent: GPTBot", "User-agent: OtherBot")),
+        "CRAWLER_PURPOSE_POLICY_MISSING",
+    )
 
     print("DISCOVERY_METADATA_ROUTING_SELF_TEST_PASS")
 
