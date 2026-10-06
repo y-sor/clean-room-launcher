@@ -30,6 +30,21 @@ Gatekeeper globally if local macOS policy refuses it.
 
 Before running a downloaded release, [verify its checksum, provenance, SBOM attestation, and publication identity](verify-release.md). Those checks answer different trust questions; the current archive remains unsigned and unnotarized at the Apple code-signing layer.
 
+## If the first command fails
+
+Use the symptom before changing system security or reinstalling anything:
+
+| Symptom | First check |
+| --- | --- |
+| `clroom: command not found` | The one-line installer writes to `~/.local/bin`. Run `command -v clroom` and check whether `$HOME/.local/bin` is present in `PATH`. For the current shell, `export PATH="$HOME/.local/bin:$PATH"` is sufficient to test the installation. |
+| CLROOM starts but cannot find the provider | The provider CLI is a prerequisite. Run `command -v codex` or `command -v claude` and verify that the provider works directly before debugging CLROOM. |
+| macOS says the developer cannot be verified or Apple cannot check the software | The current CLROOM archive is unsigned and unnotarized. Verify the exact release first. Do **not** disable Gatekeeper globally. If your local/organization policy permits the release after verification, use the normal macOS per-app approval flow rather than weakening machine-wide security. |
+| Architecture/format error | The current published qualification is macOS on Apple Silicon. `uname -m` should report `arm64`; Intel macOS is not qualified by this release. |
+
+If these checks do not explain the failure, use [Support](SUPPORT.md) and include the CLROOM version, macOS/architecture, provider version, sanitized command, expected behavior, and observed error. Do not post credentials, provider tokens, prompts, transcripts, or unrestricted environment dumps.
+
+The [problem index](problem-index.md#install-first-run-failures) also maps common first-run wording to this answer.
+
 ## Manual release archive
 
 The exact-version examples below require that the named tag and GitHub Release
