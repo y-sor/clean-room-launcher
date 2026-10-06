@@ -18,11 +18,11 @@ semantics are not independently qualified in this release.
 
 Yes. Pass a different skill name or saved `@set` to each top-level launch.
 
-## Does CLROOM configure Claude agent-team teammates individually?
+## Does CLROOM configure Claude agent-team teammates or subagents individually?
 
-No. Provider-owned teammates and subagents follow Claude Code's own inheritance
-and scoping rules. Launch separate processes when workers need independent
-CLROOM inputs.
+No. CLROOM controls the top-level provider launch it starts.
+
+Current Claude Code has native inner-session controls: subagent `tools` and `disallowedTools` can narrow the inherited tool pool, including MCP server patterns, and `mcpServers` can give a subagent its own servers. Use those native controls when the boundary is inside one Claude session. Launch separate CLROOM processes when an external runner owns independent workers that each need their own CLROOM launch inputs.
 
 ## Can I keep skills in one git repo and symlink them?
 
