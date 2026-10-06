@@ -9,8 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-MIN_VECTOR_COUNT = 400
-MIN_SECTION_COUNT = 35
+MIN_VECTOR_COUNT = 500
+MIN_SECTION_COUNT = 40
 
 REQUIRED_VECTORS = {
     "MCP context bloat",
@@ -23,6 +23,8 @@ REQUIRED_VECTORS = {
     "disable one Claude plugin skill",
     "coding agent configuration drift",
     "does CLROOM stop prompt injection",
+    "verify CLROOM release",
+    "CLROOM provenance attestation",
     "Claude skillOverrides",
 }
 
