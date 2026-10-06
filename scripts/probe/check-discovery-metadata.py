@@ -106,6 +106,12 @@ def validate_problem_routing(problem_index: str) -> None:
         "install-first-run-failures",
         "privacy-data-flow",
         "license-commercial-use",
+        "platform-support",
+        "package-manager-install",
+        "upgrade-rollback-remove",
+        "clroom-vs-container-sandbox",
+        "other-coding-agents",
+        "multiple-remote-mcp",
     }
     routed = set(re.findall(r"\]\(#([^)]+)\)", routing))
     missing = sorted(required_anchors - routed)
@@ -218,6 +224,7 @@ def validate_retrieval_structure(root: Path) -> None:
             "## Provider versions",
             "## Qualified launch paths",
             "## What CLROOM owns vs what the provider owns",
+            "## Other coding-agent providers",
             "## Not qualified in this release",
         ),
         "docs/configuration-matrix.md": (
@@ -336,6 +343,12 @@ def self_test() -> None:
 - [g0](#install-first-run-failures)
 - [g](#privacy-data-flow)
 - [h](#license-commercial-use)
+- [i](#platform-support)
+- [j](#package-manager-install)
+- [k](#upgrade-rollback-remove)
+- [l](#clroom-vs-container-sandbox)
+- [m](#other-coding-agents)
+- [n](#multiple-remote-mcp)
 
 <a id="apps-runners-and-ci"></a>
 <a id="mcp-tool-context-overload"></a>
@@ -350,6 +363,12 @@ def self_test() -> None:
 <a id="install-first-run-failures"></a>
 <a id="privacy-data-flow"></a>
 <a id="license-commercial-use"></a>
+<a id="platform-support"></a>
+<a id="package-manager-install"></a>
+<a id="upgrade-rollback-remove"></a>
+<a id="clroom-vs-container-sandbox"></a>
+<a id="other-coding-agents"></a>
+<a id="multiple-remote-mcp"></a>
 """
     validate_problem_routing(good_problem)
     expect_failure(
