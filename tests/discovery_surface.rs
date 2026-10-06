@@ -90,13 +90,28 @@ fn discovery_descriptions_stay_concise_and_specific() {
 }
 
 #[test]
-fn homepage_metadata_exposes_analytics_preview_and_free_app_facts() {
+fn homepage_metadata_exposes_analytics_preview_and_truthful_source_facts() {
     let head = read("docs/_includes/head.html");
     assert!(head.contains("max-image-preview:large"));
-    assert!(head.contains("\"@type\": \"SoftwareApplication\""));
-    assert!(head.contains("\"price\": 0"));
+    assert!(head.contains("\"@type\": \"SoftwareSourceCode\""));
+    assert!(head.contains(
+        "\"codeRepository\": \"https://github.com/y-sor/clean-room-launcher\""
+    ));
+    assert!(head.contains("\"programmingLanguage\": \"Rust\""));
+    assert!(head.contains("\"runtimePlatform\": \"macOS on Apple Silicon\""));
+    assert!(head.contains("\"license\": \"https://www.mozilla.org/MPL/2.0/\""));
+    assert!(!head.contains("\"@type\": \"SoftwareApplication\""));
+    assert!(!head.contains("\"aggregateRating\""));
+    assert!(!head.contains("\"review\""));
     assert!(head.contains("static.cloudflareinsights.com/beacon.min.js"));
     assert!(head.contains("a18fd1827d4c48d2a22277f14eade9b2"));
+
+    let config = read("docs/_config.yml");
+    assert!(config.contains("card: summary_large_image"));
+    assert!(config.contains("path: /assets/clean-room-launcher-hero.png"));
+    assert!(config.contains(
+        "alt: Clean Room Launcher (CLROOM) clean and selective coding-agent launch"
+    ));
 
     let home = read("docs/index.md");
     assert!(home.contains("title: Clean Room Launcher (CLROOM)"));
