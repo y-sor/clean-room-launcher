@@ -22,7 +22,7 @@ Yes. Pass a different skill name or saved `@set` to each top-level launch.
 
 No. CLROOM controls the top-level provider launch it starts.
 
-Current Claude Code has native inner-session controls: subagent `tools` and `disallowedTools` can narrow the inherited tool pool, including MCP server patterns, and `mcpServers` can give a subagent its own servers. Use those native controls when the boundary is inside one Claude session. Launch separate CLROOM processes when an external runner owns independent workers that each need their own CLROOM launch inputs.
+Current Claude Code documents native inner-session controls: subagent `tools` and `disallowedTools` can narrow the tool pool, including MCP server patterns, and `mcpServers` can give a subagent its own servers. Those are provider-native controls, not behavior CLROOM independently qualifies; MCP inheritance and tool availability have changed across Claude versions and agent modes. Use the current provider docs and reproduce the exact Claude path when the problem is an internal subagent. Launch separate CLROOM processes when an external runner owns independent workers that each need their own CLROOM launch inputs.
 
 ## Can I keep skills in one git repo and symlink them?
 
