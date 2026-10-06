@@ -125,66 +125,7 @@ jobs:
           grep -Fq '<a id="codex-built-in-and-project-skills"></a>' docs/problem-index.md
           grep -Fq '<a id="create-edit-and-combine-skill-sets"></a>' docs/problem-index.md
           test "$(grep -Fc '<summary>More related wording and searches</summary>' docs/problem-index.md)" -ge 20
-          test "$(grep -Ec '^- `[^`]+`
-
-          grep -Fq 'Why does Codex show more skills than the CLROOM `Global skills` count?' docs/faq.md
-
-          grep -Fq 'url: "https://y-sor.github.io"' docs/_config.yml
-          grep -Fq 'repository: y-sor/clean-room-launcher' docs/_config.yml
-          grep -Fq 'baseurl: "/clean-room-launcher"' docs/_config.yml
-          grep -Fq 'parse_block_html: true' docs/_config.yml
-          ! grep -Eq '^[[:space:]]*-[[:space:]]+jekyll-sitemap[[:space:]]*$' docs/_config.yml
-      - name: Validate public release-state freshness
-        run: python3 scripts/probe/check-doc-freshness.py --root "$PWD"
-      - name: Validate problem-language vector coverage
-        run: python3 scripts/probe/check-problem-vectors.py --root "$PWD"
-      - name: Validate discovery metadata and routing
-        run: python3 scripts/probe/check-discovery-metadata.py --root "$PWD"
-      - name: Validate documentation link graph
-        run: python3 scripts/probe/check-doc-link-graph.py --root "$PWD"
-      - name: Validate sitemap parser and negative cases
-        run: python3 scripts/probe/check-sitemap.py --source-root "$PWD"
-
-  qualified-target-lanes:
-    name: Build qualified target lane
-    needs: target-matrix
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: alpha-macos-aarch64
-            runner: macos-14
-            rust_target: aarch64-apple-darwin
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: cargo test --locked --all-targets --target "${{ matrix.rust_target }}"
-      - name: Build shipped binaries without warnings
-        run: RUSTFLAGS='-D warnings' cargo build --locked --release --bins --target "${{ matrix.rust_target }}"
-
-  required:
-    name: Required
-    needs: [harness-contract, target-matrix, docs-discovery, qualified-target-lanes]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require complete CI topology
-        env:
-          HARNESS: ${{ needs.harness-contract.result }}
-          TARGET: ${{ needs.target-matrix.result }}
-          DOCS: ${{ needs.docs-discovery.result }}
-          QUALIFIED: ${{ needs.qualified-target-lanes.result }}
-        run: |
-          set -euo pipefail
-          test "$HARNESS" = success
-          test "$TARGET" = success
-          test "$DOCS" = success
-          test "$QUALIFIED" = success
-          echo "CI_REQUIRED_PASS" docs/problem-index.md)" -ge 630
+          test "$(grep -Ec '^- `[^`]+`$' docs/problem-index.md)" -ge 630
 
           grep -Fq 'Why does Codex show more skills than the CLROOM `Global skills` count?' docs/faq.md
 
