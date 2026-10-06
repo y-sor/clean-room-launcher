@@ -77,6 +77,12 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - licensing/work-use questions about MPL-2.0, company use, and the absence of a separate CLROOM commercial-edition account requirement.
 - evaluation/benchmark language for reproducible clean baselines and configuration-contamination testing.
 - first-run/install failures: PATH, provider prerequisite, Apple Silicon qualification, and unsigned/unnotarized Gatekeeper warnings.
+- platform-support questions for Linux, Windows, Intel macOS, Apple Silicon, and the difference between "can run" and evidence-backed qualification.
+- distribution questions for GitHub Releases, exact-tag Cargo install, Homebrew, crates.io, npm, and unsupported package-manager paths.
+- upgrade/rollback/remove questions that must not be answered by deleting provider authentication or configuration.
+- CLROOM-vs-container/VM/network-sandbox questions: CLROOM is a launch-composition boundary, not general host/network isolation.
+- provider-scope questions for Gemini CLI, Cursor, Aider, OpenCode, and other unqualified coding agents.
+- current resource-cardinality/transport limits: one qualified Codex plugin + one exact stdio MCP at most; no generic multi-plugin/multi-MCP, remote/OAuth, or `--with=all` support.
 
 For exact technical behavior, follow the linked Claude Code or Codex page instead of inferring from a search phrase.
 
