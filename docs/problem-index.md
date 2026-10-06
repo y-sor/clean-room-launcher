@@ -27,7 +27,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills), [Claude plugin skill controls](#claude-plugin-skill-controls)
 - **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [subagent MCP/tools](#subagents-inherit-mcp-tools)
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
-- **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools)
+- **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 - **Trust/install:** [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 
@@ -820,6 +820,40 @@ For current Claude Code, use native subagent controls first when the problem is 
 If an external runner owns separate provider processes, each top-level process can instead get its own CLROOM launch. On the current Codex path, those separate launches can differ in the supported skill/plugin/MCP selections CLROOM qualifies.
 
 **Go deeper:** [Agent runners](agent-runners.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
+
+<a id="subagent-mcp-tools-missing"></a>
+
+## Why can a Claude subagent fail to see MCP tools that work in the parent session?
+
+**Common ways people ask this:**
+
+- `Claude subagent MCP tools missing`
+- `subagent cannot access MCP tools`
+- `Claude Agent tool no MCP tools`
+- `MCP works in parent not subagent`
+- `custom subagent ToolSearch missing`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Claude custom agent MCP unavailable`
+- `subagent mcpServers not working`
+- `MCP tools missing in background subagent`
+- `Claude subagent inherits tools inconsistently`
+- `ToolSearch missing from custom subagent`
+- `plugin subagent cannot use MCP`
+- `Claude AgentDefinition MCP tools`
+- `subagent tools frontmatter ignored MCP`
+- `MCP available in main thread not child agent`
+- `Claude subagent MCP inheritance bug`
+
+</details>
+
+This is provider-owned behavior, not something CLROOM can make universal from outside the running Claude session. Current Claude documentation exposes subagent `tools`, `disallowedTools`, and `mcpServers` controls, but real provider behavior has changed across versions and execution modes. If MCP works in the parent and disappears in a provider-owned subagent, reproduce it against the current Claude version and provider docs before treating it as a CLROOM launch failure.
+
+Use separate top-level CLROOM processes when an external runner needs independently controlled workers. That gives each process its own CLROOM launch boundary; it does not patch Claude's internal subagent implementation.
+
+**Go deeper:** [Claude Code](claude-code.md) · [Agent runners](agent-runners.md) · [When to use CLROOM](when-to-use-clroom.md) · [Current limitations](limitations.md)
 
 <a id="inspect-resolved-launch"></a>
 
