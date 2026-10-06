@@ -112,6 +112,12 @@ If your problem is a large ambient MCP/tool inventory, start with Codex's own cu
 
 CLROOM's narrower value is per-launch selection: the clean path does not rewrite the normal user configuration, and the qualified resource path can deliberately admit one supported standalone stdio MCP for this run. That can reduce configuration ambiguity, but it is not a claim of universal lazy MCP loading or control over every provider-owned tool surface.
 
+## Configuration presence vs runtime MCP tool availability
+
+A configured or initialized MCP server is not automatically the same thing as tools being visible and callable in the active Codex session. Provider runtime mode, model/tool-discovery behavior, host surface, authentication, and upstream regressions can affect the final tool-exposure step.
+
+CLROOM's selected-MCP preflight and `clroom inspect codex ...` prove only the bounded launch/configuration facts they own. They do not claim that every provider host or later runtime state will expose a configured tool successfully. When the symptom is **"the MCP is configured but the model cannot call its tools,"** use current Codex MCP/status/tool-discovery diagnostics as well as the CLROOM launch evidence.
+
 ## Compose one plugin with one standalone MCP
 
 v0.5.0 can resolve both bounded selectors in one interactive launch:
