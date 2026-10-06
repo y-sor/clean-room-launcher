@@ -25,6 +25,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 
 ### Find or diagnose a problem
 
+- [Troubleshooting: identify whether the failure is install, provider, CLROOM, resource selection, or provider runtime](troubleshooting.md)
 - [Problem index: hundreds of real phrasings routed to canonical answers](problem-index.md)
 - [FAQ: direct answers and non-claims](faq.md)
 - [Terminology glossary: user wording → stable CLROOM/provider terms](glossary.md)
