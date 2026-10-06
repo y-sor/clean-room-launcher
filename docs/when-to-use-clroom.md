@@ -19,6 +19,8 @@ If you arrived with a symptom or half-remembered term rather than the product na
 | Broad Claude troubleshooting with customizations disabled | Claude `--safe-mode` |
 | Minimal scripted Claude invocation | Claude `--bare` |
 | Choose which normal Claude settings scopes participate | Claude `--setting-sources` |
+| Inspect, edit, enable, or disable Claude auto-memory | Claude `/memory` and native memory controls |
+| Compare behavior with Claude auto-memory absent from the launch while leaving stored memory untouched | CLROOM's qualified Claude clean path |
 | Give a Claude subagent a narrower tool set or MCP servers of its own | Claude subagent `tools`, `disallowedTools`, and `mcpServers` |
 | Suppress normal Codex user configuration for one non-interactive task | Native `codex exec --ignore-user-config` |
 | Maintain a persistent alternate provider setup | `CODEX_HOME`, Claude configuration directory, or provider-native profiles/settings |
