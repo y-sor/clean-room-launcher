@@ -20,6 +20,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 - [Clean-launch walkthrough](demo.md)
 - [Problem index: find your symptom or half-remembered term](problem-index.md)
 - [Terminology glossary: map user wording to CLROOM/provider terms](glossary.md)
+- [Documentation versions: current vs exact release-tag docs](documentation-versions.md)
 - [Use cases: practical CLROOM workflows](use-cases.md)
 - [Agent runners: apps, scripts, CI, and multi-agent tools](agent-runners.md)
 - [Skill sets: create, use, combine, and edit reusable groups](skill-sets.md)
