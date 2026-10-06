@@ -136,6 +136,14 @@ No. CLROOM intentionally avoids rewriting the normal persistent provider setup. 
 
 No. Do not infer that from the product name. Read the existing threat model and limitations. The current release uses narrow macOS filesystem controls and is not a complete machine or network isolation product.
 
+## Does CLROOM collect telemetry, upload my code, or need its own API key?
+
+CLROOM is a local launch layer, not a hosted coding service. It does not require a CLROOM account, CLROOM API key, or CLROOM-hosted backend to start the installed provider, and provider authentication remains provider-owned.
+
+That does **not** mean the whole session is offline or that no data can leave the machine. Codex, Claude Code, selected plugins, and selected MCP servers can have their own network/data behavior. The public documentation site also has a separate Cloudflare Web Analytics surface.
+
+See [Privacy and data flow](privacy-data-flow.md) for the exact separation between launcher behavior, provider credentials, MCP environment admission, installer/release downloads, website analytics, and network-sandbox non-claims.
+
 ## What platforms are supported?
 
 The current release documentation covers macOS on Apple Silicon and names exact
