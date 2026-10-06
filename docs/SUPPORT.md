@@ -14,14 +14,14 @@ Clean Room Launcher (CLROOM) is a small open-source project. There is no paid su
 
 Start with the public documentation:
 
-- [Install CLROOM](docs/install.md)
-- [Clean-launch walkthrough](docs/demo.md)
-- [Problem and search-language index](docs/problem-index.md)
-- [When to use CLROOM — and when not to](docs/when-to-use-clroom.md)
-- [Codex and CLROOM](docs/codex.md)
-- [Claude Code and CLROOM](docs/claude-code.md)
-- [Current limitations](docs/limitations.md)
-- [Verify a CLROOM release](docs/verify-release.md)
+- [Install CLROOM](install.md)
+- [Clean-launch walkthrough](demo.md)
+- [Problem and search-language index](problem-index.md)
+- [When to use CLROOM — and when not to](when-to-use-clroom.md)
+- [Codex and CLROOM](codex.md)
+- [Claude Code and CLROOM](claude-code.md)
+- [Current limitations](limitations.md)
+- [Verify a CLROOM release](verify-release.md)
 - [Privacy and data flow](privacy-data-flow.md)
 
 If you do not know the provider's exact term, use the problem index first. It maps common symptoms and alternate wording to the canonical technical answer.
@@ -50,7 +50,7 @@ Use the process in [SECURITY.md](https://github.com/y-sor/clean-room-launcher/bl
 
 ## Provider behavior
 
-CLROOM support claims are version-, platform-, and path-specific. Before reporting a provider difference, check the current provider page and [configuration matrix](docs/configuration-matrix.md).
+CLROOM support claims are version-, platform-, and path-specific. Before reporting a provider difference, check the current provider page and [configuration matrix](configuration-matrix.md).
 
 A newly documented Codex or Claude Code capability does not automatically mean CLROOM has qualified that capability.
 
