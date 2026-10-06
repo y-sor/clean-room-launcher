@@ -18,6 +18,8 @@ REQUIRED_VECTORS = {
     "disable global Codex skills keep project skills",
     "Claude subagent inherits MCP tools",
     "inspect Codex resolved launch",
+    "Codex MCP bearer token env var missing",
+    "thread level plugin MCP profile",
     "Claude skillOverrides",
 }
 
