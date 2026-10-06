@@ -29,6 +29,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
+- **Trust/install:** [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 
 <a id="apps-runners-and-ci"></a>
 ## Is an app, runner, script, or CI job launching the coding agent?
@@ -1125,6 +1126,45 @@ Use provider-native status or inspection tools where they exist, and CLROOM's la
 Start with the provider/Agent Skills documentation for the skill model itself. CLROOM becomes relevant when the next question is how to test a skill cleanly, compare with/without it, or keep unrelated personal-global skills out of the test launch.
 
 **Go deeper:** [Use cases](use-cases.md) · [Skill sets](skill-sets.md) · [FAQ](faq.md) · [Claude Code](claude-code.md) · [Codex](codex.md)
+
+<a id="verify-release-evidence"></a>
+
+## Can you verify a CLROOM release before you run it?
+
+**Common ways people ask this:**
+
+- `verify CLROOM release`
+- `verify CLROOM download`
+- `CLROOM release checksum`
+- `CLROOM provenance attestation`
+- `CLROOM SBOM`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `gh attestation verify CLROOM`
+- `verify CLROOM GitHub release provenance`
+- `CLROOM artifact attestation`
+- `verify CLROOM install.sh`
+- `CLROOM immutable release`
+- `CLROOM checksum vs provenance`
+- `CLROOM SBOM attestation`
+- `is CLROOM release signed`
+- `is CLROOM notarized`
+- `CLROOM unsigned unnotarized`
+- `is CLROOM safe to install`
+- `verify coding agent launcher download`
+- `software supply chain verify CLROOM`
+- `verify release before curl pipe sh`
+- `verify GitHub release Sigstore bundle`
+
+</details>
+
+Yes. The published release exposes separate evidence for separate trust questions: `SHA256SUMS` for byte equality, a tag-bound build-provenance bundle, a CycloneDX SBOM and SBOM attestation, plus GitHub's published release identity. The current macOS archive is still unsigned and unnotarized at the Apple code-signing layer, and none of these checks means the software is vulnerability-free.
+
+Use the canonical [release verification guide](verify-release.md) for exercised commands and for the exact distinction between checksum, provenance, SBOM, immutable release state, provider qualification, and runtime/security non-claims.
+
+**Go deeper:** [Verify a release](verify-release.md) · [Install](install.md) · [Security policy](https://github.com/y-sor/clean-room-launcher/security/policy) · [Threat model](threat-model.md)
 
 ## If your wording is different
 
