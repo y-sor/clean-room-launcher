@@ -21,13 +21,13 @@ That does **not** mean the whole session is offline or that no data can leave th
 | **Selected skills / plugins / MCP** | Selected resources can become readable or executable by the provider for that launch according to the qualified path. Their own behavior can include provider/tool network activity; CLROOM does not turn them into offline resources. |
 | **MCP environment variables** | On the qualified Codex standalone-MCP path, referenced environment-variable **names** must be explicitly admitted with `--pass-env=NAME`. Literal MCP secret values are refused by that selector. CLROOM inspection/evidence may show admitted names, not secret values. |
 | **Installer / release verification** | Installation and verification fetch release assets or attestations from GitHub. That download traffic is distinct from normal CLROOM launch preparation. |
-| **Documentation website** | The public GitHub Pages documentation currently includes a Cloudflare Web Analytics beacon. That website analytics surface is separate from the CLROOM CLI runtime. |
+| **Documentation website** | The public site is hosted on GitHub Pages and currently includes a Cloudflare Web Analytics beacon. GitHub documents host-level visitor IP logging for Pages security; the Cloudflare beacon is an additional website analytics surface. Both are separate from the CLROOM CLI runtime. |
 
 ## Does CLROOM collect product telemetry or phone home?
 
 The current CLROOM launcher does not require a CLROOM telemetry service or CLROOM-hosted control plane to perform a launch.
 
-The public documentation site is a different surface: it currently loads Cloudflare Web Analytics from `static.cloudflareinsights.com`. Do not infer website analytics behavior from the CLI, or CLI behavior from the website.
+The public documentation site is a different surface: it currently loads Cloudflare Web Analytics from `static.cloudflareinsights.com`. Do not infer website analytics behavior from the CLI, or CLI behavior from the website. GitHub also documents that GitHub Pages logs visitor IP addresses for security purposes. See [GitHub Pages data collection](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection) and [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/) for the current hosting/analytics provider documentation.
 
 If a future CLROOM release adds any launcher-side telemetry, hosted service, account requirement, update check, or new network client, that would be a material data-flow change and the documentation and release review must change with it.
 
