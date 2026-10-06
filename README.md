@@ -422,7 +422,7 @@ read. It does not mean Codex failed to start.
 If the required macOS filesystem restrictions cannot be created, Clean Room Launcher
 fails instead of silently starting a normal inherited Codex session.
 
-See [the current limitations](docs/limitations.md) and
+See [the current limitations](docs/limitations.md), [privacy and data flow](docs/privacy-data-flow.md), and
 [security policy](SECURITY.md).
 
 <details>
