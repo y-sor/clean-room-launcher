@@ -101,11 +101,16 @@ jobs:
           grep -Fq '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' docs/sitemap.xml
 
           test -s docs/robots.txt
-          grep -Fq 'current GitHub Pages site is a project site' docs/robots.txt
+          grep -Fq 'Standards-compliant crawlers consult /robots.txt at the y-sor.github.io host' docs/robots.txt
+          grep -Fq 'Search / citation indexing.' docs/robots.txt
           grep -Fq 'User-agent: OAI-SearchBot' docs/robots.txt
           grep -Fq 'User-agent: Claude-SearchBot' docs/robots.txt
           grep -Fq 'User-agent: Claude-User' docs/robots.txt
           grep -Fq 'User-agent: PerplexityBot' docs/robots.txt
+          grep -Fq 'User-agent: GPTBot' docs/robots.txt
+          grep -Fq 'User-agent: ClaudeBot' docs/robots.txt
+          grep -Fq 'User-agent: Google-Extended' docs/robots.txt
+          grep -Fq 'Training / model-improvement controls are independent from search visibility.' docs/robots.txt
           grep -Fq 'Sitemap: https://y-sor.github.io/clean-room-launcher/sitemap.xml' docs/robots.txt
 
           test -s docs/llms.txt
