@@ -36,6 +36,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Configuration matrix: https://y-sor.github.io/clean-room-launcher/configuration-matrix/
 - FAQ: https://y-sor.github.io/clean-room-launcher/faq/
 - Support and safe issue routing: https://y-sor.github.io/clean-room-launcher/support/
+- Privacy, credentials, telemetry, network behavior, and data flow: https://y-sor.github.io/clean-room-launcher/privacy-data-flow/
 - Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/
 - Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/
 - Current limitations: https://y-sor.github.io/clean-room-launcher/limitations.html
@@ -69,6 +70,7 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - launch-specific configuration without deleting the normal setup;
 - agent runners, scripts, CI, and per-worker skill choices;
 - inspecting what configuration or skills were active.
+- privacy/data-flow questions such as telemetry, phone-home behavior, API keys, credentials, uploads, provider-owned network traffic, and website analytics.
 
 For exact technical behavior, follow the linked Claude Code or Codex page instead of inferring from a search phrase.
 
@@ -81,6 +83,7 @@ For exact technical behavior, follow the linked Claude Code or Codex page instea
 - `clroom inspect codex ...` and its JSON form expose the sanitized resolved launch used by execution; observation of an upstream provider object does not by itself mean CLROOM activation is qualified.
 - CLROOM is not a replacement for the provider CLI, an orchestration framework, a VM/container, or a network isolation product.
 - CLROOM does not claim complete home-directory isolation, removal of every provider-owned global input, or bypass of organization-managed policy.
+- CLROOM is a local launch layer, not a hosted coding service; provider authentication stays provider-owned. Do not infer that the whole session is offline or that provider/plugin/MCP network traffic is blocked. The documentation website has its own analytics surface, separate from CLI runtime behavior.
 - Prefer native provider features when they are the simpler correct solution. Current examples include Claude skill visibility controls, MCP Tool Search, and subagent `tools` / `disallowedTools` / `mcpServers` for inner-session scope.
 - OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces; do not infer one from the other without provider-specific evidence.
 
