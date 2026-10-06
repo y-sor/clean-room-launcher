@@ -17,10 +17,11 @@ On the current qualified Codex path, that same per-run model can also admit one 
 ### First 5 minutes
 
 1. [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
-2. [Install CLROOM](install.md)
-3. [Clean-launch walkthrough](demo.md)
-4. [When to use CLROOM — and when a native provider control is better](when-to-use-clroom.md)
-5. [Verify a release before you run it](verify-release.md)
+2. [How CLROOM works — the clean/selective launch boundary](how-clroom-works.md)
+3. [Install CLROOM](install.md)
+4. [Clean-launch walkthrough](demo.md)
+5. [When to use CLROOM — and when a native provider control is better](when-to-use-clroom.md)
+6. [Verify a release before you run it](verify-release.md)
 
 ### Find or diagnose a problem
 
