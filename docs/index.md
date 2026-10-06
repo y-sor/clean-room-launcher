@@ -17,6 +17,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 - [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
 - [Install CLROOM](install.md)
 - [Verify a release: checksums, provenance, SBOM, and trust boundaries](verify-release.md)
+- [Privacy and data flow: telemetry, credentials, network behavior, and website analytics](privacy-data-flow.md)
 - [Clean-launch walkthrough](demo.md)
 - [Problem index: find your symptom or half-remembered term](problem-index.md)
 - [Terminology glossary: map user wording to CLROOM/provider terms](glossary.md)
