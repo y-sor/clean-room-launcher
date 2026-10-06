@@ -31,6 +31,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [stale Claude memory](#claude-auto-memory), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 - **Trust/privacy/install:** [first-run/install failures](#install-first-run-failures), [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 - **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
+- **Platform/install/scope:** [Linux/Windows/Intel Mac support](#platform-support), [Homebrew/package-manager install](#package-manager-install), [upgrade/rollback/remove](#upgrade-rollback-remove), [CLROOM vs VM/container/network sandbox](#clroom-vs-container-sandbox), [other coding-agent providers](#other-coding-agents), [multiple/remote/OAuth MCP or multiple plugins](#multiple-remote-mcp)
 
 <a id="apps-runners-and-ci"></a>
 ## Is an app, runner, script, or CI job launching the coding agent?
@@ -1496,6 +1497,162 @@ Yes. The published release exposes separate evidence for separate trust question
 Use the canonical [release verification guide](verify-release.md) for exercised commands and for the exact distinction between checksum, provenance, SBOM, immutable release state, provider qualification, and runtime/security non-claims.
 
 **Go deeper:** [Verify a release](verify-release.md) · [Install](install.md) · [Security policy](https://github.com/y-sor/clean-room-launcher/security/policy) · [Threat model](threat-model.md)
+
+<a id="platform-support"></a>
+## Does CLROOM work on Linux, Windows, or Intel Mac?
+
+**Common ways people ask this:**
+
+- `CLROOM Linux`
+- `CLROOM Windows`
+- `CLROOM Intel Mac`
+- `CLROOM x86_64 macOS`
+- `CLROOM macOS Apple Silicon support`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM supported operating systems`
+- `clean room launcher linux`
+- `clean room launcher windows`
+- `CLROOM arm64`
+- `CLROOM macOS requirements`
+
+</details>
+
+The current shipped qualification is **macOS on Apple Silicon**. Linux, Windows, and Intel macOS are not qualified in the current release. A platform may be able to compile or run some code without becoming a supported release path; CLROOM treats platform support as an evidence-backed qualification claim, not a guess from portability.
+
+**Go deeper:** [Provider support](providers.md) · [Current limitations](limitations.md) · [Install](install.md)
+
+<a id="package-manager-install"></a>
+## Can I install CLROOM with Homebrew, crates.io, npm, or another package manager?
+
+**Common ways people ask this:**
+
+- `brew install CLROOM`
+- `Homebrew CLROOM`
+- `cargo install CLROOM`
+- `crates.io CLROOM`
+- `CLROOM package manager`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `install CLROOM from GitHub release`
+- `CLROOM Homebrew formula`
+- `npm install CLROOM`
+- `CLROOM binary download`
+- `how to install Clean Room Launcher`
+
+</details>
+
+The supported distribution path is the published GitHub Release installer/archive. Cargo can install from an exact Git tag as documented, but CLROOM is not currently published to crates.io; Homebrew and npm distribution are not current supported release paths.
+
+**Go deeper:** [Install](install.md) · [Current limitations](limitations.md) · [Verify a release](verify-release.md)
+
+<a id="upgrade-rollback-remove"></a>
+## How do I update, roll back, or uninstall CLROOM without touching provider configuration?
+
+**Common ways people ask this:**
+
+- `update CLROOM`
+- `upgrade CLROOM`
+- `rollback CLROOM`
+- `uninstall CLROOM`
+- `remove Clean Room Launcher`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM downgrade`
+- `restore previous CLROOM version`
+- `does uninstall CLROOM delete Codex config`
+- `does CLROOM uninstall remove Claude settings`
+- `CLROOM previous version`
+
+</details>
+
+CLROOM's archive install is three user-local binaries. Upgrade/rollback/remove can be done without rewriting Codex or Claude Code authentication, project configuration, or provider installation. Follow the canonical rollback/remove page rather than deleting provider state while troubleshooting.
+
+**Go deeper:** [Upgrade, roll back and remove](upgrade-rollback.md) · [Install](install.md)
+
+<a id="clroom-vs-container-sandbox"></a>
+## Should I use CLROOM or a VM, container, devcontainer, or network sandbox?
+
+**Common ways people ask this:**
+
+- `CLROOM vs Docker`
+- `CLROOM vs container`
+- `CLROOM vs devcontainer`
+- `CLROOM vs VM`
+- `CLROOM network sandbox`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `is CLROOM a sandbox`
+- `coding agent isolation Docker vs CLROOM`
+- `sandbox Codex session`
+- `sandbox Claude Code session`
+- `CLROOM filesystem isolation`
+
+</details>
+
+Use CLROOM for a **qualified clean/selective launch boundary** around supported personal-global inputs and provider resources. Use a VM, container, OS sandbox, or network control when the requirement is stronger machine/filesystem/network isolation. CLROOM deliberately does not claim VM/container isolation, complete home-directory isolation, or network isolation.
+
+**Go deeper:** [Why CLROOM exists](why-clroom.md) · [Privacy & data flow](privacy-data-flow.md) · [Current limitations](limitations.md) · [Threat model](threat-model.md)
+
+<a id="other-coding-agents"></a>
+## Does CLROOM support Gemini CLI, Cursor, Aider, OpenCode, or other coding agents?
+
+**Common ways people ask this:**
+
+- `CLROOM Gemini CLI`
+- `CLROOM Cursor`
+- `CLROOM Aider`
+- `CLROOM OpenCode`
+- `CLROOM other coding agents`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Clean Room Launcher Gemini`
+- `Clean Room Launcher Cursor`
+- `use CLROOM with Aider`
+- `use CLROOM with OpenCode`
+- `which coding agents does CLROOM support`
+
+</details>
+
+Current CLROOM release qualification covers the installed **Codex** and **Claude Code** CLIs on the documented paths. Other coding agents are not qualified merely because they have similar concepts such as instructions, skills, MCP, profiles, or plugins. A future provider requires its own exact behavior, security, process, and platform qualification.
+
+**Go deeper:** [Provider support](providers.md) · [Configuration matrix](configuration-matrix.md) · [Current limitations](limitations.md)
+
+<a id="multiple-remote-mcp"></a>
+## Can CLROOM select multiple MCP servers, remote HTTP/OAuth MCP, or several plugins?
+
+**Common ways people ask this:**
+
+- `CLROOM multiple MCP servers`
+- `CLROOM multiple plugins`
+- `CLROOM HTTP MCP`
+- `CLROOM remote MCP`
+- `CLROOM OAuth MCP`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM SSE MCP`
+- `CLROOM WebSocket MCP`
+- `Codex multiple MCP per launch`
+- `CLROOM with two plugins`
+- `CLROOM --with=all`
+
+</details>
+
+Not in the current shipped CLROOM selector contract. The qualified Codex resource path is intentionally bounded to at most one whole plugin plus one exact root-user standalone **stdio** MCP server. Multiple plugins/MCP servers, remote transports, OAuth/helpers, and `--with=all` remain outside the current CLROOM-qualified slice. Use provider-native configuration directly when broader provider functionality is the actual requirement.
+
+**Go deeper:** [Codex](codex.md) · [Provider support](providers.md) · [Configuration matrix](configuration-matrix.md) · [Current limitations](limitations.md)
 
 ## If your wording is different
 
