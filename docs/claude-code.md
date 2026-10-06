@@ -193,6 +193,7 @@ This is also why managed-policy interactions around selected skills require care
 ## Official Anthropic sources
 
 - [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference)
+- [Claude Code commands (`/memory`, `/mcp`, `/context`, and diagnostics)](https://code.claude.com/docs/en/commands)
 - [Claude Code settings](https://code.claude.com/docs/en/settings)
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
 - [Claude Code MCP](https://code.claude.com/docs/en/mcp)
