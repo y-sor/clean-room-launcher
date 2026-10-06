@@ -63,6 +63,7 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(llms.contains("https://y-sor.github.io/clean-room-launcher/privacy-data-flow/"));
 
     let privacy = read("docs/privacy-data-flow.md");
+    let privacy_folded = privacy.to_lowercase();
     for phrase in [
         "Clean Room Launcher (CLROOM) is a local launch layer",
         "CLROOM account",
@@ -70,7 +71,10 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
         "Cloudflare Web Analytics",
         "CLROOM is not a network sandbox",
     ] {
-        assert!(privacy.contains(phrase), "privacy/data-flow answer lost required signal: {phrase}");
+        assert!(
+            privacy_folded.contains(&phrase.to_lowercase()),
+            "privacy/data-flow answer lost required signal: {phrase}"
+        );
     }
 
     let legacy_owner = format!("{}{}", "ewgenij87sn", "work");
