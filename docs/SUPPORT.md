@@ -1,3 +1,11 @@
+---
+layout: page
+title: CLROOM support
+description: Get help with Clean Room Launcher, report non-sensitive bugs safely, find version-specific docs, and route security issues to the private security process.
+permalink: /support/
+nav_title: Support
+---
+
 # Support
 
 Clean Room Launcher (CLROOM) is a small open-source project. There is no paid support contract or guaranteed response-time SLA.
