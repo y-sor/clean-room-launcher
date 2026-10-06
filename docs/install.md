@@ -28,6 +28,8 @@ If `~/.local/bin` is not already in `PATH`, the installer prints the directory
 to add. The release archive is unsigned and unnotarized; do not disable
 Gatekeeper globally if local macOS policy refuses it.
 
+Before running a downloaded release, [verify its checksum, provenance, SBOM attestation, and publication identity](verify-release.md). Those checks answer different trust questions; the current archive remains unsigned and unnotarized at the Apple code-signing layer.
+
 ## Manual release archive
 
 The exact-version examples below require that the named tag and GitHub Release
