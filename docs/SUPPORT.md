@@ -14,6 +14,7 @@ Clean Room Launcher (CLROOM) is a small open-source project. There is no paid su
 
 Start with the public documentation:
 
+- [Troubleshoot CLROOM](troubleshooting.md)
 - [Install CLROOM](install.md)
 - [Clean-launch walkthrough](demo.md)
 - [Problem and search-language index](problem-index.md)
