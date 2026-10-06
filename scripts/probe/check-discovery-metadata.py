@@ -319,6 +319,7 @@ def self_test() -> None:
 - [d](#subagents-inherit-mcp-tools)
 - [e](#inspect-resolved-launch)
 - [f](#codex-global-skills-keep-project-skills)
+- [f2](#codex-profile-vs-clroom)
 - [g0](#install-first-run-failures)
 - [g](#privacy-data-flow)
 - [h](#license-commercial-use)
@@ -332,6 +333,7 @@ def self_test() -> None:
 <a id="subagents-inherit-mcp-tools"></a>
 <a id="inspect-resolved-launch"></a>
 <a id="codex-global-skills-keep-project-skills"></a>
+<a id="codex-profile-vs-clroom"></a>
 <a id="install-first-run-failures"></a>
 <a id="privacy-data-flow"></a>
 <a id="license-commercial-use"></a>
