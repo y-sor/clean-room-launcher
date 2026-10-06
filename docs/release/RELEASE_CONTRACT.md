@@ -389,6 +389,28 @@ pre-tag contract checks block until that coherence is restored. This keeps candi
 bytes deterministic and makes documentation drift a pre-release failure rather
 than a post-test auto-write.
 
+## Problem-language vector integrity
+
+The public problem index is a semantic routing surface, not a one-time keyword
+list. Technical users can describe the same configuration problem with different
+provider terms, symptoms, workaround names, or incomplete vocabulary. Each
+release therefore treats distinct problem-language coverage as a maintained
+documentation asset.
+
+`scripts/probe/check-problem-vectors.py` runs in required docs-discovery CI and
+fails closed on material inventory/cluster regression, normalized duplicate
+vectors, or loss of representative current problem families. The machine count
+is only a regression signal. It does not authorize keyword stuffing, artificial
+language, or one thin page per query variant.
+
+Release research still owns the semantic part: compare the latest published
+problem-language baseline with current product/provider changes and real user,
+search-query, provider-issue, and developer-community terminology; add materially
+distinct useful formulations; merge/retire duplicates with rationale; and map
+the strongest new language into the corresponding canonical answer page when it
+improves comprehension or routing. A material release change with zero new vector
+findings requires evidence that this research was actually performed.
+
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
