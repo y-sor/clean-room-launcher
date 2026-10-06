@@ -17,7 +17,7 @@
   <a href="https://y-sor.github.io/clean-room-launcher/">Documentation →</a> ·
   <a href="docs/demo.md">Read the clean-launch walkthrough →</a> ·
   <a href="docs/verify-release.md">Verify a release →</a> ·
-  <a href="SUPPORT.md">Support →</a>
+  <a href="docs/SUPPORT.md">Support →</a>
 </p>
 
 <p align="center">
