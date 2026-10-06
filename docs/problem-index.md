@@ -30,6 +30,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
 - **Trust/install:** [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
+- **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
 
 <a id="apps-runners-and-ci"></a>
 ## Is an app, runner, script, or CI job launching the coding agent?
@@ -1160,6 +1161,38 @@ Use provider-native status or inspection tools where they exist, and CLROOM's la
 Start with the provider/Agent Skills documentation for the skill model itself. CLROOM becomes relevant when the next question is how to test a skill cleanly, compare with/without it, or keep unrelated personal-global skills out of the test launch.
 
 **Go deeper:** [Use cases](use-cases.md) · [Skill sets](skill-sets.md) · [FAQ](faq.md) · [Claude Code](claude-code.md) · [Codex](codex.md)
+
+<a id="docs-vs-installed-release"></a>
+
+## Why do the current CLROOM docs describe something my installed release does not have?
+
+**Common ways people ask this:**
+
+- `CLROOM docs don't match installed version`
+- `CLROOM feature missing in old release`
+- `current docs vs CLROOM v0.5`
+- `which CLROOM docs match my version`
+- `old CLROOM release documentation`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM historical docs`
+- `docs for exact CLROOM tag`
+- `CLROOM version specific documentation`
+- `provider docs changed since CLROOM release`
+- `CLROOM current site newer than installed version`
+- `what features were in CLROOM v0.4`
+- `use docs from Git tag CLROOM`
+- `AI answer mixed CLROOM versions`
+- `search result shows old CLROOM docs`
+- `CLROOM cached documentation stale`
+
+</details>
+
+The canonical website follows the current project state. A published Git tag preserves the documentation for that exact source snapshot. If the question names an older CLROOM version, use the README, provider pages, limitations, threat model, and configuration matrix from that exact tag instead of projecting current-site behavior backward.
+
+**Go deeper:** [Documentation versions](documentation-versions.md) · [GitHub Releases](https://github.com/y-sor/clean-room-launcher/releases) · [Current provider support](providers.md)
 
 <a id="verify-release-evidence"></a>
 
