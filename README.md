@@ -15,7 +15,9 @@
 
 <p align="center">
   <a href="https://y-sor.github.io/clean-room-launcher/">Documentation →</a> ·
-  <a href="docs/demo.md">Read the clean-launch walkthrough →</a>
+  <a href="docs/demo.md">Read the clean-launch walkthrough →</a> ·
+  <a href="docs/verify-release.md">Verify a release →</a> ·
+  <a href="SUPPORT.md">Support →</a>
 </p>
 
 <p align="center">
@@ -167,8 +169,7 @@ If `~/.local/bin` is not in `PATH`, the installer tells you what to add.
 The macOS release archive is unsigned and unnotarized. Do not disable Gatekeeper
 globally to run it.
 
-See the [install guide](docs/install.md) for manual archive verification, Cargo
-installation, removal, and provider checks.
+See the [install guide](docs/install.md) for installation and removal. Before executing downloaded release artifacts, use the [release verification guide](docs/verify-release.md) for checksum, provenance, CycloneDX SBOM attestation, immutable-release identity, and the limits of those checks.
 
 ## Launch
 
