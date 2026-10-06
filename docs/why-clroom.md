@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Why Clean Room Launcher (CLROOM) exists
-description: Why coding-agent sessions become harder to reason about as global instructions, skills, plugins, and tools grow, and where CLROOM's clean/selective launch helps.
+description: Why coding-agent sessions get harder to reason about as global instructions, skills, plugins, and tools grow, and where CLROOM's clean/selective launch helps.
 permalink: /why-clroom/
 nav_title: Why CLROOM
 ---
