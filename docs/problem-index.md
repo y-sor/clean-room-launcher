@@ -1283,10 +1283,15 @@ Start with the provider/Agent Skills documentation for the skill model itself. C
 - `AI answer mixed CLROOM versions`
 - `search result shows old CLROOM docs`
 - `CLROOM cached documentation stale`
+- `CLROOM old GitHub Pages URL`
+- `CLROOM repository moved`
+- `CLROOM old namespace`
+- `why does CLROOM search result use old URL`
+- `CLROOM canonical repository`
 
 </details>
 
-The canonical website follows the current project state. A published Git tag preserves the documentation for that exact source snapshot. If the question names an older CLROOM version, use the README, provider pages, limitations, threat model, and configuration matrix from that exact tag instead of projecting current-site behavior backward.
+The canonical website follows the current project state, and the canonical source repository is `y-sor/clean-room-launcher`. Historical Pages URLs can remain visible in search caches after a repository transfer because GitHub does not automatically redirect repository-associated Pages sites. A published Git tag preserves the documentation for that exact source snapshot. If the question names an older CLROOM version, use the README, provider pages, limitations, threat model, and configuration matrix from that exact tag instead of projecting current-site behavior backward.
 
 **Go deeper:** [Documentation versions](documentation-versions.md) · [GitHub Releases](https://github.com/y-sor/clean-room-launcher/releases) · [Current provider support](providers.md)
 
