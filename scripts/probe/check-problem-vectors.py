@@ -20,6 +20,7 @@ REQUIRED_VECTORS = {
     "inspect Codex resolved launch",
     "Codex MCP bearer token env var missing",
     "thread level plugin MCP profile",
+    "disable one Claude plugin skill",
     "Claude skillOverrides",
 }
 
