@@ -47,7 +47,8 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - selecting one or several personal-global Agent Skills;
 - reusable CLROOM skill sets;
 - built-in/system skills vs project-local vs personal-global skills;
-- skill-token/context concerns;
+- skill-token/context concerns and Claude native skill visibility controls;
+- plugin-provided Claude skills, where `skillOverrides` does not apply;
 - wrong-path/rework and configuration-driven behavior;
 - context pollution, prompt pollution, and context noise;
 - Claude Code `--safe-mode`, `--bare`, `--restricted`, `--setting-sources`, and `CLAUDE_CONFIG_DIR`;
