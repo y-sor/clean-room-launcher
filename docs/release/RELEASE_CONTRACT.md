@@ -432,6 +432,21 @@ The machine gate does not decide ranking or AI citations. Semantic release revie
 still owns whether descriptions, comparisons, headings, evidence and canonical
 answers are useful and current.
 
+`docs/glossary.md` is the canonical terminology bridge for overloaded CLROOM/provider
+concepts that appear across multiple pages. Search/problem vectors may preserve user
+synonyms, but canonical answers should map those synonyms back to stable product and
+provider terms so humans and retrieval systems do not infer false distinctions.
+
+Rendered HTML exposes the supplemental `llms.txt` routing surface through
+`rel="describedby"` when the page template permits it. This is agent-routing metadata,
+not a ranking claim. Do not manufacture stale Markdown alternates merely to satisfy an
+external proposal.
+
+`scripts/probe/check-doc-link-graph.py` validates relative documentation targets and
+fails closed when an indexable top-level docs page becomes orphaned from both primary
+navigation and explicit inbound links. This proves the deterministic internal-link
+graph subset without pretending that link count itself is a ranking KPI.
+
 For whole-plugin activation:
 
 1. **Pre-merge rehearsal:** the exact PR candidate is rehearsed before GPT ACCEPT.
