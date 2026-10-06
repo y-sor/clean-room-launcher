@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Coding-agent configuration problem index — Claude Code, Codex, Agent Skills and clean sessions
-description: Find answers for Claude Code and Codex clean sessions, global instructions, Agent Skills, safe mode, bare mode, CODEX_HOME, CLAUDE.md, AGENTS.md, hooks, plugins, MCP, runners, reproducibility, and skill isolation — with where Clean Room Launcher (CLROOM) fits and where native tools are better.
+title: Coding-agent configuration problem index — Codex, Claude Code, skills, and MCP
+description: Find canonical answers for Codex and Claude Code clean sessions, skills, instructions, MCP, plugins, runners, context problems, native controls, and CLROOM.
 permalink: /problem-index/
 nav_title: Problem index
 ---
