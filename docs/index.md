@@ -8,7 +8,7 @@ image:
 permalink: /
 ---
 
-Clean Room Launcher (CLROOM) launches the installed Codex or Claude Code CLI with a session-specific clean/selective setup on supported macOS systems. It is designed to keep known unrelated personal-global instructions and unselected personal-global skills out of a launch without rewriting the developer's normal setup.
+Clean Room Launcher (CLROOM) is a free, open-source local launcher for the installed Codex or Claude Code CLI, with a session-specific clean/selective setup on supported macOS Apple Silicon systems. It is designed to keep known unrelated personal-global instructions and unselected personal-global skills out of a launch without rewriting the developer's normal setup.
 
 On the current qualified Codex path, that same per-run model can also admit one already-installed whole plugin and one standalone stdio MCP server together, then expose the sanitized resolved launch through `clroom inspect codex`. Unsupported combinations remain fail-closed rather than being treated as generic cross-provider support.
 
