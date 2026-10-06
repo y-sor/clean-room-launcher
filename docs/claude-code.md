@@ -187,6 +187,8 @@ This is also why managed-policy interactions around selected skills require care
 - [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference)
 - [Claude Code settings](https://code.claude.com/docs/en/settings)
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
+- [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+- [Claude Code subagents](https://code.claude.com/docs/en/sub-agents)
 - [Claude Code documentation index](https://code.claude.com/docs/llms.txt)
 
 Last verified against current Anthropic documentation: **2026-10-06**.
