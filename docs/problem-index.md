@@ -29,7 +29,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
 - **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [configured but tools unavailable](#mcp-configured-tools-unavailable), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
 - **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [stale Claude memory](#claude-auto-memory), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
-- **Trust/privacy/install:** [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
+- **Trust/privacy/install:** [first-run/install failures](#install-first-run-failures), [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
 - **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
 
 <a id="apps-runners-and-ci"></a>
@@ -1112,6 +1112,52 @@ Use the [Threat model](threat-model.md) for the security boundary. Keep provider
 A clean/selective launch can provide a more repeatable baseline without destructive renaming or editing of the normal setup. It does not make model output deterministic, but it can remove known personal-global variables from the comparison.
 
 **Go deeper:** [Use cases](use-cases.md) · [When to use CLROOM](when-to-use-clroom.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="install-first-run-failures"></a>
+
+## Did CLROOM install, but the first command still fails on macOS?
+
+**Common ways people ask this:**
+
+- `clroom command not found`
+- `CLROOM installed but command not found`
+- `~/.local/bin not in PATH macOS`
+- `Apple cannot verify clroom`
+- `CLROOM unidentified developer`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM Gatekeeper blocked`
+- `CLROOM unsigned app macOS`
+- `CLROOM unnotarized macOS`
+- `macOS cannot check CLROOM for malicious software`
+- `CLROOM wrong architecture`
+- `CLROOM Apple Silicon only`
+- `CLROOM arm64 required`
+- `clroom codex command not found`
+- `clroom claude command not found`
+- `Codex not installed CLROOM`
+- `Claude Code not installed CLROOM`
+- `where did CLROOM install`
+- `CLROOM ~/.local/bin`
+- `CLROOM first run fails`
+- `CLROOM install troubleshooting`
+- `verify CLROOM after install`
+
+</details>
+
+Start with the exact installation contract:
+
+1. the current release is qualified for **macOS on Apple Silicon**;
+2. the one-line installer places `clroom`, `clroom-codex`, and `clroom-claude` in `~/.local/bin`;
+3. if that directory is not in `PATH`, add it before treating the install as missing;
+4. the Codex or Claude Code CLI you intend to launch must already work on its own;
+5. the current archive is unsigned and unnotarized, so macOS policy can warn or refuse it.
+
+Do not disable Gatekeeper globally to make CLROOM run. Verify the release identity/checksum/provenance first, follow local macOS or organization policy, and use Apple's normal per-app security flow only if you have independently decided to trust the exact downloaded release.
+
+**Go deeper:** [Install](install.md) · [Verify a release](verify-release.md) · [Support](SUPPORT.md) · [Current limitations](limitations.md)
 
 <a id="privacy-data-flow"></a>
 
