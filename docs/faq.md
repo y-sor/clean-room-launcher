@@ -96,6 +96,12 @@ No. In particular, current CLROOM does not blanket-block `~/.claude.json`, and i
 
 No. Organization-managed policy must remain authoritative. Any bypass would be a bug, not a feature.
 
+## What license does CLROOM use, and can I use it at work?
+
+CLROOM is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. The license text governs your rights and obligations; these docs are not legal advice.
+
+The current project does not require a separate paid CLROOM account or commercial-edition license to run the CLI. That is separate from provider subscriptions, company policy, procurement, support requirements, or legal review. See the repository [LICENSE](https://github.com/y-sor/clean-room-launcher/blob/main/LICENSE) and [Governance](https://github.com/y-sor/clean-room-launcher/blob/main/GOVERNANCE.md).
+
 ## Does Codex normally load global and project `AGENTS.md` instructions?
 
 OpenAI documents a global instruction layer under `CODEX_HOME` and a project instruction chain. CLROOM's Codex path blocks the known global instruction inputs for its clean launch.
