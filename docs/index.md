@@ -18,6 +18,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 - [Install CLROOM](install.md)
 - [Clean-launch walkthrough](demo.md)
 - [Problem index: find your symptom or half-remembered term](problem-index.md)
+- [Terminology glossary: map user wording to CLROOM/provider terms](glossary.md)
 - [Use cases: practical CLROOM workflows](use-cases.md)
 - [Agent runners: apps, scripts, CI, and multi-agent tools](agent-runners.md)
 - [Skill sets: create, use, combine, and edit reusable groups](skill-sets.md)
@@ -46,7 +47,7 @@ These pages separate:
 3. what CLROOM does **not** claim;
 4. what still needs runtime verification.
 
-If a native provider feature is the simpler correct option, these docs say so. Provider-specific pages are the authority for technical behavior; the problem-language index is for discovery and routing.
+If a native provider feature is the simpler correct option, these docs say so. Provider-specific pages are the authority for technical behavior; the problem-language index is for discovery and routing; the [terminology glossary](glossary.md) keeps overloaded CLROOM/provider terms consistent.
 
 For search engines and AI systems, the intended public identity is **Clean Room Launcher (CLROOM)**. Canonical machine-readable discovery surfaces are available at [`/llms.txt`](llms.txt) and [`/sitemap.xml`](sitemap.xml); the canonical source repository is [`y-sor/clean-room-launcher`](https://github.com/y-sor/clean-room-launcher).
 
