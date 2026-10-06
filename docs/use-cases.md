@@ -60,6 +60,20 @@ clroom --output json inspect codex --with=plugin:plugin-name@marketplace-name --
 
 This is intentionally narrow: one whole plugin plus one standalone stdio MCP on the exact qualified Codex path. Multiple plugins/MCP servers, remote/OAuth MCP, `--with=all`, and Claude standalone MCP are not implied.
 
+## Investigate MCP/tool overload from a cleaner launch
+
+Large MCP/tool inventories can create startup latency, tool-discovery noise, or context pressure in current coding-agent ecosystems. If the question is **"do I need all of these MCP servers for this task?"**, use the provider's native diagnostics/tool-search features first, then use CLROOM when you want a repeatable per-launch boundary without editing the normal setup.
+
+On the current qualified Codex path, a clean launch can deliberately admit one supported standalone stdio MCP:
+
+```sh
+clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
+```
+
+That can help distinguish an ambient configuration problem from the one MCP resource the task actually needs. It is not universal lazy MCP loading, and it does not rewrite the tool inheritance of provider-owned subagents.
+
+For independent worker processes, launch each worker separately when different tasks need different supported resources.
+
 ## Cross-provider review workflow
 
 The same runner can exercise one task through both supported interactive provider
