@@ -37,9 +37,21 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(sitemap.contains("page.sitemap == false"));
 
     let robots = read("docs/robots.txt");
-    for agent in ["Googlebot", "Bingbot", "OAI-SearchBot", "Claude-SearchBot", "Claude-User", "PerplexityBot"] {
+    for agent in [
+        "Googlebot",
+        "Bingbot",
+        "OAI-SearchBot",
+        "Claude-SearchBot",
+        "Claude-User",
+        "PerplexityBot",
+        "GPTBot",
+        "ClaudeBot",
+        "Google-Extended",
+    ] {
         assert!(robots.contains(&format!("User-agent: {agent}")), "missing crawler policy for {agent}");
     }
+    assert!(robots.contains("Search / citation indexing."));
+    assert!(robots.contains("Training / model-improvement controls are independent from search visibility."));
     assert!(robots.contains("Sitemap: https://y-sor.github.io/clean-room-launcher/sitemap.xml"));
 
     let llms = read("docs/llms.txt");
@@ -47,6 +59,18 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(llms.contains("https://github.com/y-sor/clean-room-launcher"));
     assert!(llms.contains("CLROOM is the acronym for **Clean Room Launcher**"));
     assert!(llms.contains("https://y-sor.github.io/clean-room-launcher/glossary/"));
+    assert!(llms.contains("https://y-sor.github.io/clean-room-launcher/privacy-data-flow/"));
+
+    let privacy = read("docs/privacy-data-flow.md");
+    for phrase in [
+        "CLROOM is a local launch layer",
+        "CLROOM account",
+        "provider authentication",
+        "Cloudflare Web Analytics",
+        "CLROOM is not a network sandbox",
+    ] {
+        assert!(privacy.contains(phrase), "privacy/data-flow answer lost required signal: {phrase}");
+    }
 
     let legacy_owner = format!("{}{}", "ewgenij87sn", "work");
     let legacy_pages = format!("{legacy_owner}.github.io/clean-room-launcher");
