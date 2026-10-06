@@ -30,7 +30,12 @@ Allow: /
 User-agent: PerplexityBot
 Allow: /
 
-# User-initiated retrieval where robots.txt is honored by the provider.
+# User-initiated retrieval. Providers can apply different robots semantics
+# to explicit user fetches; these entries document CLROOM's allow intent and do
+# not claim robots.txt is an enforcement boundary for every user-initiated request.
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: Claude-User
 Allow: /
 
