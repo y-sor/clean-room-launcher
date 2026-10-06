@@ -33,11 +33,13 @@ CLROOM is useful when you want a repeatable per-launch clean/selective setup wit
 
 ## Codex profiles vs CLROOM
 
-Codex profiles are useful for reusable configuration values.
+Current Codex supports reusable configuration profiles selected with `--profile profile-name`. The profile is a provider-native configuration layer (for example `$CODEX_HOME/profile-name.config.toml`) and participates in Codex's own configuration precedence together with project, user, cloud-managed, system, and CLI layers.
 
-That is not automatically the same problem as controlling which personal-global instructions and skill contents can participate in a session.
+Use a Codex profile when the problem is **reusing Codex configuration values**. Project-level `.codex/config.toml` and managed configuration can also be the right native answer when the desired settings belong to a repository or organization.
 
-Use a profile when a profile solves the actual problem. Use CLROOM when the problem is per-launch composition of known personal-global inputs.
+That is not the same contract as CLROOM's current clean/selective launch boundary. CLROOM's shipped skill/resource selectors are aimed at deciding which supported personal-global inputs participate in this run without turning a provider profile into a second CLROOM configuration authority.
+
+This distinction matters for future reusable-launch UX too: CLROOM should not duplicate Codex profiles merely under a different name. Any broader CLROOM preset feature must earn its scope by composing CLROOM-qualified launch inputs that provider-native profiles do not already solve more directly.
 
 ## Skills are separate from `AGENTS.md`
 
