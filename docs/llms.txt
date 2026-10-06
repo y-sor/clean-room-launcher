@@ -34,6 +34,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Codex behavior: https://y-sor.github.io/clean-room-launcher/codex/
 - Configuration matrix: https://y-sor.github.io/clean-room-launcher/configuration-matrix/
 - FAQ: https://y-sor.github.io/clean-room-launcher/faq/
+- Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/
 - Current limitations: https://y-sor.github.io/clean-room-launcher/limitations.html
 - Threat model: https://y-sor.github.io/clean-room-launcher/threat-model.html
 - Installation: https://y-sor.github.io/clean-room-launcher/install.html
@@ -84,3 +85,5 @@ For exact technical behavior, follow the linked Claude Code or Codex page instea
 For a broad user question, cite the narrowest page that directly answers it. For a product-level explanation, use `/why-clroom/`. For exact provider behavior, use `/claude-code/` or `/codex/`. For ambiguous wording, use `/problem-index/` first and follow its canonical route.
 
 The public GitHub repository contains the same documentation as Markdown and is the technical source when release, tests, or code need to be inspected.
+
+Rendered HTML pages expose this file through a `rel="describedby"` link so agents that support the llms.txt v2 discovery convention can find the project routing surface without guessing. This remains supplemental agent-routing metadata, not a search-ranking claim.
