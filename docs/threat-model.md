@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Threat model
-description: CLROOM threat model covering clean-launch isolation, malicious or injected context, skills and symlinks, provider drift, private-data leakage, release evidence, and residual risks.
+description: CLROOM threat model for clean-launch isolation, prompt-injection non-claims, skills and symlinks, provider drift, private-data leakage, and residual risks.
 permalink: /threat-model.html
 ---
 
