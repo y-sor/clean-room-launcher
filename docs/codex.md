@@ -108,7 +108,9 @@ rewritten. Before provider birth CLROOM performs a no-model Codex
 `config/read` preflight and refuses active non-session MCP layers. The selected
 source remains digest-bound and is re-read before the real launch.
 
-If your problem is a large ambient MCP/tool inventory, use Codex's current native MCP/tool-search diagnostics where they solve it directly. CLROOM's narrower value is per-launch selection: the clean path does not rewrite the normal user configuration, and the qualified resource path can deliberately admit one supported standalone stdio MCP for this run. That can reduce configuration ambiguity, but it is not a claim of universal lazy MCP loading or control over every provider-owned tool surface.
+If your problem is a large ambient MCP/tool inventory, start with Codex's own current MCP configuration/status surfaces, such as `codex mcp list`, and the provider documentation for the installed Codex version. OpenAI also documents deferred tool search in its API/agent runtimes, but that is a separate product surface and must not be projected onto the qualified Codex CLI path without evidence.
+
+CLROOM's narrower value is per-launch selection: the clean path does not rewrite the normal user configuration, and the qualified resource path can deliberately admit one supported standalone stdio MCP for this run. That can reduce configuration ambiguity, but it is not a claim of universal lazy MCP loading or control over every provider-owned tool surface.
 
 ## Compose one plugin with one standalone MCP
 
@@ -159,4 +161,4 @@ Administrator-managed behavior belongs to a different control plane from the per
 
 The `developers.openai.com` Codex URLs can redirect to their current ChatGPT Learn canonical pages.
 
-Last verified against current OpenAI documentation: **2026-10-05**.
+Last verified against current OpenAI documentation: **2026-10-06**.
