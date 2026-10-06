@@ -118,6 +118,7 @@ def validate_llms(llms: str) -> None:
         "Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/",
         "Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/",
         "Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/",
+        "Support and safe issue routing: https://y-sor.github.io/clean-room-launcher/support/",
         'rel="describedby"',
     )
     for item in required:
@@ -141,6 +142,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/problem-index.md",
         "docs/providers.md",
         "docs/skill-sets.md",
+        "docs/SUPPORT.md",
         "docs/threat-model.md",
         "docs/upgrade-rollback.md",
         "docs/use-cases.md",
@@ -180,6 +182,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
         "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
         "docs/threat-model.md": ("prompt-injection", "clroom"),
+        "docs/SUPPORT.md": ("support", "bug", "security", "version"),
         "docs/verify-release.md": ("checksum", "provenance", "sbom", "immutable"),
     }
     for relative, terms in requirements.items():
