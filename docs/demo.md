@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Clean-launch walkthrough
-description: First-run CLROOM walkthrough for clean Codex and Claude Code launches, selected skills, Codex exec automation, and inspecting bounded plugin/MCP composition before provider start.
+description: First-run CLROOM walkthrough for clean Codex and Claude Code launches, selected skills, Codex exec, and inspecting bounded plugin/MCP composition.
 permalink: /demo.html
 ---
 
