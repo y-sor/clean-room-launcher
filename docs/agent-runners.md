@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Use CLROOM from coding-agent runners, orchestrators, scripts, and CI
-description: Launch Codex and Claude Code workers through CLROOM with per-run clean/selective inputs, task-specific skills, and qualified Codex plugin/MCP resources while project context stays available.
+title: CLROOM for coding-agent runners, scripts, and CI
+description: Use CLROOM from runners, scripts, and CI to start Codex or Claude Code with per-run skills and qualified Codex plugin/MCP inputs while project context stays available.
 permalink: /agent-runners/
 nav_title: Agent runners
 ---
