@@ -30,6 +30,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 - [Current provider support](providers.md)
 - [Configuration matrix](configuration-matrix.md)
 - [Frequently asked questions](faq.md)
+- [Support: help, safe bug reports, and security routing](SUPPORT.md)
 - [Current limitations](limitations.md)
 - [Threat model](threat-model.md)
 - [Upgrade, roll back, and remove](upgrade-rollback.md)
