@@ -602,6 +602,42 @@ Use native homes/profiles when you want a persistent alternate Codex setup or re
 
 **Go deeper:** [Codex](codex.md) · [When to use CLROOM](when-to-use-clroom.md)
 
+<a id="codex-profile-vs-clroom"></a>
+
+## Should you use a Codex `--profile`, project config, or CLROOM?
+
+**Common ways people ask this:**
+
+- `Codex profile vs CLROOM`
+- `Codex --profile vs CLROOM`
+- `Codex profile vs skill set`
+- `Codex reusable config per task`
+- `Codex profile for different workflows`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Codex profile-name.config.toml`
+- `Codex profile per project`
+- `Codex project config vs profile`
+- `Codex .codex/config.toml vs profile`
+- `Codex managed config vs local profile`
+- `Codex reusable settings`
+- `Codex task profile`
+- `Codex workflow profile`
+- `different Codex settings per task`
+- `saved Codex configuration`
+- `Codex profile skills`
+- `coding agent preset vs profile`
+
+</details>
+
+Use native Codex profiles when the problem is reusable **Codex configuration values**. Use project or managed Codex configuration when the settings belong to that repository or organization. CLROOM's current contract is different: a qualified clean/selective launch plus supported per-run selection of personal-global skills/resources.
+
+A future CLROOM reusable-launch feature should not exist merely to rename provider profiles. It must compose CLROOM-owned launch intent that remains distinct from provider-native configuration.
+
+**Go deeper:** [When to use CLROOM](when-to-use-clroom.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
+
 <a id="codex-skill-scopes"></a>
 
 ## How do Codex user, repository, admin, and system skills relate to CLROOM?
