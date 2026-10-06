@@ -117,6 +117,7 @@ def validate_llms(llms: str) -> None:
         "OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces",
         "Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/",
         "Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/",
+        "Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/",
         'rel="describedby"',
     )
     for item in required:
@@ -131,6 +132,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/codex.md",
         "docs/configuration-matrix.md",
         "docs/demo.md",
+        "docs/documentation-versions.md",
         "docs/faq.md",
         "docs/glossary.md",
         "docs/index.md",
@@ -173,6 +175,7 @@ def validate_descriptions(root: Path) -> None:
         "docs/use-cases.md": ("mcp", "skill", "ci"),
         "docs/agent-runners.md": ("worker", "mcp"),
         "docs/demo.md": ("first-run", "codex", "claude", "inspect"),
+        "docs/documentation-versions.md": ("current", "historical", "release", "qualification"),
         "docs/glossary.md": ("clean", "skill", "plugin", "mcp", "subagent", "qualified"),
         "docs/when-to-use-clroom.md": ("subagent", "mcp"),
         "docs/problem-index.md": ("codex", "claude", "mcp", "clroom"),
