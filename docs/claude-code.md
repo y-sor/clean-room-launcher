@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Claude Code and CLROOM
-description: How Clean Room Launcher (CLROOM) relates to Claude Code user, project, local and managed settings, CLAUDE.md, skills, safe mode, bare mode, and setting sources.
+description: Compare CLROOM with Claude Code settings, CLAUDE.md, skills, auto-memory, MCP/tool controls, safe/bare modes, subagents, and native alternatives.
 permalink: /claude-code/
 nav_title: Claude Code
 ---
