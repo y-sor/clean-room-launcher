@@ -41,6 +41,14 @@ internal teammate independently.
 
 For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-sets.md).
 
+## Auto-memory vs a CLROOM clean launch
+
+Claude Code auto-memory is persistent provider-owned state. It can be useful, but it is a different scope from project instructions, user settings, skills, plugins, and MCP configuration.
+
+The current qualified CLROOM Claude path disables auto-memory for the launch. Use that as a diagnostic boundary when you want to ask whether old or shared memory is contributing to the current behavior while leaving the provider's stored memory files untouched.
+
+CLROOM does **not** delete, edit, expire, synchronize, or repair Claude's `MEMORY.md` state. If the goal is to inspect or manage Claude memory itself, prefer Claude's native memory controls. If the goal is a comparison launch where auto-memory does not participate, CLROOM provides that narrower qualified boundary.
+
 ## Native Claude skill controls vs CLROOM
 
 Claude Code now exposes useful native controls for individual skills. Anthropic documents `skillOverrides` states such as `name-only`, `user-invocable-only`, and `off`; `disable-model-invocation: true` prevents Claude from auto-invoking a skill and removes its description from the normal skill listing context; and `/skill-doctor` reports skill context cost and usage. Plugin-provided skills are managed separately rather than through `skillOverrides`.
