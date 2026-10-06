@@ -38,6 +38,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Current limitations: https://y-sor.github.io/clean-room-launcher/limitations.html
 - Threat model: https://y-sor.github.io/clean-room-launcher/threat-model.html
 - Installation: https://y-sor.github.io/clean-room-launcher/install.html
+- Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/
 
 ## Route questions by intent
 
