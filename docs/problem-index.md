@@ -617,6 +617,169 @@ They can, but Claude Code and Codex do not expose one universal scope model for 
 
 **Go deeper:** [Claude Code](claude-code.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
 
+<a id="mcp-tool-context-overload"></a>
+
+## Are too many MCP servers or tool definitions consuming context or slowing startup?
+
+**Common ways people ask this:**
+
+- `too many MCP tools context`
+- `MCP context bloat`
+- `MCP tool definitions context window`
+- `MCP tools prompt too long`
+- `too many MCP servers coding agent`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `MCP servers slow startup`
+- `Codex MCP startup slow`
+- `Codex first turn blocked by MCP`
+- `Claude MCP context warning`
+- `Claude MCP tools context overhead`
+- `reduce MCP tool context`
+- `load only one MCP server for a task`
+- `disable unused MCP servers for one run`
+- `coding agent tool overload`
+- `MCP tool schema overload`
+- `MCP tool noise`
+- `large MCP tools context`
+- `MCP tools use too many tokens`
+
+</details>
+
+This is a real provider-scale problem, but the exact mitigation is provider-specific. Current providers have their own tool-search/lazy-loading behavior and diagnostics. CLROOM's narrower role is to start from its qualified clean launch boundary and, on the current Codex path, deliberately admit one qualified standalone stdio MCP when that is the resource the task needs. It does not claim universal MCP lazy loading or provider-owned subagent tool filtering.
+
+**Go deeper:** [Codex](codex.md) · [Claude Code](claude-code.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
+
+<a id="codex-plugin-mcp-composition"></a>
+
+## Do you want one Codex plugin and one MCP server together for only this launch?
+
+**Common ways people ask this:**
+
+- `Codex plugin and MCP same session`
+- `use one plugin and one MCP Codex`
+- `temporary Codex plugin plus MCP`
+- `Codex plugin MCP composition`
+- `one run plugin MCP without editing config`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `select Codex plugin per run`
+- `select MCP server per run Codex`
+- `Codex plugin MCP conflict`
+- `Codex plugin includes MCP plus standalone MCP`
+- `plugin MCP identity conflict Codex`
+- `Codex plugin mcpServers`
+- `Codex plugin .mcp.json`
+- `Codex plugin.json mcp.json`
+- `Codex plugin bundled MCP server`
+- `inspect Codex plugin MCP launch`
+- `Codex plugin MCP without changing config.toml`
+- `Codex per session plugin and MCP`
+
+</details>
+
+On the exact qualified v0.5 Codex path, CLROOM can compose one already-installed whole plugin with one root-user standalone stdio MCP through the same typed resolved launch. Identity overlap, unsupported transports/fields, unqualified provider tuples, and source drift fail closed. This is deliberately not generic multi-plugin or multi-MCP support.
+
+**Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [Configuration matrix](configuration-matrix.md) · [Limitations](limitations.md)
+
+<a id="codex-global-skills-keep-project-skills"></a>
+
+## Do you want Codex user/global skills out while keeping repository skills?
+
+**Common ways people ask this:**
+
+- `disable global Codex skills keep project skills`
+- `Codex user skills off repo skills on`
+- `project skills without user skills Codex`
+- `ignore ~/.agents/skills keep repo skills`
+- `Codex global skills context budget`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Codex disable user skills for one repo`
+- `Codex keep .codex/skills but hide global skills`
+- `Codex ~/.agents/skills vs .agents/skills`
+- `Codex user skills interfering with project skills`
+- `Codex only repository skills`
+- `temporary disable Codex global skills`
+- `Codex personal skills off for one run`
+- `Codex project skill still available clean launch`
+
+</details>
+
+That scope distinction is central to CLROOM. Selected personal-global skills are launch inputs CLROOM can deliberately control on qualified paths, while repository/project and provider-owned skill scopes remain separate. Do not describe the result as “only one skill exists” when project or system skills can still be visible by design.
+
+**Go deeper:** [Codex](codex.md) · [Skill sets](skill-sets.md) · [FAQ](faq.md)
+
+<a id="subagents-inherit-mcp-tools"></a>
+
+## Are subagents or agent-team workers inheriting MCP tools they do not need?
+
+**Common ways people ask this:**
+
+- `Claude subagent inherits MCP tools`
+- `subagent prompt too long MCP`
+- `per subagent MCP tools`
+- `different MCP servers per worker`
+- `coding agent worker tool isolation`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `subagent inherits all MCP servers`
+- `agent team MCP context bloat`
+- `per agent MCP selection`
+- `different tools per coding agent worker`
+- `agent runner per-worker MCP`
+- `agent runner per-worker plugin`
+- `separate worker different skills and MCP`
+- `coding agent subagent tool context overflow`
+- `independent agent process tool isolation`
+- `provider subagent inherited tools`
+
+</details>
+
+Provider-owned subagents and teammates inherit according to the provider's own rules; a top-level CLROOM launch does not surgically rewrite every internal agent. If independent worker processes need different launch inputs, start them independently through CLROOM. On the current Codex path, each separate process can have its own supported skill/plugin/MCP selection.
+
+**Go deeper:** [Agent runners](agent-runners.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
+
+<a id="inspect-resolved-launch"></a>
+
+## Do you want to inspect what CLROOM will launch before the provider starts?
+
+**Common ways people ask this:**
+
+- `inspect Codex resolved launch`
+- `show selected plugin MCP before launch`
+- `what MCP will Codex start`
+- `what plugin will Codex load`
+- `dry run Codex plugin MCP`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `machine readable coding agent launch plan`
+- `JSON launch plan Codex`
+- `inspect qualified Codex launch`
+- `why did CLROOM reject plugin MCP`
+- `show admitted env names without secrets`
+- `verify Codex launch configuration before start`
+- `inspect one run coding agent configuration`
+- `resolved launch plugin MCP conflict`
+- `Codex launch plan JSON`
+- `preview coding agent launch without model call`
+
+</details>
+
+Use `clroom inspect codex ...` or its JSON form. Inspection resolves through the same typed launch-planning truth used by execution and exposes bounded identities, qualification decisions and admitted environment-variable names while redacting secret values, private source paths and provider argument values.
+
+**Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [FAQ](faq.md)
+
 <a id="different-projects-and-workflows"></a>
 
 ## Does one personal agent setup fit every project or workflow?
