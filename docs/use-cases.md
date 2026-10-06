@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Use cases
-description: Practical Clean Room Launcher (CLROOM) workflows for testing Agent Skills and choosing global skills for one Codex or Claude Code launch.
+description: Practical CLROOM workflows for clean Agent Skill tests, per-worker skill sets, bounded Codex plugin plus MCP launches, MCP-overload diagnosis, scripts, and CI.
 permalink: /use-cases/
 nav_title: Use cases
 ---
