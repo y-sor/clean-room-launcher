@@ -45,6 +45,17 @@ If these checks do not explain the failure, use [Support](SUPPORT.md) and includ
 
 The [problem index](problem-index.md#install-first-run-failures) also maps common first-run wording to this answer.
 
+## Package-manager status
+
+The current supported binary distribution is the GitHub Release installer/archive above.
+
+- **Homebrew:** no supported CLROOM formula is currently claimed.
+- **crates.io:** CLROOM is not currently published there.
+- **Cargo:** an exact published Git tag can be installed from the Git repository as shown below.
+- **npm and other package managers:** not current CLROOM distribution paths.
+
+Do not treat an unrelated third-party package with a similar name as an official CLROOM release. The canonical release identity is the `y-sor/clean-room-launcher` GitHub Release and its published verification evidence.
+
 ## Manual release archive
 
 The exact-version examples below require that the named tag and GitHub Release
