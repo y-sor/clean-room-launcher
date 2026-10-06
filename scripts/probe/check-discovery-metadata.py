@@ -349,6 +349,42 @@ description: {sample_desc}
     assert frontmatter_value(fixture, "title") == sample_title
     assert frontmatter_value(fixture, "description") == sample_desc
 
+    with tempfile.TemporaryDirectory(prefix="clroom-retrieval-structure-") as temp:
+        root = Path(temp)
+        docs = root / "docs"
+        docs.mkdir(parents=True)
+        fixtures = {
+            "providers.md": (
+                "## Provider versions\n"
+                "## Qualified launch paths\n"
+                "## What CLROOM owns vs what the provider owns\n"
+                "## Not qualified in this release\n"
+            ),
+            "configuration-matrix.md": (
+                "## How to read the matrix\n"
+                "## Qualified skill source maps\n"
+                "## What this matrix does not prove\n"
+            ),
+            "limitations.md": (
+                "## Platform and distribution limits\n"
+                "## Plugin and MCP limits\n"
+                "## Isolation and provider-state limits\n"
+                "## Security and trust non-claims\n"
+            ),
+        }
+        for name, body in fixtures.items():
+            (docs / name).write_text(body, encoding="utf-8")
+
+        validate_retrieval_structure(root)
+        (docs / "providers.md").write_text(
+            fixtures["providers.md"].replace("## Not qualified in this release\n", ""),
+            encoding="utf-8",
+        )
+        expect_failure(
+            lambda: validate_retrieval_structure(root),
+            "RETRIEVAL_STRUCTURE_MISSING:docs/providers.md:## Not qualified in this release",
+        )
+
     good_robots = """# Search / citation indexing.
 # User-initiated retrieval
 # Training / model-improvement controls are independent from search visibility.
