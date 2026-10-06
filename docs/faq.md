@@ -72,6 +72,22 @@ Many things can explain that: repository instructions, project configuration, lo
 
 No. Use provider-native status/diagnostic tools for provider configuration and CLROOM's own launch summary for controls it owns. No honest tool should claim to enumerate every influence on a model response.
 
+## Can stale Claude auto-memory affect a new session?
+
+Yes. Claude Code auto-memory is provider-owned persistent state, so a new conversation is not automatically the same thing as a session with no memory participation.
+
+Current CLROOM Claude launches disable auto-memory. That makes a CLROOM launch useful as a comparison point when you are testing whether stale or shared memory contributed to the behavior. CLROOM does not delete, rewrite, synchronize, or repair Claude's stored `MEMORY.md` state. Use Claude's native memory controls when the memory itself is what you want to manage.
+
+See [Claude Code](claude-code.md) and the [problem index](problem-index.md#claude-auto-memory).
+
+## Can an MCP server be configured correctly but its tools still be unavailable?
+
+Yes. Configuration presence, successful server initialization, and model-visible/callable tools are different states. Provider runtime mode, tool-discovery behavior, host surface, authentication, or a provider regression can break the last step even when configuration looks valid.
+
+Use provider-native MCP/status/tool-discovery diagnostics for the actual session. `clroom inspect codex ...` describes the qualified launch plan CLROOM owns; it is not a universal promise that every later provider runtime will expose every configured tool.
+
+See [Codex](codex.md) and [MCP configured but tools unavailable](problem-index.md#mcp-configured-tools-unavailable).
+
 ## Can I use Claude Code native skill controls instead?
 
 Yes. If the problem is one or a few Claude skills, native `skillOverrides`, `disable-model-invocation`, or `/skill-doctor` may be the simpler answer. CLROOM is useful when the desired boundary is launch-wide and should keep ordinary personal-global instructions and unselected personal-global skills out without rewriting the normal setup.
