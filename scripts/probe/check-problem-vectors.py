@@ -43,6 +43,8 @@ REQUIRED_VECTORS = {
     "CLROOM vs Docker",
     "CLROOM Gemini CLI",
     "CLROOM remote MCP",
+    "troubleshoot CLROOM",
+    "why did CLROOM refuse launch",
 }
 
 
