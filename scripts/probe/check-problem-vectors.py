@@ -21,6 +21,8 @@ REQUIRED_VECTORS = {
     "Codex MCP bearer token env var missing",
     "thread level plugin MCP profile",
     "disable one Claude plugin skill",
+    "coding agent configuration drift",
+    "does CLROOM stop prompt injection",
     "Claude skillOverrides",
 }
 
