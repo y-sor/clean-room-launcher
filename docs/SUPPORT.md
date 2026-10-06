@@ -1,7 +1,7 @@
 ---
 layout: page
 title: CLROOM support
-description: Get help with Clean Room Launcher, report non-sensitive bugs safely, find version-specific docs, and route security issues to the private security process.
+description: CLROOM support guidance for non-sensitive bugs, version-specific docs, safe help requests, and security issues that belong in the private reporting process.
 permalink: /support/
 nav_title: Support
 ---
