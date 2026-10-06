@@ -9,8 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-MIN_VECTOR_COUNT = 630
-MIN_SECTION_COUNT = 45
+MIN_VECTOR_COUNT = 650
+MIN_SECTION_COUNT = 47
 
 REQUIRED_VECTORS = {
     "MCP context bloat",
@@ -36,6 +36,7 @@ REQUIRED_VECTORS = {
     "has CLROOM been security audited",
     "Claude Code MEMORY.md stale",
     "MCP configured but tools missing",
+    "clroom command not found",
 }
 
 
