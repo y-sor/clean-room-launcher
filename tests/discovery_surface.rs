@@ -27,6 +27,8 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
 
     let head = read("docs/_includes/head.html");
     assert!(head.contains("name=\"msvalidate.01\""));
+    assert!(head.contains("rel=\"describedby\""));
+    assert!(head.contains("'/llms.txt' | relative_url"));
     assert!(head.contains("content=\"{{ site.bing_site_verification | escape }}\""));
 
     let sitemap = read("docs/sitemap.xml");
@@ -35,7 +37,7 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(sitemap.contains("page.sitemap == false"));
 
     let robots = read("docs/robots.txt");
-    for agent in ["Googlebot", "Bingbot", "OAI-SearchBot", "Claude-SearchBot", "Claude-User"] {
+    for agent in ["Googlebot", "Bingbot", "OAI-SearchBot", "Claude-SearchBot", "Claude-User", "PerplexityBot"] {
         assert!(robots.contains(&format!("User-agent: {agent}")), "missing crawler policy for {agent}");
     }
     assert!(robots.contains("Sitemap: https://y-sor.github.io/clean-room-launcher/sitemap.xml"));
@@ -44,6 +46,7 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(llms.contains("# Clean Room Launcher (CLROOM)"));
     assert!(llms.contains("https://github.com/y-sor/clean-room-launcher"));
     assert!(llms.contains("CLROOM is the acronym for **Clean Room Launcher**"));
+    assert!(llms.contains("https://y-sor.github.io/clean-room-launcher/glossary/"));
 
     let legacy_owner = format!("{}{}", "ewgenij87sn", "work");
     let legacy_pages = format!("{legacy_owner}.github.io/clean-room-launcher");
