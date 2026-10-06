@@ -398,7 +398,7 @@ release therefore treats distinct problem-language coverage as a maintained
 documentation asset.
 
 `scripts/probe/check-problem-vectors.py` runs in required docs-discovery CI and
-fails closed on material inventory/cluster regression, normalized duplicate
+fails closed on hard inventory/cluster-floor regression, normalized duplicate
 vectors, or loss of representative current problem families. The machine count
 is only a regression signal. It does not authorize keyword stuffing, artificial
 language, or one thin page per query variant.
