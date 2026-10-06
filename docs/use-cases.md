@@ -62,9 +62,11 @@ This is intentionally narrow: one whole plugin plus one standalone stdio MCP on 
 
 ## Investigate MCP/tool overload from a cleaner launch
 
-Large MCP/tool inventories can create startup latency, tool-discovery noise, or context pressure in current coding-agent ecosystems. If the question is **"do I need all of these MCP servers for this task?"**, use the provider's native diagnostics/tool-search features first, then use CLROOM when you want a repeatable per-launch boundary without editing the normal setup.
+Large MCP/tool inventories can create startup latency, tool-discovery noise, context pressure, or simply an unnecessarily broad tool surface.
 
-On the current qualified Codex path, a clean launch can deliberately admit one supported standalone stdio MCP:
+For Claude Code, use native MCP Tool Search first when the problem is tool-definition context overhead; current Claude can defer MCP tool definitions and also scope MCP servers/tools inside subagent definitions. For Codex CLI, use the current Codex MCP configuration/status surfaces for the installed version rather than assuming OpenAI API tool-search behavior is identical to the CLI.
+
+Use CLROOM when the problem is the top-level **per-launch boundary** itself. On the current qualified Codex path, a clean launch can deliberately admit one supported standalone stdio MCP:
 
 ```sh
 clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
@@ -72,7 +74,7 @@ clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
 
 That can help distinguish an ambient configuration problem from the one MCP resource the task actually needs. It is not universal lazy MCP loading, and it does not rewrite the tool inheritance of provider-owned subagents.
 
-For independent worker processes, launch each worker separately when different tasks need different supported resources.
+For independent worker processes owned by an external runner, launch each worker separately when different tasks need different CLROOM-supported resources. For subagents inside one Claude session, prefer Claude's native `tools`, `disallowedTools`, and `mcpServers` controls.
 
 ## Cross-provider review workflow
 
