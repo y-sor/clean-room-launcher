@@ -24,6 +24,8 @@ If you arrived with a symptom or half-remembered term rather than the product na
 | Give a Claude subagent a narrower tool set or MCP servers of its own | Claude subagent `tools`, `disallowedTools`, and `mcpServers` |
 | Suppress normal Codex user configuration for one non-interactive task | Native `codex exec --ignore-user-config` |
 | Maintain a persistent alternate provider setup | `CODEX_HOME`, Claude configuration directory, or provider-native profiles/settings |
+| Reuse a named set of Codex configuration values | Native Codex `--profile profile-name` and its profile config file |
+| Share repository/organization Codex defaults | Native project or managed Codex configuration layers |
 | Start a repeatable cleaner launch while preserving the project-side context CLROOM is designed to retain | CLROOM |
 | Select and inspect the currently qualified one-plugin / one-stdio-MCP Codex launch without rewriting persistent Codex configuration | CLROOM's bounded Codex resource path |
 
@@ -81,6 +83,14 @@ Current Claude Code can narrow inherited subagent tools with `tools` or `disallo
 Use those native controls when the actual requirement is **"this Claude subagent should get these tools or this MCP server."** They are provider-native controls rather than a CLROOM-qualified inner-session contract; current provider behavior can vary by Claude version, agent type, and execution mode, so verify the exact current Claude path when MCP inheritance itself is the problem.
 
 CLROOM does not rewrite provider-owned subagent definitions. Use separate CLROOM top-level processes when an external runner owns the workers and each process needs its own CLROOM clean/selective boundary.
+
+## Use a native Codex profile when reusable Codex configuration is the problem
+
+Current Codex has a real reusable profile layer selected with `--profile profile-name`, plus project and managed configuration layers. If the requirement is simply **"reuse these Codex settings"**, use that native mechanism rather than inventing a CLROOM equivalent.
+
+CLROOM's current role is different: it owns a qualified clean/selective launch boundary and supported per-run selection of personal-global skills/resources. A future CLROOM reusable-launch feature should not duplicate provider profiles; it must remain about CLROOM-owned launch intent and preserve provider-native configuration as provider-native.
+
+See [Codex and CLROOM](codex.md) for the current profile/configuration distinction.
 
 ## Use another `CODEX_HOME`, Claude config directory, or provider profile when you want a persistent alternate setup
 
