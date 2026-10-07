@@ -40,6 +40,19 @@ clroom codex exec --skill-set=@review "Review the staged diff."
 clroom claude --skill-set=@debugging
 ```
 
+## Reuse a complete CLROOM launch intent
+
+When a task repeatedly needs the same CLROOM-owned launch choices, save them as a preset instead of repeating the flags:
+
+```sh
+clroom codex --preset=review
+clroom claude --preset=review
+```
+
+An external runner can give different independently launched workers different preset names. Presets remain top-level launch inputs; they do not configure provider-owned subagents inside one session.
+
+Use a native Codex profile or Claude settings when the reusable object is provider configuration itself. Use [Presets](presets.md) when the reusable object is the CLROOM clean/selective launch intent.
+
 ## Compose one Codex plugin with one standalone MCP for a launch
 
 When one task needs both an already-installed Codex plugin and one qualified root-user stdio MCP server, CLROOM can resolve both through the same bounded interactive launch without rewriting persistent Codex configuration:
