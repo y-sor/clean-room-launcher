@@ -110,6 +110,13 @@ presets:
 }
 
 #[test]
+fn auth_words_are_not_refused_when_they_are_not_the_first_explicit_provider_token() {
+    let root = scratch("auth-word-as-later-provider-token");
+    let output = run(&root, &["codex", "--model", "login", "--version"]);
+    assert_ne!(output.status.code(), Some(2), "later provider values must not be mistaken for auth subcommands");
+}
+
+#[test]
 fn preset_provider_args_cannot_shift_auth_subcommands_past_zero_auth_guard() {
     let root = scratch("auth-shift");
     write_presets(
