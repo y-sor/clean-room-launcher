@@ -271,6 +271,32 @@ fn final_zero_auth_shared_boundary_preserves_non_sensitive_local_arguments() {
 }
 
 #[test]
+fn zero_auth_subcommands_remain_closed_after_launcher_owned_options() {
+    let root = scratch("zero-auth-after-launcher-options");
+    let home = root.join("home");
+    let config = root.join("config");
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&config).unwrap();
+
+    for args in [
+        vec!["codex", "--pass-env=SAFE_NAME", "login"],
+        vec!["codex", "--skill-set=unused", "logout"],
+        vec!["claude", "--pass-env=SAFE_NAME", "auth"],
+        vec!["claude", "--skill-set=unused", "login"],
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_clroom"))
+            .args(args)
+            .env("HOME", &home)
+            .env("XDG_CONFIG_HOME", &config)
+            .output()
+            .expect("clroom must run");
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(String::from_utf8(output.stderr).unwrap(), ZERO_AUTH_REFUSAL);
+    }
+}
+
+#[test]
 fn provider_and_generic_refusal_do_not_consume_credential_shaped_tails() {
     // Break caught: collecting or cloning argv reads API-key/token values before zero-auth refusal.
     for (prefix, unread_tail, expected_calls) in [

@@ -33,6 +33,7 @@ SIBLING_MCP = "clroom_sibling"
 ALLOWED_ENV = standalone.ALLOWED_ENV
 BLOCKED_ENV = standalone.BLOCKED_ENV
 PRIVATE_ARG_CANARY = "CLROOM_PRIVATE_ARG_CANARY"
+INSPECT_SCHEMA_VERSION = "clroom.resolved-launch.v2"
 
 
 def fail(message: str) -> None:
@@ -270,6 +271,19 @@ def ensure_closed(
     return True
 
 
+def has_composed_inspect_identities(report: dict) -> bool:
+    resources = {
+        (item.get("kind"), item.get("id"), item.get("decision"), item.get("reason"))
+        for item in report.get("resources", [])
+        if isinstance(item, dict)
+    }
+    required = {
+        ("plugin", PLUGIN_ID, "selected", "explicit-selection"),
+        ("mcp", STANDALONE_MCP, "selected", "explicit-selection"),
+    }
+    return report.get("schema_version") == INSPECT_SCHEMA_VERSION and required.issubset(resources)
+
+
 def inspect_probe(
     candidate: pathlib.Path,
     project: pathlib.Path,
@@ -303,17 +317,8 @@ def inspect_probe(
     if result.returncode != 0:
         fail(f"machine inspect failed: {result.stderr.strip()}")
     report = json.loads(result.stdout)
-    resources = {
-        (item.get("kind"), item.get("id"), item.get("decision"), item.get("reason"))
-        for item in report.get("resources", [])
-        if isinstance(item, dict)
-    }
-    required = {
-        ("plugin", PLUGIN_ID, "selected", "explicit-selection"),
-        ("mcp", STANDALONE_MCP, "selected", "explicit-selection"),
-    }
-    if report.get("schema_version") != "clroom.resolved-launch.v1" or not required.issubset(resources):
-        fail("machine inspect did not report composed identities/reasons")
+    if not has_composed_inspect_identities(report):
+        fail("machine inspect did not report composed identities/reasons under the current schema")
     if report.get("pass_env") != [ALLOWED_ENV]:
         fail("machine inspect pass-env names mismatch")
     if (report.get("provider_argv") or {}).get("values_exposed") is not False:
@@ -903,6 +908,20 @@ def self_test() -> None:
             fail("process_snapshot result arity self-test")
     if snapshot_calls != 2:
         fail("process_snapshot call-count self-test")
+
+    composed_report = {
+        "schema_version": INSPECT_SCHEMA_VERSION,
+        "resources": [
+            {"kind": "plugin", "id": PLUGIN_ID, "decision": "selected", "reason": "explicit-selection"},
+            {"kind": "mcp", "id": STANDALONE_MCP, "decision": "selected", "reason": "explicit-selection"},
+        ],
+    }
+    if not has_composed_inspect_identities(composed_report):
+        fail("resolved-launch v2 composition self-test")
+    stale_report = dict(composed_report, schema_version="clroom.resolved-launch.v1")
+    incomplete_report = dict(composed_report, resources=composed_report["resources"][:1])
+    if has_composed_inspect_identities(stale_report) or has_composed_inspect_identities(incomplete_report):
+        fail("resolved-launch schema/identity negative self-test")
 
     with tempfile.TemporaryDirectory(prefix="clroom-composition-rehearsal-") as raw:
         root = pathlib.Path(raw)

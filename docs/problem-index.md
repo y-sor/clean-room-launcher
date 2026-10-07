@@ -23,7 +23,7 @@ If you want the human explanation before the provider details, read [Why Clean R
 
 ## Start from the closest symptom
 
-- **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci), [different inputs per worker](#subagents-inherit-mcp-tools)
+- **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci), [reusable CLROOM launch presets](#clroom-presets), [different inputs per worker](#subagents-inherit-mcp-tools)
 - **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills), [Claude plugin skill controls](#claude-plugin-skill-controls)
 - **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [stale/auto memory](#claude-auto-memory), [subagent MCP/tools](#subagents-inherit-mcp-tools)
 - **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [native `--profile` vs CLROOM](#codex-profile-vs-clroom), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
@@ -602,6 +602,41 @@ Use native homes/profiles when you want a persistent alternate Codex setup or re
 
 **Go deeper:** [Codex](codex.md) · [When to use CLROOM](when-to-use-clroom.md)
 
+<a id="clroom-presets"></a>
+
+## Do you want a reusable coding-agent launch preset without replacing provider profiles?
+
+**Common ways people ask this:**
+
+- `coding agent launch preset`
+- `CLROOM preset`
+- `save Codex skills and MCP for later`
+- `save Claude launch options`
+- `different launch resources per worker`
+- `workflow-specific tool set`
+- `reusable clean agent setup`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `coding agent preset vs profile`
+- `Codex preset vs profile`
+- `Claude Code launch preset`
+- `thread-level plugin MCP profile`
+- `task-specific coding agent tools`
+- `saved clean launch configuration`
+- `reuse CLROOM --with and --skill-set`
+- `one preset for Codex and Claude`
+- `per-worker launch preset`
+- `agent runner different presets per worker`
+</details>
+
+Use a CLROOM preset when the reusable object is the **top-level CLROOM clean/selective launch intent**. Presets reuse only supported CLROOM launch inputs and literal provider argv; they do not create provider settings, subagent orchestration, new MCP definitions, or new qualification.
+
+Use a native Codex profile or Claude settings when the reusable object is provider configuration itself.
+
+**Go deeper:** [Presets](presets.md) · [When to use CLROOM](when-to-use-clroom.md) · [Agent runners](agent-runners.md)
+
 <a id="codex-profile-vs-clroom"></a>
 
 ## Should you use a Codex `--profile`, project config, or CLROOM?
@@ -628,13 +663,10 @@ Use native homes/profiles when you want a persistent alternate Codex setup or re
 - `different Codex settings per task`
 - `saved Codex configuration`
 - `Codex profile skills`
-- `coding agent preset vs profile`
 
 </details>
 
-Use native Codex profiles when the problem is reusable **Codex configuration values**. Use project or managed Codex configuration when the settings belong to that repository or organization. CLROOM's current contract is different: a qualified clean/selective launch plus supported per-run selection of personal-global skills/resources.
-
-A future CLROOM reusable-launch feature should not exist merely to rename provider profiles. It must compose CLROOM-owned launch intent that remains distinct from provider-native configuration.
+Use native Codex profiles when the problem is reusable **Codex configuration values**. Use project or managed Codex configuration when the settings belong to that repository or organization. CLROOM's current contract is different: a qualified clean/selective launch plus supported per-run selection of personal-global skills/resources. A CLROOM preset can save that top-level launch intent for reuse without becoming a renamed provider profile.
 
 **Go deeper:** [When to use CLROOM](when-to-use-clroom.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
 

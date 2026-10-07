@@ -39,7 +39,7 @@ Use a Codex profile when the problem is **reusing Codex configuration values**. 
 
 That is not the same contract as CLROOM's current clean/selective launch boundary. CLROOM's shipped skill/resource selectors are aimed at deciding which supported personal-global inputs participate in this run without turning a provider profile into a second CLROOM configuration authority.
 
-This distinction matters for future reusable-launch UX too: CLROOM should not duplicate Codex profiles merely under a different name. Any broader CLROOM preset feature must earn its scope by composing CLROOM-qualified launch inputs that provider-native profiles do not already solve more directly.
+CLROOM v0.6 keeps that distinction explicit. A CLROOM preset saves top-level CLROOM launch intent—supported skill/resource selectors, admitted environment-variable names, and literal provider argv—and compiles it into the same qualified launch path. It does not define typed copies of Codex model/reasoning/approval/sandbox/agent-role settings. Use [Presets](presets.md) for the exact schema and precedence.
 
 ## Skills are separate from `AGENTS.md`
 
@@ -122,7 +122,7 @@ CLROOM's selected-MCP preflight and `clroom inspect codex ...` prove only the bo
 
 ## Compose one plugin with one standalone MCP
 
-v0.5.0 can resolve both bounded selectors in one interactive launch:
+The current source resolves both bounded selectors in one interactive launch:
 
 ```sh
 clroom codex \
@@ -138,7 +138,7 @@ Plugin/MCP identity overlap fails closed. Raw Codex configuration/plugin/MCP
 activation controls are refused while CLROOM selection is active so there is
 only one activation authority.
 
-The exact qualification target for these Codex resource paths is Codex CLI `0.160.0` on macOS Apple Silicon. Multiple plugins, multiple standalone MCP
+The exact qualification target for these Codex resource paths is Codex CLI `0.161.0` on macOS Apple Silicon. Multiple plugins, multiple standalone MCP
 servers, `--with=all`, component-level plugin surgery, persistent provider
 configuration mutation, remote/OAuth MCP and marketplace installation/update
 remain outside this bounded slice. Claude standalone MCP is not qualified.

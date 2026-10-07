@@ -10,16 +10,17 @@ CLROOM deliberately supports a **bounded, qualified launch surface**. The limits
 ## Platform and distribution limits
 
 - Distributed macOS release artifacts are unsigned and unnotarized; qualification is limited to the documented macOS Apple Silicon release path.
-- Only macOS on Apple Silicon is supported. The minimum accepted versions are Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. Exact qualification targets are Codex `0.160.0` and Claude Code `2.1.289`. Release qualification fails closed if either stable provider version moves before tagging.
+- Only macOS on Apple Silicon is supported. The minimum accepted versions are Codex CLI `0.147.0` and Claude Code CLI `2.1.223`. Exact qualification targets are Codex `0.161.0` and Claude Code `2.1.293`. Release qualification fails closed if either stable provider version moves before tagging.
 - Linux and Windows are `NOT_QUALIFIED`. Intel macOS, Homebrew, crates.io, signing and notarization are not claimed.
 - The launcher depends on the undocumented longevity of macOS `sandbox-exec`; it fails closed if the protection cannot be created.
 
 ## Plugin and MCP limits
 
-- The whole-plugin selector admits at most one already-installed provider-native plugin per launch. Codex `0.160.0` uses an exact private shadow-PluginStore projection for the interactive path; Claude Code `2.1.289` uses its separately qualified session-only plugin-directory path. Other provider tuples fail closed for activation. Codex plugins whose effective MCP surface includes the app-owned `codex_app` server are `HOST_REQUIRED`; CLROOM does not emulate the Codex Desktop host.
+- The whole-plugin selector admits at most one already-installed provider-native plugin per launch. Codex `0.161.0` uses an exact private shadow-PluginStore projection for the interactive path; Claude Code `2.1.293` uses its separately qualified session-only plugin-directory path. Other provider tuples fail closed for activation. Codex plugins whose effective MCP surface includes the app-owned `codex_app` server are `HOST_REQUIRED`; CLROOM does not emulate the Codex Desktop host.
 - The initial Claude whole-plugin qualification is narrower than Claude's full plugin discovery semantics. Activation requires a matching `.claude-plugin/plugin.json` identity and only default one-level `skills/<name>/SKILL.md` components. Manifestless plugins, root `SKILL.md` single-skill plugins, custom skill paths, slash commands, hooks, MCP servers, agents, LSP servers, background monitors, plugin executables, or plugin settings may still be observed by inventory but fail closed for activation.
-- Codex admits at most one exact root-user standalone stdio MCP server per interactive launch. v0.5.0 can compose that server with at most one qualified whole Codex plugin in the same typed resolved launch.
-- Multiple plugins or MCP servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working directories, project/local restore, Claude standalone MCP, component-level filtering, reusable launch presets, and `--with=all` remain outside the current shipped slice.
+- Codex admits at most one exact root-user standalone stdio MCP server per interactive launch. The current source can compose that server with at most one qualified whole Codex plugin in the same typed resolved launch.
+- Reusable presets do **not** expand that qualified surface. A preset can only reuse the provider/resource/skill/environment forms the same source already accepts directly; unsupported provider combinations still fail closed.
+- Multiple plugins or MCP servers, HTTP/SSE/WebSocket, OAuth/helpers, relative MCP working directories, project/local restore, Claude standalone MCP, component-level filtering, project/team/remote preset registries, preset scripts/interpolation, and `--with=all` remain outside the current source scope.
 - The standalone Codex MCP path refuses literal environment values and identity-field interpolation. Every referenced environment-variable name also requires explicit `--pass-env=NAME`. It fails closed if an active non-session Codex config layer contributes MCP servers rather than attempting to override or bypass that layer.
 
 ## Isolation and provider-state limits

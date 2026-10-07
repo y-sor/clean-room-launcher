@@ -7,6 +7,55 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-07
+
+### Added
+
+- Added strict user-owned reusable launch presets in
+  `$XDG_CONFIG_HOME/clroom/presets.yaml` (falling back to
+  `~/.config/clroom/presets.yaml`) with schema `clroom.presets.v1`.
+- Added `--preset=<name>[,...]`, the ordinary implicit `default` preset,
+  the single `none` reset token, and unambiguous provider inference for
+  provider-bounded presets.
+- Added preset reuse of existing CLROOM skill selection, qualified
+  `--with`/`--without` resource selectors, explicit environment-name
+  admission, and literal provider argv through the same launch pipeline.
+- Added preset provenance to `clroom inspect codex` human and JSON output.
+  JSON inspection advances explicitly to `clroom.resolved-launch.v2` rather than
+  changing the v1 schema under an existing identifier.
+
+### Changed
+
+- Current source version advances to `v0.6.0`; publication identity and
+  downloadable artifacts remain authoritative in GitHub Releases until the
+  separate release lifecycle completes.
+- Explicit CLI CLROOM options remain the highest user-controlled launch layer.
+  Ordered preset resource choices are collapsed before the existing
+  qualification path so later preset layers and explicit CLI resource choices
+  can replace earlier preset intent without creating a second resolver.
+- Native Codex profiles, Claude settings/subagent controls, authentication,
+  managed policy, and provider-owned configuration remain provider-native.
+  A CLROOM preset is a saved top-level clean/selective launch intent, not a
+  replacement provider settings framework.
+
+### Security
+
+- Preset parsing is local, size/count bounded, strict-schema, and fail-closed
+  before provider birth for malformed configuration, incompatible providers,
+  sensitive provider arguments, or attempts to smuggle CLROOM-owned controls
+  through provider argv.
+- Presets do not support shell expansion, command substitution, scripts,
+  implicit interpolation, secret values, remote includes/registries, or
+  capability expansion. Unsupported resource/cardinality/provider paths remain
+  unsupported when named by a preset.
+- Zero-auth provider auth/login/logout boundaries remain closed after
+  launcher-owned options are resolved.
+
+### Dependencies
+
+- No runtime or build dependency changes.
+
+
 ## [0.5.0] - 2026-10-04
 
 ### Added

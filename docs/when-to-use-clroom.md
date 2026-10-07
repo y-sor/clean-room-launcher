@@ -25,6 +25,7 @@ If you arrived with a symptom or half-remembered term rather than the product na
 | Suppress normal Codex user configuration for one non-interactive task | Native `codex exec --ignore-user-config` |
 | Maintain a persistent alternate provider setup | `CODEX_HOME`, Claude configuration directory, or provider-native profiles/settings |
 | Reuse a named set of Codex configuration values | Native Codex `--profile profile-name` and its profile config file |
+| Reuse one provider-bounded CLROOM clean/selective launch intent | CLROOM `--preset=<name>` |
 | Share repository/organization Codex defaults | Native project or managed Codex configuration layers |
 | Start a repeatable cleaner launch while preserving the project-side context CLROOM is designed to retain | CLROOM |
 | Select and inspect the currently qualified one-plugin / one-stdio-MCP Codex launch without rewriting persistent Codex configuration | CLROOM's bounded Codex resource path |
@@ -40,9 +41,10 @@ CLROOM is useful when:
 - one persistent personal setup does not fit every repository, project, or workflow;
 - you want to compare normal behavior with a repeatable cleaner baseline without deleting or renaming your normal configuration;
 - you are testing whether a skill actually changed the result, rather than another installed skill or personal-global instruction changing it;
-- you want reusable named skill sets for different kinds of work.
+- you want reusable named skill sets for different kinds of work;
+- you want to save the CLROOM-owned top-level launch intent itself and reuse it with `--preset=<name>` without replacing provider-native profiles/settings.
 
-For a complete skill-author testing workflow, see [Use cases](use-cases.md). To create, edit, or combine reusable groups, see [Skill sets](skill-sets.md).
+For a complete skill-author testing workflow, see [Use cases](use-cases.md). To create or combine reusable skill groups, see [Skill sets](skill-sets.md). To save the broader CLROOM launch intent, see [Presets](presets.md).
 
 The normal setup remains on disk. CLROOM changes the launch, not the developer's permanent configuration.
 
@@ -86,11 +88,11 @@ CLROOM does not rewrite provider-owned subagent definitions. Use separate CLROOM
 
 ## Use a native Codex profile when reusable Codex configuration is the problem
 
-Current Codex has a real reusable profile layer selected with `--profile profile-name`, plus project and managed configuration layers. If the requirement is simply **"reuse these Codex settings"**, use that native mechanism rather than inventing a CLROOM equivalent.
+Current Codex has a real reusable profile layer selected with `--profile profile-name`, plus project and managed configuration layers. If the requirement is simply **"reuse these Codex settings"**, use that native mechanism.
 
-CLROOM's current role is different: it owns a qualified clean/selective launch boundary and supported per-run selection of personal-global skills/resources. A future CLROOM reusable-launch feature should not duplicate provider profiles; it must remain about CLROOM-owned launch intent and preserve provider-native configuration as provider-native.
+A CLROOM preset is different: it saves the **CLROOM top-level launch intent** that feeds the same qualified clean/selective resolver used by direct CLROOM flags. It can reuse supported skill/resource selection, admitted environment-variable names, and literal provider argv, but it does not define typed replacements for Codex model/reasoning/approval/sandbox/agent-role settings.
 
-See [Codex and CLROOM](codex.md) for the current profile/configuration distinction.
+Use [Presets](presets.md) when the saved object is the CLROOM launch boundary. Use [Codex and CLROOM](codex.md) when the saved object is provider configuration.
 
 ## Use another `CODEX_HOME`, Claude config directory, or provider profile when you want a persistent alternate setup
 

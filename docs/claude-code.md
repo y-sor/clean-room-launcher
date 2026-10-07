@@ -23,7 +23,7 @@ A simplified view:
 | Project local | `CLAUDE.local.md`, `.claude/settings.local.json` | Retained |
 | Managed / organization | managed settings delivered through supported admin mechanisms | Must remain authoritative |
 
-Current CLROOM source launches Claude with `--setting-sources project,local`, `--strict-mcp-config`, fail-closed sandbox settings, disabled auto-memory, and additional filesystem controls for known personal-global roots. Claude Code 2.1.289 also ships a built-in `agents-md` instruction surface. For this launch, CLROOM treats the nearest real Git `.git` marker as the project instruction boundary (or the launch directory when no such marker exists): `AGENTS.md` and `.claude/AGENTS.md` above that boundary are blocked, while repo-root and nested project instructions remain available.
+Current CLROOM source launches Claude with `--setting-sources project,local`, `--strict-mcp-config`, fail-closed sandbox settings, disabled auto-memory, and additional filesystem controls for known personal-global roots. Claude Code 2.1.293 also ships a built-in `agents-md` instruction surface. For this launch, CLROOM treats the nearest real Git `.git` marker as the project instruction boundary (or the launch directory when no such marker exists): `AGENTS.md` and `.claude/AGENTS.md` above that boundary are blocked, while repo-root and nested project instructions remain available.
 
 The `--strict-mcp-config` flag is intentionally stricter than the project-settings row above. For the current CLROOM launch, ordinary project, user, and other ambient MCP configurations are not loaded. CLROOM does not synthesize an `--mcp-config`; Claude considers MCP servers only when you explicitly supply its own `--mcp-config` argument for that launch. This is an explicit current limitation, not a claim that project MCP configuration is preserved.
 
@@ -115,7 +115,7 @@ While a CLROOM resource selection is active, raw `--plugin-dir` and
 authorities. More than one selected whole plugin is also refused.
 
 The ordinary clean launch and this whole-plugin path are exactly qualified on
-the current stable Claude Code `2.1.289` for macOS Apple Silicon. Release
+the current stable Claude Code `2.1.293` for macOS Apple Silicon. Release
 qualification includes the provider's built-in `agents-md` behavior: AGENTS
 instructions above the Git project boundary must stay outside the launch while
 repo-root and nested project AGENTS remain available even when Claude starts
@@ -123,8 +123,8 @@ from a subdirectory. Qualification fails closed if the npm stable tag moves befo
 the candidate is tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
 This Claude slice still does not add standalone MCP resource activation,
-`--with=all`, presets, installation/update/removal, or component-level
-selection. Codex whole-plugin activation is a separate provider-specific
+`--with=all`, installation/update/removal, or component-level selection.
+CLROOM presets can reuse already-supported top-level Claude launch inputs, but they do not add Claude subagent/inner-session controls or widen plugin qualification. Codex whole-plugin activation is a separate provider-specific
 path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?

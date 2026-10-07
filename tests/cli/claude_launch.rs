@@ -889,7 +889,7 @@ fn claude_preserves_native_service_state_across_launches_and_keeps_ambient_input
             .output()
             .unwrap();
 
-        assert_eq!(output.status.code(), Some(42));
+        assert_eq!(output.status.code(), Some(42), "{}", String::from_utf8_lossy(&output.stderr));
         let argv = fs::read(&capture).unwrap();
         let args = argv
             .split(|byte| *byte == 0)

@@ -36,6 +36,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 
 - [Use cases: skill testing, MCP/tool diagnosis, workers, CI, and reproducibility](use-cases.md)
 - [Skill sets: create, combine, and reuse task-specific groups](skill-sets.md)
+- [Presets: save and compose a provider-bounded CLROOM launch intent](presets.md)
 - [Agent runners: apps, scripts, CI, and independently launched workers](agent-runners.md)
 - [Claude Code and CLROOM](claude-code.md)
 - [Codex and CLROOM](codex.md)
@@ -51,7 +52,7 @@ On the current qualified Codex path, that same per-run model can also admit one 
 
 ## Start from the problem, not the product name
 
-If you only remember a symptom — old instructions, too many skills, a project skill that still appears, `--safe-mode`, `--bare`, `--restricted`, `CODEX_HOME`, `AGENTS.md`, `CLAUDE.md`, a hook firing, a runner spawning the provider, a wrong implementation path, or a clean baseline — use the [coding-agent configuration problem index](problem-index.md).
+If you only remember a symptom — old instructions, too many skills, a reusable preset/profile question, a project skill that still appears, `--safe-mode`, `--bare`, `--restricted`, `CODEX_HOME`, `AGENTS.md`, `CLAUDE.md`, a hook firing, a runner spawning the provider, a wrong implementation path, or a clean baseline — use the [coding-agent configuration problem index](problem-index.md).
 
 The problem index groups real-world wording under canonical answers. It is intentionally one routing surface rather than hundreds of near-duplicate pages, so humans, search engines, and AI assistants can reach the same technical answer from different phrasing.
 

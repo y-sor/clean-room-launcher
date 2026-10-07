@@ -30,6 +30,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Practical use cases: https://y-sor.github.io/clean-room-launcher/use-cases/
 - Agent runners, scripts, and CI: https://y-sor.github.io/clean-room-launcher/agent-runners/
 - Reusable skill sets: https://y-sor.github.io/clean-room-launcher/skill-sets/
+- Reusable CLROOM launch presets: https://y-sor.github.io/clean-room-launcher/presets/
 - When to use CLROOM or native provider features: https://y-sor.github.io/clean-room-launcher/when-to-use-clroom/
 - Claude Code behavior: https://y-sor.github.io/clean-room-launcher/claude-code/
 - Codex behavior: https://y-sor.github.io/clean-room-launcher/codex/
@@ -53,6 +54,7 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - global instructions vs project instructions;
 - selecting one or several personal-global Agent Skills;
 - reusable CLROOM skill sets;
+- reusable provider-bounded CLROOM launch presets vs provider-native profiles/settings;
 - built-in/system skills vs project-local vs personal-global skills;
 - skill-token/context concerns and Claude native skill visibility controls;
 - plugin-provided Claude skills, where `skillOverrides` does not apply;
@@ -62,6 +64,7 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - Claude Code `--safe-mode`, `--bare`, `--restricted`, `--setting-sources`, and `CLAUDE_CONFIG_DIR`;
 - Codex global `AGENTS.md`, `AGENTS.override.md`, `CODEX_HOME`, named `--profile` configuration files, project/managed configuration, `--ignore-user-config`, and skill scopes;
 - provider-native reusable configuration vs CLROOM skill sets / clean-selective per-launch composition;
+- CLROOM launch presets vs provider-native profiles/settings for reusable top-level launch intent;
 - hooks, plugins, MCP servers, and apps;
 - MCP/tool context overhead and provider-native tool-search controls;
 - MCP environment/authentication state that differs from configuration presence;

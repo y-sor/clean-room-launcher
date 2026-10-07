@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use clroom::adapters::codex::isolation::{IsolationInputs, plan_with_skills};
 
 use super::{
-    codex_resolved_launch_error_message, isolation_error_message, launch_contract, output, process,
-    resource_options, select_codex_options, skill_sets,
+    codex_resolved_launch_error_message, isolation_error_message, launch_contract, output, presets,
+    process, resource_options, select_codex_options, skill_sets,
 };
 
 pub fn run(args: &[String], mode: output::Mode) -> Result<String, String> {
@@ -13,13 +13,15 @@ pub fn run(args: &[String], mode: output::Mode) -> Result<String, String> {
     };
     if provider != "codex" {
         return Err(
-            "INSPECT_PROVIDER_UNAVAILABLE: effective launch inspection is available for Codex in v0.5.0"
+            "INSPECT_PROVIDER_UNAVAILABLE: effective launch inspection is available for Codex on the current qualified path"
                 .to_owned(),
         );
     }
 
+    let preset_resolution =
+        presets::apply(Some(resource_options::Provider::Codex), &args[1..])?;
     let prepared =
-        resource_options::prepare(resource_options::Provider::Codex, &args[1..])?;
+        resource_options::prepare(resource_options::Provider::Codex, &preset_resolution.args)?;
     let (selection_terms, provider_args, pass_env) =
         select_codex_options(&prepared.provider_args)?;
 
@@ -86,17 +88,35 @@ pub fn run(args: &[String], mode: output::Mode) -> Result<String, String> {
 
     let summary = resolved.summary();
     match mode {
-        output::Mode::Human => Ok(render_human(&summary)),
-        output::Mode::Json => serde_json::to_string_pretty(&summary)
-            .map_err(|_| "INSPECT_SERIALIZATION_FAILED".to_owned()),
+        output::Mode::Human => Ok(render_human(&summary, &preset_resolution.presets)),
+        output::Mode::Json => serde_json::to_string_pretty(&InspectSummary {
+            launch: summary,
+            presets: preset_resolution.presets,
+        })
+        .map_err(|_| "INSPECT_SERIALIZATION_FAILED".to_owned()),
     }
 }
 
-fn render_human(summary: &launch_contract::ResolvedLaunchSummary) -> String {
+#[derive(serde::Serialize)]
+struct InspectSummary {
+    #[serde(flatten)]
+    launch: launch_contract::ResolvedLaunchSummary,
+    presets: Vec<String>,
+}
+
+fn render_human(summary: &launch_contract::ResolvedLaunchSummary, presets: &[String]) -> String {
     let mut lines = vec![
         format!(
             "Resolved launch: {} {} / {} / {}",
             summary.provider, summary.provider_version, summary.os, summary.arch
+        ),
+        format!(
+            "Presets: {}",
+            if presets.is_empty() {
+                "none".to_owned()
+            } else {
+                presets.join(", ")
+            }
         ),
         format!("Boundary: {}", summary.boundary),
     ];
@@ -153,7 +173,7 @@ fn render_human(summary: &launch_contract::ResolvedLaunchSummary) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::render_human;
+    use super::{InspectSummary, render_human};
     use super::super::launch_contract::{
         ResolvedLaunchSummary, ResolvedProviderArgSummary, ResolvedResourceSummary,
     };
@@ -161,9 +181,9 @@ mod tests {
     #[test]
     fn human_summary_exposes_names_and_reasons_not_provider_values() {
         let summary = ResolvedLaunchSummary {
-            schema_version: "clroom.resolved-launch.v1",
+            schema_version: "clroom.resolved-launch.v2",
             provider: "codex",
-            provider_version: "0.160.0".to_owned(),
+            provider_version: "0.161.0".to_owned(),
             os: "macos".to_owned(),
             arch: "aarch64".to_owned(),
             resources: vec![ResolvedResourceSummary {
@@ -183,12 +203,22 @@ mod tests {
             },
         };
 
-        let human = render_human(&summary);
+        let human = render_human(&summary, &["default".to_owned(), "review".to_owned()]);
+        assert!(human.contains("Presets: default, review"));
         assert!(human.contains("mcp:review"));
         assert!(human.contains("explicit-selection"));
         assert!(human.contains("REVIEW_TOKEN"));
         assert!(human.contains("values redacted"));
         assert!(!human.contains("secret-value"));
         assert!(!human.contains("/private/"));
+
+        let json = serde_json::to_value(InspectSummary {
+            launch: summary,
+            presets: vec!["default".to_owned(), "review".to_owned()],
+        })
+        .unwrap();
+        assert_eq!(json["schema_version"], "clroom.resolved-launch.v2");
+        assert_eq!(json["presets"][0], "default");
+        assert_eq!(json["presets"][1], "review");
     }
 }

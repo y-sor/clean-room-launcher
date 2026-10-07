@@ -9,6 +9,7 @@ mod launch_contract;
 mod output;
 mod parser;
 mod process;
+mod presets;
 mod resource_options;
 mod screen;
 mod skill_sets;
@@ -75,6 +76,33 @@ pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode
     if first == "claude" {
         return run_claude(&mut source);
     }
+    if first == "--preset" {
+        eprintln!("CLROOM_PRESET_SELECTOR_INVALID: use --preset=name[,name] or --preset=none");
+        return ExitCode::from(2);
+    }
+    if first.starts_with("--preset=") {
+        let mut preset_args = vec![first];
+        while let Some(argument) = match next_argument(&mut source) {
+            Ok(argument) => argument,
+            Err(exit) => return exit,
+        } {
+            preset_args.push(argument);
+        }
+        let resolution = match presets::apply(None, &preset_args) {
+            Ok(resolution) => resolution,
+            Err(message) => {
+                eprintln!("{message}");
+                return ExitCode::from(2);
+            }
+        };
+        if explicit_provider_auth_command(&preset_args, resolution.provider) {
+            return external_refusal(parser::Command::Provider, false);
+        }
+        return match resolution.provider {
+            resource_options::Provider::Codex => run_codex_args(resolution.args),
+            resource_options::Provider::Claude => run_claude_args(resolution.args),
+        };
+    }
     if let Some(exit) = external_prefix(&first) {
         return exit;
     }
@@ -133,6 +161,23 @@ fn run_codex(source: &mut impl Iterator<Item = String>) -> ExitCode {
     } {
         args.push(argument);
     }
+    if explicit_provider_auth_command(&args, resource_options::Provider::Codex) {
+        return external_refusal(parser::Command::Provider, false);
+    }
+    let resolution = match presets::apply(Some(resource_options::Provider::Codex), &args) {
+        Ok(resolution) => resolution,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    run_codex_args(resolution.args)
+}
+
+fn run_codex_args(args: Vec<String>) -> ExitCode {
+    if explicit_provider_auth_command(&args, resource_options::Provider::Codex) {
+        return external_refusal(parser::Command::Provider, false);
+    }
     let prepared = match resource_options::prepare(resource_options::Provider::Codex, &args) {
         Ok(prepared) => prepared,
         Err(message) => {
@@ -167,18 +212,29 @@ fn run_claude(source: &mut impl Iterator<Item = String>) -> ExitCode {
         Ok(argument) => argument,
         Err(exit) => return exit,
     };
-    if first
-        .as_deref()
-        .is_some_and(|argument| matches!(argument, "auth" | "login" | "logout"))
-    {
-        return external_refusal(parser::Command::Provider, false);
-    }
     let mut args = first.into_iter().collect::<Vec<_>>();
     while let Some(argument) = match next_argument(source) {
         Ok(argument) => argument,
         Err(exit) => return exit,
     } {
         args.push(argument);
+    }
+    if explicit_provider_auth_command(&args, resource_options::Provider::Claude) {
+        return external_refusal(parser::Command::Provider, false);
+    }
+    let resolution = match presets::apply(Some(resource_options::Provider::Claude), &args) {
+        Ok(resolution) => resolution,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    run_claude_args(resolution.args)
+}
+
+fn run_claude_args(args: Vec<String>) -> ExitCode {
+    if explicit_provider_auth_command(&args, resource_options::Provider::Claude) {
+        return external_refusal(parser::Command::Provider, false);
     }
     let prepared = match resource_options::prepare(resource_options::Provider::Claude, &args) {
         Ok(prepared) => prepared,
@@ -206,6 +262,209 @@ fn run_claude(source: &mut impl Iterator<Item = String>) -> ExitCode {
             eprintln!("{message}");
             ExitCode::from(2)
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum GlobalOptionArity {
+    Flag,
+    Value,
+    Ambiguous,
+}
+
+fn explicit_provider_auth_command(args: &[String], provider: resource_options::Provider) -> bool {
+    let mut index = 0;
+    while let Some(argument) = args.get(index).map(String::as_str) {
+        if argument == "--" {
+            return false;
+        }
+        if matches!(
+            argument,
+            "--preset" | "--with" | "--without" | "--skill-set" | "--pass-env"
+        ) {
+            if args.get(index + 1).is_none() {
+                return true;
+            }
+            index += 2;
+            continue;
+        }
+        if [
+            "--preset=",
+            "--with=",
+            "--without=",
+            "--skill-set=",
+            "--pass-env=",
+        ]
+        .iter()
+        .any(|prefix| argument.starts_with(prefix))
+        {
+            index += 1;
+            continue;
+        }
+        if !argument.starts_with('-') {
+            return provider_auth_commands(provider).contains(&argument);
+        }
+
+        // Attached values are self-delimiting, including provider-native
+        // forms such as --model=login and Codex -c=key=value.
+        if argument.contains('=') {
+            index += 1;
+            continue;
+        }
+
+        match provider_global_option_arity(provider, argument) {
+            Some(GlobalOptionArity::Flag) => index += 1,
+            Some(GlobalOptionArity::Value) => {
+                if args.get(index + 1).is_none() {
+                    return true;
+                }
+                index += 2;
+            }
+            Some(GlobalOptionArity::Ambiguous) | None => {
+                // Unknown or variadic option grammar could consume the next
+                // token as a value. Refuse if an auth command remains before
+                // the literal terminator rather than guessing its position.
+                return args[index + 1..]
+                    .iter()
+                    .take_while(|value| value.as_str() != "--")
+                    .any(|value| provider_auth_commands(provider).contains(&value.as_str()));
+            }
+        }
+    }
+    false
+}
+
+fn provider_auth_commands(provider: resource_options::Provider) -> &'static [&'static str] {
+    match provider {
+        resource_options::Provider::Codex => &["login", "logout"],
+        resource_options::Provider::Claude => &["auth", "login", "logout"],
+    }
+}
+
+fn provider_global_option_arity(
+    provider: resource_options::Provider,
+    option: &str,
+) -> Option<GlobalOptionArity> {
+    use GlobalOptionArity::{Ambiguous, Flag, Value};
+    let arity = match provider {
+        resource_options::Provider::Codex => match option {
+            "--add-dir" | "--ask-for-approval" | "--cd" | "--color" | "--config" | "-c"
+            | "--disable" | "--enable" | "--model" | "--profile" | "--sandbox"
+            | "--local-provider" => Value,
+            "--image" | "-i" => Ambiguous,
+            "--dangerously-bypass-approvals-and-sandbox"
+            | "--full-auto"
+            | "--help"
+            | "-h"
+            | "--no-alt-screen"
+            | "--oss"
+            | "--search"
+            | "--version"
+            | "-V"
+            | "--yolo" => Flag,
+            _ => return None,
+        },
+        resource_options::Provider::Claude => match option {
+            "--model"
+            | "--fallback-model"
+            | "--input-format"
+            | "--output-format"
+            | "--permission-mode"
+            | "--permission-prompt-tool"
+            | "--max-turns"
+            | "--resume"
+            | "-r"
+            | "--append-system-prompt"
+            | "--system-prompt"
+            | "--agent"
+            | "--agents"
+            | "--settings"
+            | "--setting-sources"
+            | "--mcp-config"
+            | "--plugin-dir"
+            | "--betas"
+            | "--tools" => Value,
+            "--add-dir" | "--allowedTools" | "--disallowedTools" => Ambiguous,
+            "--continue"
+            | "-c"
+            | "--dangerously-skip-permissions"
+            | "--debug"
+            | "--disable-slash-commands"
+            | "--fork-session"
+            | "--help"
+            | "-h"
+            | "--ide"
+            | "--include-partial-messages"
+            | "--no-session-persistence"
+            | "--print"
+            | "-p"
+            | "--strict-mcp-config"
+            | "--verbose"
+            | "--version" => Flag,
+            _ => return None,
+        },
+    };
+    Some(arity)
+}
+
+#[cfg(test)]
+mod provider_auth_command_tests {
+    use super::{explicit_provider_auth_command, resource_options::Provider};
+
+    fn words(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
+    }
+
+    #[test]
+    fn auth_commands_after_provider_global_options_are_found() {
+        for args in [
+            words(&["--profile", "safe", "login"]),
+            words(&["--model", "gpt-5", "logout"]),
+            words(&["-c", "model_reasoning_effort=high", "login"]),
+        ] {
+            assert!(explicit_provider_auth_command(&args, Provider::Codex));
+        }
+        for args in [
+            words(&["--model", "sonnet", "auth"]),
+            words(&["--permission-mode", "plan", "auth"]),
+        ] {
+            assert!(explicit_provider_auth_command(&args, Provider::Claude));
+        }
+    }
+
+    #[test]
+    fn auth_looking_values_and_terminator_data_are_not_commands() {
+        for args in [
+            words(&["--model", "login"]),
+            words(&["--profile", "auth"]),
+            words(&["-c", "login"]),
+            words(&["--", "login"]),
+        ] {
+            assert!(!explicit_provider_auth_command(&args, Provider::Codex));
+        }
+        for args in [
+            words(&["--model", "auth"]),
+            words(&["--permission-mode", "login"]),
+            words(&["--", "auth"]),
+        ] {
+            assert!(!explicit_provider_auth_command(&args, Provider::Claude));
+        }
+    }
+
+    #[test]
+    fn unknown_option_grammar_fails_closed_only_before_literal_terminator() {
+        assert!(explicit_provider_auth_command(
+            &words(&["--future-provider-option", "opaque", "login"]),
+            Provider::Codex,
+        ));
+        assert!(!explicit_provider_auth_command(
+            &words(&["--future-provider-option", "--", "login"]),
+            Provider::Codex,
+        ));
+        assert!(!explicit_provider_auth_command(
+            &words(&["exec", "login"]),
+            Provider::Codex,
+        ));
     }
 }
 

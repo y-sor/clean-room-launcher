@@ -302,7 +302,7 @@ impl ResolvedLaunch {
 
     pub fn summary(&self) -> ResolvedLaunchSummary {
         ResolvedLaunchSummary {
-            schema_version: "clroom.resolved-launch.v1",
+            schema_version: "clroom.resolved-launch.v2",
             provider: "codex",
             provider_version: format!(
                 "{}.{}.{}",
