@@ -81,7 +81,7 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
     let explicit_requested = selection.requested.is_some();
     let path = match config_path() {
         Ok(path) => path,
-        Err(error) if !explicit_requested => {
+        Err(_) if !explicit_requested => {
             let provider = provider.ok_or_else(provider_required)?;
             return Ok(Resolution {
                 provider,
