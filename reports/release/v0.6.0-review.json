@@ -1,0 +1,138 @@
+{
+  "schema_version": "clroom.release-review.v2",
+  "release": "v0.6.0",
+  "baseline_release": "v0.5.0",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Reusable presets are implemented only as a bounded user-level input layer that flattens into the existing CLROOM skill/resource/environment/provider-argv path and the same ResolvedLaunch; no second launcher or provider settings framework is introduced.",
+        "Provider inference is fail-closed and based on the intersection of explicitly permitted providers across selected presets; direct CLI provider selection remains authoritative only when every selected preset permits it.",
+        "Preset file parsing, selected preset count, list/argv sizes and total resolved composition are bounded before provider birth; stored secret-shaped/auth-lifecycle/CLROOM-control/argv-terminator inputs are refused."
+      ]
+    },
+    "tests": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Focused preset unit and CLI regressions cover missing/malformed config, default/none/ordered composition, provider ambiguity/intersection, exact resource precedence, explicit CLI skill replacement, environment-name validation, zero-auth/auth lifecycle refusal and CLROOM-control smuggling.",
+        "A dedicated aggregate-resolution negative proves individually valid preset fragments cannot combine into an unbounded resolved launch budget.",
+        "Existing required CI, CodeQL, fuzz, dependency and discovery jobs remain in the exact-candidate topology; provider/runtime and performance gates remain separately required before release acceptance."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "The product source version advances from 0.5.0 to 0.6.0 but no runtime/build dependency is added, removed or version-changed; serde_yaml already existed before this release.",
+        "Cargo.lock and fuzz/Cargo.lock changes are package-identity synchronization only; Dependency Review remains required."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The post-v0.5 delta adds required documentation freshness, discovery metadata/routing, link-graph and problem-language vector validation to ordinary CI.",
+        "Preset behavior itself is exercised by the existing Rust all-target test topology rather than a parallel ad-hoc workflow; release acceptance additionally requires qualified-target performance and current-provider evidence recorded below."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "The public Release Contract now makes reusable preset closure durable: single resolution authority, bounded local parse, deterministic precedence, explicit machine-schema evolution, no provider-owned widening and qualified-target performance evidence.",
+        "The existing release system still requires exact candidate whole-release content review, provider freshness/registry integrity, PR-candidate runtime rehearsal, accepted-main exact-byte staging, exact public preview, guarded tag/publish actions and public-install verification.",
+        "v0.6 release acceptance is explicitly blocked until the current stable Codex/Claude tuple is refreshed and qualified and preset-resolution performance evidence is captured on qualified Apple Silicon."
+      ]
+    },
+    "public_claims": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "README and canonical docs add one answer-first presets page plus native-alternative routing that distinguishes CLROOM launch intent from Codex profiles and Claude settings/subagent controls.",
+        "Problem-index/llms/glossary/use-case/runner surfaces route reusable-preset language to canonical answers without creating per-keyword duplicate pages; the post-v0.5 discovery hardening preserves canonical/link/metadata/privacy/trust coherence.",
+        "Machine inspection schema advances explicitly to clroom.resolved-launch.v2 when preset provenance is added; provider argv values, environment values, private paths and secret material remain non-claims."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "preset-inspect-json-schema-silent-mutation",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Adding top-level preset provenance to JSON inspection while retaining clroom.resolved-launch.v1 would silently change a versioned human/AI machine contract under an existing schema identifier.",
+      "durable_control": "Resolved launch inspection now advances explicitly to clroom.resolved-launch.v2; unit serialization regression asserts the v2 identifier and preset provenance, and the Release Contract requires explicit schema-version evolution for future JSON shape changes."
+    },
+    {
+      "id": "preset-config-growth-between-metadata-and-read",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A preset file validated as small by metadata could grow before an unbounded whole-file read, turning a nominal size limit into an allocation/TOCTOU weakness.",
+      "durable_control": "Preset loading opens the file and reads through a MAX_FILE_BYTES+1 bounded reader, then refuses overflow; the Release Contract requires read bounds independent of prior filesystem metadata."
+    },
+    {
+      "id": "preset-category-bounds-with-unbounded-total",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Several individually bounded preset categories could compose into a total launch larger than the intended resolved-work budget.",
+      "durable_control": "The resolver now computes one aggregate resolved-item budget before synthesis and fails with CLROOM_PRESET_RESOLUTION_TOO_LARGE; a focused CLI regression selects five individually valid provider-argv layers whose total exceeds the cap."
+    },
+    {
+      "id": "preset-provider-auth-or-clroom-control-smuggling",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Stored literal provider argv could shift auth lifecycle commands or smuggle launcher-owned preset/resource/skill/environment controls past the intended precedence and zero-auth boundary.",
+      "durable_control": "Stored argv refuses credential-shaped material, auth/login/logout, argv terminator and CLROOM-owned controls; execution re-enters the existing resource/skill/env/conflict/zero-auth path and focused negative tests cover these cases."
+    },
+    {
+      "id": "legacy-pages-search-migration-residue",
+      "decision": "FOLLOW_UP",
+      "failure_mode": "Search engines can continue surfacing historical ewgenij87snwork.github.io CLROOM Pages URLs while the canonical project site is y-sor.github.io/clean-room-launcher, confusing users despite correct new-site canonicals.",
+      "durable_control": "Track separately in public Issue #125 and private discovery research state. Do not recreate the old product repository because GitHub repository-transfer redirects would be destroyed; investigate only controllable redirect/old-host/search-console surfaces under their own gates."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "reusable-preset-functional-closure",
+      "phase": "PR_CANDIDATE",
+      "requirement": "Exact PR candidate must pass focused and full Rust/CLI regressions for preset schema/bounds, default/none/ordered layering, provider inference, resource precedence, CLI skill replacement, env-name handling, literal provider argv safety, aggregate composition cap and clroom.resolved-launch.v2 inspection provenance."
+    },
+    {
+      "id": "reusable-preset-performance",
+      "phase": "PRE_RELEASE_ACCEPTANCE_QUALIFIED_TARGET",
+      "requirement": "Benchmark 0/1/10/100/1000-preset resolution plus representative saved skill-set use on qualified macOS Apple Silicon; record measurements and block if representative 100-preset resolution exceeds the accepted <=10 ms p95 budget unless the contract is explicitly revised."
+    },
+    {
+      "id": "current-provider-refresh",
+      "phase": "PR_CANDIDATE_AND_ACCEPTED_MAIN",
+      "requirement": "Refresh current stable Codex and Claude versions from authoritative package/release inputs, verify registry/package/native integrity, synchronize shipped qualification constants and public claims, then rerun exact-provider clean/selective/composed rehearsals. Stale 0.160.0/2.1.289 evidence cannot qualify a later current tuple."
+    },
+    {
+      "id": "discovery-native-alternative-closure",
+      "phase": "PR_CANDIDATE_SEMANTIC_REVIEW",
+      "requirement": "Re-run current native-alternative and adjacent-solution review; keep CLROOM presets limited to top-level clean/selective launch intent, map distinct user/problem language to canonical answers, and preserve truthful native-provider routing and search-migration residue classification."
+    },
+    {
+      "id": "publishable-surface-semantic-closure",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Materialize and independently review exact v0.6.0 release facts, notes and publish preview; bind semantic public-claim PASS and exact bytes before any protected tag."
+    },
+    {
+      "id": "guarded-publish-action",
+      "phase": "PRE_PUBLISH_ACTION_TIME",
+      "requirement": "After separate Owner publish approval, use only the canonical guarded publish helper with exact Draft/tag/payload guards and authoritative reconciliation."
+    },
+    {
+      "id": "public-install-route",
+      "phase": "POST_PUBLICATION",
+      "requirement": "Verify Latest Release, releases/latest/download assets, attestations and isolated public installation before reporting PUBLIC_INSTALL_VERIFIED."
+    }
+  ],
+  "product_outcome": "Ship v0.6.0 as a durable reusable CLROOM launch-intent layer over the existing ResolvedLaunch: users can save bounded provider-specific top-level clean/selective composition once and reuse it without duplicating provider-native profile/settings/orchestration systems, weakening zero-auth/qualification policy, or expanding unsupported resource capabilities.",
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "v0.6.0 introduces persistent user-authored launch composition that can affect provider selection, resources, global skills, admitted environment names and provider argv before provider birth. This creates new parsing, precedence, resource-budget, zero-auth and machine-inspection compatibility surfaces, so the release contract expands to require one bounded resolver authority, explicit schema evolution, focused negative closure and qualified-target performance evidence. The post-v0.5 discovery hardening also makes current provider/native alternatives, semantic problem-language coverage and rendered public-state coherence durable release obligations.",
+    "promoted_controls": [
+      "one strict user-level clroom.presets.v1 file and no project/team/remote preset trust layer",
+      "preset flattening into the same existing direct-CLI and ResolvedLaunch authority rather than a second launcher/settings framework",
+      "bounded file read plus bounded schema/count/list/argv/selected-preset and aggregate resolved-composition budgets",
+      "fail-closed provider intersection/inference and deterministic default/none/ordered/explicit-CLI precedence",
+      "stored provider argv refusal for secret-shaped values, auth lifecycle commands, CLROOM-owned controls and argv terminator",
+      "explicit clroom.resolved-launch.v2 JSON schema for preset provenance with sensitive/private values still redacted",
+      "qualified-target preset-resolution performance evidence before release acceptance",
+      "current provider/native-alternative/discovery research refresh before release acceptance"
+    ]
+  },
+  "reviewed_content_digest": "0000000000000000000000000000000000000000000000000000000000000000"
+}
