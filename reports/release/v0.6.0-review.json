@@ -109,9 +109,12 @@
       },
       "codex_native_sha256": "12ac11d2c7eee27cfae34393986d7b7c9ed0dea537cb749831cdd7033893e6de",
       "provisioning_result": "PASS",
-      "runtime_qualification_result": "PENDING_EXACT_HEAD_CI",
+      "runtime_qualification_result": "PASS",
       "rehearsal_consumer_schema": "clroom.resolved-launch.v2",
-      "rehearsal_schema_regression_result": "PASS_SELF_TEST"
+      "rehearsal_schema_regression_result": "PASS_SELF_TEST",
+      "runtime_qualification_head": "2b9e2c00a410b3b4f77bb4953d7c6eb136ae8d96",
+      "runtime_qualification_run_id": "37662207399",
+      "runtime_qualification_evidence": "Exact PR candidate on macOS 14 / Apple Silicon passed fresh Codex and Claude canary provisioning, Codex clean/selective/composed runtime rehearsals, standalone Codex MCP rehearsal, and exact release-byte provider qualification."
     },
     {
       "id": "discovery-native-alternative-closure",
