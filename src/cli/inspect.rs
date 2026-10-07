@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use clroom::adapters::codex::isolation::{IsolationInputs, plan_with_skills};
 
 use super::{
-    codex_resolved_launch_error_message, isolation_error_message, launch_contract, output, process,
-    resource_options, select_codex_options, skill_sets,
+    codex_resolved_launch_error_message, isolation_error_message, launch_contract, output, presets,
+    process, resource_options, select_codex_options, skill_sets,
 };
 
 pub fn run(args: &[String], mode: output::Mode) -> Result<String, String> {
@@ -13,13 +13,15 @@ pub fn run(args: &[String], mode: output::Mode) -> Result<String, String> {
     };
     if provider != "codex" {
         return Err(
-            "INSPECT_PROVIDER_UNAVAILABLE: effective launch inspection is available for Codex in v0.5.0"
+            "INSPECT_PROVIDER_UNAVAILABLE: effective launch inspection is available for Codex on the current qualified path"
                 .to_owned(),
         );
     }
 
+    let preset_resolution =
+        presets::apply(Some(resource_options::Provider::Codex), &args[1..])?;
     let prepared =
-        resource_options::prepare(resource_options::Provider::Codex, &args[1..])?;
+        resource_options::prepare(resource_options::Provider::Codex, &preset_resolution.args)?;
     let (selection_terms, provider_args, pass_env) =
         select_codex_options(&prepared.provider_args)?;
 
@@ -86,17 +88,35 @@ pub fn run(args: &[String], mode: output::Mode) -> Result<String, String> {
 
     let summary = resolved.summary();
     match mode {
-        output::Mode::Human => Ok(render_human(&summary)),
-        output::Mode::Json => serde_json::to_string_pretty(&summary)
-            .map_err(|_| "INSPECT_SERIALIZATION_FAILED".to_owned()),
+        output::Mode::Human => Ok(render_human(&summary, &preset_resolution.presets)),
+        output::Mode::Json => serde_json::to_string_pretty(&InspectSummary {
+            launch: summary,
+            presets: preset_resolution.presets,
+        })
+        .map_err(|_| "INSPECT_SERIALIZATION_FAILED".to_owned()),
     }
 }
 
-fn render_human(summary: &launch_contract::ResolvedLaunchSummary) -> String {
+#[derive(serde::Serialize)]
+struct InspectSummary {
+    #[serde(flatten)]
+    launch: launch_contract::ResolvedLaunchSummary,
+    presets: Vec<String>,
+}
+
+fn render_human(summary: &launch_contract::ResolvedLaunchSummary, presets: &[String]) -> String {
     let mut lines = vec![
         format!(
             "Resolved launch: {} {} / {} / {}",
             summary.provider, summary.provider_version, summary.os, summary.arch
+        ),
+        format!(
+            "Presets: {}",
+            if presets.is_empty() {
+                "none".to_owned()
+            } else {
+                presets.join(", ")
+            }
         ),
         format!("Boundary: {}", summary.boundary),
     ];
@@ -183,7 +203,8 @@ mod tests {
             },
         };
 
-        let human = render_human(&summary);
+        let human = render_human(&summary, &["default".to_owned(), "review".to_owned()]);
+        assert!(human.contains("Presets: default, review"));
         assert!(human.contains("mcp:review"));
         assert!(human.contains("explicit-selection"));
         assert!(human.contains("REVIEW_TOKEN"));
