@@ -57,13 +57,15 @@ The launch is session-specific. CLROOM does not rewrite ordinary Codex or Claude
 <a id="different-capabilities-per-worker"></a>
 ## Different capabilities per worker
 
-Different workers can receive different skill sets:
+Different workers can receive different skill sets or reusable CLROOM launch presets:
 
 ```sh
 clroom codex --skill-set=@planning
-clroom codex --skill-set=@review
-clroom claude --skill-set=@debugging
+clroom codex --preset=review
+clroom claude --preset=debugging
 ```
+
+A preset belongs to the top-level CLROOM launch. It can reuse the already-supported skill/resource/environment selections and literal provider argv without turning the outer runner into a CLROOM-specific SDK. The runner still owns roles, scheduling, retries, worktrees, and session lifecycle.
 
 On the current qualified Codex path, independently launched workers can also differ in the bounded provider resources admitted for that process. For example, one worker can start with a selected standalone stdio MCP while another uses the ordinary clean launch; a supported worker can also use the bounded one-plugin + one-MCP composition described in the Codex guide.
 
@@ -104,6 +106,7 @@ CLROOM does not provide worker scheduling or queues, git worktree management, mo
 - [Problem index](problem-index.md)
 - [Use cases](use-cases.md)
 - [Skill sets](skill-sets.md)
+- [Presets](presets.md)
 - [Claude Code](claude-code.md)
 - [Codex](codex.md)
 - [Configuration matrix](configuration-matrix.md)
