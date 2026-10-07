@@ -144,12 +144,8 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
             .get(name)
             .expect("validated selected preset must exist");
         preset_skills.extend(preset.skill_set.iter().cloned());
-        for value in &preset.with {
-            preset_resources.insert(value.clone(), true);
-        }
-        for value in &preset.without {
-            preset_resources.insert(value.clone(), false);
-        }
+        apply_resource_layer(&mut preset_resources, &preset.with, true);
+        apply_resource_layer(&mut preset_resources, &preset.without, false);
         synthetic.extend(
             preset
                 .pass_env
@@ -439,6 +435,35 @@ fn infer_provider(
     Err(provider_required())
 }
 
+fn apply_resource_layer(
+    decisions: &mut BTreeMap<String, bool>,
+    values: &[String],
+    included: bool,
+) {
+    for value in values {
+        for member in resource_selector_members(value) {
+            decisions.insert(member, included);
+        }
+    }
+}
+
+fn resource_selector_members(value: &str) -> Vec<String> {
+    let Some((kind, members)) = value.split_once(':') else {
+        return vec![value.to_owned()];
+    };
+    if !matches!(kind, "plugin" | "mcp") || members.is_empty() {
+        return vec![value.to_owned()];
+    }
+    let members = members.split(',').collect::<Vec<_>>();
+    if members.iter().any(|member| member.is_empty()) {
+        return vec![value.to_owned()];
+    }
+    members
+        .into_iter()
+        .map(|member| format!("{kind}:{member}"))
+        .collect()
+}
+
 fn explicit_resource_overrides(args: &[String]) -> BTreeSet<String> {
     let mut values = BTreeSet::new();
     let mut launcher_options = true;
@@ -447,9 +472,9 @@ fn explicit_resource_overrides(args: &[String]) -> BTreeSet<String> {
             launcher_options = false;
         } else if launcher_options {
             if let Some(value) = argument.strip_prefix("--with=") {
-                values.insert(value.to_owned());
+                values.extend(resource_selector_members(value));
             } else if let Some(value) = argument.strip_prefix("--without=") {
-                values.insert(value.to_owned());
+                values.extend(resource_selector_members(value));
             }
         }
     }
@@ -499,11 +524,12 @@ fn config_invalid(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeSet, path::Path};
+    use std::{collections::{BTreeMap, BTreeSet}, path::Path};
 
     use super::{
-        explicit_resource_overrides, extract_selection, has_explicit_skill_set, infer_provider,
-        permitted_providers, select_names, valid_name, validate_config, PresetFile, Provider,
+        apply_resource_layer, explicit_resource_overrides, extract_selection,
+        has_explicit_skill_set, infer_provider, permitted_providers, resource_selector_members,
+        select_names, valid_name, validate_config, PresetFile, Provider,
     };
 
     fn config(input: &str) -> PresetFile {
@@ -555,6 +581,52 @@ presets:
             BTreeSet::from([
                 "mcp:debug".to_owned(),
                 "plugin:review@team".to_owned(),
+            ])
+        );
+    }
+
+    #[test]
+    fn grouped_resource_selectors_are_normalized_to_exact_members() {
+        assert_eq!(
+            resource_selector_members("plugin:review@team,test@team"),
+            vec!["plugin:review@team", "plugin:test@team"]
+        );
+        assert_eq!(
+            resource_selector_members("mcp:review,debug"),
+            vec!["mcp:review", "mcp:debug"]
+        );
+    }
+
+    #[test]
+    fn later_resource_layer_overrides_one_member_of_an_earlier_group() {
+        let mut decisions = BTreeMap::new();
+        apply_resource_layer(
+            &mut decisions,
+            &["plugin:review@team,test@team".to_owned()],
+            false,
+        );
+        apply_resource_layer(
+            &mut decisions,
+            &["plugin:review@team".to_owned()],
+            true,
+        );
+        assert_eq!(decisions.get("plugin:review@team"), Some(&true));
+        assert_eq!(decisions.get("plugin:test@team"), Some(&false));
+    }
+
+    #[test]
+    fn explicit_grouped_resource_control_overrides_each_preset_member() {
+        let values = explicit_resource_overrides(&[
+            "--with=plugin:review@team,test@team".to_owned(),
+            "--without=mcp:debug,trace".to_owned(),
+        ]);
+        assert_eq!(
+            values,
+            BTreeSet::from([
+                "mcp:debug".to_owned(),
+                "mcp:trace".to_owned(),
+                "plugin:review@team".to_owned(),
+                "plugin:test@team".to_owned(),
             ])
         );
     }
