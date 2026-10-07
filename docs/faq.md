@@ -14,9 +14,11 @@ Yes. For headless automation, the integrity-verified path in this release is
 interactive Codex or Claude Code path. Claude Code `-p` response
 semantics are not independently qualified in this release.
 
-## Can different workers get different skill sets?
+## Can different workers get different skill sets or launch presets?
 
-Yes. Pass a different skill name or saved `@set` to each top-level launch.
+Yes. Pass a different skill name, saved `@set`, or CLROOM `--preset=` to each independently launched top-level worker. Presets remain launch inputs; they do not reconfigure provider-owned subagents inside one session.
+
+See [Presets](presets.md) and [Agent runners](agent-runners.md).
 
 ## Does CLROOM configure Claude agent-team teammates or subagents individually?
 
@@ -126,11 +128,23 @@ OpenAI documents a global instruction layer under `CODEX_HOME` and a project ins
 
 Use one when you want a persistent alternate Codex home. CLROOM is aimed at a repeatable per-launch choice without maintaining another normal setup.
 
-## Should I use a Codex `--profile` instead?
+## Should I use a Codex `--profile` or a CLROOM preset?
 
-Yes, when the problem is reusable Codex configuration. Current Codex profiles are a provider-native configuration layer selected with `--profile profile-name`, alongside project/user/managed/system configuration precedence.
+Use a Codex `--profile` when the reusable object is **Codex configuration**. Current Codex profiles are a provider-native configuration layer selected with `--profile profile-name`, alongside project/user/managed/system configuration precedence.
 
-CLROOM should not duplicate that layer. Use CLROOM when the requirement is its qualified clean/selective launch boundary or supported per-run skill/resource selection. Any future CLROOM reusable-launch feature must stay distinct from provider-native profiles rather than becoming a renamed Codex profile.
+Use a CLROOM preset when the reusable object is the **CLROOM top-level clean/selective launch intent**: supported skill selection, qualified resource selectors, admitted environment-variable names, and literal provider argv resolved through the same CLROOM launch boundary.
+
+A preset is not a renamed profile. It does not introduce typed CLROOM copies of model, reasoning, approval, sandbox, agent-role, MCP-definition, or other provider settings. See [Presets](presets.md) for the exact schema and precedence.
+
+## Can one CLROOM preset work with both Codex and Claude Code?
+
+Yes, only when that preset explicitly lists both providers. Every preset declares the provider set it permits, and ordered preset composition uses the provider intersection. This prevents a saved preset from silently expanding to a newly supported provider in the future.
+
+An explicit provider wins. Without one, CLROOM infers a provider only from an unambiguous preset default or a one-provider intersection; otherwise it stops before provider birth.
+
+## Can a CLROOM preset store API keys or shell commands?
+
+No. Presets store environment-variable **names**, not values. Credential-shaped provider arguments, shell expansion, command substitution, scripts, interpolation, remote includes, and CLROOM-control smuggling are outside the preset contract and fail closed.
 
 ## Can I disable a Codex skill natively?
 
