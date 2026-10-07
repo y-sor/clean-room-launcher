@@ -63,7 +63,8 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - context pollution, prompt pollution, and context noise;
 - Claude Code `--safe-mode`, `--bare`, `--restricted`, `--setting-sources`, and `CLAUDE_CONFIG_DIR`;
 - Codex global `AGENTS.md`, `AGENTS.override.md`, `CODEX_HOME`, named `--profile` configuration files, project/managed configuration, `--ignore-user-config`, and skill scopes;
-- provider-native reusable configuration vs CLROOM skill sets / CLROOM launch presets / clean-selective per-launch composition;
+- provider-native reusable configuration vs CLROOM skill sets / clean-selective per-launch composition;
+- CLROOM launch presets vs provider-native profiles/settings for reusable top-level launch intent;
 - hooks, plugins, MCP servers, and apps;
 - MCP/tool context overhead and provider-native tool-search controls;
 - MCP environment/authentication state that differs from configuration presence;
