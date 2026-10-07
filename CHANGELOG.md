@@ -21,6 +21,8 @@ Semantic Versioning after the first public release.
   `--with`/`--without` resource selectors, explicit environment-name
   admission, and literal provider argv through the same launch pipeline.
 - Added preset provenance to `clroom inspect codex` human and JSON output.
+  JSON inspection advances explicitly to `clroom.resolved-launch.v2` rather than
+  changing the v1 schema under an existing identifier.
 
 ### Changed
 
