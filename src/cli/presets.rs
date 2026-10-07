@@ -339,7 +339,7 @@ fn validate_provider_arg(argument: &str, path: &Path) -> Result<(), String> {
         || argument.as_bytes().contains(&0)
         || argument == "--"
         || zero_auth::is_sensitive_argument(argument)
-        || matches!(argument.as_str(), "auth" | "login" | "logout")
+        || matches!(argument, "auth" | "login" | "logout")
         || [
             "--preset",
             "--with",
