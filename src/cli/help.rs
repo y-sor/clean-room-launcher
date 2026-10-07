@@ -409,14 +409,19 @@ fn usage(command: &str, description: &str, width: usize, styled: bool) -> Vec<St
             plain
         }];
     }
-    vec![
-        if styled {
-            format!("  \u{1b}[1m{command}\u{1b}[0m")
-        } else {
-            format!("  {command}")
-        },
-        format!("    {description}"),
-    ]
+    let mut lines = vec![if styled {
+        format!("  \u{1b}[1m{command}\u{1b}[0m")
+    } else {
+        format!("  {command}")
+    }];
+    lines.extend(styled_wrapped(
+        description,
+        width,
+        4,
+        styled,
+        Style::Plain,
+    ));
+    lines
 }
 
 fn section(name: &str, styled: bool) -> String {
