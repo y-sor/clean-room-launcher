@@ -76,9 +76,20 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
         });
     }
 
-    let path = config_path()?;
-    let config = load_optional(&path)?;
     let explicit_requested = selection.requested.is_some();
+    let path = match config_path() {
+        Ok(path) => path,
+        Err(error) if !explicit_requested => {
+            let provider = provider.ok_or_else(provider_required)?;
+            return Ok(Resolution {
+                provider,
+                args: selection.remaining_args,
+                presets: Vec::new(),
+            });
+        }
+        Err(error) => return Err(error),
+    };
+    let config = load_optional(&path)?;
 
     let Some(config) = config else {
         if explicit_requested {
