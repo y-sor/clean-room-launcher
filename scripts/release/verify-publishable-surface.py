@@ -168,12 +168,12 @@ def validate(facts_path: Path, preview_path: Path, notes_path: Path) -> dict:
     }
 
 def self_test() -> None:
-    pins = {"codex": "0.161.0", "claude": "2.1.292"}
+    pins = {"codex": "0.161.0", "claude": "2.1.293"}
     refs = {"0.4.4", "0.4.5"}
     fixtures = [
         ("Codex 0.159.0 stale", "", "0.159.0", True),
         ("Codex 0.161.0 current", "", "0.161.0", False),
-        ("Claude Code 2.1.292 current", "", "2.1.292", False),
+        ("Claude Code 2.1.293 current", "", "2.1.293", False),
         ("v0.4.6 provider/product facts", "v", "0.4.6", False),
         ("recovery from v0.4.5", "v", "0.4.5", False),
         ("provider/product facts from v0.4.3", "v", "0.4.3", True),

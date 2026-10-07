@@ -98,23 +98,27 @@
     {
       "id": "current-provider-refresh",
       "phase": "PR_CANDIDATE_AND_ACCEPTED_MAIN",
-      "requirement": "Fresh npm registry and npm pack verification resolved Codex 0.161.0 and Claude Code 2.1.292. Wrapper/platform SHA-512 identities and the Codex native SHA-256 are frozen in scripts/release/provider-pins.sh. Exact-provider clean/selective/composed rehearsal for this refreshed tuple remains required; prior 0.160.0/2.1.289 evidence is historical and does not qualify it.",
+      "requirement": "Fresh npm registry and npm pack verification resolved Codex 0.161.0 and Claude Code 2.1.293. Wrapper/platform SHA-512 identities and the Codex native SHA-256 are frozen in scripts/release/provider-pins.sh. Exact-provider clean/selective/composed rehearsal for this refreshed tuple is required; prior provider evidence is version-bound and cannot qualify it.",
       "wrapper_integrity_sha512": {
         "codex": "+ZnJFGBbQBwYnjUTs+PoacgYVxmNyxMLiadIz6eSJ0AzQW0mRVxuuOQizSbz2qeNAJia9Syxag6j2uGf7guD2Q==",
-        "claude": "ptT9UcOsyR2VLNgfHgF87To8B7tCrZktIpYC4dEGt+9MG42NAWsljEGBZ3spdHcJ2akednszESVNti7hWxZrJg=="
+        "claude": "PfPSvsd0zH1R1NhLKLebYdEXg/KcGCXc7LBntE186EWuZtBXa7sMnBqs0/uW/BvzkBEfHKqww/WbK/kMAk0TXg=="
       },
       "platform_integrity_sha512": {
         "codex-darwin-arm64": "arxKLYB3uKjewwOpGFo5/MGe8+4JzNB17KIYBmGfF4k3QU+QC4ieXVUwqHmQX2nXrB1BzNMN0gtAgm1AGBTg8w==",
-        "claude-darwin-arm64": "SBkmDQOPbQ9bqkGrzshn92ByyqQy2P7pSs/11NdMLq2VXbcQc93z+yd8Dtx4+jeAX22G7GSvQpKDyKev70Vn8Q=="
+        "claude-darwin-arm64": "NevSLSNuN9duHsTTmVI6/DIb5kQG9Nj2nZftakmBrjfLu/om5eCOtb/zv2QFXuW8oA17fze6l7v7wI9wzjRsPw=="
       },
       "codex_native_sha256": "12ac11d2c7eee27cfae34393986d7b7c9ed0dea537cb749831cdd7033893e6de",
       "provisioning_result": "PASS",
-      "runtime_qualification_result": "PASS",
+      "runtime_qualification_result": "PENDING_EXACT_HEAD_CI",
       "rehearsal_consumer_schema": "clroom.resolved-launch.v2",
       "rehearsal_schema_regression_result": "PASS_SELF_TEST",
-      "runtime_qualification_head": "2b9e2c00a410b3b4f77bb4953d7c6eb136ae8d96",
-      "runtime_qualification_run_id": "37662207399",
-      "runtime_qualification_evidence": "Exact PR candidate on macOS 14 / Apple Silicon passed fresh Codex and Claude canary provisioning, Codex clean/selective/composed runtime rehearsals, standalone Codex MCP rehearsal, and exact release-byte provider qualification."
+      "previous_qualification_invalidated_by": "Claude stable moved from 2.1.292 to 2.1.293 before the final exact-head candidate check.",
+      "previous_qualification_head": "2b9e2c00a410b3b4f77bb4953d7c6eb136ae8d96",
+      "previous_qualification_run_id": "37662207399",
+      "provider_versions": {
+        "codex": "0.161.0",
+        "claude": "2.1.293"
+      }
     },
     {
       "id": "discovery-native-alternative-closure",

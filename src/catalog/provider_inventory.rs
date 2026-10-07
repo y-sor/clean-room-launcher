@@ -11,9 +11,9 @@ use crate::catalog::resource::{
 use std::path::{Path, PathBuf};
 
 pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 161, 0);
-pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 292);
+pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 293);
 pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 161, 0);
-pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 292);
+pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 293);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Provider {
