@@ -176,6 +176,8 @@ pub fn top(invoked_as: &str) -> String {
         .unwrap_or_else(|| std::path::PathBuf::from("$HOME"));
     let skill_sets_path = super::skill_sets::config_path(&home)
         .unwrap_or_else(|_| std::path::PathBuf::from("$HOME/.config/clroom/skill-sets.yaml"));
+    let presets_path = super::presets::config_path()
+        .unwrap_or_else(|_| std::path::PathBuf::from("$HOME/.config/clroom/presets.yaml"));
     let width = std::env::var("COLUMNS")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
@@ -189,13 +191,20 @@ pub fn top(invoked_as: &str) -> String {
     render_top(
         invoked_as,
         &display_skill_sets_path(&skill_sets_path, &home),
+        &display_skill_sets_path(&presets_path, &home),
         width,
         styled,
     )
     .join("\n")
 }
 
-fn render_top(invoked_as: &str, skill_sets_path: &str, width: usize, styled: bool) -> Vec<String> {
+fn render_top(
+    invoked_as: &str,
+    skill_sets_path: &str,
+    presets_path: &str,
+    width: usize,
+    styled: bool,
+) -> Vec<String> {
     let mut lines = vec![String::new(), String::new()];
     let version = format!("v{}", env!("CARGO_PKG_VERSION"));
     lines.push(if styled {
@@ -245,13 +254,19 @@ fn render_top(invoked_as: &str, skill_sets_path: &str, width: usize, styled: boo
         styled,
     ));
     lines.extend(usage(
+        &format!("{invoked_as} --preset=<name> [ARGS...]"),
+        "Infer provider from a reusable launch preset",
+        width,
+        styled,
+    ));
+    lines.extend(usage(
         &format!("{invoked_as} info codex"),
         "Inspect provider state",
         width,
         styled,
     ));
     lines.extend(styled_wrapped(
-        "Provider options: repeat --pass-env=NAME to admit exact existing environment names. Drop-in commands: clroom-codex and clroom-claude.",
+        "Launcher options: --preset=name[,name] reuses bounded launch intent; repeat --pass-env=NAME to admit exact existing environment names. Drop-in commands: clroom-codex and clroom-claude.",
         width,
         2,
         styled,
@@ -278,6 +293,22 @@ fn render_top(invoked_as: &str, skill_sets_path: &str, width: usize, styled: boo
         2,
         styled,
         Style::SkillSetNote,
+    ));
+    lines.push(String::new());
+    lines.push(section("Presets", styled));
+    lines.extend(styled_wrapped(
+        presets_path,
+        width,
+        2,
+        styled,
+        Style::Plain,
+    ));
+    lines.extend(styled_wrapped(
+        "Save provider-bounded launch intent once; use --preset=none to bypass user presets.",
+        width,
+        2,
+        styled,
+        Style::Dim,
     ));
     lines.push(String::new());
     lines.push(section("More", styled));
@@ -428,6 +459,9 @@ pub fn card(invoked_as: &str, token: &str) -> Option<String> {
     if matches!(token, "skill-set" | "skill-sets") {
         return Some(render_skill_set_card(invoked_as));
     }
+    if matches!(token, "preset" | "presets") {
+        return Some(render_preset_card(invoked_as));
+    }
     resolve(token).map(|spec| render_card(invoked_as, spec))
 }
 
@@ -440,6 +474,18 @@ fn render_skill_set_card(invoked_as: &str) -> String {
     let skill_sets_path = display_skill_sets_path(&skill_sets_path, &home);
     format!(
         "Clean Room Launcher — skill-set\n\nChoose global skills for one clean launch.\nProject-local skills stay available automatically.\n\nUsage:\n  {invoked_as} <codex|claude> --skill-set=<SKILL_OR_SET>[,...] [PROVIDER_ARGS...]\n\nSelectors:\n  any-my-skill                   one global skill\n  any-namespace                 every skill in one namespace\n  any-namespace:any-other-skill one namespaced skill\n  @any-my-skill-set             one reusable group\n\nSkill sets:\n  {skill_sets_path}\n\n  any-my-skill-set:\n    - any-my-skill\n    - any-namespace:any-other-skill\n\nExample:\n  {invoked_as} codex exec --skill-set=any-my-skill,@any-my-skill-set --approve-for-me\n"
+    )
+}
+
+fn render_preset_card(invoked_as: &str) -> String {
+    let home = std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from("$HOME"));
+    let presets_path = super::presets::config_path()
+        .unwrap_or_else(|_| std::path::PathBuf::from("$HOME/.config/clroom/presets.yaml"));
+    let presets_path = display_skill_sets_path(&presets_path, &home);
+    format!(
+        "Clean Room Launcher — preset\n\nReuse one bounded CLROOM launch intent without creating a second provider settings system.\n\nUsage:\n  {invoked_as} <codex|claude> --preset=<NAME>[,...] [PROVIDER_ARGS...]\n  {invoked_as} --preset=<NAME>[,...] [PROVIDER_ARGS...]\n\nReset:\n  {invoked_as} codex --preset=none\n\nPreset file:\n  {presets_path}\n\nSchema:\n  schema: clroom.presets.v1\n  presets:\n    review:\n      default-provider: codex\n      providers:\n        codex: {{}}\n        claude: {{}}\n      skill-set:\n        - @review\n      pass-env:\n        - REVIEW_TOKEN\n\nRules:\n  - default is an ordinary implicit preset when present\n  - none resets preset layers\n  - explicit provider wins; otherwise inference must be unambiguous\n  - provider args are literal argv elements, not shell strings\n  - secret values, scripts, interpolation, and new provider capabilities are not preset features\n"
     )
 }
 
