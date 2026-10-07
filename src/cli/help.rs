@@ -438,15 +438,26 @@ fn wrap_words(text: &str, width: usize) -> Vec<String> {
     let mut lines = Vec::new();
     let mut line = String::new();
     for word in text.split_whitespace() {
-        let next = line.chars().count() + usize::from(!line.is_empty()) + word.chars().count();
-        if next > width && !line.is_empty() {
-            lines.push(line);
-            line = word.to_owned();
-        } else {
+        let mut chunks = word
+            .chars()
+            .collect::<Vec<_>>()
+            .chunks(width.max(1))
+            .map(|chunk| chunk.iter().collect::<String>())
+            .collect::<Vec<_>>();
+        for chunk in chunks.drain(..) {
+            let next = line.chars().count() + usize::from(!line.is_empty()) + chunk.chars().count();
+            if next > width && !line.is_empty() {
+                lines.push(line);
+                line = String::new();
+            }
             if !line.is_empty() {
                 line.push(' ');
             }
-            line.push_str(word);
+            line.push_str(&chunk);
+            if line.chars().count() == width {
+                lines.push(line);
+                line = String::new();
+            }
         }
     }
     if !line.is_empty() {
