@@ -301,7 +301,7 @@ The MCP definition comes from `mcp_servers.<id>` in the normal Codex
 `--pass-env=NAME`. Command/argument interpolation and relative MCP working
 directories are refused.
 
-In v0.5.0 the two bounded selectors can be composed in the same interactive
+The current source retains the bounded v0.5.0 composition of the two selectors in the same interactive
 launch:
 
 ```sh
@@ -363,7 +363,7 @@ global skills for this launch with the same skill choice:
 clroom claude --skill-set=my-skill,@my-skill-set
 ```
 
-The v0.5.0 source can also admit exactly one already-installed whole Claude
+The current source can also admit exactly one already-installed whole Claude
 plugin for one launch:
 
 ```sh
@@ -380,18 +380,18 @@ launch, and asks Claude to load it for this session. Raw Claude
 resource selection.
 
 This whole-plugin path is currently an exact macOS Apple Silicon qualification
-target for Claude Code `2.1.289`. The v0.5.0 path deliberately keeps the narrower
+target for Claude Code `2.1.289`. The current path deliberately keeps the narrower
 qualified subset of Claude's plugin format: the installed provider-native ID must have a matching
 `.claude-plugin/plugin.json` identity, and the observed effective components
 must come only from the default one-level `skills/<name>/SKILL.md` layout.
 Manifestless plugins, root `SKILL.md` single-skill plugins, custom skill paths,
 slash commands, hooks, MCP servers, agents, LSP servers, background monitors,
 plugin executables, or plugin settings may be observed by inventory but are not
-activation-qualified in v0.5.0. They fail closed instead of receiving a broader
+activation-qualified by the current source. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-v0.5.0 targets Claude Code `2.1.289` for both ordinary clean launch and the
+The current source retains Claude Code `2.1.289` as the exact qualification target for both ordinary clean launch and the
 whole-plugin activation path. Codex whole-plugin activation is separately
 qualified through its own shadow-PluginStore mechanism. Standalone MCP
 selection, `--with=all`, multi-plugin selection, and component-level plugin
