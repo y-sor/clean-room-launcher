@@ -9,6 +9,7 @@ mod launch_contract;
 mod output;
 mod parser;
 mod process;
+mod presets;
 mod resource_options;
 mod screen;
 mod skill_sets;
@@ -75,6 +76,30 @@ pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode
     if first == "claude" {
         return run_claude(&mut source);
     }
+    if first == "--preset" {
+        eprintln!("CLROOM_PRESET_SELECTOR_INVALID: use --preset=name[,name] or --preset=none");
+        return ExitCode::from(2);
+    }
+    if first.starts_with("--preset=") {
+        let mut preset_args = vec![first];
+        while let Some(argument) = match next_argument(&mut source) {
+            Ok(argument) => argument,
+            Err(exit) => return exit,
+        } {
+            preset_args.push(argument);
+        }
+        let resolution = match presets::apply(None, &preset_args) {
+            Ok(resolution) => resolution,
+            Err(message) => {
+                eprintln!("{message}");
+                return ExitCode::from(2);
+            }
+        };
+        return match resolution.provider {
+            resource_options::Provider::Codex => run_codex_args(resolution.args),
+            resource_options::Provider::Claude => run_claude_args(resolution.args),
+        };
+    }
     if let Some(exit) = external_prefix(&first) {
         return exit;
     }
@@ -133,6 +158,23 @@ fn run_codex(source: &mut impl Iterator<Item = String>) -> ExitCode {
     } {
         args.push(argument);
     }
+    let resolution = match presets::apply(Some(resource_options::Provider::Codex), &args) {
+        Ok(resolution) => resolution,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    run_codex_args(resolution.args)
+}
+
+fn run_codex_args(args: Vec<String>) -> ExitCode {
+    if args
+        .first()
+        .is_some_and(|argument| matches!(argument.as_str(), "login" | "logout"))
+    {
+        return external_refusal(parser::Command::Provider, false);
+    }
     let prepared = match resource_options::prepare(resource_options::Provider::Codex, &args) {
         Ok(prepared) => prepared,
         Err(message) => {
@@ -179,6 +221,22 @@ fn run_claude(source: &mut impl Iterator<Item = String>) -> ExitCode {
         Err(exit) => return exit,
     } {
         args.push(argument);
+    }
+    let resolution = match presets::apply(Some(resource_options::Provider::Claude), &args) {
+        Ok(resolution) => resolution,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    run_claude_args(resolution.args)
+}
+
+fn run_claude_args(args: Vec<String>) -> ExitCode {
+    if args.first().is_some_and(|argument| {
+        matches!(argument.as_str(), "auth" | "login" | "logout")
+    }) {
+        return external_refusal(parser::Command::Provider, false);
     }
     let prepared = match resource_options::prepare(resource_options::Provider::Claude, &args) {
         Ok(prepared) => prepared,
