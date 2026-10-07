@@ -190,10 +190,7 @@ fn run_codex_args(args: Vec<String>) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    if provider_args
-        .first()
-        .is_some_and(|argument| matches!(argument.as_str(), "login" | "logout"))
-    {
+    if provider_auth_command(&provider_args, &["login", "logout"]) {
         return external_refusal(parser::Command::Provider, false);
     }
     match launch_isolated_codex(
@@ -259,9 +256,7 @@ fn run_claude_args(args: Vec<String>) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    if provider_args.first().is_some_and(|argument| {
-        matches!(argument.as_str(), "auth" | "login" | "logout")
-    }) {
+    if provider_auth_command(&provider_args, &["auth", "login", "logout"]) {
         return external_refusal(parser::Command::Provider, false);
     }
     match launch_isolated_claude(
@@ -276,6 +271,12 @@ fn run_claude_args(args: Vec<String>) -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+fn provider_auth_command(args: &[String], commands: &[&str]) -> bool {
+    args.iter()
+        .take_while(|argument| argument.as_str() != "--")
+        .any(|argument| commands.contains(&argument.as_str()))
 }
 
 fn launch_isolated_codex(

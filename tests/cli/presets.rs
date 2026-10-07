@@ -110,6 +110,42 @@ presets:
 }
 
 #[test]
+fn preset_provider_args_cannot_shift_auth_subcommands_past_zero_auth_guard() {
+    let root = scratch("auth-shift");
+    write_presets(
+        &root,
+        r#"schema: clroom.presets.v1
+presets:
+  codex-shift:
+    providers:
+      codex:
+        args:
+          - --model
+          - gpt-5
+  claude-shift:
+    providers:
+      claude:
+        args:
+          - --model
+          - sonnet
+"#,
+    );
+
+    for args in [
+        vec!["codex", "--preset=codex-shift", "login"],
+        vec!["codex", "--preset=codex-shift", "logout"],
+        vec!["claude", "--preset=claude-shift", "auth"],
+        vec!["claude", "--preset=claude-shift", "login"],
+    ] {
+        let error = stderr(run(&root, &args));
+        assert_eq!(
+            error,
+            "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n"
+        );
+    }
+}
+
+#[test]
 fn sensitive_provider_arguments_in_presets_are_rejected_before_provider_birth() {
     let root = scratch("sensitive-arg");
     write_presets(
