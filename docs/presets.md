@@ -172,7 +172,7 @@ clroom inspect codex --preset=review
 clroom --output json inspect codex --preset=review
 ```
 
-Inspection reports the effective preset names alongside the same sanitized resolved launch used by execution. Provider argument **values** remain redacted in the launch summary.
+Inspection reports the effective preset names alongside the same sanitized resolved launch used by execution. Provider argument **values** remain redacted in the launch summary. The JSON form uses `clroom.resolved-launch.v2`; v2 explicitly adds preset provenance instead of changing the v1 contract under the same schema identifier.
 
 ## Runners and independent workers
 
