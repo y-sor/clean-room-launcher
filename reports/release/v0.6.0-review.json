@@ -93,7 +93,7 @@
       "phase": "PRE_RELEASE_ACCEPTANCE_QUALIFIED_TARGET",
       "requirement": "Benchmark 0/1/10/100/1000-preset resolution plus representative saved skill-set use on qualified macOS Apple Silicon; record measurements and block if representative 100-preset resolution exceeds the accepted <=10 ms p95 budget unless the contract is explicitly revised.",
       "result": "PASS",
-      "evidence": "macOS arm64, release profile, 103 samples per file size: resolution p95 0/1/10/100/1000 presets = 67/97/93/254/1473 µs; saved skill-set expansion p95 = 56/38/40/40/85 µs for 1/10/100/1000-preset files. The 100-preset resolution p95 is below the 10 ms budget."
+      "evidence": "macOS arm64, release profile, 103 samples per file size: resolution p95 0/1/10/100/1000 presets = 67/97/93/254/1473 \u00b5s; saved skill-set expansion p95 = 56/38/40/40/85 \u00b5s for 1/10/100/1000-preset files. The 100-preset resolution p95 is below the 10 ms budget."
     },
     {
       "id": "current-provider-refresh",
@@ -109,7 +109,7 @@
       },
       "codex_native_sha256": "12ac11d2c7eee27cfae34393986d7b7c9ed0dea537cb749831cdd7033893e6de",
       "provisioning_result": "PASS",
-      "runtime_qualification_result": "PENDING_EXACT_HEAD_CI",
+      "runtime_qualification_result": "PASS",
       "rehearsal_consumer_schema": "clroom.resolved-launch.v2",
       "rehearsal_schema_regression_result": "PASS_SELF_TEST",
       "previous_qualification_invalidated_by": "Claude stable moved from 2.1.292 to 2.1.293 before the final exact-head candidate check.",
@@ -118,7 +118,10 @@
       "provider_versions": {
         "codex": "0.161.0",
         "claude": "2.1.293"
-      }
+      },
+      "runtime_qualification_head": "0e9b8d2a664576e50ab1d9449b6f7893bc330294",
+      "runtime_qualification_run_id": "37665998236",
+      "runtime_qualification_evidence": "Exact PR candidate passed fresh provider provisioning and exact-provider release readiness; Codex clean/selective/composed runtime rehearsals and standalone Codex MCP rehearsal completed on macOS Apple Silicon."
     },
     {
       "id": "discovery-native-alternative-closure",
