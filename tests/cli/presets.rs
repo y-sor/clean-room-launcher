@@ -110,6 +110,30 @@ presets:
 }
 
 #[test]
+fn aggregate_resolved_preset_composition_is_bounded_before_provider_birth() {
+    let root = scratch("aggregate-resolution-bound");
+    let mut yaml = String::from("schema: clroom.presets.v1\npresets:\n");
+    for index in 0..5 {
+        yaml.push_str(&format!(
+            "  p{index}:\n    providers:\n      codex:\n        args:\n"
+        ));
+        for arg_index in 0..256 {
+            yaml.push_str(&format!("          - --preset-test-{index}-{arg_index}\n"));
+        }
+    }
+    write_presets(&root, &yaml);
+
+    let error = stderr(run(
+        &root,
+        &["codex", "--preset=p0,p1,p2,p3,p4", "--version"],
+    ));
+    assert_eq!(
+        error,
+        "CLROOM_PRESET_RESOLUTION_TOO_LARGE: selected preset composition exceeds the bounded launch budget; select fewer presets or reduce preset contents\n"
+    );
+}
+
+#[test]
 fn auth_words_are_not_refused_when_they_are_not_the_first_explicit_provider_token() {
     let root = scratch("auth-word-as-later-provider-token");
     let output = run(&root, &["codex", "--model", "login", "--version"]);
