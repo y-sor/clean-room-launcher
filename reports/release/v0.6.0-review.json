@@ -109,7 +109,9 @@
       },
       "codex_native_sha256": "12ac11d2c7eee27cfae34393986d7b7c9ed0dea537cb749831cdd7033893e6de",
       "provisioning_result": "PASS",
-      "runtime_qualification_result": "PENDING_EXACT_HEAD_CI"
+      "runtime_qualification_result": "PENDING_EXACT_HEAD_CI",
+      "rehearsal_consumer_schema": "clroom.resolved-launch.v2",
+      "rehearsal_schema_regression_result": "PASS_SELF_TEST"
     },
     {
       "id": "discovery-native-alternative-closure",
