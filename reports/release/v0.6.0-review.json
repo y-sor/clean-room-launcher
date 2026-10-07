@@ -78,8 +78,8 @@
     {
       "id": "legacy-pages-search-migration-residue",
       "decision": "FOLLOW_UP",
-      "failure_mode": "Search engines can continue surfacing historical ewgenij87snwork.github.io CLROOM Pages URLs while the canonical project site is y-sor.github.io/clean-room-launcher, confusing users despite correct new-site canonicals.",
-      "durable_control": "Track separately in public Issue #125 and private discovery research state. Do not recreate the old product repository because GitHub repository-transfer redirects would be destroyed; investigate only controllable redirect/old-host/search-console surfaces under their own gates."
+      "failure_mode": "Search engines can continue surfacing historical pre-transfer CLROOM GitHub Pages URLs instead of the current canonical project site, confusing users despite correct current-site canonicals.",
+      "durable_control": "Track URL cleanup as a follow-up. Do not recreate an old product repository because repository-transfer redirects would be affected; investigate controllable redirect and search-console surfaces under their separate gates."
     }
   ],
   "artifact_capability_gates": [
@@ -91,12 +91,25 @@
     {
       "id": "reusable-preset-performance",
       "phase": "PRE_RELEASE_ACCEPTANCE_QUALIFIED_TARGET",
-      "requirement": "Benchmark 0/1/10/100/1000-preset resolution plus representative saved skill-set use on qualified macOS Apple Silicon; record measurements and block if representative 100-preset resolution exceeds the accepted <=10 ms p95 budget unless the contract is explicitly revised."
+      "requirement": "Benchmark 0/1/10/100/1000-preset resolution plus representative saved skill-set use on qualified macOS Apple Silicon; record measurements and block if representative 100-preset resolution exceeds the accepted <=10 ms p95 budget unless the contract is explicitly revised.",
+      "result": "PASS",
+      "evidence": "macOS arm64, release profile, 103 samples per file size: resolution p95 0/1/10/100/1000 presets = 67/97/93/254/1473 µs; saved skill-set expansion p95 = 56/38/40/40/85 µs for 1/10/100/1000-preset files. The 100-preset resolution p95 is below the 10 ms budget."
     },
     {
       "id": "current-provider-refresh",
       "phase": "PR_CANDIDATE_AND_ACCEPTED_MAIN",
-      "requirement": "Refresh current stable Codex and Claude versions from authoritative package/release inputs, verify registry/package/native integrity, synchronize shipped qualification constants and public claims, then rerun exact-provider clean/selective/composed rehearsals. Stale 0.160.0/2.1.289 evidence cannot qualify a later current tuple."
+      "requirement": "Fresh npm registry and npm pack verification resolved Codex 0.161.0 and Claude Code 2.1.292. Wrapper/platform SHA-512 identities and the Codex native SHA-256 are frozen in scripts/release/provider-pins.sh. Exact-provider clean/selective/composed rehearsal for this refreshed tuple remains required; prior 0.160.0/2.1.289 evidence is historical and does not qualify it.",
+      "wrapper_integrity_sha512": {
+        "codex": "+ZnJFGBbQBwYnjUTs+PoacgYVxmNyxMLiadIz6eSJ0AzQW0mRVxuuOQizSbz2qeNAJia9Syxag6j2uGf7guD2Q==",
+        "claude": "ptT9UcOsyR2VLNgfHgF87To8B7tCrZktIpYC4dEGt+9MG42NAWsljEGBZ3spdHcJ2akednszESVNti7hWxZrJg=="
+      },
+      "platform_integrity_sha512": {
+        "codex-darwin-arm64": "arxKLYB3uKjewwOpGFo5/MGe8+4JzNB17KIYBmGfF4k3QU+QC4ieXVUwqHmQX2nXrB1BzNMN0gtAgm1AGBTg8w==",
+        "claude-darwin-arm64": "SBkmDQOPbQ9bqkGrzshn92ByyqQy2P7pSs/11NdMLq2VXbcQc93z+yd8Dtx4+jeAX22G7GSvQpKDyKev70Vn8Q=="
+      },
+      "codex_native_sha256": "12ac11d2c7eee27cfae34393986d7b7c9ed0dea537cb749831cdd7033893e6de",
+      "provisioning_result": "PASS",
+      "runtime_qualification_result": "PENDING_EXACT_HEAD_CI"
     },
     {
       "id": "discovery-native-alternative-closure",

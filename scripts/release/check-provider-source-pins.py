@@ -67,37 +67,37 @@ def validate(pins_text: str, inventory_text: str) -> Tuple[Tuple[int, int, int],
 
 
 def self_test() -> int:
-    pins = """CODEX_VERSION=0.160.0
-CLAUDE_VERSION=2.1.289
+    pins = """CODEX_VERSION=0.161.0
+CLAUDE_VERSION=2.1.292
 """
-    valid = """pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 160, 0);
-pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 289);
-pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 160, 0);
-pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 289);
+    valid = """pub const CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 161, 0);
+pub const CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 292);
+pub const CODEX_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (0, 161, 0);
+pub const CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 292);
 """
     validate(pins, valid)
 
     cases = {
         "stale_clean": (
             valid.replace(
-                "CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 289)",
+                "CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 292)",
                 "CLAUDE_CLEAN_EXACT: (u64, u64, u64) = (2, 1, 288)",
             ),
-            "PROVIDER_SOURCE_PIN_BLOCKED:CLAUDE_CLEAN_EXACT:expected=2.1.289:actual=2.1.288",
+            "PROVIDER_SOURCE_PIN_BLOCKED:CLAUDE_CLEAN_EXACT:expected=2.1.292:actual=2.1.288",
         ),
         "stale_plugin": (
             valid.replace(
-                "CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 289)",
+                "CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 292)",
                 "CLAUDE_PLUGIN_ACTIVATION_EXACT: (u64, u64, u64) = (2, 1, 288)",
             ),
-            "PROVIDER_SOURCE_PIN_BLOCKED:CLAUDE_PLUGIN_ACTIVATION_EXACT:expected=2.1.289:actual=2.1.288",
+            "PROVIDER_SOURCE_PIN_BLOCKED:CLAUDE_PLUGIN_ACTIVATION_EXACT:expected=2.1.292:actual=2.1.288",
         ),
         "stale_codex": (
             valid.replace(
+                "CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 161, 0)",
                 "CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 160, 0)",
-                "CODEX_CLEAN_EXACT: (u64, u64, u64) = (0, 159, 0)",
             ),
-            "PROVIDER_SOURCE_PIN_BLOCKED:CODEX_CLEAN_EXACT:expected=0.160.0:actual=0.159.0",
+            "PROVIDER_SOURCE_PIN_BLOCKED:CODEX_CLEAN_EXACT:expected=0.161.0:actual=0.160.0",
         ),
     }
     for name, (inventory, expected) in cases.items():

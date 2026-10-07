@@ -138,7 +138,7 @@ Plugin/MCP identity overlap fails closed. Raw Codex configuration/plugin/MCP
 activation controls are refused while CLROOM selection is active so there is
 only one activation authority.
 
-The exact qualification target for these Codex resource paths is Codex CLI `0.160.0` on macOS Apple Silicon. Multiple plugins, multiple standalone MCP
+The exact qualification target for these Codex resource paths is Codex CLI `0.161.0` on macOS Apple Silicon. Multiple plugins, multiple standalone MCP
 servers, `--with=all`, component-level plugin surgery, persistent provider
 configuration mutation, remote/OAuth MCP and marketplace installation/update
 remain outside this bounded slice. Claude standalone MCP is not qualified.

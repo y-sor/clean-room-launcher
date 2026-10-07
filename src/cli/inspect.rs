@@ -183,7 +183,7 @@ mod tests {
         let summary = ResolvedLaunchSummary {
             schema_version: "clroom.resolved-launch.v2",
             provider: "codex",
-            provider_version: "0.160.0".to_owned(),
+            provider_version: "0.161.0".to_owned(),
             os: "macos".to_owned(),
             arch: "aarch64".to_owned(),
             resources: vec![ResolvedResourceSummary {

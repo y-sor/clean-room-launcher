@@ -13,8 +13,8 @@ Minimum accepted parser/runtime ranges are broader than the exact versions used 
 
 | Coding-agent CLI | Minimum accepted range | Exact release qualification |
 | --- | --- | --- |
-| Codex CLI | 0.147.0+ | 0.160.0 |
-| Claude Code CLI | 2.1.223+ | 2.1.289 |
+| Codex CLI | 0.147.0+ | 0.161.0 |
+| Claude Code CLI | 2.1.223+ | 2.1.292 |
 
 A newer installed provider can still require fresh qualification if upstream behavior changes. Public support claims remain bound to the exact release evidence rather than inferred from semver alone.
 
@@ -22,14 +22,14 @@ A newer installed provider can still require fresh qualification if upstream beh
 
 | Provider path | Exact version | Qualification |
 | --- | --- | --- |
-| `clroom codex` | Codex CLI 0.160.0 | Interactive clean launch |
-| `clroom codex exec ...` | Codex CLI 0.160.0 | Non-interactive clean launch |
-| `clroom codex --with=plugin:<id>` | Codex CLI 0.160.0 | One installed standalone-capable whole plugin |
-| `clroom codex --with=mcp:<id>` | Codex CLI 0.160.0 | One exact root-user stdio standalone MCP server |
-| `clroom codex --with=plugin:<id> --with=mcp:<id>` | Codex CLI 0.160.0 | Bounded one-plugin + one-stdio-MCP composition |
-| `clroom claude` | Claude Code CLI 2.1.289 | Interactive clean launch |
-| `clroom claude --with=plugin:<id>` | Claude Code CLI 2.1.289 | One installed skill-only whole plugin |
-| Claude Code `-p` response-output semantics | Claude Code CLI 2.1.289 | Launch path exercised; response-output contract is not independently qualified |
+| `clroom codex` | Codex CLI 0.161.0 | Interactive clean launch |
+| `clroom codex exec ...` | Codex CLI 0.161.0 | Non-interactive clean launch |
+| `clroom codex --with=plugin:<id>` | Codex CLI 0.161.0 | One installed standalone-capable whole plugin |
+| `clroom codex --with=mcp:<id>` | Codex CLI 0.161.0 | One exact root-user stdio standalone MCP server |
+| `clroom codex --with=plugin:<id> --with=mcp:<id>` | Codex CLI 0.161.0 | Bounded one-plugin + one-stdio-MCP composition |
+| `clroom claude` | Claude Code CLI 2.1.292 | Interactive clean launch |
+| `clroom claude --with=plugin:<id>` | Claude Code CLI 2.1.292 | One installed skill-only whole plugin |
+| Claude Code `-p` response-output semantics | Claude Code CLI 2.1.292 | Launch path exercised; response-output contract is not independently qualified |
 
 For provider diagnostics:
 
