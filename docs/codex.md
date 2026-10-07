@@ -122,7 +122,7 @@ CLROOM's selected-MCP preflight and `clroom inspect codex ...` prove only the bo
 
 ## Compose one plugin with one standalone MCP
 
-The current source retains the bounded v0.5.0 ability to resolve both selectors in one interactive launch:
+The current source resolves both bounded selectors in one interactive launch:
 
 ```sh
 clroom codex \
