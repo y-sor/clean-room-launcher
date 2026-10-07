@@ -339,6 +339,7 @@ fn validate_provider_arg(argument: &str, path: &Path) -> Result<(), String> {
         || argument.as_bytes().contains(&0)
         || argument == "--"
         || zero_auth::is_sensitive_argument(argument)
+        || matches!(argument.as_str(), "auth" | "login" | "logout")
         || [
             "--preset",
             "--with",
@@ -724,6 +725,9 @@ presets:
         for argument in [
             "--api-key=secret",
             "token=secret",
+            "auth",
+            "login",
+            "logout",
             "--preset=other",
             "--with=mcp:other",
             "--without=plugin:other",
