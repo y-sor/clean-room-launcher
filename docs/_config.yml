@@ -45,6 +45,7 @@ header_pages:
   - use-cases.md
   - agent-runners.md
   - skill-sets.md
+  - presets.md
   - when-to-use-clroom.md
   - claude-code.md
   - codex.md
