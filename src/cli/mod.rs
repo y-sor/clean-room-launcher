@@ -95,6 +95,13 @@ pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode
                 return ExitCode::from(2);
             }
         };
+        let auth_commands: &[&str] = match resolution.provider {
+            resource_options::Provider::Codex => &["login", "logout"],
+            resource_options::Provider::Claude => &["auth", "login", "logout"],
+        };
+        if explicit_provider_auth_command(&preset_args, auth_commands) {
+            return external_refusal(parser::Command::Provider, false);
+        }
         return match resolution.provider {
             resource_options::Provider::Codex => run_codex_args(resolution.args),
             resource_options::Provider::Claude => run_claude_args(resolution.args),
@@ -158,6 +165,9 @@ fn run_codex(source: &mut impl Iterator<Item = String>) -> ExitCode {
     } {
         args.push(argument);
     }
+    if explicit_provider_auth_command(&args, &["login", "logout"]) {
+        return external_refusal(parser::Command::Provider, false);
+    }
     let resolution = match presets::apply(Some(resource_options::Provider::Codex), &args) {
         Ok(resolution) => resolution,
         Err(message) => {
@@ -190,7 +200,10 @@ fn run_codex_args(args: Vec<String>) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    if provider_auth_command(&provider_args, &["login", "logout"]) {
+    if provider_args
+        .first()
+        .is_some_and(|argument| matches!(argument.as_str(), "login" | "logout"))
+    {
         return external_refusal(parser::Command::Provider, false);
     }
     match launch_isolated_codex(
@@ -225,6 +238,9 @@ fn run_claude(source: &mut impl Iterator<Item = String>) -> ExitCode {
     } {
         args.push(argument);
     }
+    if explicit_provider_auth_command(&args, &["auth", "login", "logout"]) {
+        return external_refusal(parser::Command::Provider, false);
+    }
     let resolution = match presets::apply(Some(resource_options::Provider::Claude), &args) {
         Ok(resolution) => resolution,
         Err(message) => {
@@ -256,7 +272,9 @@ fn run_claude_args(args: Vec<String>) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    if provider_auth_command(&provider_args, &["auth", "login", "logout"]) {
+    if provider_args.first().is_some_and(|argument| {
+        matches!(argument.as_str(), "auth" | "login" | "logout")
+    }) {
         return external_refusal(parser::Command::Provider, false);
     }
     match launch_isolated_claude(
@@ -273,10 +291,22 @@ fn run_claude_args(args: Vec<String>) -> ExitCode {
     }
 }
 
-fn provider_auth_command(args: &[String], commands: &[&str]) -> bool {
-    args.iter()
-        .take_while(|argument| argument.as_str() != "--")
-        .any(|argument| commands.contains(&argument.as_str()))
+fn explicit_provider_auth_command(args: &[String], commands: &[&str]) -> bool {
+    for argument in args {
+        if argument == "--" {
+            return false;
+        }
+        if argument.starts_with("--preset=")
+            || argument.starts_with("--with=")
+            || argument.starts_with("--without=")
+            || argument.starts_with("--skill-set=")
+            || argument.starts_with("--pass-env=")
+        {
+            continue;
+        }
+        return commands.contains(&argument.as_str());
+    }
+    false
 }
 
 fn launch_isolated_codex(
