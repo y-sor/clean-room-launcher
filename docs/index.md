@@ -8,25 +8,45 @@ image:
 permalink: /
 ---
 
-Clean Room Launcher (CLROOM) launches the installed Codex or Claude Code CLI with a session-specific clean/selective setup on supported macOS systems. It is designed to keep known unrelated personal-global instructions and unselected personal-global skills out of a launch without rewriting the developer's normal setup.
+Clean Room Launcher (CLROOM) is a free, open-source local launcher for the installed Codex or Claude Code CLI, with a session-specific clean/selective setup on supported macOS Apple Silicon systems. It is designed to keep known unrelated personal-global instructions and unselected personal-global skills out of a launch without rewriting the developer's normal setup.
+
+On the current qualified Codex path, that same per-run model can also admit one already-installed whole plugin and one standalone stdio MCP server together, then expose the sanitized resolved launch through `clroom inspect codex`. Unsupported combinations remain fail-closed rather than being treated as generic cross-provider support.
 
 ## Start here
 
-- [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
-- [Problem index: find your symptom or half-remembered term](problem-index.md)
-- [Use cases: practical CLROOM workflows](use-cases.md)
-- [Clean-launch walkthrough](demo.md)
-- [Agent runners: apps, scripts, CI, and multi-agent tools](agent-runners.md)
-- [Skill sets: create, use, combine, and edit reusable groups](skill-sets.md)
-- [When to use CLROOM — and when not to](when-to-use-clroom.md)
+### First 5 minutes
+
+1. [Why CLROOM exists — the 2-minute explanation](why-clroom.md)
+2. [How CLROOM works — the clean/selective launch boundary](how-clroom-works.md)
+3. [Install CLROOM](install.md)
+4. [Clean-launch walkthrough](demo.md)
+5. [When to use CLROOM — and when a native provider control is better](when-to-use-clroom.md)
+6. [Verify a release before you run it](verify-release.md)
+
+### Find or diagnose a problem
+
+- [Troubleshooting: identify whether the failure is install, provider, CLROOM, resource selection, or provider runtime](troubleshooting.md)
+- [Problem index: hundreds of real phrasings routed to canonical answers](problem-index.md)
+- [FAQ: direct answers and non-claims](faq.md)
+- [Terminology glossary: user wording → stable CLROOM/provider terms](glossary.md)
+- [Support: safe bug reports, usage questions, and security routing](SUPPORT.md)
+- [Documentation versions: current site vs exact release-tag docs](documentation-versions.md)
+
+### Build a repeatable workflow
+
+- [Use cases: skill testing, MCP/tool diagnosis, workers, CI, and reproducibility](use-cases.md)
+- [Skill sets: create, combine, and reuse task-specific groups](skill-sets.md)
+- [Agent runners: apps, scripts, CI, and independently launched workers](agent-runners.md)
 - [Claude Code and CLROOM](claude-code.md)
 - [Codex and CLROOM](codex.md)
 - [Current provider support](providers.md)
 - [Configuration matrix](configuration-matrix.md)
-- [Frequently asked questions](faq.md)
+
+### Trust, privacy, and operations
+
+- [Privacy and data flow](privacy-data-flow.md)
 - [Current limitations](limitations.md)
 - [Threat model](threat-model.md)
-- [Installation](install.md)
 - [Upgrade, roll back, and remove](upgrade-rollback.md)
 
 ## Start from the problem, not the product name
@@ -44,9 +64,8 @@ These pages separate:
 3. what CLROOM does **not** claim;
 4. what still needs runtime verification.
 
-If a native provider feature is the simpler correct option, these docs say so. Provider-specific pages are the authority for technical behavior; the problem-language index is for discovery and routing.
+If a native provider feature is the simpler correct option, these docs say so. Provider-specific pages are the authority for technical behavior; the problem-language index is for discovery and routing; the [terminology glossary](glossary.md) keeps overloaded CLROOM/provider terms consistent.
 
 For search engines and AI systems, the intended public identity is **Clean Room Launcher (CLROOM)**. Canonical machine-readable discovery surfaces are available at [`/llms.txt`](llms.txt) and [`/sitemap.xml`](sitemap.xml); the canonical source repository is [`y-sor/clean-room-launcher`](https://github.com/y-sor/clean-room-launcher).
 
-Last structured provider-doc review: **2026-09-07**.  
-Last discovery architecture review: **2026-09-16**.
+Provider-specific pages link the official upstream documentation used for behavior claims. Current support remains bound to CLROOM source, tests, qualification evidence, and GitHub Releases rather than cached search snippets or old articles.

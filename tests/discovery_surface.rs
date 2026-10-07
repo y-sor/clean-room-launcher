@@ -27,6 +27,8 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
 
     let head = read("docs/_includes/head.html");
     assert!(head.contains("name=\"msvalidate.01\""));
+    assert!(head.contains("rel=\"describedby\""));
+    assert!(head.contains("'/llms.txt' | relative_url"));
     assert!(head.contains("content=\"{{ site.bing_site_verification | escape }}\""));
 
     let sitemap = read("docs/sitemap.xml");
@@ -35,15 +37,45 @@ fn discovery_surfaces_keep_the_canonical_namespace_and_crawler_access() {
     assert!(sitemap.contains("page.sitemap == false"));
 
     let robots = read("docs/robots.txt");
-    for agent in ["Googlebot", "Bingbot", "OAI-SearchBot", "Claude-SearchBot", "Claude-User"] {
+    for agent in [
+        "Googlebot",
+        "Bingbot",
+        "OAI-SearchBot",
+        "ChatGPT-User",
+        "Claude-SearchBot",
+        "Claude-User",
+        "PerplexityBot",
+        "GPTBot",
+        "ClaudeBot",
+        "Google-Extended",
+    ] {
         assert!(robots.contains(&format!("User-agent: {agent}")), "missing crawler policy for {agent}");
     }
+    assert!(robots.contains("Search / citation indexing."));
+    assert!(robots.contains("Training / model-improvement controls are independent from search visibility."));
     assert!(robots.contains("Sitemap: https://y-sor.github.io/clean-room-launcher/sitemap.xml"));
 
     let llms = read("docs/llms.txt");
     assert!(llms.contains("# Clean Room Launcher (CLROOM)"));
     assert!(llms.contains("https://github.com/y-sor/clean-room-launcher"));
     assert!(llms.contains("CLROOM is the acronym for **Clean Room Launcher**"));
+    assert!(llms.contains("https://y-sor.github.io/clean-room-launcher/glossary/"));
+    assert!(llms.contains("https://y-sor.github.io/clean-room-launcher/privacy-data-flow/"));
+
+    let privacy = read("docs/privacy-data-flow.md");
+    let privacy_folded = privacy.to_lowercase();
+    for phrase in [
+        "Clean Room Launcher (CLROOM) is a local launch layer",
+        "CLROOM account",
+        "provider authentication",
+        "Cloudflare Web Analytics",
+        "CLROOM is not a network sandbox",
+    ] {
+        assert!(
+            privacy_folded.contains(&phrase.to_lowercase()),
+            "privacy/data-flow answer lost required signal: {phrase}"
+        );
+    }
 
     let legacy_owner = format!("{}{}", "ewgenij87sn", "work");
     let legacy_pages = format!("{legacy_owner}.github.io/clean-room-launcher");
@@ -90,16 +122,44 @@ fn discovery_descriptions_stay_concise_and_specific() {
 }
 
 #[test]
-fn homepage_metadata_exposes_analytics_preview_and_free_app_facts() {
+fn homepage_metadata_exposes_analytics_preview_and_truthful_software_facts() {
     let head = read("docs/_includes/head.html");
     assert!(head.contains("max-image-preview:large"));
     assert!(head.contains("\"@type\": \"SoftwareApplication\""));
+    assert!(head.contains("\"applicationCategory\": \"DeveloperApplication\""));
+    assert!(head.contains("\"operatingSystem\": \"macOS on Apple Silicon\""));
     assert!(head.contains("\"price\": 0"));
-    assert!(head.contains("static.cloudflareinsights.com/beacon.min.js"));
-    assert!(head.contains("a18fd1827d4c48d2a22277f14eade9b2"));
+    assert!(head.contains("\"@type\": \"SoftwareSourceCode\""));
+    assert!(head.contains(
+        "\"codeRepository\": \"https://github.com/y-sor/clean-room-launcher\""
+    ));
+    assert!(head.contains("\"programmingLanguage\": \"Rust\""));
+    assert!(head.contains("\"runtimePlatform\": \"macOS on Apple Silicon\""));
+    assert!(head.contains("\"license\": \"https://www.mozilla.org/MPL/2.0/\""));
+    assert!(!head.contains("\"aggregateRating\""));
+    assert!(!head.contains("\"review\""));
+    let footer = read("docs/_includes/footer.html");
+    let analytics_marker = "static.cloudflareinsights.com/beacon.min.js";
+    assert_eq!(
+        head.matches(analytics_marker).count() + footer.matches(analytics_marker).count(),
+        1,
+        "Cloudflare Web Analytics must be loaded exactly once per page"
+    );
+    assert!(footer.contains("a18fd1827d4c48d2a22277f14eade9b2"));
+
+    let header = read("docs/_includes/header.html");
+    assert!(header.contains("<nav class=\"site-nav\" aria-label=\"Primary navigation\">"));
+
+    let config = read("docs/_config.yml");
+    assert!(config.contains("card: summary_large_image"));
+    assert!(config.contains("path: /assets/clean-room-launcher-hero.png"));
+    assert!(config.contains(
+        "alt: Clean Room Launcher (CLROOM) clean and selective coding-agent launch"
+    ));
 
     let home = read("docs/index.md");
     assert!(home.contains("title: Clean Room Launcher (CLROOM)"));
     assert!(home.contains("path: /assets/clean-room-launcher-hero.png"));
+    assert!(home.contains("free, open-source local launcher"));
     assert!(home.contains("the intended public identity is **Clean Room Launcher (CLROOM)**"));
 }

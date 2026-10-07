@@ -7,28 +7,49 @@
   <meta name="msvalidate.01" content="{{ site.bing_site_verification | escape }}">
   {%- endif -%}
   <meta name="robots" content="max-image-preview:large">
+  <link rel="describedby" href="{{ '/llms.txt' | relative_url }}">
   {%- if page.url == '/' -%}
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "@id": "{{ site.url }}{{ site.baseurl }}/#clroom",
-  "name": "Clean Room Launcher (CLROOM)",
-  "alternateName": ["CLROOM", "Clean Room Launcher"],
-  "description": "Open-source developer tool for launching Codex and Claude Code with a clean/selective session setup on macOS.",
-  "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS",
-  "url": "{{ site.url }}{{ site.baseurl }}/",
-  "sameAs": [
-    "https://github.com/y-sor/clean-room-launcher"
-  ],
-  "isAccessibleForFree": true,
-  "offers": {
-    "@type": "Offer",
-    "price": 0
-  },
-  "license": "https://www.mozilla.org/MPL/2.0/",
-  "keywords": "Codex, Claude Code, coding agents, Agent Skills, context management"
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "{{ site.url }}{{ site.baseurl }}/#clroom-app",
+      "name": "Clean Room Launcher (CLROOM)",
+      "alternateName": ["CLROOM", "Clean Room Launcher"],
+      "description": "Free open-source launcher for repeatable clean/selective Codex and Claude Code sessions on supported macOS Apple Silicon systems.",
+      "url": "{{ site.url }}{{ site.baseurl }}/",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS on Apple Silicon",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": 0,
+        "priceCurrency": "USD",
+        "url": "https://github.com/y-sor/clean-room-launcher/releases/latest"
+      },
+      "downloadUrl": "https://github.com/y-sor/clean-room-launcher/releases/latest",
+      "softwareHelp": "{{ site.url }}{{ site.baseurl }}/support/",
+      "sameAs": [
+        "https://github.com/y-sor/clean-room-launcher"
+      ]
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "{{ site.url }}{{ site.baseurl }}/#clroom-source",
+      "name": "Clean Room Launcher (CLROOM) source code",
+      "description": "Rust source code for the Clean Room Launcher (CLROOM) project.",
+      "url": "https://github.com/y-sor/clean-room-launcher",
+      "codeRepository": "https://github.com/y-sor/clean-room-launcher",
+      "programmingLanguage": "Rust",
+      "runtimePlatform": "macOS on Apple Silicon",
+      "license": "https://www.mozilla.org/MPL/2.0/",
+      "targetProduct": {
+        "@id": "{{ site.url }}{{ site.baseurl }}/#clroom-app"
+      }
+    }
+  ]
 }
 </script>
   {%- endif -%}
@@ -42,7 +63,4 @@
   {%- if jekyll.environment == 'production' and site.google_analytics -%}
     {%- include google-analytics.html -%}
   {%- endif -%}
-  <!-- Cloudflare Web Analytics -->
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"a18fd1827d4c48d2a22277f14eade9b2"}'></script>
-  <!-- End Cloudflare Web Analytics -->
 </head>

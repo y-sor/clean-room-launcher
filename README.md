@@ -15,7 +15,9 @@
 
 <p align="center">
   <a href="https://y-sor.github.io/clean-room-launcher/">Documentation →</a> ·
-  <a href="docs/demo.md">Read the clean-launch walkthrough →</a>
+  <a href="docs/demo.md">Read the clean-launch walkthrough →</a> ·
+  <a href="docs/verify-release.md">Verify a release →</a> ·
+  <a href="docs/SUPPORT.md">Support →</a>
 </p>
 
 <p align="center">
@@ -40,6 +42,8 @@
 CLROOM starts the installed `codex` or `claude` CLI without rewriting the setup you normally use. Project files, project instructions, and project-local skills stay available. Known unrelated personal-global instructions and global skills you did not select stay out of that launch.
 
 Use `clroom codex` or `clroom claude` directly, choose reusable skill sets for different kinds of work, or put CLROOM underneath software that starts coding-agent processes.
+
+On the current qualified Codex path, a launch can also combine one already-installed whole plugin with one standalone stdio MCP server, and `clroom inspect codex ...` can show the sanitized resolved launch before the provider starts.
 
 Each independently launched worker can get a different CLROOM setup while the outer tool keeps ownership of roles, missions, scheduling, worktrees, session reuse, and coordination.
 
@@ -165,8 +169,7 @@ If `~/.local/bin` is not in `PATH`, the installer tells you what to add.
 The macOS release archive is unsigned and unnotarized. Do not disable Gatekeeper
 globally to run it.
 
-See the [install guide](docs/install.md) for manual archive verification, Cargo
-installation, removal, and provider checks.
+See the [install guide](docs/install.md) for installation and removal. Before executing downloaded release artifacts, use the [release verification guide](docs/verify-release.md) for checksum, provenance, CycloneDX SBOM attestation, immutable-release identity, and the limits of those checks.
 
 ## Launch
 
@@ -419,7 +422,7 @@ read. It does not mean Codex failed to start.
 If the required macOS filesystem restrictions cannot be created, Clean Room Launcher
 fails instead of silently starting a normal inherited Codex session.
 
-See [the current limitations](docs/limitations.md) and
+See [the current limitations](docs/limitations.md), [privacy and data flow](docs/privacy-data-flow.md), and
 [security policy](SECURITY.md).
 
 <details>
@@ -463,6 +466,7 @@ For exact provider behavior, native alternatives, current limitations, and commo
 
 - [Why CLROOM exists](docs/why-clroom.md)
 - [Coding-agent configuration problem index](docs/problem-index.md)
+- [Terminology glossary](docs/glossary.md)
 - [When to use Clean Room Launcher (CLROOM) — and when not to](docs/when-to-use-clroom.md)
 - [Use cases](docs/use-cases.md)
 - [Skill sets](docs/skill-sets.md)
@@ -549,16 +553,19 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.5.0` on macOS Apple Silicon. See the
+Current source version: `v0.5.0`. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
-for publication status and downloadable artifacts. Real-provider qualification
-is bound to the exact behavior-specific provider versions above. The macOS
-archive is unsigned and unnotarized.
+for authoritative publication status and downloadable artifacts. Real-provider
+qualification is bound to the exact behavior-specific provider versions above.
+The macOS archive is unsigned and unnotarized.
 
-It supports the documented Codex interactive and exec clean paths, the bounded
-v0.5.0 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
-and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
-Apple Silicon paths.
+The current source supports the documented Codex interactive and exec clean
+paths; bounded one-plugin and one-standalone-stdio-MCP selection; composition of
+one qualified Codex whole plugin with one qualified standalone MCP through the
+same resolved launch; sanitized human/JSON launch inspection; the ordinary
+interactive Claude Code clean launch; and the bounded Claude skill-only
+whole-plugin activation path. Qualification remains limited to the documented
+macOS Apple Silicon paths.
 
 External launchers can use `clroom-codex` or `clroom-claude` as their provider
 executable override. See the [agent runner guide](docs/agent-runners.md).

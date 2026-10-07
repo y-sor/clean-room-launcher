@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Threat model
-description: CLROOM threat model covering launch isolation, skills and symlinks, provider drift, private-data leakage, release evidence, and residual risks.
+description: CLROOM threat model for clean-launch isolation, prompt-injection non-claims, skills and symlinks, provider drift, private-data leakage, and residual risks.
 permalink: /threat-model.html
 ---
 
@@ -32,6 +32,10 @@ receipts.
   outside Clean Room Launcher-owned runtime roots.
 - Malicious context can use admitted files or skill metadata to influence a
   provider outside the intended task scope.
+- Prompt injection can arrive through project files, documentation, source
+  comments, issue/PR text, fetched web content, MCP/tool output, or another
+  provider-visible data channel. A cleaner personal-global launch boundary does
+  not make those inputs trusted and is not a prompt-injection defense.
 - Adapter or provider drift can make evidence from one executable, version,
   operating system or architecture appear valid for another tuple.
 - Private-data leakage can place secrets, absolute user paths, prompts or
@@ -42,6 +46,18 @@ receipts.
   introduce shell interpretation.
 - Incomplete cleanup can leave generated context or launcher-owned state that
   affects a later provider start.
+
+## What CLROOM does not secure
+
+CLROOM's clean/selective launch controls are about the supported launch inputs it
+owns. They do **not** authenticate repository text, sanitize arbitrary web/tool
+content, detect prompt injection, make MCP output trustworthy, or replace the
+provider's sandbox, permission system, network policy, credential scope, or
+human review.
+
+Removing an unrelated personal-global instruction can make a reproduction easier
+to reason about. It does not prove that the remaining repository/project/tool
+context is benign.
 
 ## Mitigations
 

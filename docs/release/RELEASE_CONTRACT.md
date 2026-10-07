@@ -373,12 +373,141 @@ forbidden. The version history table in `SECURITY.md` remains historical.
 Provider claims inside `SECURITY.md`, however, are still checked against the
 current provider pins.
 
+Current-source status wording must also survive the publication boundary without
+becoming false. README and SECURITY use the exact Cargo package version while
+GitHub Releases remains authoritative for whether that source version is Draft,
+published, immutable, or Latest. Do not freeze boundary-sensitive words such as
+`candidate` or `prepared for vX` into the same source that will be published
+unchanged. `scripts/probe/check-doc-freshness.py` enforces this deterministic
+subset in required docs-discovery CI and carries negative fixtures for stale
+status and wrong-version drift.
+
 The release harness never edits documentation after provider tests. A provider
 pin move must be accompanied by the required qualification evidence and matching
 documentation changes in the same reviewed candidate. Release-candidate and
 pre-tag contract checks block until that coherence is restored. This keeps candidate
 bytes deterministic and makes documentation drift a pre-release failure rather
 than a post-test auto-write.
+
+## Problem-language vector integrity
+
+The public problem index is a semantic routing surface, not a one-time keyword
+list. Technical users can describe the same configuration problem with different
+provider terms, symptoms, workaround names, or incomplete vocabulary. Each
+release therefore treats distinct problem-language coverage as a maintained
+documentation asset.
+
+`scripts/probe/check-problem-vectors.py` runs in required docs-discovery CI and
+fails closed on hard inventory/cluster-floor regression, normalized duplicate
+vectors, or loss of representative current problem families. The machine count
+is only a regression signal. It does not authorize keyword stuffing, artificial
+language, or one thin page per query variant.
+
+Release research still owns the semantic part: compare the latest published
+problem-language baseline with current product/provider changes and real user,
+search-query, provider-issue, and developer-community terminology; add materially
+distinct useful formulations; merge/retire duplicates with rationale; and map
+the strongest new language into the corresponding canonical answer page when it
+improves comprehension or routing. A material release change with zero new vector
+findings requires evidence that this research was actually performed.
+
+## Privacy, data-flow and crawler-purpose integrity
+
+Each release must keep one current canonical public answer that separates CLROOM
+launcher behavior from provider authentication/network behavior, selected
+plugin/MCP behavior, installer/release downloads and documentation-site analytics.
+Do not collapse those surfaces into a blanket "offline", "no data leaves the
+machine" or "zero telemetry" claim.
+
+The public answer must remain consistent with current source/runtime behavior and
+must cover credentials, admitted MCP environment names/values, inspection
+redaction, provider-owned network activity, website analytics and the explicit
+non-claim that CLROOM is not a network sandbox.
+
+Crawler policy is likewise purpose-specific. Search/citation indexing,
+user-initiated retrieval and model-training/model-improvement controls are
+independent. The project-level robots declaration must name the current intended
+categories and must not imply that a search allow proves a training opt-out.
+Because CLROOM is hosted as a GitHub Pages project site, live rendered discovery
+reconciliation separately checks the actual host-root `/robots.txt`, which is
+the policy standards-compliant crawlers receive.
+
+A future change to launcher telemetry, hosted-service/account requirements,
+credential handling, analytics instrumentation, crawler training policy or
+provider/network boundary is a material discovery/trust change and must update
+the corresponding public answer and gates in the same candidate.
+
+## Discovery metadata and routing integrity
+
+`scripts/probe/check-discovery-metadata.py` protects the deterministic subset of
+CLROOM's discovery architecture. Required docs-discovery CI verifies that:
+
+- homepage custom entity markup describes the project honestly as
+  `SoftwareSourceCode` with canonical repository, Rust language, runtime platform
+  and license, rather than manufacturing review/rating data for a software-app
+  rich-result shape;
+- installation remains visible in primary docs navigation;
+- high-value Codex/use-case/runner/comparison pages keep descriptions aligned with
+  the current product surface;
+- provider-support, configuration-matrix and limitations pages retain explicit section
+  structure for qualified paths, provider-owned/non-qualified boundaries and major
+  support limits so focused human/search/AI retrieval does not depend on surrounding
+  site context;
+- the top problem router links to the current MCP/plugin/worker/inspection/privacy and
+  provider-profile comparison clusters and every routed anchor exists;
+- the privacy/data-flow page retains distinct telemetry/credential/network/analytics
+  language rather than a misleading blanket privacy slogan;
+- project robots policy keeps explicit search/citation, user-fetch and
+  training/model-improvement categories aligned with the current intended allow state;
+- `llms.txt` keeps current high-value intent routing and explicitly separates
+  provider-native behavior from CLROOM-qualified behavior.
+
+The machine gate does not decide ranking or AI citations. Semantic release review
+still owns whether descriptions, comparisons, headings, evidence and canonical
+answers are useful and current.
+
+`docs/glossary.md` is the canonical terminology bridge for overloaded CLROOM/provider
+concepts that appear across multiple pages. Search/problem vectors may preserve user
+synonyms, but canonical answers should map those synonyms back to stable product and
+provider terms so humans and retrieval systems do not infer false distinctions.
+
+Rendered HTML exposes the supplemental `llms.txt` routing surface through
+`rel="describedby"` when the page template permits it. This is agent-routing metadata,
+not a ranking claim. Do not manufacture stale Markdown alternates merely to satisfy an
+external proposal.
+
+`scripts/probe/check-doc-link-graph.py` validates relative documentation targets and
+fails closed when an indexable top-level docs page becomes orphaned from both primary
+navigation and explicit inbound links. This proves the deterministic internal-link
+graph subset without pretending that link count itself is a ranking KPI.
+
+## Post-public discovery observation loop
+
+After publication, controllable discovery prerequisites are reconciled first:
+canonical/rendered pages, sitemap, host-root robots policy, public routes, and
+changed-URL notification. Search-engine crawling, ranking, snippet choice, AI citation,
+and traffic are external outcomes and are never release PASS thresholds.
+
+When first-party data is available, the next release baseline should review it as
+diagnostic evidence. Useful inputs include:
+
+- Google Search Console granular queries, query groups/themes, and meaningful
+  top/trending-up/trending-down changes;
+- Search Console generative-AI and other search-surface reporting when the property
+  exposes it;
+- Bing Webmaster Tools search and AI Performance evidence such as grounding queries,
+  cited pages, topics/intents, citation share, and trend changes;
+- privacy-safe referral/analytics signals and recurring support/community language.
+
+The purpose is not to chase every metric. Use the evidence to discover vocabulary gaps,
+missing canonical answers, weak internal routing, stale terminology, or pages whose
+content does not satisfy the intent that is actually reaching them. Feed those findings
+into the next `PROBLEM_LANGUAGE_VECTOR_COVERAGE`, discovery-impact map, and canonical
+answer review.
+
+Record insufficient or delayed data as such. Do not treat absence of impressions,
+clicks, citations, or crawler activity as proof that the documentation is correct, and
+do not manufacture content merely to move a dashboard number.
 
 For whole-plugin activation:
 

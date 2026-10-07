@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Coding-agent configuration problem index — Claude Code, Codex, Agent Skills and clean sessions
-description: Find answers for Claude Code and Codex clean sessions, global instructions, Agent Skills, safe mode, bare mode, CODEX_HOME, CLAUDE.md, AGENTS.md, hooks, plugins, MCP, runners, reproducibility, and skill isolation — with where Clean Room Launcher (CLROOM) fits and where native tools are better.
+title: Coding-agent configuration problem index — Codex, Claude Code, skills, and MCP
+description: Find canonical answers for Codex and Claude Code clean sessions, skills, stale memory, MCP runtime problems, install failures, native controls, and CLROOM.
 permalink: /problem-index/
 nav_title: Problem index
 ---
@@ -23,11 +23,15 @@ If you want the human explanation before the provider details, read [Why Clean R
 
 ## Start from the closest symptom
 
-- **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci)
-- **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [built-in/project skills in Codex](#codex-built-in-and-project-skills)
-- **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir)
-- **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [skill scopes](#codex-skill-scopes)
-- **Diagnosis:** [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
+- **Launch/integration:** [apps, runners, scripts, and CI](#apps-runners-and-ci), [different inputs per worker](#subagents-inherit-mcp-tools)
+- **Skills:** [selected global skills](#only-selected-skills), [saved skill sets](#create-edit-and-combine-skill-sets), [shared symlinked skills](#symlinked-shared-skills), [Codex global vs repository skills](#codex-global-skills-keep-project-skills), [Claude plugin skill controls](#claude-plugin-skill-controls)
+- **Claude Code:** [`--safe-mode`](#claude-safe-mode), [`--bare`](#claude-bare-mode), [`--restricted`](#claude-restricted), [`--setting-sources`](#claude-setting-sources), [`CLAUDE_CONFIG_DIR`](#claude-config-dir), [stale/auto memory](#claude-auto-memory), [subagent MCP/tools](#subagents-inherit-mcp-tools)
+- **Codex:** [global `AGENTS.md`](#codex-agents-md), [`--ignore-user-config`](#codex-ignore-user-config), [`CODEX_HOME`/profiles](#codex-home-and-profiles), [native `--profile` vs CLROOM](#codex-profile-vs-clroom), [skill scopes](#codex-skill-scopes), [plugin + MCP](#codex-plugin-mcp-composition), [inspect launch](#inspect-resolved-launch)
+- **MCP/tools:** [tool/context overload](#mcp-tool-context-overload), [runtime environment/auth](#mcp-env-var-not-in-process), [configured but tools unavailable](#mcp-configured-tools-unavailable), [per-worker/subagent scope](#subagents-inherit-mcp-tools), [subagent cannot see MCP tools](#subagent-mcp-tools-missing)
+- **Diagnosis:** [troubleshoot an unknown CLROOM failure](#troubleshoot-clroom), [wrong-path/rework](#wrong-path-or-rework), [context noise](#context-noise-or-contamination), [stale Claude memory](#claude-auto-memory), [configuration drift/sync](#configuration-sync-vs-clean-launch), [prompt injection vs configuration contamination](#prompt-injection-vs-configuration-contamination), [testing/reproducibility](#testing-and-reproducibility), [what loaded](#what-loaded-into-the-session)
+- **Trust/privacy/install:** [first-run/install failures](#install-first-run-failures), [what CLROOM sends, stores, or leaves provider-owned](#privacy-data-flow), [license and work/commercial use](#license-commercial-use), [verify release checksum, provenance, and SBOM](#verify-release-evidence), [prompt injection boundary](#prompt-injection-vs-configuration-contamination)
+- **Version/freshness:** [current docs do not match an older release](#docs-vs-installed-release)
+- **Platform/install/scope:** [Linux/Windows/Intel Mac support](#platform-support), [Homebrew/package-manager install](#package-manager-install), [upgrade/rollback/remove](#upgrade-rollback-remove), [CLROOM vs VM/container/network sandbox](#clroom-vs-container-sandbox), [other coding-agent providers](#other-coding-agents), [multiple/remote/OAuth MCP or multiple plugins](#multiple-remote-mcp)
 
 <a id="apps-runners-and-ci"></a>
 ## Is an app, runner, script, or CI job launching the coding agent?
@@ -283,10 +287,14 @@ CLROOM supports named user-created skill sets so a repeatable group of personal-
 - `keep only relevant skills`
 - `skills noise coding agent`
 - `skill discovery overhead`
+- `Claude skillOverrides`
+- `Claude /skill-doctor`
+- `disable-model-invocation`
+- `hide Claude skill from context`
 
 </details>
 
-Not necessarily. Providers can use progressive disclosure and metadata rather than loading every skill body at once. CLROOM does not promise a fixed token saving. Its stronger value is controlling which personal-global skills can participate and reducing unrelated or conflicting instruction paths.
+Not necessarily, and the answer is provider-specific. Current Claude Code documentation says full skill bodies load when invoked, while skills listed to Claude contribute their name/description to context on each turn. Claude now provides native controls such as `skillOverrides`, `disable-model-invocation`, and `/skill-doctor` for visibility and usage diagnosis. Codex has its own skill scopes and controls. CLROOM does not promise a fixed token saving; its stronger value is a repeatable launch boundary for which supported personal-global inputs can participate.
 
 **Go deeper:** [FAQ](faq.md) · [When to use CLROOM](when-to-use-clroom.md)
 
@@ -492,6 +500,45 @@ Current CLROOM intentionally retains Claude project and project-local setting so
 
 **Go deeper:** [Claude Code](claude-code.md) · [Configuration matrix](configuration-matrix.md) · [Limitations](limitations.md)
 
+<a id="claude-auto-memory"></a>
+
+## Is Claude Code carrying stale auto-memory or old `MEMORY.md` state into a fresh session?
+
+**Common ways people ask this:**
+
+- `Claude stale auto memory`
+- `Claude Code MEMORY.md stale`
+- `disable Claude auto memory one session`
+- `Claude remembers old project state`
+- `fresh Claude session without auto memory`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Claude memory from another session interfering`
+- `Claude MEMORY.md wrong instructions`
+- `Claude auto memory context`
+- `Claude project memory stale`
+- `Claude Code old memory loaded`
+- `Claude memory across worktrees`
+- `Claude memory shared between sessions`
+- `Claude Code memory race`
+- `test Claude without MEMORY.md`
+- `Claude memory contaminating new session`
+- `Claude auto memory disable temporarily`
+- `why does Claude remember old repository state`
+- `Claude memory stale after project changed`
+- `Claude concurrent sessions memory conflict`
+- `Claude worktree memory shared`
+
+</details>
+
+Claude Code auto-memory is provider-owned persistent state and has its own native controls and diagnostics. Use those when you want to inspect, edit, retain, or manage memory itself.
+
+The current qualified CLROOM Claude path disables auto-memory for the clean launch. That makes CLROOM useful as a diagnostic comparison when the question is **"does this behavior disappear without auto-memory participating in this launch?"** It does not delete, rewrite, repair, expire, or synchronize Claude's stored memory files, and it does not make a claim about every other provider-owned state surface.
+
+**Go deeper:** [Claude Code](claude-code.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md) · [When to use CLROOM](when-to-use-clroom.md)
+
 <a id="codex-agents-md"></a>
 
 ## Why is Codex reading global `AGENTS.md`?
@@ -514,6 +561,9 @@ Current CLROOM intentionally retains Claude project and project-local setting so
 - `project AGENTS.md plus global AGENTS.md`
 - `Codex old global instructions`
 - `Codex user instructions project instructions`
+- `Codex global AGENTS.md relative links wrong path`
+- `global AGENTS.md links resolve in project cwd`
+- `Codex global instructions wrong working directory`
 
 </details>
 
@@ -537,19 +587,56 @@ Codex has global instruction files under `CODEX_HOME` plus project instruction d
 <summary>More related wording and searches</summary>
 
 - `Codex profiles`
-- `Codex profile per project`
 - `Codex clean profile`
 - `Codex alternate config`
 - `Codex config.toml profile`
 - `Codex profiles vs CLROOM`
 - `CODEX_HOME vs CLROOM`
 - `Codex without default config`
+- `Codex profile disable global AGENTS.md`
+- `Codex profile different global instructions`
 
 </details>
 
 Use native homes/profiles when you want a persistent alternate Codex setup or reusable configuration values. CLROOM is useful when the problem is per-launch control over known personal-global instructions and skills without maintaining another normal home.
 
 **Go deeper:** [Codex](codex.md) · [When to use CLROOM](when-to-use-clroom.md)
+
+<a id="codex-profile-vs-clroom"></a>
+
+## Should you use a Codex `--profile`, project config, or CLROOM?
+
+**Common ways people ask this:**
+
+- `Codex profile vs CLROOM`
+- `Codex --profile vs CLROOM`
+- `Codex profile vs skill set`
+- `Codex reusable config per task`
+- `Codex profile for different workflows`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Codex profile-name.config.toml`
+- `Codex profile per project`
+- `Codex project config vs profile`
+- `Codex .codex/config.toml vs profile`
+- `Codex managed config vs local profile`
+- `Codex reusable settings`
+- `Codex task profile`
+- `Codex workflow profile`
+- `different Codex settings per task`
+- `saved Codex configuration`
+- `Codex profile skills`
+- `coding agent preset vs profile`
+
+</details>
+
+Use native Codex profiles when the problem is reusable **Codex configuration values**. Use project or managed Codex configuration when the settings belong to that repository or organization. CLROOM's current contract is different: a qualified clean/selective launch plus supported per-run selection of personal-global skills/resources.
+
+A future CLROOM reusable-launch feature should not exist merely to rename provider profiles. It must compose CLROOM-owned launch intent that remains distinct from provider-native configuration.
+
+**Go deeper:** [When to use CLROOM](when-to-use-clroom.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
 
 <a id="codex-skill-scopes"></a>
 
@@ -609,9 +696,316 @@ Codex skill scopes are separate from `AGENTS.md`. CLROOM's selected-skill workfl
 
 </details>
 
-They can, but Claude Code and Codex do not expose one universal scope model for all of them. CLROOM has provider-specific clean defaults; use the provider pages for what is off by default, what native controls exist, and what CLROOM does not claim.
+They can, but Claude Code and Codex do not expose one universal scope model for all of them. CLROOM has provider-specific clean defaults and only makes activation claims for exact qualified paths. The current Codex path can admit one qualified whole plugin, one standalone stdio MCP, or the bounded pair together; that does not imply generic support for every upstream plugin/MCP package or transport. Use the provider pages for exact behavior and current non-claims.
 
 **Go deeper:** [Claude Code](claude-code.md) · [Codex](codex.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="claude-plugin-skill-controls"></a>
+
+## Do you want to disable or evaluate one skill that came from a Claude plugin?
+
+**Common ways people ask this:**
+
+- `disable one Claude plugin skill`
+- `Claude plugin skill individually disable`
+- `skillOverrides plugin skill`
+- `turn off skill from Claude plugin`
+- `test Claude plugin skill without plugin`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Claude plugin skill off`
+- `Claude /plugin manage skills`
+- `Claude plugin eval skill`
+- `evaluate plugin skill with and without plugin`
+- `Claude skillOverrides does not affect plugin skill`
+- `disable plugin skill keep plugin`
+
+</details>
+
+Current Claude Code documentation draws a real boundary here: `skillOverrides` applies to ordinary personal/project skills but does **not** control plugin-provided skills. Claude routes plugin management through `/plugin`, and `claude plugin eval` can compare a plugin skill with and without the plugin in isolated runs.
+
+CLROOM's current Claude plugin path is whole-plugin and atomic. It does not promise component-level surgery that disables one skill while keeping the rest of the selected plugin active.
+
+**Go deeper:** [Claude Code](claude-code.md) · [When to use CLROOM](when-to-use-clroom.md) · [Current limitations](limitations.md)
+
+<a id="mcp-tool-context-overload"></a>
+
+## Are too many MCP servers or tool definitions consuming context or slowing startup?
+
+**Common ways people ask this:**
+
+- `too many MCP tools context`
+- `MCP context bloat`
+- `MCP tool definitions context window`
+- `MCP tools prompt too long`
+- `too many MCP servers coding agent`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `MCP servers slow startup`
+- `Codex MCP startup slow`
+- `Codex first turn blocked by MCP`
+- `Claude MCP context warning`
+- `Claude MCP tools context overhead`
+- `reduce MCP tool context`
+- `load only one MCP server for a task`
+- `disable unused MCP servers for one run`
+- `coding agent tool overload`
+- `MCP tool schema overload`
+- `MCP tool noise`
+- `large MCP tools context`
+- `MCP tools use too many tokens`
+- `Claude /context MCP tools`
+- `MCP tool schemas counted as messages`
+- `global MCP starts every thread`
+- `too many Codex MCP processes`
+
+</details>
+
+This is a real provider-scale problem, but the mitigation is provider-specific. Current Claude Code has native MCP Tool Search that defers tool definitions on supported paths and can use threshold modes such as `auto`; use that first when the problem is Claude tool-definition context overhead. OpenAI documents tool search in its API/agent runtimes too, but that must not be assumed to describe the qualified Codex CLI path.
+
+CLROOM's narrower role is to provide its qualified clean/selective launch boundary and, on the current Codex path, deliberately admit one supported standalone stdio MCP when that is the resource the task needs. It does not claim universal lazy MCP loading, repair provider process-lifecycle bugs, or replace provider-owned subagent tool controls.
+
+**Go deeper:** [Codex](codex.md) · [Claude Code](claude-code.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
+
+<a id="mcp-env-var-not-in-process"></a>
+
+## Is an MCP server configured but its token or environment variable missing from the active process?
+
+**Common ways people ask this:**
+
+- `Codex MCP bearer token env var missing`
+- `MCP configured but env var missing`
+- `MCP enabled but auth missing`
+- `MCP server configured but token not in process`
+- `MCP env var not inherited`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `pass MCP env var to Codex`
+- `Codex MCP config says bearer token but request unauthorized`
+- `MCP works in config but not active session`
+- `MCP server missing environment variable`
+- `MCP auth environment not visible to process`
+- `restart coding agent after setting MCP token`
+- `MCP configured but tools unavailable`
+
+</details>
+
+A configuration file can name an environment variable without proving that the active provider process actually has a usable value. Treat configuration presence, process environment, authentication, and tool availability as separate states.
+
+On CLROOM's qualified standalone Codex MCP path, referenced plain environment-variable **names** must also be explicitly admitted with `--pass-env=NAME`; CLROOM never stores or prints their secret values. That explicit admission does not turn unsupported remote/OAuth MCP forms into supported ones.
+
+**Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [Current limitations](limitations.md)
+
+<a id="mcp-configured-tools-unavailable"></a>
+
+## Is an MCP server configured or connected, but its tools are still unavailable to the model?
+
+**Common ways people ask this:**
+
+- `MCP configured but tools missing`
+- `MCP server connected but tools unavailable`
+- `Codex MCP configured but tool_search missing`
+- `Codex MCP visible in settings but not chat`
+- `MCP client running but model cannot use tools`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `MCP settings vs runtime tools`
+- `MCP initialized but tools not callable`
+- `MCP server healthy but tools absent`
+- `Codex MCP connected no tool namespace`
+- `Codex MCP tools disappeared`
+- `MCP tool namespace missing`
+- `tool_search missing MCP`
+- `MCP works in TUI but not desktop`
+- `MCP listed but model cannot call it`
+- `configured MCP not exposed to model`
+- `MCP connection ok tool discovery failed`
+- `MCP runtime exposure failure`
+- `MCP tools missing after model change`
+- `MCP tools unavailable after provider update`
+- `MCP config valid but session tools missing`
+
+</details>
+
+Configuration presence, server initialization, and model-visible tool availability are separate states. A provider can successfully read an MCP configuration or keep a connection alive while the active session still lacks the tool namespace or discovery mechanism needed to call those tools.
+
+Use the provider's current MCP/status/tool-discovery diagnostics to establish the runtime state. CLROOM's qualified Codex resource path can prove the selected configuration and launch plan it owns, and `clroom inspect codex ...` can show that sanitized resolved plan before provider birth. Neither is a universal guarantee that every provider surface, model mode, desktop host, or later runtime state will expose the tool successfully.
+
+**Go deeper:** [Codex](codex.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md) · [Current limitations](limitations.md)
+
+<a id="codex-plugin-mcp-composition"></a>
+
+## Do you want one Codex plugin and one MCP server together for only this launch?
+
+**Common ways people ask this:**
+
+- `Codex plugin and MCP same session`
+- `use one plugin and one MCP Codex`
+- `temporary Codex plugin plus MCP`
+- `Codex plugin MCP composition`
+- `one run plugin MCP without editing config`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `select Codex plugin per run`
+- `select MCP server per run Codex`
+- `Codex plugin MCP conflict`
+- `Codex plugin includes MCP plus standalone MCP`
+- `plugin MCP identity conflict Codex`
+- `Codex plugin mcpServers`
+- `Codex plugin .mcp.json`
+- `Codex plugin.json mcp.json`
+- `Codex plugin bundled MCP server`
+- `inspect Codex plugin MCP launch`
+- `Codex plugin MCP without changing config.toml`
+- `Codex per session plugin and MCP`
+
+</details>
+
+On the exact qualified v0.5 Codex path, CLROOM can compose one already-installed whole plugin with one root-user standalone stdio MCP through the same typed resolved launch. Identity overlap, unsupported transports/fields, unqualified provider tuples, and source drift fail closed. This is deliberately not generic multi-plugin or multi-MCP support.
+
+**Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [Configuration matrix](configuration-matrix.md) · [Limitations](limitations.md)
+
+<a id="codex-global-skills-keep-project-skills"></a>
+
+## Do you want Codex user/global skills out while keeping repository skills?
+
+**Common ways people ask this:**
+
+- `disable global Codex skills keep project skills`
+- `Codex user skills off repo skills on`
+- `project skills without user skills Codex`
+- `ignore ~/.agents/skills keep repo skills`
+- `Codex global skills context budget`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Codex disable user skills for one repo`
+- `Codex keep .codex/skills but hide global skills`
+- `Codex ~/.agents/skills vs .agents/skills`
+- `Codex user skills interfering with project skills`
+- `Codex only repository skills`
+- `temporary disable Codex global skills`
+- `Codex personal skills off for one run`
+- `Codex project skill still available clean launch`
+
+</details>
+
+That scope distinction is central to CLROOM. Selected personal-global skills are launch inputs CLROOM can deliberately control on qualified paths, while repository/project and provider-owned skill scopes remain separate. Do not describe the result as “only one skill exists” when project or system skills can still be visible by design.
+
+**Go deeper:** [Codex](codex.md) · [Skill sets](skill-sets.md) · [FAQ](faq.md)
+
+<a id="subagents-inherit-mcp-tools"></a>
+
+## Are subagents or agent-team workers inheriting MCP tools they do not need?
+
+**Common ways people ask this:**
+
+- `Claude subagent inherits MCP tools`
+- `subagent prompt too long MCP`
+- `per subagent MCP tools`
+- `different MCP servers per worker`
+- `coding agent worker tool isolation`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `subagent inherits all MCP servers`
+- `agent team MCP context bloat`
+- `per agent MCP selection`
+- `different tools per coding agent worker`
+- `agent runner per-worker MCP`
+- `agent runner per-worker plugin`
+- `separate worker different skills and MCP`
+- `coding agent subagent tool context overflow`
+- `independent agent process tool isolation`
+- `provider subagent inherited tools`
+
+</details>
+
+Provider-owned subagents and teammates follow the provider's own rules; CLROOM does not surgically rewrite them.
+
+For current Claude Code, use native subagent controls first when the problem is inside one Claude session: `tools` / `disallowedTools` can narrow inherited tools, including MCP server-level patterns, and `mcpServers` can attach servers to the subagent. An inline subagent MCP can stay out of the parent conversation entirely.
+
+If an external runner owns separate provider processes, each top-level process can instead get its own CLROOM launch. On the current Codex path, those separate launches can differ in the supported skill/plugin/MCP selections CLROOM qualifies.
+
+**Go deeper:** [Agent runners](agent-runners.md) · [Use cases](use-cases.md) · [Limitations](limitations.md)
+
+<a id="subagent-mcp-tools-missing"></a>
+
+## Why can a Claude subagent fail to see MCP tools that work in the parent session?
+
+**Common ways people ask this:**
+
+- `Claude subagent MCP tools missing`
+- `subagent cannot access MCP tools`
+- `Claude Agent tool no MCP tools`
+- `MCP works in parent not subagent`
+- `custom subagent ToolSearch missing`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Claude custom agent MCP unavailable`
+- `subagent mcpServers not working`
+- `MCP tools missing in background subagent`
+- `Claude subagent inherits tools inconsistently`
+- `ToolSearch missing from custom subagent`
+- `plugin subagent cannot use MCP`
+- `Claude AgentDefinition MCP tools`
+- `subagent tools frontmatter ignored MCP`
+- `MCP available in main thread not child agent`
+- `Claude subagent MCP inheritance bug`
+
+</details>
+
+This is provider-owned behavior, not something CLROOM can make universal from outside the running Claude session. Current Claude documentation exposes subagent `tools`, `disallowedTools`, and `mcpServers` controls, but real provider behavior has changed across versions and execution modes. If MCP works in the parent and disappears in a provider-owned subagent, reproduce it against the current Claude version and provider docs before treating it as a CLROOM launch failure.
+
+Use separate top-level CLROOM processes when an external runner needs independently controlled workers. That gives each process its own CLROOM launch boundary; it does not patch Claude's internal subagent implementation.
+
+**Go deeper:** [Claude Code](claude-code.md) · [Agent runners](agent-runners.md) · [When to use CLROOM](when-to-use-clroom.md) · [Current limitations](limitations.md)
+
+<a id="inspect-resolved-launch"></a>
+
+## Do you want to inspect what CLROOM will launch before the provider starts?
+
+**Common ways people ask this:**
+
+- `inspect Codex resolved launch`
+- `show selected plugin MCP before launch`
+- `what MCP will Codex start`
+- `what plugin will Codex load`
+- `dry run Codex plugin MCP`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `machine readable coding agent launch plan`
+- `JSON launch plan Codex`
+- `inspect qualified Codex launch`
+- `why did CLROOM reject plugin MCP`
+- `show admitted env names without secrets`
+- `verify Codex launch configuration before start`
+- `inspect one run coding agent configuration`
+- `resolved launch plugin MCP conflict`
+- `Codex launch plan JSON`
+- `preview coding agent launch without model call`
+
+</details>
+
+Use `clroom inspect codex ...` or its JSON form. Inspection resolves through the same typed launch-planning truth used by execution and exposes bounded identities, qualification decisions and admitted environment-variable names while redacting secret values, private source paths and provider argument values.
+
+**Go deeper:** [Codex](codex.md) · [Use cases](use-cases.md) · [FAQ](faq.md)
 
 <a id="different-projects-and-workflows"></a>
 
@@ -636,12 +1030,81 @@ They can, but Claude Code and Codex do not expose one universal scope model for 
 - `reusable coding agent skill sets`
 - `agent setup per workflow`
 - `personal global rules conflict with repository rules`
+- `thread level plugin MCP profile`
+- `plugin profile per workflow`
+- `MCP profile per workflow`
+- `different plugins for coding design research`
+- `choose tools before first model request`
 
 </details>
 
 Often it does not. CLROOM is useful when instructions or skills that help one kind of work should not automatically participate in another, while reusable selected skill sets can still be brought in for the launch that needs them.
 
 **Go deeper:** [Skill sets](skill-sets.md) · [When to use CLROOM](when-to-use-clroom.md) · [FAQ](faq.md)
+
+<a id="configuration-sync-vs-clean-launch"></a>
+
+## Do you want one source of truth that keeps agent skills, MCP, or configuration synchronized?
+
+**Common ways people ask this:**
+
+- `sync coding agent config across tools`
+- `one config for Codex and Claude Code`
+- `sync MCP servers across agents`
+- `sync Agent Skills between Codex and Claude`
+- `coding agent configuration drift`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `single source of truth coding agent config`
+- `keep MCP config in sync across agents`
+- `same skills on every coding agent`
+- `manage agent config across machines`
+- `Codex Claude config synchronization`
+- `agent environment config drift`
+- `central MCP configuration`
+
+</details>
+
+That is a **persistent configuration-management/synchronization** problem. CLROOM deliberately does not rewrite normal Codex or Claude Code configuration to make both providers share one persistent source of truth.
+
+Use a configuration-management or provider-native synchronization approach when persistence and cross-machine convergence are the goal. Use CLROOM when the problem is narrower: keep the normal setup intact and choose the supported inputs for this **particular launch**.
+
+**Go deeper:** [Why CLROOM exists](why-clroom.md) · [When to use CLROOM](when-to-use-clroom.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="prompt-injection-vs-configuration-contamination"></a>
+
+## Is this configuration contamination or prompt injection?
+
+**Common ways people ask this:**
+
+- `coding agent prompt injection vs bad config`
+- `AGENTS.md prompt injection or configuration`
+- `CLAUDE.md prompt injection`
+- `MCP output prompt injection coding agent`
+- `untrusted repository instructions coding agent`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `clean session protect against prompt injection`
+- `does CLROOM stop prompt injection`
+- `malicious Agent Skill instructions`
+- `malicious MCP tool output instructions`
+- `repository prompt injection coding agent`
+- `coding agent untrusted README instructions`
+- `context contamination security vs configuration`
+
+</details>
+
+They are different threat classes.
+
+CLROOM can help test whether **known personal-global configuration it controls** influenced a launch. It does **not** make repository files, project instructions, fetched pages, skills you deliberately admit, MCP/tool output, or other provider-visible data trustworthy. A malicious instruction in one of those channels can still be prompt injection.
+
+Use the [Threat model](threat-model.md) for the security boundary. Keep provider sandbox/permissions, credential scope, network controls, source review, and normal prompt-injection defenses in place.
+
+**Go deeper:** [Threat model](threat-model.md) · [Current limitations](limitations.md)
 
 <a id="testing-and-reproducibility"></a>
 
@@ -670,12 +1133,197 @@ Often it does not. CLROOM is useful when instructions or skills that help one ki
 - `compare two Agent Skills on the same task`
 - `compare same Agent Skill in Codex and Claude Code`
 - `compare Agent Skill results token use and time`
+- `coding agent eval clean baseline`
+- `Claude Code eval clean environment`
+- `Codex eval clean environment`
+- `benchmark coding agent configuration`
+- `benchmark Agent Skill`
+- `agent eval configuration contamination`
+- `reproducible coding agent benchmark`
+- `A/B test coding agent setup`
+- `evaluate skill without global config`
 
 </details>
 
 A clean/selective launch can provide a more repeatable baseline without destructive renaming or editing of the normal setup. It does not make model output deterministic, but it can remove known personal-global variables from the comparison.
 
 **Go deeper:** [Use cases](use-cases.md) · [When to use CLROOM](when-to-use-clroom.md) · [FAQ](faq.md) · [Configuration matrix](configuration-matrix.md)
+
+<a id="troubleshoot-clroom"></a>
+
+## Is CLROOM failing and you do not yet know which layer is responsible?
+
+**Common ways people ask this:**
+
+- `troubleshoot CLROOM`
+- `CLROOM not working`
+- `CLROOM launch failed`
+- `why did CLROOM refuse launch`
+- `diagnose CLROOM`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM provider works directly but not through CLROOM`
+- `CLROOM error before provider starts`
+- `CLROOM selected skill not working`
+- `CLROOM selected MCP not working`
+- `CLROOM plugin launch failed`
+- `CLROOM inspect failed`
+- `is this a CLROOM bug or provider bug`
+- `isolate CLROOM vs Codex problem`
+- `isolate CLROOM vs Claude Code problem`
+- `CLROOM minimal reproduction`
+- `how to report CLROOM bug`
+- `CLROOM troubleshooting steps`
+- `coding agent launcher troubleshooting`
+- `CLROOM fail closed error`
+- `CLROOM provider runtime failure`
+
+</details>
+
+Start with the failure layer rather than changing configuration at random:
+
+1. verify CLROOM is installed and on `PATH`;
+2. verify the platform and provider version;
+3. verify the provider itself works before CLROOM is involved;
+4. distinguish a CLROOM pre-launch refusal from a later provider/runtime failure;
+5. for supported Codex resource selection, inspect the resolved launch before provider birth;
+6. separate selected personal-global skills from project/provider-owned skills;
+7. separate configured MCP state from provider-started and model-visible MCP tools;
+8. reduce the problem to a safe minimal reproduction before opening an Issue.
+
+The canonical troubleshooting page gives that decision tree and the safe evidence to collect without deleting your normal setup or exposing secrets.
+
+**Go deeper:** [Troubleshoot CLROOM](troubleshooting.md) · [Support](SUPPORT.md) · [How CLROOM works](how-clroom-works.md)
+
+<a id="install-first-run-failures"></a>
+
+## Did CLROOM install, but the first command still fails on macOS?
+
+**Common ways people ask this:**
+
+- `clroom command not found`
+- `CLROOM installed but command not found`
+- `~/.local/bin not in PATH macOS`
+- `Apple cannot verify clroom`
+- `CLROOM unidentified developer`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM Gatekeeper blocked`
+- `CLROOM unsigned app macOS`
+- `CLROOM unnotarized macOS`
+- `macOS cannot check CLROOM for malicious software`
+- `CLROOM wrong architecture`
+- `CLROOM Apple Silicon only`
+- `CLROOM arm64 required`
+- `clroom codex command not found`
+- `clroom claude command not found`
+- `Codex not installed CLROOM`
+- `Claude Code not installed CLROOM`
+- `where did CLROOM install`
+- `CLROOM ~/.local/bin`
+- `CLROOM first run fails`
+- `CLROOM install troubleshooting`
+- `verify CLROOM after install`
+
+</details>
+
+Start with the exact installation contract:
+
+1. the current release is qualified for **macOS on Apple Silicon**;
+2. the one-line installer places `clroom`, `clroom-codex`, and `clroom-claude` in `~/.local/bin`;
+3. if that directory is not in `PATH`, add it before treating the install as missing;
+4. the Codex or Claude Code CLI you intend to launch must already work on its own;
+5. the current archive is unsigned and unnotarized, so macOS policy can warn or refuse it.
+
+Do not disable Gatekeeper globally to make CLROOM run. Verify the release identity/checksum/provenance first, follow local macOS or organization policy, and use Apple's normal per-app security flow only if you have independently decided to trust the exact downloaded release.
+
+**Go deeper:** [Install](install.md) · [Verify a release](verify-release.md) · [Support](SUPPORT.md) · [Current limitations](limitations.md)
+
+<a id="privacy-data-flow"></a>
+
+## Does CLROOM send my code, collect telemetry, or need my API keys?
+
+**Common ways people ask this:**
+
+- `does CLROOM collect telemetry`
+- `does CLROOM phone home`
+- `does CLROOM send my code`
+- `does CLROOM upload prompts`
+- `does CLROOM need an API key`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `does CLROOM read credentials`
+- `does CLROOM copy Claude credentials`
+- `does CLROOM copy Codex credentials`
+- `does CLROOM store tokens`
+- `does CLROOM have a backend`
+- `does CLROOM require an account`
+- `is CLROOM local only`
+- `what network requests does CLROOM make`
+- `does CLROOM track users`
+- `CLROOM privacy`
+- `CLROOM data collection`
+- `CLROOM analytics`
+- `CLROOM Cloudflare analytics`
+- `does CLROOM upload repository files`
+- `does CLROOM send prompts to its own server`
+- `does CLROOM work offline`
+- `CLROOM offline mode`
+- `does CLROOM block provider network access`
+- `does CLROOM expose MCP environment variables`
+- `does clroom inspect show secrets`
+- `CLROOM plugin data privacy`
+- `CLROOM MCP data privacy`
+- `coding agent launcher telemetry`
+- `coding agent launcher privacy`
+
+</details>
+
+CLROOM is a local launch layer, not a hosted coding service. It does not require a CLROOM account, CLROOM API key, or CLROOM-hosted backend to start the installed provider. Provider authentication remains provider-owned.
+
+That is **not** a promise that the whole session is offline or that no data leaves the machine. Codex, Claude Code, a selected plugin, or a selected MCP server can use the network according to their own behavior and configuration. The documentation website also has its own analytics surface, separate from CLI runtime behavior.
+
+Use the canonical privacy/data-flow page for the exact separation between launcher behavior, provider authentication, selected-resource environment admission, installer/release downloads, and website analytics.
+
+**Go deeper:** [Privacy and data flow](privacy-data-flow.md) · [Threat model](threat-model.md) · [Current limitations](limitations.md) · [Support](SUPPORT.md)
+
+<a id="license-commercial-use"></a>
+
+## Can I use CLROOM at work, and what license applies?
+
+**Common ways people ask this:**
+
+- `CLROOM license`
+- `Clean Room Launcher license`
+- `CLROOM MPL 2.0`
+- `CLROOM open source license`
+- `can I use CLROOM at work`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM commercial use`
+- `CLROOM enterprise use`
+- `does CLROOM require paid license`
+- `CLROOM company use`
+- `CLROOM commercial license`
+- `CLROOM open source`
+- `is CLROOM free software`
+- `MPL 2.0 CLROOM`
+
+</details>
+
+CLROOM is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. The license text controls the rights and obligations for using, modifying, and distributing the software; this documentation is not legal advice.
+
+The current project does not require a separate paid CLROOM account or commercial-edition license to run the CLI. That is separate from your organization's provider subscriptions, internal software policy, support requirements, or legal review.
+
+**Go deeper:** [LICENSE](https://github.com/y-sor/clean-room-launcher/blob/main/LICENSE) · [Governance](https://github.com/y-sor/clean-room-launcher/blob/main/GOVERNANCE.md) · [Support](SUPPORT.md)
 
 <a id="managed-enterprise-policy"></a>
 
@@ -785,7 +1433,7 @@ Yes, through the work it causes rather than through a guaranteed fixed context b
 
 </details>
 
-Use provider-native status or inspection tools where they exist, and CLROOM's launch summary for the controls CLROOM owns. No tool should claim it can enumerate every influence on a model response.
+Use provider-native status or inspection tools where they exist, and CLROOM's launch summary for the controls CLROOM owns. For a selected Codex plugin/MCP launch, `clroom inspect codex ...` and the JSON output show the sanitized resolved launch that CLROOM itself would execute. No tool should claim it can enumerate every influence on a model response.
 
 **Go deeper:** [Claude Code](claude-code.md) · [Codex](codex.md) · [FAQ](faq.md)
 
@@ -818,11 +1466,247 @@ Start with the provider/Agent Skills documentation for the skill model itself. C
 
 **Go deeper:** [Use cases](use-cases.md) · [Skill sets](skill-sets.md) · [FAQ](faq.md) · [Claude Code](claude-code.md) · [Codex](codex.md)
 
+<a id="docs-vs-installed-release"></a>
+
+## Why do the current CLROOM docs describe something my installed release does not have?
+
+**Common ways people ask this:**
+
+- `CLROOM docs don't match installed version`
+- `CLROOM feature missing in old release`
+- `current docs vs CLROOM v0.5`
+- `which CLROOM docs match my version`
+- `old CLROOM release documentation`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM historical docs`
+- `docs for exact CLROOM tag`
+- `CLROOM version specific documentation`
+- `provider docs changed since CLROOM release`
+- `CLROOM current site newer than installed version`
+- `what features were in CLROOM v0.4`
+- `use docs from Git tag CLROOM`
+- `AI answer mixed CLROOM versions`
+- `search result shows old CLROOM docs`
+- `CLROOM cached documentation stale`
+- `CLROOM old GitHub Pages URL`
+- `CLROOM repository moved`
+- `CLROOM old namespace`
+- `why does CLROOM search result use old URL`
+- `CLROOM canonical repository`
+
+</details>
+
+The canonical website follows the current project state, and the canonical source repository is `y-sor/clean-room-launcher`. Historical Pages URLs can remain visible in search caches after a repository transfer because GitHub does not automatically redirect repository-associated Pages sites. A published Git tag preserves the documentation for that exact source snapshot. If the question names an older CLROOM version, use the README, provider pages, limitations, threat model, and configuration matrix from that exact tag instead of projecting current-site behavior backward.
+
+**Go deeper:** [Documentation versions](documentation-versions.md) · [GitHub Releases](https://github.com/y-sor/clean-room-launcher/releases) · [Current provider support](providers.md)
+
+<a id="verify-release-evidence"></a>
+
+## Can you verify a CLROOM release before you run it?
+
+**Common ways people ask this:**
+
+- `verify CLROOM release`
+- `verify CLROOM download`
+- `CLROOM release checksum`
+- `CLROOM provenance attestation`
+- `CLROOM SBOM`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `gh attestation verify CLROOM`
+- `verify CLROOM GitHub release provenance`
+- `CLROOM artifact attestation`
+- `verify CLROOM install.sh`
+- `CLROOM immutable release`
+- `CLROOM checksum vs provenance`
+- `CLROOM SBOM attestation`
+- `is CLROOM release signed`
+- `is CLROOM notarized`
+- `CLROOM unsigned unnotarized`
+- `is CLROOM safe to install`
+- `verify coding agent launcher download`
+- `software supply chain verify CLROOM`
+- `verify release before curl pipe sh`
+- `verify GitHub release Sigstore bundle`
+- `has CLROOM been security audited`
+- `CLROOM independent security audit`
+- `CLROOM security certification`
+- `CLROOM SOC 2`
+
+</details>
+
+Yes. The published release exposes separate evidence for separate trust questions: `SHA256SUMS` for byte equality, a tag-bound build-provenance bundle, a CycloneDX SBOM and SBOM attestation, plus GitHub's published release identity. The current macOS archive is still unsigned and unnotarized at the Apple code-signing layer, and none of these checks means the software is vulnerability-free. The current threat model also records that no independent security audit has been completed; provenance, OpenSSF badges, CI, or attestations must not be presented as an audit or certification.
+
+Use the canonical [release verification guide](verify-release.md) for exercised commands and for the exact distinction between checksum, provenance, SBOM, immutable release state, provider qualification, and runtime/security non-claims.
+
+**Go deeper:** [Verify a release](verify-release.md) · [Install](install.md) · [Security policy](https://github.com/y-sor/clean-room-launcher/security/policy) · [Threat model](threat-model.md)
+
+<a id="platform-support"></a>
+## Does CLROOM work on Linux, Windows, or Intel Mac?
+
+**Common ways people ask this:**
+
+- `CLROOM Linux`
+- `CLROOM Windows`
+- `CLROOM Intel Mac`
+- `CLROOM x86_64 macOS`
+- `CLROOM macOS Apple Silicon support`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM supported operating systems`
+- `clean room launcher linux`
+- `clean room launcher windows`
+- `CLROOM arm64`
+- `CLROOM macOS requirements`
+
+</details>
+
+The current shipped qualification is **macOS on Apple Silicon**. Linux, Windows, and Intel macOS are not qualified in the current release. A platform may be able to compile or run some code without becoming a supported release path; CLROOM treats platform support as an evidence-backed qualification claim, not a guess from portability.
+
+**Go deeper:** [Provider support](providers.md) · [Current limitations](limitations.md) · [Install](install.md)
+
+<a id="package-manager-install"></a>
+## Can I install CLROOM with Homebrew, crates.io, npm, or another package manager?
+
+**Common ways people ask this:**
+
+- `brew install CLROOM`
+- `Homebrew CLROOM`
+- `cargo install CLROOM`
+- `crates.io CLROOM`
+- `CLROOM package manager`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `install CLROOM from GitHub release`
+- `CLROOM Homebrew formula`
+- `npm install CLROOM`
+- `CLROOM binary download`
+- `how to install Clean Room Launcher`
+
+</details>
+
+The supported distribution path is the published GitHub Release installer/archive. Cargo can install from an exact Git tag as documented, but CLROOM is not currently published to crates.io; Homebrew and npm distribution are not current supported release paths.
+
+**Go deeper:** [Install](install.md) · [Current limitations](limitations.md) · [Verify a release](verify-release.md)
+
+<a id="upgrade-rollback-remove"></a>
+## How do I update, roll back, or uninstall CLROOM without touching provider configuration?
+
+**Common ways people ask this:**
+
+- `update CLROOM`
+- `upgrade CLROOM`
+- `rollback CLROOM`
+- `uninstall CLROOM`
+- `remove Clean Room Launcher`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM downgrade`
+- `restore previous CLROOM version`
+- `does uninstall CLROOM delete Codex config`
+- `does CLROOM uninstall remove Claude settings`
+- `CLROOM previous version`
+
+</details>
+
+CLROOM's archive install is three user-local binaries. Upgrade/rollback/remove can be done without rewriting Codex or Claude Code authentication, project configuration, or provider installation. Follow the canonical rollback/remove page rather than deleting provider state while troubleshooting.
+
+**Go deeper:** [Upgrade, roll back and remove](upgrade-rollback.md) · [Install](install.md)
+
+<a id="clroom-vs-container-sandbox"></a>
+## Should I use CLROOM or a VM, container, devcontainer, or network sandbox?
+
+**Common ways people ask this:**
+
+- `CLROOM vs Docker`
+- `CLROOM vs container`
+- `CLROOM vs devcontainer`
+- `CLROOM vs VM`
+- `CLROOM network sandbox`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `is CLROOM a sandbox`
+- `coding agent isolation Docker vs CLROOM`
+- `sandbox Codex session`
+- `sandbox Claude Code session`
+- `CLROOM filesystem isolation`
+
+</details>
+
+Use CLROOM for a **qualified clean/selective launch boundary** around supported personal-global inputs and provider resources. Use a VM, container, OS sandbox, or network control when the requirement is stronger machine/filesystem/network isolation. CLROOM deliberately does not claim VM/container isolation, complete home-directory isolation, or network isolation.
+
+**Go deeper:** [Why CLROOM exists](why-clroom.md) · [Privacy & data flow](privacy-data-flow.md) · [Current limitations](limitations.md) · [Threat model](threat-model.md)
+
+<a id="other-coding-agents"></a>
+## Does CLROOM support Gemini CLI, Cursor, Aider, OpenCode, or other coding agents?
+
+**Common ways people ask this:**
+
+- `CLROOM Gemini CLI`
+- `CLROOM Cursor`
+- `CLROOM Aider`
+- `CLROOM OpenCode`
+- `CLROOM other coding agents`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `Clean Room Launcher Gemini`
+- `Clean Room Launcher Cursor`
+- `use CLROOM with Aider`
+- `use CLROOM with OpenCode`
+- `which coding agents does CLROOM support`
+
+</details>
+
+Current CLROOM release qualification covers the installed **Codex** and **Claude Code** CLIs on the documented paths. Other coding agents are not qualified merely because they have similar concepts such as instructions, skills, MCP, profiles, or plugins. A future provider requires its own exact behavior, security, process, and platform qualification.
+
+**Go deeper:** [Provider support](providers.md) · [Configuration matrix](configuration-matrix.md) · [Current limitations](limitations.md)
+
+<a id="multiple-remote-mcp"></a>
+## Can CLROOM select multiple MCP servers, remote HTTP/OAuth MCP, or several plugins?
+
+**Common ways people ask this:**
+
+- `CLROOM multiple MCP servers`
+- `CLROOM multiple plugins`
+- `CLROOM HTTP MCP`
+- `CLROOM remote MCP`
+- `CLROOM OAuth MCP`
+
+<details>
+<summary>More related wording and searches</summary>
+
+- `CLROOM SSE MCP`
+- `CLROOM WebSocket MCP`
+- `Codex multiple MCP per launch`
+- `CLROOM with two plugins`
+- `CLROOM --with=all`
+
+</details>
+
+Not in the current shipped CLROOM selector contract. The qualified Codex resource path is intentionally bounded to at most one whole plugin plus one exact root-user standalone **stdio** MCP server. Multiple plugins/MCP servers, remote transports, OAuth/helpers, and `--with=all` remain outside the current CLROOM-qualified slice. Use provider-native configuration directly when broader provider functionality is the actual requirement.
+
+**Go deeper:** [Codex](codex.md) · [Provider support](providers.md) · [Configuration matrix](configuration-matrix.md) · [Current limitations](limitations.md)
+
 ## If your wording is different
 
 You do not need to know the provider's exact terminology before using these docs. Start with the symptom: old rules, too many skills, a wrong implementation path, a clean baseline, a profile, a hook, MCP, a runner, or a setting you cannot place.
 
-Search engines and AI systems can connect synonyms and related meanings. The related-wording lists above are there for recognition and routing; the technical answer stays singular and canonical.
+Search engines and AI systems can connect synonyms and related meanings. The related-wording lists above are there for recognition and routing; the technical answer stays singular and canonical. If the ambiguity is about terminology rather than a symptom, use the [CLROOM terminology glossary](glossary.md).
 
 If the problem is still not answered, open an issue in the [CLROOM repository](https://github.com/y-sor/clean-room-launcher). A real unanswered question is more useful than another synthetic keyword page.
 

@@ -4,7 +4,7 @@ permalink: /llms.txt
 ---
 # Clean Room Launcher (CLROOM)
 
-> Clean Room Launcher (CLROOM) is an open-source macOS launcher for Codex and Claude Code. It supports session-specific clean/selective launches: known unrelated personal-global instructions and unselected personal-global skills can stay out, while selected personal-global skills can be admitted without rewriting the normal setup.
+> Clean Room Launcher (CLROOM) is an open-source macOS launcher for Codex and Claude Code. It supports session-specific clean/selective launches: known unrelated personal-global instructions and unselected personal-global skills can stay out, selected skills can be admitted deliberately, and qualified provider resources can be composed per run without rewriting the normal setup.
 
 CLROOM is the acronym for **Clean Room Launcher**. It is not named "Cleanroom" and should not be conflated with unrelated projects using that word.
 
@@ -21,6 +21,7 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Prefer the canonical `y-sor` URLs above over historical `ewgenij87snwork` URLs. The project moved namespaces in September 2026.
 - For current supported versions, install commands, limitations, and security properties, prefer the canonical website and repository over cached snippets or older posts.
 - Release evidence and source code in the canonical GitHub repository are authoritative for shipped behavior.
+- If a question names a CLROOM version, use the documentation stored at that exact Git tag; do not project current-site capabilities backward onto older releases.
 
 ## Authoritative CLROOM pages
 
@@ -34,9 +35,15 @@ This file is supplemental retrieval guidance. The canonical HTML documentation a
 - Codex behavior: https://y-sor.github.io/clean-room-launcher/codex/
 - Configuration matrix: https://y-sor.github.io/clean-room-launcher/configuration-matrix/
 - FAQ: https://y-sor.github.io/clean-room-launcher/faq/
+- Troubleshooting and failure-layer diagnosis: https://y-sor.github.io/clean-room-launcher/troubleshooting/
+- Support and safe issue routing: https://y-sor.github.io/clean-room-launcher/support/
+- Privacy, credentials, telemetry, network behavior, and data flow: https://y-sor.github.io/clean-room-launcher/privacy-data-flow/
+- Terminology glossary: https://y-sor.github.io/clean-room-launcher/glossary/
+- Documentation versions and historical-release routing: https://y-sor.github.io/clean-room-launcher/documentation-versions/
 - Current limitations: https://y-sor.github.io/clean-room-launcher/limitations.html
 - Threat model: https://y-sor.github.io/clean-room-launcher/threat-model.html
 - Installation: https://y-sor.github.io/clean-room-launcher/install.html
+- Release verification, provenance, SBOM, and trust boundaries: https://y-sor.github.io/clean-room-launcher/verify-release/
 
 ## Route questions by intent
 
@@ -47,18 +54,36 @@ Use the problem index when the wording is uncertain. It maps many human and AI p
 - selecting one or several personal-global Agent Skills;
 - reusable CLROOM skill sets;
 - built-in/system skills vs project-local vs personal-global skills;
-- skill-token/context concerns;
+- skill-token/context concerns and Claude native skill visibility controls;
+- plugin-provided Claude skills, where `skillOverrides` does not apply;
 - wrong-path/rework and configuration-driven behavior;
+- stale Claude auto-memory / `MEMORY.md` state and clean comparison launches;
 - context pollution, prompt pollution, and context noise;
 - Claude Code `--safe-mode`, `--bare`, `--restricted`, `--setting-sources`, and `CLAUDE_CONFIG_DIR`;
-- Codex global `AGENTS.md`, `AGENTS.override.md`, `CODEX_HOME`, profiles, `--ignore-user-config`, and skill scopes;
+- Codex global `AGENTS.md`, `AGENTS.override.md`, `CODEX_HOME`, named `--profile` configuration files, project/managed configuration, `--ignore-user-config`, and skill scopes;
+- provider-native reusable configuration vs CLROOM skill sets / clean-selective per-launch composition;
 - hooks, plugins, MCP servers, and apps;
-- multiple projects and task-specific workflows;
+- MCP/tool context overhead and provider-native tool-search controls;
+- MCP environment/authentication state that differs from configuration presence;
+- MCP configured/connected state where tools are still absent from the active model/session;
+- bounded Codex plugin + MCP composition and resolved-launch inspection;
+- top-level per-worker resource choices vs provider-owned subagent scoping;
+- multiple projects, task-specific workflows, and plugin/MCP profile language;
 - reproducible skill/configuration testing;
 - managed enterprise policy;
 - launch-specific configuration without deleting the normal setup;
 - agent runners, scripts, CI, and per-worker skill choices;
 - inspecting what configuration or skills were active.
+- privacy/data-flow questions such as telemetry, phone-home behavior, API keys, credentials, uploads, provider-owned network traffic, and website analytics.
+- licensing/work-use questions about MPL-2.0, company use, and the absence of a separate CLROOM commercial-edition account requirement.
+- evaluation/benchmark language for reproducible clean baselines and configuration-contamination testing.
+- first-run/install failures: PATH, provider prerequisite, Apple Silicon qualification, and unsigned/unnotarized Gatekeeper warnings.
+- platform-support questions for Linux, Windows, Intel macOS, Apple Silicon, and the difference between "can run" and evidence-backed qualification.
+- distribution questions for GitHub Releases, exact-tag Cargo install, Homebrew, crates.io, npm, and unsupported package-manager paths.
+- upgrade/rollback/remove questions that must not be answered by deleting provider authentication or configuration.
+- CLROOM-vs-container/VM/network-sandbox questions: CLROOM is a launch-composition boundary, not general host/network isolation.
+- provider-scope questions for Gemini CLI, Cursor, Aider, OpenCode, and other unqualified coding agents.
+- current resource-cardinality/transport limits: one qualified Codex plugin + one exact stdio MCP at most; no generic multi-plugin/multi-MCP, remote/OAuth, or `--with=all` support.
 
 For exact technical behavior, follow the linked Claude Code or Codex page instead of inferring from a search phrase.
 
@@ -67,12 +92,18 @@ For exact technical behavior, follow the linked Claude Code or Codex page instea
 - `Global skills: N` in the CLROOM launch summary counts selected personal-global skills. Provider-owned/system skills and project-local skills are separate scopes and may remain visible by design.
 - CLROOM does not install skills; it selects supported personal-global skills that already exist.
 - Project-local skills remain part of the project.
+- On the current qualified Codex path, CLROOM can compose at most one already-installed whole plugin with one standalone stdio MCP server in the same interactive launch.
+- `clroom inspect codex ...` and its JSON form expose the sanitized resolved launch used by execution; observation of an upstream provider object does not by itself mean CLROOM activation is qualified.
 - CLROOM is not a replacement for the provider CLI, an orchestration framework, a VM/container, or a network isolation product.
 - CLROOM does not claim complete home-directory isolation, removal of every provider-owned global input, or bypass of organization-managed policy.
-- Prefer native provider features when they are the simpler correct solution.
+- CLROOM is a local launch layer, not a hosted coding service; provider authentication stays provider-owned. Do not infer that the whole session is offline or that provider/plugin/MCP network traffic is blocked. The documentation website has its own analytics surface, separate from CLI runtime behavior.
+- Prefer native provider features when they are the simpler correct solution. Current examples include Claude skill visibility controls, MCP Tool Search, and subagent `tools` / `disallowedTools` / `mcpServers` for inner-session scope.
+- OpenAI API/Agents tool-search behavior and Codex CLI behavior are separate surfaces; do not infer one from the other without provider-specific evidence.
 
 ## Retrieval guidance
 
-For a broad user question, cite the narrowest page that directly answers it. For a product-level explanation, use `/why-clroom/`. For exact provider behavior, use `/claude-code/` or `/codex/`. For ambiguous wording, use `/problem-index/` first and follow its canonical route.
+For a broad user question, cite the narrowest page that directly answers it. For a product-level explanation, use `/why-clroom/`. For exact provider behavior, use `/claude-code/` or `/codex/`. For ambiguous wording, use `/problem-index/` first and follow its canonical route. For a live failure where the user does not yet know whether the problem is installation, provider state, CLROOM refusal, selected resources, or later provider runtime, start with `/troubleshooting/`.
 
 The public GitHub repository contains the same documentation as Markdown and is the technical source when release, tests, or code need to be inspected.
+
+Rendered HTML pages expose this file through a `rel="describedby"` link so agents that support the llms.txt v2 discovery convention can find the project routing surface without guessing. This remains supplemental agent-routing metadata, not a search-ranking claim.

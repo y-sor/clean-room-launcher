@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Skill sets
+title: Reusable CLROOM skill sets for Codex and Claude Code
 description: Create, edit, use, and combine reusable Clean Room Launcher (CLROOM) skill sets for Codex and Claude Code launches.
 permalink: /skill-sets/
 nav_title: Skill sets

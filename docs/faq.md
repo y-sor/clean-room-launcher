@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Clean Room Launcher (CLROOM) FAQ — Codex, Claude Code, Agent Skills, clean sessions
-description: Direct answers about CLROOM, clean Codex and Claude Code sessions, global vs project instructions and skills, Agent Skills, Claude safe mode and bare mode, Codex AGENTS.md, CODEX_HOME, skill sets, and current limitations.
+title: CLROOM FAQ — Codex, Claude Code, skills, MCP, and clean sessions
+description: Direct CLROOM answers for clean Codex and Claude Code sessions, skills, AGENTS.md, CLAUDE.md, MCP, native alternatives, security boundaries, and limitations.
 permalink: /faq/
 nav_title: FAQ
 ---
@@ -18,11 +18,11 @@ semantics are not independently qualified in this release.
 
 Yes. Pass a different skill name or saved `@set` to each top-level launch.
 
-## Does CLROOM configure Claude agent-team teammates individually?
+## Does CLROOM configure Claude agent-team teammates or subagents individually?
 
-No. Provider-owned teammates and subagents follow Claude Code's own inheritance
-and scoping rules. Launch separate processes when workers need independent
-CLROOM inputs.
+No. CLROOM controls the top-level provider launch it starts.
+
+Current Claude Code documents native inner-session controls: subagent `tools` and `disallowedTools` can narrow the tool pool, including MCP server patterns, and `mcpServers` can give a subagent its own servers. Those are provider-native controls, not behavior CLROOM independently qualifies; MCP inheritance and tool availability have changed across Claude versions and agent modes. Use the current provider docs and reproduce the exact Claude path when the problem is an internal subagent. Launch separate CLROOM processes when an external runner owns independent workers that each need their own CLROOM launch inputs.
 
 ## Can I keep skills in one git repo and symlink them?
 
@@ -48,7 +48,7 @@ No fixed token saving should be promised. Skill systems can use progressive disc
 
 ## I have many Agent Skills installed. Does that automatically mean they all fill the context window?
 
-No. Do not assume every installed skill body is fully loaded into the model context. The useful question for CLROOM is which personal-global skills are eligible to participate in the launch, not a universal token count per installed skill.
+No. Do not assume every installed skill body is fully loaded into the model context. Current Claude Code documentation distinguishes the skill listing from the full body: listed skills can contribute names/descriptions to context, while the full body loads when invoked. Claude also provides `skillOverrides`, `disable-model-invocation`, and `/skill-doctor` for native control and diagnosis. Other providers have different semantics. CLROOM's useful question remains which supported personal-global inputs are eligible to participate in this launch, not a universal token count per installed skill.
 
 ## Can I test one Agent Skill without my other personal-global skills?
 
@@ -72,6 +72,26 @@ Many things can explain that: repository instructions, project configuration, lo
 
 No. Use provider-native status/diagnostic tools for provider configuration and CLROOM's own launch summary for controls it owns. No honest tool should claim to enumerate every influence on a model response.
 
+## Can stale Claude auto-memory affect a new session?
+
+Yes. Claude Code auto-memory is provider-owned persistent state, so a new conversation is not automatically the same thing as a session with no memory participation.
+
+Current CLROOM Claude launches disable auto-memory. That makes a CLROOM launch useful as a comparison point when you are testing whether stale or shared memory contributed to the behavior. CLROOM does not delete, rewrite, synchronize, or repair Claude's stored `MEMORY.md` state. Use Claude's native memory controls when the memory itself is what you want to manage.
+
+See [Claude Code](claude-code.md) and the [problem index](problem-index.md#claude-auto-memory).
+
+## Can an MCP server be configured correctly but its tools still be unavailable?
+
+Yes. Configuration presence, successful server initialization, and model-visible/callable tools are different states. Provider runtime mode, tool-discovery behavior, host surface, authentication, or a provider regression can break the last step even when configuration looks valid.
+
+Use provider-native MCP/status/tool-discovery diagnostics for the actual session. `clroom inspect codex ...` describes the qualified launch plan CLROOM owns; it is not a universal promise that every later provider runtime will expose every configured tool.
+
+See [Codex](codex.md) and [MCP configured but tools unavailable](problem-index.md#mcp-configured-tools-unavailable).
+
+## Can I use Claude Code native skill controls instead?
+
+Yes. If the problem is one or a few Claude skills, native `skillOverrides`, `disable-model-invocation`, or `/skill-doctor` may be the simpler answer. CLROOM is useful when the desired boundary is launch-wide and should keep ordinary personal-global instructions and unselected personal-global skills out without rewriting the normal setup.
+
 ## Can I use Claude Code `--safe-mode` instead?
 
 Yes. If the goal is broad troubleshooting with customizations disabled, Anthropic's native `--safe-mode` is the simpler answer. CLROOM targets a more selective working session.
@@ -92,6 +112,12 @@ No. In particular, current CLROOM does not blanket-block `~/.claude.json`, and i
 
 No. Organization-managed policy must remain authoritative. Any bypass would be a bug, not a feature.
 
+## What license does CLROOM use, and can I use it at work?
+
+CLROOM is distributed under the **Mozilla Public License 2.0 (MPL-2.0)**. The license text governs your rights and obligations; these docs are not legal advice.
+
+The current project does not require a separate paid CLROOM account or commercial-edition license to run the CLI. That is separate from provider subscriptions, company policy, procurement, support requirements, or legal review. See the repository [LICENSE](https://github.com/y-sor/clean-room-launcher/blob/main/LICENSE) and [Governance](https://github.com/y-sor/clean-room-launcher/blob/main/GOVERNANCE.md).
+
 ## Does Codex normally load global and project `AGENTS.md` instructions?
 
 OpenAI documents a global instruction layer under `CODEX_HOME` and a project instruction chain. CLROOM's Codex path blocks the known global instruction inputs for its clean launch.
@@ -100,13 +126,19 @@ OpenAI documents a global instruction layer under `CODEX_HOME` and a project ins
 
 Use one when you want a persistent alternate Codex home. CLROOM is aimed at a repeatable per-launch choice without maintaining another normal setup.
 
+## Should I use a Codex `--profile` instead?
+
+Yes, when the problem is reusable Codex configuration. Current Codex profiles are a provider-native configuration layer selected with `--profile profile-name`, alongside project/user/managed/system configuration precedence.
+
+CLROOM should not duplicate that layer. Use CLROOM when the requirement is its qualified clean/selective launch boundary or supported per-run skill/resource selection. Any future CLROOM reusable-launch feature must stay distinct from provider-native profiles rather than becoming a renamed Codex profile.
+
 ## Can I disable a Codex skill natively?
 
 Yes. OpenAI documents persistent skill-disable configuration. That can be simpler for a permanent choice. CLROOM is aimed at per-launch selection.
 
 ## What about hooks, plugins, apps, and MCP servers?
 
-Treat them separately by provider. They do not all share one universal scope model. CLROOM has provider-specific defaults; read the provider page and current limitations rather than assuming one generic rule.
+Treat them separately by provider. They do not all share one universal scope model. On the exact qualified Codex path, current CLROOM can admit one installed whole plugin, one standalone stdio MCP, or the bounded pair together and can inspect that resolved launch before provider birth. That is deliberately narrower than generic plugin/MCP support; read the provider page and current limitations before assuming another package shape, transport, authentication mode, or cardinality is supported.
 
 ## Can I keep different skill sets for planning, review, development, and fixes?
 
@@ -120,15 +152,35 @@ Run `clroom --help` to see the exact file path; it is normally `~/.config/clroom
 
 It can be, especially when one permanent personal-global agent setup does not fit every kind of work. The goal is not to ban personalization; it is to make its participation deliberate for the launch.
 
+## Does a clean CLROOM launch protect me from prompt injection?
+
+No. CLROOM can remove supported personal-global inputs from the launch it controls, but repository files, project instructions, skills you deliberately admit, fetched web content, MCP/tool output, and other provider-visible data can still contain malicious instructions. Keep the provider's sandbox/permission controls and ordinary prompt-injection defenses. See the [Threat model](threat-model.md).
+
+## Does CLROOM keep my Codex and Claude Code configuration synchronized?
+
+No. CLROOM intentionally avoids rewriting the normal persistent provider setup. If the goal is one persistent source of truth synchronized across agents or machines, use configuration-management/provider-native synchronization tooling. Use CLROOM when you want a per-launch clean/selective boundary while the normal setup stays intact.
+
 ## Is CLROOM a VM, container, or network sandbox for untrusted code?
 
 No. Do not infer that from the product name. Read the existing threat model and limitations. The current release uses narrow macOS filesystem controls and is not a complete machine or network isolation product.
+
+## Does CLROOM collect telemetry, upload my code, or need its own API key?
+
+CLROOM is a local launch layer, not a hosted coding service. It does not require a CLROOM account, CLROOM API key, or CLROOM-hosted backend to start the installed provider, and provider authentication remains provider-owned.
+
+That does **not** mean the whole session is offline or that no data can leave the machine. Codex, Claude Code, selected plugins, and selected MCP servers can have their own network/data behavior. The public documentation site also has a separate Cloudflare Web Analytics surface.
+
+See [Privacy and data flow](privacy-data-flow.md) for the exact separation between launcher behavior, provider credentials, MCP environment admission, installer/release downloads, website analytics, and network-sandbox non-claims.
 
 ## What platforms are supported?
 
 The current release documentation covers macOS on Apple Silicon and names exact
 provider qualification targets. Linux, Windows, and Intel macOS are not
 qualified by this release.
+
+## Which docs should I use for an older CLROOM release?
+
+Use the documentation stored at that exact Git tag, not the current website as a historical substitute. The canonical site follows the current project state, while each published tag preserves the README, provider pages, limitations, threat model, and configuration matrix for that source snapshot. See [Documentation versions](documentation-versions.md).
 
 ## Where should I verify provider behavior?
 

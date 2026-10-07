@@ -1,12 +1,18 @@
 ---
 layout: page
-title: CLROOM configuration matrix
-description: Conservative Codex and Claude Code scope matrix showing what Clean Room Launcher (CLROOM) retains, excludes, or does not claim.
+title: CLROOM configuration scope matrix — what stays, changes, or remains provider-owned
+description: Compare Codex and Claude Code configuration scopes to see what CLROOM retains, excludes, selects, leaves provider-owned, or does not qualify.
 permalink: /configuration-matrix/
 ---
-This table is deliberately conservative.
 
-“Excluded” means current CLROOM has a specific mechanism for the known input listed in that row. It does **not** mean every possible provider-owned input is gone.
+This matrix answers a narrow question: **for each provider/configuration scope, what does the current qualified CLROOM launch intentionally retain, exclude, select, or leave provider-owned?** It is not a claim that CLROOM can enumerate or remove every influence on a coding-agent session.
+
+## How to read the matrix
+
+- **Retained** means the qualified CLROOM path intentionally leaves that project/provider scope available.
+- **Excluded/restricted** means CLROOM has a specific mechanism for the named input on that qualified path; it does **not** imply complete home-directory or provider-state isolation.
+- **Selected/admitted** means the input participates only through the documented CLROOM selection contract.
+- **Provider-owned / not qualified** means CLROOM does not claim control merely because the upstream provider supports the feature.
 
 | Provider | Input / scope | Current CLROOM direction | Confidence |
 | --- | --- | --- | --- |
@@ -66,4 +72,6 @@ layout is required. Manifestless/root-single-skill/custom-skill-path bundles and
 observed command, hook, MCP, agent, LSP, monitor, executable, or settings
 components make activation fail closed.
 
-For support limits and security scope, read [Limitations](limitations.md) and the [Threat model](threat-model.md).
+## What this matrix does not prove
+
+The matrix is a public support map, not a runtime trace of every provider-owned influence. Use `clroom inspect ...` for the sanitized CLROOM launch plan on supported paths, provider-native diagnostics for provider state, and the [Threat model](threat-model.md) / [Limitations](limitations.md) for security non-claims.

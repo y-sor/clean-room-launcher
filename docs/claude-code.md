@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Claude Code and CLROOM
-description: How Clean Room Launcher (CLROOM) relates to Claude Code user, project, local and managed settings, CLAUDE.md, skills, safe mode, bare mode, and setting sources.
+description: Compare CLROOM with Claude Code settings, CLAUDE.md, skills, auto-memory, MCP/tool controls, safe/bare modes, subagents, and native alternatives.
 permalink: /claude-code/
 nav_title: Claude Code
 ---
@@ -40,6 +40,36 @@ inheritance rules; a top-level CLROOM skill selection does not configure every
 internal teammate independently.
 
 For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-sets.md).
+
+## Auto-memory vs a CLROOM clean launch
+
+Claude Code auto-memory is persistent provider-owned state. It can be useful, but it is a different scope from project instructions, user settings, skills, plugins, and MCP configuration.
+
+The current qualified CLROOM Claude path disables auto-memory for the launch. Use that as a diagnostic boundary when you want to ask whether old or shared memory is contributing to the current behavior while leaving the provider's stored memory files untouched.
+
+CLROOM does **not** delete, edit, expire, synchronize, or repair Claude's `MEMORY.md` state. If the goal is to inspect or manage Claude memory itself, prefer Claude's native memory controls. If the goal is a comparison launch where auto-memory does not participate, CLROOM provides that narrower qualified boundary.
+
+## Native Claude skill controls vs CLROOM
+
+Claude Code now exposes useful native controls for individual skills. Anthropic documents `skillOverrides` states such as `name-only`, `user-invocable-only`, and `off`; `disable-model-invocation: true` prevents Claude from auto-invoking a skill and removes its description from the normal skill listing context; and `/skill-doctor` reports skill context cost and usage. Plugin-provided skills are managed separately rather than through `skillOverrides`.
+
+Use those native controls when they solve the actual problem. CLROOM is aimed at a different launch-level boundary: start a session without the ordinary personal-global instruction/skill set participating by default, then admit selected personal-global skills for that launch without rewriting the normal provider setup.
+
+Plugin-provided skills are a distinct case: current Claude Code documentation says `skillOverrides` does not apply to them. Use Claude's plugin manager/evaluation path for plugin-skill questions rather than assuming personal/project skill controls apply inside a plugin.
+
+## Native Claude MCP tool search vs CLROOM
+
+Claude Code now defers MCP tool definitions through native Tool Search on supported provider/model paths. Only tool names and server instructions need to load at session start, and threshold modes such as `ENABLE_TOOL_SEARCH=auto` can switch to deferral when tool definitions consume enough of the context window.
+
+Use that native mechanism when the problem is **tool-definition context overhead inside Claude Code**. CLROOM does not replace Claude's MCP discovery engine and does not claim that selecting fewer CLROOM inputs is a universal substitute for provider-native Tool Search.
+
+CLROOM remains relevant when the boundary is different: which supported personal-global launch inputs participate at all, without rewriting the developer's ordinary setup.
+
+## Native Claude subagent MCP scoping vs CLROOM
+
+Claude Code subagent definitions can narrow inherited tools with `tools` or `disallowedTools`, including MCP server-level patterns. They can also declare `mcpServers`; inline servers can be connected for that subagent and kept out of the parent conversation.
+
+Use those native controls when the problem is **per-subagent tool or MCP scope inside one Claude session**. CLROOM controls top-level launches it owns; it does not rewrite provider-owned subagent definitions. An external runner can still start separate top-level CLROOM processes when each worker needs an independent CLROOM launch boundary.
 
 ## Select one installed whole plugin
 
@@ -163,8 +193,11 @@ This is also why managed-policy interactions around selected skills require care
 ## Official Anthropic sources
 
 - [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference)
+- [Claude Code commands (`/memory`, `/mcp`, `/context`, and diagnostics)](https://code.claude.com/docs/en/commands)
 - [Claude Code settings](https://code.claude.com/docs/en/settings)
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
+- [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+- [Claude Code subagents](https://code.claude.com/docs/en/sub-agents)
 - [Claude Code documentation index](https://code.claude.com/docs/llms.txt)
 
-Last verified against current Anthropic documentation: **2026-09-20**.
+Last verified against current Anthropic documentation: **2026-10-06**.

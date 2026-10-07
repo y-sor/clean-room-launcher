@@ -2,14 +2,19 @@
 layout: null
 permalink: /robots.txt
 ---
-# Clean Room Launcher (CLROOM) does not opt out of search or AI-search retrieval.
+# Clean Room Launcher (CLROOM) crawler-policy declaration.
 #
-# Hosting note: the current GitHub Pages site is a project site under
-# /clean-room-launcher/. Standards-compliant crawlers consult /robots.txt at
-# the y-sor.github.io host root. That host-root policy is published from the
-# separate y-sor/y-sor.github.io repository; this project-level file keeps the
-# CLROOM-specific crawler policy and sitemap declaration aligned with it.
+# Search/citation indexing, user-initiated fetch, and model-training/model-
+# improvement crawlers are different purposes. The current public policy does
+# not opt out of any of them; explicit groups below document that intent rather
+# than implying that "AI crawler" is one category.
+#
+# Hosting note: this GitHub Pages project lives under /clean-room-launcher/.
+# Standards-compliant crawlers consult /robots.txt at the y-sor.github.io host
+# root. The live host-root policy is published from y-sor/y-sor.github.io and
+# is authoritative; this project-level file mirrors the intended CLROOM policy.
 
+# Search / citation indexing.
 User-agent: Googlebot
 Allow: /
 
@@ -22,12 +27,31 @@ Allow: /
 User-agent: Claude-SearchBot
 Allow: /
 
-User-agent: Claude-User
-Allow: /
-
 User-agent: PerplexityBot
 Allow: /
 
+# User-initiated retrieval. Providers can apply different robots semantics
+# to explicit user fetches; these entries document CLROOM's allow intent and do
+# not claim robots.txt is an enforcement boundary for every user-initiated request.
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+# Training / model-improvement controls are independent from search visibility.
+# Current policy allows them; a future opt-out must not accidentally block the
+# search/citation agents above.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# All other standards-compliant crawlers are currently allowed.
 User-agent: *
 Allow: /
 
