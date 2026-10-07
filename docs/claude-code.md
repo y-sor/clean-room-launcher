@@ -123,8 +123,8 @@ from a subdirectory. Qualification fails closed if the npm stable tag moves befo
 the candidate is tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
 This Claude slice still does not add standalone MCP resource activation,
-`--with=all`, presets, installation/update/removal, or component-level
-selection. Codex whole-plugin activation is a separate provider-specific
+`--with=all`, installation/update/removal, or component-level selection.
+CLROOM presets can reuse already-supported top-level Claude launch inputs, but they do not add Claude subagent/inner-session controls or widen plugin qualification. Codex whole-plugin activation is a separate provider-specific
 path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?
