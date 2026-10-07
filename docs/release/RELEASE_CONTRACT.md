@@ -639,6 +639,53 @@ For bounded Codex whole-plugin + standalone-MCP composition:
    pre-merge composition rehearsal and the exact-archive composition stage so
    neither proof can disappear silently in a later workflow edit.
 
+## Reusable preset closure
+
+Reusable presets are a CLROOM-owned **input layer** over the existing resolved
+launch. They do not create a second provider configuration system, resource
+ontology, launcher, auth system or orchestration layer.
+
+For any release that changes preset behavior:
+
+1. **Single resolution authority:** `presets.yaml` may contribute only the
+   release-qualified CLROOM inputs already supported by the direct CLI
+   (`skill-set`, exact `with` / `without`, admitted `pass-env` names and literal
+   provider argv). The flattened result must pass through the same selector,
+   zero-auth, conflict, qualification, managed-policy and provider-launch path
+   as an equivalent direct invocation. Naming a capability in a preset must
+   never make an otherwise unsupported capability supported.
+2. **Bounded local parse:** the user-level XDG preset file, preset count, names,
+   lists, provider argv, selected preset count and total resolved composition
+   are bounded before provider birth. Reads are bounded independently of prior
+   filesystem metadata so a concurrent file growth cannot turn validation into
+   an unbounded allocation. Unknown schema fields/providers, malformed content,
+   secret-shaped argv, CLROOM-control smuggling, auth lifecycle commands and an
+   argv terminator fail closed.
+3. **Deterministic precedence:** the ordinary `default` layer, ordered explicit
+   presets, `none` reset, explicit provider selection/inference, resource
+   include/exclude replacement, explicit CLI skill-set replacement,
+   environment-name admission and provider argv ordering require focused
+   positive and negative regressions. Explicit CLI CLROOM options remain the
+   highest user-controlled CLROOM layer.
+4. **Inspectable machine contract:** preset provenance and the effective launch
+   must be emitted from the same sanitized resolved truth. Any JSON shape change
+   requires an explicit schema-version advance; an existing schema identifier
+   must never silently gain, lose or reinterpret fields. Provider argv values,
+   environment values, private paths and secret material remain non-output.
+5. **No persistent/provider-owned widening:** preset resolution performs no
+   network/provider subprocess, remote include/registry, script/interpolation,
+   provider-state mutation or credential storage. Native Codex profiles,
+   Claude settings/agents/subagents, authentication and managed policy remain
+   provider-owned. New resource categories, cardinalities or transports require
+   their own qualification before presets may name them.
+6. **Performance evidence:** before release acceptance, benchmark preset
+   resolution with representative 0/1/10/100/1000-preset files plus
+   representative saved skill-set use on the qualified Apple Silicon target.
+   The release review records the measurements and disposition; a representative
+   100-preset configuration must remain within the accepted startup budget
+   (currently <=10 ms p95 for preset resolution) or the release is blocked
+   pending an explicit contract decision.
+
 ## Stateful provider lifecycle closure
 
 A first successful provider startup is not sufficient evidence for a supported
