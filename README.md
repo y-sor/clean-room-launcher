@@ -111,6 +111,59 @@ feature-planning:
 
 </details>
 
+## Reuse the whole CLROOM launch intent
+
+Skill sets save only a group of personal-global skills. **Presets** save the broader
+CLROOM-owned launch intent: supported skill selection, qualified resource selectors,
+admitted environment-variable names, and literal provider arguments.
+
+The normal file is:
+
+```text
+~/.config/clroom/presets.yaml
+```
+
+A minimal example:
+
+```yaml
+schema: clroom.presets.v1
+presets:
+  review:
+    default-provider: codex
+    providers:
+      codex: {}
+      claude: {}
+    skill-set:
+      - "@review"
+    pass-env:
+      - REVIEW_TOKEN
+```
+
+Then reuse it:
+
+```sh
+clroom codex --preset=review
+clroom claude --preset=review
+clroom --preset=review
+clroom codex --preset=none
+```
+
+An explicit provider wins. Without one, provider inference must be unambiguous.
+The special `none` token resets preset layers. Presets compile into the same
+existing CLROOM skill/resource/environment/qualification path; they do not create
+a second launcher or silently widen provider support.
+
+A CLROOM preset is **not** a Codex profile or Claude settings system. Use native
+provider configuration when the reusable object is provider settings. Presets are
+for reusable top-level CLROOM clean/selective launch intent.
+
+Provider arguments in presets are literal argv elements, never shell strings.
+Preset files do not support scripts, command substitution, interpolation, secret
+values, remote includes, or new provider capabilities.
+
+See [Presets](docs/presets.md) for schema, precedence, security behavior, and the
+exact distinction from provider-native profiles.
+
 ## See the clean launch as Codex starts
 
 Run `clroom codex --skill-set=my-skill,@my-skill-set` from the directory where
@@ -470,6 +523,7 @@ For exact provider behavior, native alternatives, current limitations, and commo
 - [When to use Clean Room Launcher (CLROOM) — and when not to](docs/when-to-use-clroom.md)
 - [Use cases](docs/use-cases.md)
 - [Skill sets](docs/skill-sets.md)
+- [Reusable launch presets](docs/presets.md)
 - [Claude Code and CLROOM](docs/claude-code.md)
 - [Codex and CLROOM](docs/codex.md)
 - [Configuration matrix](docs/configuration-matrix.md)
