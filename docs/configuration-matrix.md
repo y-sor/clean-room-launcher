@@ -46,6 +46,7 @@ This matrix answers a narrow question: **for each provider/configuration scope, 
 | Both | selected symlinked personal-global skill | Admitted once when supported; canonical target is explicitly bounded | Focused security tests plus macOS sandbox enforcement tests |
 | Codex | apps, hooks, plugins | Clean defaults off; explicit supported user arguments can re-enable them | Version-qualified |
 | Both | complete home directory | **Not** claimed to be completely isolated | Explicit non-claim |
+| Both | reusable CLROOM launch preset | User-level `presets.yaml` compiles provider-bounded skills/resources/env names/literal argv into the existing launch pipeline; native provider settings remain provider-owned | Source/unit/CLI contract; exact-provider release rehearsal required |
 | Both | provider authentication | Existing provider authentication remains provider-owned | Confirmed product direction |
 
 ## Qualified skill source maps
