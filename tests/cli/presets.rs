@@ -113,7 +113,11 @@ presets:
 fn auth_words_are_not_refused_when_they_are_not_the_first_explicit_provider_token() {
     let root = scratch("auth-word-as-later-provider-token");
     let output = run(&root, &["codex", "--model", "login", "--version"]);
-    assert_ne!(output.status.code(), Some(2), "later provider values must not be mistaken for auth subcommands");
+    assert_ne!(
+        String::from_utf8(output.stderr).unwrap(),
+        "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n",
+        "later provider values must not be mistaken for auth subcommands"
+    );
 }
 
 #[test]
