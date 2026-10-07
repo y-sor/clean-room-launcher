@@ -39,7 +39,7 @@ Use a Codex profile when the problem is **reusing Codex configuration values**. 
 
 That is not the same contract as CLROOM's current clean/selective launch boundary. CLROOM's shipped skill/resource selectors are aimed at deciding which supported personal-global inputs participate in this run without turning a provider profile into a second CLROOM configuration authority.
 
-This distinction matters for future reusable-launch UX too: CLROOM should not duplicate Codex profiles merely under a different name. Any broader CLROOM preset feature must earn its scope by composing CLROOM-qualified launch inputs that provider-native profiles do not already solve more directly.
+CLROOM v0.6 keeps that distinction explicit. A CLROOM preset saves top-level CLROOM launch intent—supported skill/resource selectors, admitted environment-variable names, and literal provider argv—and compiles it into the same qualified launch path. It does not define typed copies of Codex model/reasoning/approval/sandbox/agent-role settings. Use [Presets](presets.md) for the exact schema and precedence.
 
 ## Skills are separate from `AGENTS.md`
 
