@@ -14,7 +14,7 @@
     "tests": {
       "decision": "CONTRACT_EXPAND",
       "evidence": [
-        "Focused preset unit and CLI regressions cover missing/malformed config, default/none/ordered composition, provider ambiguity/intersection, exact resource precedence, explicit CLI skill replacement, environment-name validation, zero-auth/auth lifecycle refusal and CLROOM-control smuggling.",
+        "Focused preset unit and CLI regressions cover missing/malformed config, default/none/ordered composition, provider ambiguity/intersection, exact resource precedence, explicit CLI skill replacement, environment-name validation, zero-auth/auth lifecycle refusal and CLROOM-control smuggling. A fake-provider capture also proves auth/login/logout commands after qualified provider-global options and preset-prepended argv are refused before child birth, while auth-looking option values and post-terminator data remain literal.",
         "A dedicated aggregate-resolution negative proves individually valid preset fragments cannot combine into an unbounded resolved launch budget.",
         "Existing required CI, CodeQL, fuzz, dependency and discovery jobs remain in the exact-candidate topology; provider/runtime and performance gates remain separately required before release acceptance."
       ]
@@ -72,8 +72,8 @@
     {
       "id": "preset-provider-auth-or-clroom-control-smuggling",
       "decision": "CONTRACT_EXPAND",
-      "failure_mode": "Stored literal provider argv could shift auth lifecycle commands or smuggle launcher-owned preset/resource/skill/environment controls past the intended precedence and zero-auth boundary.",
-      "durable_control": "Stored argv refuses credential-shaped material, auth/login/logout, argv terminator and CLROOM-owned controls; execution re-enters the existing resource/skill/env/conflict/zero-auth path and focused negative tests cover these cases."
+      "failure_mode": "Stored provider argv or explicit provider-native global options could shift an auth lifecycle command past a first-raw-token check and reach provider birth; stored argv could also smuggle launcher-owned controls.",
+      "durable_control": "Stored argv refuses credential-shaped material, auth lifecycle commands, argv terminator and CLROOM-owned controls. A bounded provider-aware classifier accounts for qualified global-option arity, stops at the literal terminator and runs before provider birth on both direct and preset-composed argv. Fake-provider regressions verify auth commands after Codex/Claude global options and preset-prepended argv are refused before child birth, while consumed auth-looking option values remain permitted."
     },
     {
       "id": "legacy-pages-search-migration-residue",
@@ -93,7 +93,7 @@
       "phase": "PRE_RELEASE_ACCEPTANCE_QUALIFIED_TARGET",
       "requirement": "Benchmark 0/1/10/100/1000-preset resolution plus representative saved skill-set use on qualified macOS Apple Silicon; record measurements and block if representative 100-preset resolution exceeds the accepted <=10 ms p95 budget unless the contract is explicitly revised.",
       "result": "PASS",
-      "evidence": "macOS arm64, release profile, 103 samples per file size: resolution p95 0/1/10/100/1000 presets = 67/97/93/254/1473 \u00b5s; saved skill-set expansion p95 = 56/38/40/40/85 \u00b5s for 1/10/100/1000-preset files. The 100-preset resolution p95 is below the 10 ms budget."
+      "evidence": "macOS arm64, release profile, 103 samples per file size: resolution p95 0/1/10/100/1000 presets = 67/97/93/254/1473 µs; saved skill-set expansion p95 = 56/38/40/40/85 µs for 1/10/100/1000-preset files. The 100-preset resolution p95 is below the 10 ms budget."
     },
     {
       "id": "current-provider-refresh",
@@ -159,5 +159,5 @@
       "current provider/native-alternative/discovery research refresh before release acceptance"
     ]
   },
-  "reviewed_content_digest": "7784be2c32de1cae36d1291fac762fb763c54fb1ea49911a88467fc25cf2c244"
+  "reviewed_content_digest": "d71cd99d6ad0f9e7495765b4a487fe2fb532d93f952dcdb012c48493a7c45b10"
 }

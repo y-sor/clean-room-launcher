@@ -1,5 +1,6 @@
 use std::{
     fs,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
     sync::atomic::{AtomicU64, Ordering},
@@ -29,6 +30,52 @@ fn run(root: &Path, args: &[&str]) -> std::process::Output {
         .env("XDG_CONFIG_HOME", &config)
         .output()
         .expect("clroom must run")
+}
+
+fn run_with_fake_provider(
+    root: &Path,
+    provider: &str,
+    args: &[&str],
+) -> (std::process::Output, PathBuf) {
+    let bin = root.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    let marker = root.join("provider-started");
+    let version = match provider {
+        "codex" => "0.161.0",
+        "claude" => "2.1.293",
+        _ => unreachable!(),
+    };
+    let executable = bin.join(provider);
+    fs::write(
+        &executable,
+        format!(
+            "#!/bin/sh\nprintf started >> '{}'\nif [ \"$1\" = --version ]; then printf '{}\\n'; exit 0; fi\nexit 0\n",
+            marker.display(),
+            version,
+        ),
+    )
+    .unwrap();
+    let mut permissions = fs::metadata(&executable).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&executable, permissions).unwrap();
+
+    let home = root.join("home");
+    let config = root.join("config");
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&config).unwrap();
+    if provider == "codex" {
+        let codex_home = home.join(".codex");
+        fs::create_dir_all(&codex_home).unwrap();
+        fs::write(codex_home.join("auth.json"), b"synthetic auth state").unwrap();
+    }
+    let output = Command::new(env!("CARGO_BIN_EXE_clroom"))
+        .args(args)
+        .env("HOME", &home)
+        .env("XDG_CONFIG_HOME", &config)
+        .env("PATH", bin)
+        .output()
+        .expect("clroom must run");
+    (output, marker)
 }
 
 fn write_presets(root: &Path, value: &str) {
@@ -134,13 +181,128 @@ fn aggregate_resolved_preset_composition_is_bounded_before_provider_birth() {
 }
 
 #[test]
-fn auth_words_are_not_refused_when_they_are_not_the_first_explicit_provider_token() {
+fn provider_global_option_values_that_look_like_auth_commands_are_not_commands() {
     let root = scratch("auth-word-as-later-provider-token");
-    let output = run(&root, &["codex", "--model", "login", "--version"]);
+    let (output, marker) = run_with_fake_provider(&root, "codex", &["codex", "--model", "login"]);
+    assert!(marker.exists(), "login is consumed as the --model value");
     assert_ne!(
-        String::from_utf8(output.stderr).unwrap(),
-        "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n",
-        "later provider values must not be mistaken for auth subcommands"
+        String::from_utf8_lossy(&output.stderr),
+        "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n"
+    );
+
+    let root = scratch("auth-word-profile-value");
+    let (output, marker) =
+        run_with_fake_provider(&root, "codex", &["codex", "--profile", "auth"]);
+    assert!(marker.exists(), "auth is consumed as the --profile value");
+    assert_ne!(
+        String::from_utf8_lossy(&output.stderr),
+        "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n"
+    );
+}
+
+#[test]
+fn auth_commands_after_provider_global_options_are_refused_before_provider_birth() {
+    let cases: &[(&str, &[&str])] = &[
+        ("codex", &["codex", "--profile", "safe", "login"]),
+        ("codex", &["codex", "--model", "gpt-5", "logout"]),
+        (
+            "codex",
+            &["codex", "-c", "model_reasoning_effort=high", "login"],
+        ),
+        ("claude", &["claude", "--model", "sonnet", "auth"]),
+        (
+            "claude",
+            &["claude", "--permission-mode", "plan", "auth"],
+        ),
+    ];
+
+    for (provider, args) in cases {
+        let root = scratch("global-option-auth-command");
+        let (output, marker) = run_with_fake_provider(&root, provider, args);
+        assert!(
+            !marker.exists(),
+            "provider child must not start for arguments {args:?}"
+        );
+        assert_eq!(
+            stderr(output),
+            "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n",
+            "arguments: {args:?}"
+        );
+    }
+}
+
+#[test]
+fn preset_provider_argv_cannot_shift_explicit_auth_commands_past_zero_auth() {
+    let root = scratch("preset-auth-provider-argv-shift");
+    write_presets(
+        &root,
+        r#"schema: clroom.presets.v1
+presets:
+  codex-safe:
+    providers:
+      codex:
+        args:
+          - --profile
+          - safe
+  claude-safe:
+    providers:
+      claude:
+        args:
+          - --model
+          - sonnet
+  codex-default:
+    default-provider: codex
+    providers:
+      codex:
+        args:
+          - --profile
+          - safe
+"#,
+    );
+
+    let cases: &[(&str, &[&str])] = &[
+        (
+            "codex",
+            &["codex", "--preset=codex-safe", "--profile", "safe", "login"],
+        ),
+        (
+            "claude",
+            &["claude", "--preset=claude-safe", "--model", "sonnet", "auth"],
+        ),
+        (
+            "codex",
+            &["--preset=codex-default", "--profile", "safe", "login"],
+        ),
+    ];
+
+    for (provider, args) in cases {
+        let case_root = scratch("preset-auth-provider-argv-shift-case");
+        write_presets(
+            &case_root,
+            &fs::read_to_string(root.join("config/clroom/presets.yaml")).unwrap(),
+        );
+        let (output, marker) = run_with_fake_provider(&case_root, provider, args);
+        assert!(
+            !marker.exists(),
+            "provider child must not start for arguments {args:?}"
+        );
+        assert_eq!(
+            stderr(output),
+            "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n",
+            "arguments: {args:?}"
+        );
+    }
+}
+
+#[test]
+fn terminator_keeps_auth_looking_provider_data_literal() {
+    let root = scratch("auth-word-after-provider-terminator");
+    let (output, marker) =
+        run_with_fake_provider(&root, "codex", &["codex", "--", "login"]);
+    assert!(marker.exists(), "auth-looking data after -- remains literal");
+    assert_ne!(
+        String::from_utf8_lossy(&output.stderr),
+        "ZERO_AUTH_REFUSAL: provider-native preauthenticated session unavailable or ambiguous; continue locally\n"
     );
 }
 
