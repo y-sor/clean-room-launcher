@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     env, fs,
-    io::ErrorKind,
+    io::{ErrorKind, Read},
     path::{Path, PathBuf},
 };
 
@@ -178,6 +178,14 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
     for value in explicit_resource_overrides {
         preset_resources.remove(&value);
     }
+    let resolved_items = synthetic
+        .len()
+        .saturating_add(preset_resources.len())
+        .saturating_add(usize::from(!preset_skills.is_empty() && !has_explicit_skill_set))
+        .saturating_add(provider_args.len());
+    if resolved_items > MAX_RESOLVED_ITEMS {
+        return Err(resolution_too_large());
+    }
     synthetic.extend(preset_resources.into_iter().map(|(value, included)| {
         if included {
             format!("--with={value}")
@@ -273,7 +281,11 @@ fn load_optional(path: &Path) -> Result<Option<PresetFile>, String> {
     if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
         return Err(config_invalid(path));
     }
-    let bytes = fs::read(path).map_err(|_| config_unavailable(path))?;
+    let file = fs::File::open(path).map_err(|_| config_unavailable(path))?;
+    let mut bytes = Vec::with_capacity((metadata.len() as usize).min(MAX_FILE_BYTES) + 1);
+    file.take((MAX_FILE_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|_| config_unavailable(path))?;
     if bytes.len() > MAX_FILE_BYTES {
         return Err(config_invalid(path));
     }
