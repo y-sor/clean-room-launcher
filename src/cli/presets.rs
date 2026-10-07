@@ -464,7 +464,38 @@ fn config_invalid(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_selection, has_explicit_skill_set, valid_name};
+    use std::{collections::BTreeSet, path::Path};
+
+    use super::{
+        extract_selection, has_explicit_skill_set, infer_provider, permitted_providers,
+        select_names, valid_name, validate_config, PresetFile, Provider,
+    };
+
+    fn config(input: &str) -> PresetFile {
+        serde_yaml::from_str(input).unwrap()
+    }
+
+    fn valid_fixture() -> PresetFile {
+        config(
+            r#"schema: clroom.presets.v1
+presets:
+  default:
+    default-provider: codex
+    providers:
+      codex: {}
+      claude: {}
+    skill-set: [review]
+    pass-env: [REVIEW_TOKEN]
+  job:
+    providers:
+      codex:
+        args: [--model, gpt-5]
+      claude:
+        args: [--model, sonnet]
+    with: [plugin:review-tools@team]
+"#,
+        )
+    }
 
     #[test]
     fn selector_is_launcher_owned_only_before_provider_terminator() {
@@ -494,5 +525,118 @@ mod tests {
         assert!(!valid_name(""));
         assert!(!valid_name("bad/name"));
         assert!(!valid_name(&"x".repeat(65)));
+    }
+
+    #[test]
+    fn strict_schema_accepts_bounded_launch_intent() {
+        let value = valid_fixture();
+        validate_config(&value, Path::new("/tmp/presets.yaml")).unwrap();
+    }
+
+    #[test]
+    fn strict_schema_rejects_unknown_fields_and_unknown_providers() {
+        let unknown_field = serde_yaml::from_str::<PresetFile>(
+            r#"schema: clroom.presets.v1
+presets:
+  job:
+    providers:
+      codex: {}
+    shell: "echo unsafe"
+"#,
+        );
+        assert!(unknown_field.is_err());
+
+        let unknown_provider = config(
+            r#"schema: clroom.presets.v1
+presets:
+  job:
+    providers:
+      future-agent: {}
+"#,
+        );
+        assert!(validate_config(&unknown_provider, Path::new("/tmp/presets.yaml")).is_err());
+    }
+
+    #[test]
+    fn preset_provider_args_cannot_smuggle_secrets_or_clroom_controls() {
+        for argument in [
+            "--api-key=secret",
+            "token=secret",
+            "--preset=other",
+            "--with=mcp:other",
+            "--without=plugin:other",
+            "--skill-set=other",
+            "--pass-env=SECRET",
+            "--",
+        ] {
+            let value = config(&format!(
+                "schema: clroom.presets.v1\npresets:\n  job:\n    providers:\n      codex:\n        args:\n          - {argument:?}\n"
+            ));
+            assert!(
+                validate_config(&value, Path::new("/tmp/presets.yaml")).is_err(),
+                "{argument}"
+            );
+        }
+    }
+
+    #[test]
+    fn none_resets_implicit_and_earlier_presets() {
+        let value = valid_fixture();
+        assert_eq!(
+            select_names(
+                &value,
+                Some(&["job".to_owned(), "none".to_owned(), "job".to_owned()])
+            )
+            .unwrap(),
+            vec!["job"]
+        );
+    }
+
+    #[test]
+    fn provider_resolution_uses_intersection_not_union() {
+        let value = config(
+            r#"schema: clroom.presets.v1
+presets:
+  default:
+    providers:
+      codex: {}
+      claude: {}
+  codex-only:
+    providers:
+      codex: {}
+"#,
+        );
+        validate_config(&value, Path::new("/tmp/presets.yaml")).unwrap();
+        let selected =
+            select_names(&value, Some(&["codex-only".to_owned()])).unwrap();
+        let permitted = permitted_providers(&value, &selected).unwrap();
+        assert_eq!(permitted, BTreeSet::from(["codex"]));
+        assert_eq!(
+            infer_provider(&value, &selected, &permitted).unwrap(),
+            Provider::Codex
+        );
+    }
+
+    #[test]
+    fn conflicting_default_providers_fail_closed() {
+        let value = config(
+            r#"schema: clroom.presets.v1
+presets:
+  default:
+    default-provider: codex
+    providers:
+      codex: {}
+      claude: {}
+  review:
+    default-provider: claude
+    providers:
+      codex: {}
+      claude: {}
+"#,
+        );
+        validate_config(&value, Path::new("/tmp/presets.yaml")).unwrap();
+        let selected = select_names(&value, Some(&["review".to_owned()])).unwrap();
+        let permitted = permitted_providers(&value, &selected).unwrap();
+        assert!(infer_provider(&value, &selected, &permitted).is_err());
     }
 }
