@@ -132,8 +132,10 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
     };
 
     let has_explicit_skill_set = has_explicit_skill_set(&selection.remaining_args);
+    let explicit_resource_overrides = explicit_resource_overrides(&selection.remaining_args);
     let mut synthetic = Vec::new();
     let mut preset_skills = Vec::new();
+    let mut preset_resources = BTreeMap::<String, bool>::new();
     let mut provider_args = Vec::new();
 
     for name in &selected {
@@ -142,18 +144,12 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
             .get(name)
             .expect("validated selected preset must exist");
         preset_skills.extend(preset.skill_set.iter().cloned());
-        synthetic.extend(
-            preset
-                .with
-                .iter()
-                .map(|value| format!("--with={value}")),
-        );
-        synthetic.extend(
-            preset
-                .without
-                .iter()
-                .map(|value| format!("--without={value}")),
-        );
+        for value in &preset.with {
+            preset_resources.insert(value.clone(), true);
+        }
+        for value in &preset.without {
+            preset_resources.insert(value.clone(), false);
+        }
         synthetic.extend(
             preset
                 .pass_env
@@ -170,6 +166,17 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
                 .cloned(),
         );
     }
+
+    for value in explicit_resource_overrides {
+        preset_resources.remove(&value);
+    }
+    synthetic.extend(preset_resources.into_iter().map(|(value, included)| {
+        if included {
+            format!("--with={value}")
+        } else {
+            format!("--without={value}")
+        }
+    }));
 
     if !preset_skills.is_empty() && !has_explicit_skill_set {
         synthetic.push(format!("--skill-set={}", preset_skills.join(",")));
@@ -432,6 +439,23 @@ fn infer_provider(
     Err(provider_required())
 }
 
+fn explicit_resource_overrides(args: &[String]) -> BTreeSet<String> {
+    let mut values = BTreeSet::new();
+    let mut launcher_options = true;
+    for argument in args {
+        if launcher_options && argument == "--" {
+            launcher_options = false;
+        } else if launcher_options {
+            if let Some(value) = argument.strip_prefix("--with=") {
+                values.insert(value.to_owned());
+            } else if let Some(value) = argument.strip_prefix("--without=") {
+                values.insert(value.to_owned());
+            }
+        }
+    }
+    values
+}
+
 fn has_explicit_skill_set(args: &[String]) -> bool {
     let mut launcher_options = true;
     for argument in args {
@@ -478,8 +502,8 @@ mod tests {
     use std::{collections::BTreeSet, path::Path};
 
     use super::{
-        extract_selection, has_explicit_skill_set, infer_provider, permitted_providers,
-        select_names, valid_name, validate_config, PresetFile, Provider,
+        explicit_resource_overrides, extract_selection, has_explicit_skill_set, infer_provider,
+        permitted_providers, select_names, valid_name, validate_config, PresetFile, Provider,
     };
 
     fn config(input: &str) -> PresetFile {
@@ -516,6 +540,23 @@ presets:
         let selection = extract_selection(&args).unwrap();
         assert_eq!(selection.requested.unwrap(), vec!["job"]);
         assert_eq!(selection.remaining_args, ["--", "--preset=literal"]);
+    }
+
+    #[test]
+    fn explicit_resource_controls_override_preset_layer_by_exact_selector() {
+        let values = explicit_resource_overrides(&[
+            "--with=plugin:review@team".to_owned(),
+            "--without=mcp:debug".to_owned(),
+            "--".to_owned(),
+            "--with=plugin:literal".to_owned(),
+        ]);
+        assert_eq!(
+            values,
+            BTreeSet::from([
+                "mcp:debug".to_owned(),
+                "plugin:review@team".to_owned(),
+            ])
+        );
     }
 
     #[test]
