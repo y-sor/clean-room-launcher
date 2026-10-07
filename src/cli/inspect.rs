@@ -173,7 +173,7 @@ fn render_human(summary: &launch_contract::ResolvedLaunchSummary, presets: &[Str
 
 #[cfg(test)]
 mod tests {
-    use super::render_human;
+    use super::{InspectSummary, render_human};
     use super::super::launch_contract::{
         ResolvedLaunchSummary, ResolvedProviderArgSummary, ResolvedResourceSummary,
     };
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn human_summary_exposes_names_and_reasons_not_provider_values() {
         let summary = ResolvedLaunchSummary {
-            schema_version: "clroom.resolved-launch.v1",
+            schema_version: "clroom.resolved-launch.v2",
             provider: "codex",
             provider_version: "0.160.0".to_owned(),
             os: "macos".to_owned(),
@@ -211,5 +211,14 @@ mod tests {
         assert!(human.contains("values redacted"));
         assert!(!human.contains("secret-value"));
         assert!(!human.contains("/private/"));
+
+        let json = serde_json::to_value(InspectSummary {
+            launch: summary,
+            presets: vec!["default".to_owned(), "review".to_owned()],
+        })
+        .unwrap();
+        assert_eq!(json["schema_version"], "clroom.resolved-launch.v2");
+        assert_eq!(json["presets"][0], "default");
+        assert_eq!(json["presets"][1], "review");
     }
 }
