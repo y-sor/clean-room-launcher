@@ -17,6 +17,8 @@ const MAX_NAME_BYTES: usize = 64;
 const MAX_LIST_ITEMS: usize = 128;
 const MAX_PROVIDER_ARGS: usize = 256;
 const MAX_ARG_BYTES: usize = 4096;
+const MAX_SELECTED_PRESETS: usize = 128;
+const MAX_RESOLVED_ITEMS: usize = 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Resolution {
@@ -116,6 +118,9 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
             presets: Vec::new(),
         });
     }
+    if selected.len() > MAX_SELECTED_PRESETS {
+        return Err(resolution_too_large());
+    }
 
     let permitted = permitted_providers(&config, &selected)?;
     let resolved_provider = match provider {
@@ -161,6 +166,13 @@ pub fn apply(provider: Option<Provider>, args: &[String]) -> Result<Resolution, 
                 .iter()
                 .cloned(),
         );
+        if preset_skills.len() > MAX_RESOLVED_ITEMS
+            || preset_resources.len() > MAX_RESOLVED_ITEMS
+            || synthetic.len() > MAX_RESOLVED_ITEMS
+            || provider_args.len() > MAX_RESOLVED_ITEMS
+        {
+            return Err(resolution_too_large());
+        }
     }
 
     for value in explicit_resource_overrides {
@@ -282,6 +294,9 @@ fn validate_config(config: &PresetFile, path: &Path) -> Result<(), String> {
         validate_list(&preset.with, path)?;
         validate_list(&preset.without, path)?;
         validate_list(&preset.pass_env, path)?;
+        if preset.pass_env.iter().any(|name| !valid_pass_env_name(name)) {
+            return Err(config_invalid(path));
+        }
 
         let mut provider_ids = BTreeSet::new();
         for (provider, overlay) in &preset.providers {
@@ -321,6 +336,7 @@ fn validate_list(values: &[String], path: &Path) -> Result<(), String> {
 
 fn validate_provider_arg(argument: &str, path: &Path) -> Result<(), String> {
     if argument.len() > MAX_ARG_BYTES
+        || argument.as_bytes().contains(&0)
         || argument == "--"
         || zero_auth::is_sensitive_argument(argument)
         || [
@@ -503,6 +519,19 @@ fn valid_name(name: &str) -> bool {
         })
 }
 
+fn valid_pass_env_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 128
+        && name.bytes().enumerate().all(|(index, byte)| {
+            (byte.is_ascii_uppercase() || byte == b'_') || (index > 0 && byte.is_ascii_digit())
+        })
+}
+
+fn resolution_too_large() -> String {
+    "CLROOM_PRESET_RESOLUTION_TOO_LARGE: selected preset composition exceeds the bounded launch budget; select fewer presets or reduce preset contents"
+        .to_owned()
+}
+
 fn provider_required() -> String {
     "CLROOM_PRESET_PROVIDER_REQUIRED: selected presets do not identify one provider; use clroom <codex|claude> --preset=... or add an unambiguous default-provider"
         .to_owned()
@@ -529,7 +558,7 @@ mod tests {
     use super::{
         apply_resource_layer, explicit_resource_overrides, extract_selection,
         has_explicit_skill_set, infer_provider, permitted_providers, resource_selector_members,
-        select_names, valid_name, validate_config, PresetFile, Provider,
+        select_names, valid_name, valid_pass_env_name, validate_config, PresetFile, Provider,
     };
 
     fn config(input: &str) -> PresetFile {
@@ -649,6 +678,15 @@ presets:
         assert!(!valid_name(""));
         assert!(!valid_name("bad/name"));
         assert!(!valid_name(&"x".repeat(65)));
+    }
+
+    #[test]
+    fn environment_names_use_the_same_closed_identifier_shape_as_cli_admission() {
+        assert!(valid_pass_env_name("REVIEW_TOKEN"));
+        assert!(valid_pass_env_name("_PRIVATE_2"));
+        for invalid in ["", "lowercase", "HAS-DASH", "9STARTS_WITH_DIGIT"] {
+            assert!(!valid_pass_env_name(invalid), "{invalid}");
+        }
     }
 
     #[test]
