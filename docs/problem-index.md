@@ -663,7 +663,6 @@ Use a native Codex profile or Claude settings when the reusable object is provid
 - `different Codex settings per task`
 - `saved Codex configuration`
 - `Codex profile skills`
-- `coding agent preset vs profile`
 
 </details>
 
