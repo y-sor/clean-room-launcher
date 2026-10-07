@@ -125,7 +125,7 @@ summary of the active filesystem restrictions:
 - developer instructions and notifications are cleared by default.
 
 ```text
-╓──○──╖ ╭─ CLEAN ROOM ─ v0.5.0 ─────────╮
+╓──○──╖ ╭─ CLEAN ROOM ─ v0.6.0 ─────────╮
 ║░░░░░║⠒│                               │
 ║░░░░░║⠒│     Global AGENTS.md  off     │
 ║░░░░░║⠒│     Global skills    3 on     │
@@ -553,7 +553,7 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-Current source version: `v0.5.0`. See the
+Current source version: `v0.6.0`. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
 for authoritative publication status and downloadable artifacts. Real-provider
 qualification is bound to the exact behavior-specific provider versions above.
