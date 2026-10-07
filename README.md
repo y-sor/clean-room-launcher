@@ -301,7 +301,7 @@ The MCP definition comes from `mcp_servers.<id>` in the normal Codex
 `--pass-env=NAME`. Command/argument interpolation and relative MCP working
 directories are refused.
 
-The current source retains the bounded v0.5.0 composition of the two selectors in the same interactive
+The current source composes the two bounded selectors in the same interactive
 launch:
 
 ```sh
