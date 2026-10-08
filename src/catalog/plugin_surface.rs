@@ -1189,6 +1189,57 @@ mod tests {
     }
 
     #[test]
+    fn codex_portable_agent_plugins_schema_is_not_activated_via_legacy_fallback() {
+        let root = fixture();
+        // An Agent Plugins v1 root manifest is authoritative for portable
+        // components. Until that full shape is qualified, legacy overlay
+        // presence must not silently turn the bundle into a selectable plugin.
+        fs::write(
+            root.join("plugin.json"),
+            r#"{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"superpowers","version":"1.0.0"}"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("mcp.json"),
+            r#"{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"remote":{"type":"streamable-http","url":"https://example.invalid/mcp"}}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            inspect_plugin_surface(ProviderPluginSemantics::Codex, &root),
+            Err(super::PluginSurfaceError::UnsupportedManifest)
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn claude_mod_module_hooks_are_not_misqualified_as_skill_only() {
+        let root = fixture();
+        fs::remove_dir_all(root.join("agents")).unwrap();
+        fs::remove_dir_all(root.join("commands")).unwrap();
+        fs::remove_file(root.join(".lsp.json")).unwrap();
+        fs::write(
+            root.join(".claude-plugin/plugin.json"),
+            r#"{"name":"superpowers","version":"6.3.0"}"#,
+        )
+        .unwrap();
+        // Claude 2.1.287+ mods use hooks/hooks.json with a modules array
+        // rather than the older events object. File presence alone must
+        // prevent this executable plugin from passing skill-only activation.
+        fs::write(
+            root.join("hooks/hooks.json"),
+            r#"{"modules":["./register.mjs"]}"#,
+        )
+        .unwrap();
+        fs::write(root.join("hooks/register.mjs"), "export function register() {}\n").unwrap();
+
+        let claude = inspect_plugin_surface(ProviderPluginSemantics::Claude, &root).unwrap();
+        assert!(has(&claude.effective, ResourceKind::Skill, "brainstorming"));
+        assert!(has(&claude.effective, ResourceKind::HookSet, "default"));
+        assert!(!claude.activation_eligible);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn codex_absent_hooks_manifest_field_uses_default_hook_file() {
         let root = fixture();
         fs::write(
