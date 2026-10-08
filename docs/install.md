@@ -115,6 +115,24 @@ clroom-codex --help       # executable override for external launchers
 clroom-claude --help      # executable override for external launchers
 ```
 
+## Verify the first clean session
+
+The help/version commands above check command availability; they do **not**
+prove that a real clean provider session starts successfully. From an existing
+project directory where the installed provider already works on its own, start
+`clroom codex` **or** `clroom claude` (whichever provider you use).
+
+Confirm that CLROOM prints its launch summary, then that the provider starts
+its normal interactive session. Project-side files and provider-owned behavior
+are not supposed to disappear. Exit using the provider's normal exit method;
+CLROOM does not install a background service. For a guided check, see the
+[first-run walkthrough](demo.md). If the provider does not start, follow
+[Troubleshooting](troubleshooting.md) instead of changing security settings or
+restoring broad ambient configuration to hide the failure.
+
+This is a user-facing verification procedure, not evidence that independent
+unassisted users have completed onboarding.
+
 To remove an archive or one-line installation, delete the three files under
 `$HOME/.local/bin` (`clroom`, `clroom-codex`, and `clroom-claude`). For Cargo,
 run `cargo uninstall clean-room-launcher`.

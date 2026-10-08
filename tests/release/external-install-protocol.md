@@ -1,6 +1,9 @@
 # External clean-install canary
 
-This is the public first-use contract for the current `v0.2.0` release line.
+This protocol originated in the `v0.2.0` release line and remains a reusable
+public first-use check for the currently published stable release. Resolve the
+exact published release tag and downloadable assets at execution time; this
+historical protocol does not declare `v0.2.0` to be current.
 It replaces the legacy controller-only v0.1 artifact procedure.
 
 ## Pre-publication evidence

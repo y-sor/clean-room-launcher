@@ -25,6 +25,15 @@ clroom claude
 
 Before the provider takes over the terminal, CLROOM prints its launch summary. The useful check is not "everything is gone": project files, project instructions, project-local skills, provider-owned behavior, and managed policy can still exist. CLROOM reports the launch controls it actually owns.
 
+**First-run success check:** after the CLROOM launch summary, the supported
+provider should start its normal interactive session. Verify that the project
+context you intended to keep is available, then exit through the provider's
+normal exit method. A successful `clroom --help` or `--version` alone does not
+prove this full interactive path. If CLROOM refuses the launch or the provider
+does not start, use [Troubleshooting](troubleshooting.md); do not bypass the
+launch restrictions as a workaround. This is a repeatable user check, not a
+claim of independently observed unassisted onboarding.
+
 ## 2. Admit only the personal-global skills this run needs
 
 Choose one skill or a saved set without rewriting the normal provider setup:
