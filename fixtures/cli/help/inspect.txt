@@ -1,10 +1,10 @@
 Clean Room Launcher — inspect
 
-Inspect one skill decision without changing state.
+Inspect the resolved Codex launch without starting a model.
 
-Usage: clroom inspect <skill>
+Usage: clroom inspect codex [CODEX_ARGS...]
 
 Example:
-  clroom inspect skill:rust
+  clroom inspect codex --with=plugin:<id> --with=mcp:<id>
 
 For more: clroom help

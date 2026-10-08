@@ -7,10 +7,16 @@ fail() {
 }
 
 mode=current-all
-if [[ ${1:-} == --codex-only-frozen ]]; then
-  mode=codex-only-frozen
-  shift
-fi
+case ${1:-} in
+  --codex-only-frozen)
+    mode=codex-only-frozen
+    shift
+    ;;
+  --all-frozen)
+    mode=all-frozen
+    shift
+    ;;
+esac
 [[ $# -eq 2 ]] || fail "USAGE"
 provider_root=$1
 env_file=$2
@@ -26,11 +32,17 @@ command -v shasum >/dev/null 2>&1 || fail "SHASUM_REQUIRED"
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 # shellcheck source=provider-pins.sh
 source "$root/scripts/release/provider-pins.sh"
-if [[ "$mode" == codex-only-frozen ]]; then
-  bash "$root/scripts/release/check-provider-pins.sh" --frozen-codex
-else
-  bash "$root/scripts/release/check-provider-pins.sh"
-fi
+case "$mode" in
+  codex-only-frozen)
+    bash "$root/scripts/release/check-provider-pins.sh" --frozen-codex
+    ;;
+  all-frozen)
+    bash "$root/scripts/release/check-provider-pins.sh" --frozen-all
+    ;;
+  current-all)
+    bash "$root/scripts/release/check-provider-pins.sh"
+    ;;
+esac
 
 rm -rf "$provider_root"
 mkdir -p "$provider_root/packs"
@@ -120,7 +132,7 @@ codex_platform_archive=$(pack_and_verify \
   "@openai/codex@$CODEX_VERSION-darwin-arm64" \
   "openai-codex-$CODEX_VERSION-darwin-arm64.tgz" \
   "$CODEX_PLATFORM_SHA512")
-if [[ "$mode" == current-all ]]; then
+if [[ "$mode" != codex-only-frozen ]]; then
   claude_archive=$(pack_and_verify \
     "@anthropic-ai/claude-code@$CLAUDE_VERSION" \
     "anthropic-ai-claude-code-$CLAUDE_VERSION.tgz" \
@@ -133,7 +145,7 @@ fi
 
 safe_extract "$codex_archive" "$provider_root/codex"
 safe_extract "$codex_platform_archive" "$provider_root/codex-platform"
-if [[ "$mode" == current-all ]]; then
+if [[ "$mode" != codex-only-frozen ]]; then
   safe_extract "$claude_archive" "$provider_root/claude"
   safe_extract "$claude_platform_archive" "$provider_root/claude-platform"
 fi
@@ -191,4 +203,4 @@ printf 'CLROOM_PROVIDER_CLAUDE=%s\n' "$claude_canary" >> "$env_file"
 printf 'CLROOM_PROVIDER_CODEX_VERSION=%s\n' "$CODEX_VERSION" >> "$env_file"
 printf 'CLROOM_PROVIDER_CODEX_SHA256=%s\n' "$CODEX_NATIVE_SHA256" >> "$env_file"
 printf 'CLROOM_PROVIDER_CLAUDE_VERSION=%s\n' "$CLAUDE_VERSION" >> "$env_file"
-printf 'PROVIDER_CANARY_PASS codex=%s claude=%s\n' "$CODEX_VERSION" "$CLAUDE_VERSION"
+printf 'PROVIDER_CANARY_PASS mode=%s codex=%s claude=%s\n' "$mode" "$CODEX_VERSION" "$CLAUDE_VERSION"

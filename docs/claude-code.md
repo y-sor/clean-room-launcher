@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Claude Code and CLROOM
-description: How Clean Room Launcher (CLROOM) relates to Claude Code user, project, local and managed settings, CLAUDE.md, skills, safe mode, bare mode, and setting sources.
+description: Compare CLROOM with Claude Code settings, CLAUDE.md, skills, auto-memory, MCP/tool controls, safe/bare modes, subagents, and native alternatives.
 permalink: /claude-code/
 nav_title: Claude Code
 ---
@@ -23,7 +23,7 @@ A simplified view:
 | Project local | `CLAUDE.local.md`, `.claude/settings.local.json` | Retained |
 | Managed / organization | managed settings delivered through supported admin mechanisms | Must remain authoritative |
 
-Current CLROOM source launches Claude with `--setting-sources project,local`, `--strict-mcp-config`, fail-closed sandbox settings, disabled auto-memory, and additional filesystem controls for known personal-global roots. Claude Code 2.1.284 also ships a built-in `agents-md` instruction surface. For this launch, CLROOM treats the nearest real Git `.git` marker as the project instruction boundary (or the launch directory when no such marker exists): `AGENTS.md` and `.claude/AGENTS.md` above that boundary are blocked, while repo-root and nested project instructions remain available.
+Current CLROOM source launches Claude with `--setting-sources project,local`, `--strict-mcp-config`, fail-closed sandbox settings, disabled auto-memory, and additional filesystem controls for known personal-global roots. Claude Code 2.1.293 also ships a built-in `agents-md` instruction surface. For this launch, CLROOM treats the nearest real Git `.git` marker as the project instruction boundary (or the launch directory when no such marker exists): `AGENTS.md` and `.claude/AGENTS.md` above that boundary are blocked, while repo-root and nested project instructions remain available.
 
 The `--strict-mcp-config` flag is intentionally stricter than the project-settings row above. For the current CLROOM launch, ordinary project, user, and other ambient MCP configurations are not loaded. CLROOM does not synthesize an `--mcp-config`; Claude considers MCP servers only when you explicitly supply its own `--mcp-config` argument for that launch. This is an explicit current limitation, not a claim that project MCP configuration is preserved.
 
@@ -41,9 +41,39 @@ internal teammate independently.
 
 For practical workflows, see [Use cases](use-cases.md) and [Skill sets](skill-sets.md).
 
-## v0.4.x: select one installed whole plugin
+## Auto-memory vs a CLROOM clean launch
 
-v0.4.5 includes one bounded whole-plugin selector:
+Claude Code auto-memory is persistent provider-owned state. It can be useful, but it is a different scope from project instructions, user settings, skills, plugins, and MCP configuration.
+
+The current qualified CLROOM Claude path disables auto-memory for the launch. Use that as a diagnostic boundary when you want to ask whether old or shared memory is contributing to the current behavior while leaving the provider's stored memory files untouched.
+
+CLROOM does **not** delete, edit, expire, synchronize, or repair Claude's `MEMORY.md` state. If the goal is to inspect or manage Claude memory itself, prefer Claude's native memory controls. If the goal is a comparison launch where auto-memory does not participate, CLROOM provides that narrower qualified boundary.
+
+## Native Claude skill controls vs CLROOM
+
+Claude Code now exposes useful native controls for individual skills. Anthropic documents `skillOverrides` states such as `name-only`, `user-invocable-only`, and `off`; `disable-model-invocation: true` prevents Claude from auto-invoking a skill and removes its description from the normal skill listing context; and `/skill-doctor` reports skill context cost and usage. Plugin-provided skills are managed separately rather than through `skillOverrides`.
+
+Use those native controls when they solve the actual problem. CLROOM is aimed at a different launch-level boundary: start a session without the ordinary personal-global instruction/skill set participating by default, then admit selected personal-global skills for that launch without rewriting the normal provider setup.
+
+Plugin-provided skills are a distinct case: current Claude Code documentation says `skillOverrides` does not apply to them. Use Claude's plugin manager/evaluation path for plugin-skill questions rather than assuming personal/project skill controls apply inside a plugin.
+
+## Native Claude MCP tool search vs CLROOM
+
+Claude Code now defers MCP tool definitions through native Tool Search on supported provider/model paths. Only tool names and server instructions need to load at session start, and threshold modes such as `ENABLE_TOOL_SEARCH=auto` can switch to deferral when tool definitions consume enough of the context window.
+
+Use that native mechanism when the problem is **tool-definition context overhead inside Claude Code**. CLROOM does not replace Claude's MCP discovery engine and does not claim that selecting fewer CLROOM inputs is a universal substitute for provider-native Tool Search.
+
+CLROOM remains relevant when the boundary is different: which supported personal-global launch inputs participate at all, without rewriting the developer's ordinary setup.
+
+## Native Claude subagent MCP scoping vs CLROOM
+
+Claude Code subagent definitions can narrow inherited tools with `tools` or `disallowedTools`, including MCP server-level patterns. They can also declare `mcpServers`; inline servers can be connected for that subagent and kept out of the parent conversation.
+
+Use those native controls when the problem is **per-subagent tool or MCP scope inside one Claude session**. CLROOM controls top-level launches it owns; it does not rewrite provider-owned subagent definitions. An external runner can still start separate top-level CLROOM processes when each worker needs an independent CLROOM launch boundary.
+
+## Select one installed whole plugin
+
+CLROOM includes one bounded whole-plugin selector:
 
 ```sh
 claude plugin list
@@ -66,7 +96,7 @@ Whole-plugin still means the provider-native bundle is atomic: CLROOM either
 admits the qualified bundle root or refuses the plugin; it does not extract
 individual files or components.
 
-The v0.4.x qualification is intentionally narrower than Claude's full
+The qualified activation path is intentionally narrower than Claude's full
 plugin format. Inventory follows Claude provider semantics broadly enough to
 observe provider-visible plugin surfaces, but activation requires a matching
 `.claude-plugin/plugin.json` identity and only the default one-level
@@ -84,8 +114,8 @@ While a CLROOM resource selection is active, raw `--plugin-dir` and
 `--plugin-url` arguments are refused to avoid two competing activation
 authorities. More than one selected whole plugin is also refused.
 
-v0.4.5 requalifies both the ordinary clean launch and this whole-plugin path on
-the current stable Claude Code `2.1.284` for macOS Apple Silicon. Release
+The ordinary clean launch and this whole-plugin path are exactly qualified on
+the current stable Claude Code `2.1.293` for macOS Apple Silicon. Release
 qualification includes the provider's built-in `agents-md` behavior: AGENTS
 instructions above the Git project boundary must stay outside the launch while
 repo-root and nested project AGENTS remain available even when Claude starts
@@ -93,8 +123,8 @@ from a subdirectory. Qualification fails closed if the npm stable tag moves befo
 the candidate is tagged. The ordinary parser/runtime minimum remains `2.1.223+`.
 
 This Claude slice still does not add standalone MCP resource activation,
-`--with=all`, presets, installation/update/removal, or component-level
-selection. Codex whole-plugin activation is a separate v0.4.5 provider-specific
+`--with=all`, installation/update/removal, or component-level selection.
+CLROOM presets can reuse already-supported top-level Claude launch inputs, but they do not add Claude subagent/inner-session controls or widen plugin qualification. Codex whole-plugin activation is a separate provider-specific
 path; it does not reuse Claude's `--plugin-dir` mechanism.
 
 ## Does CLROOM remove every Claude global or provider-owned input?
@@ -163,8 +193,11 @@ This is also why managed-policy interactions around selected skills require care
 ## Official Anthropic sources
 
 - [Claude Code CLI reference](https://code.claude.com/docs/en/cli-reference)
+- [Claude Code commands (`/memory`, `/mcp`, `/context`, and diagnostics)](https://code.claude.com/docs/en/commands)
 - [Claude Code settings](https://code.claude.com/docs/en/settings)
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
+- [Claude Code MCP](https://code.claude.com/docs/en/mcp)
+- [Claude Code subagents](https://code.claude.com/docs/en/sub-agents)
 - [Claude Code documentation index](https://code.claude.com/docs/llms.txt)
 
-Last verified against current Anthropic documentation: **2026-09-20**.
+Last verified against current Anthropic documentation: **2026-10-06**.

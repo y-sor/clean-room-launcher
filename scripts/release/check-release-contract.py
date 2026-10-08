@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, datetime, fnmatch, hashlib, json, os, re, subprocess, sys, urllib.request
+import argparse, datetime, fnmatch, hashlib, json, os, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -14,32 +14,17 @@ def load_json(path):
 def matches(path, pattern):
     return fnmatch.fnmatchcase(path, pattern) or Path(path).match(pattern)
 
-def github_token():
-    for name in ("GITHUB_TOKEN", "GH_TOKEN"):
-        token = os.environ.get(name)
-        if token:
-            return token
+def latest_published_release(repository, api=run):
     try:
-        token = subprocess.check_output(
-            ["gh", "auth", "token"],
-            cwd=ROOT,
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        return None
-    return token or None
-
-def latest_published_release(repository):
-    req = urllib.request.Request(
-        f"https://api.github.com/repos/{repository}/releases/latest",
-        headers={"Accept":"application/vnd.github+json","User-Agent":"clroom-release-contract-v1"},
-    )
-    token = github_token()
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=20) as response:
-        data = json.load(response)
+        raw = api("gh", "api", f"repos/{repository}/releases/latest")
+    except FileNotFoundError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:GH_REQUIRED") from error
+    except subprocess.CalledProcessError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHED_BASELINE_QUERY") from error
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHED_BASELINE_JSON") from error
     if data.get("draft") or data.get("prerelease"):
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLISHED_BASELINE_NOT_STABLE")
     if not data.get("published_at") or not data.get("tag_name"):
@@ -177,6 +162,21 @@ def public_doc_version_policy(contract):
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_OTHER_ALLOWLIST_KEY:{version}")
         if not isinstance(reason, str) or not reason.strip():
             raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:PUBLIC_DOC_VERSION_ALLOWLIST_REASON:other:{version}")
+    changelog_policy = policy.get("candidate_changelog_version_inventory")
+    if not isinstance(changelog_policy, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_VERSION_POLICY")
+    if changelog_policy.get("current_section") != "active":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_CURRENT_POLICY")
+    if changelog_policy.get("older_sections") != "historical":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_HISTORY_POLICY")
+    references = changelog_policy.get("allowed_release_references")
+    if not isinstance(references, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_RELEASE_REFERENCES")
+    for version, reason in references.items():
+        if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_RELEASE_REFERENCE:{version}")
+        if not isinstance(reason, str) or not reason.strip():
+            raise SystemExit(f"RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_RELEASE_REFERENCE_REASON:{version}")
     return policy
 
 def provider_versions_from_pins(policy):
@@ -202,6 +202,10 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
     if prefix == "v":
         if any(matches(path, pattern) for pattern in historical_product_paths):
             return None
+        if path == "CHANGELOG.md":
+            references = policy["candidate_changelog_version_inventory"]["allowed_release_references"]
+            if version in references:
+                return None
         if version == candidate_version or version in other_allow:
             return None
         return f"STALE_PRODUCT_VERSION:expected={candidate_version}:actual={version}"
@@ -234,6 +238,59 @@ def public_doc_version_violation(path, line, prefix, version, candidate_version,
         return f"STALE_PROVIDER_VERSION:actual={version}:allowed={expected}"
     return None
 
+def public_lifecycle_claim_policy(contract):
+    policy = contract.get("policy", {}).get("public_lifecycle_claims")
+    if not isinstance(policy, dict):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_LIFECYCLE_POLICY")
+    phrases = policy.get("forbidden_volatile_phrases")
+    if not isinstance(phrases, list) or not phrases or any(not isinstance(item, str) or not item for item in phrases):
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_LIFECYCLE_PHRASES")
+    if policy.get("publication_authority") != "GitHub Releases":
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLICATION_AUTHORITY")
+    return policy
+
+def lifecycle_claim_violation(text, policy):
+    for phrase in policy["forbidden_volatile_phrases"]:
+        if phrase in text:
+            return phrase
+    return None
+
+def validate_public_lifecycle_claims(contract):
+    version_policy = public_doc_version_policy(contract)
+    lifecycle_policy = public_lifecycle_claim_policy(contract)
+    tracked = run("git", "ls-files").splitlines()
+    paths = sorted(
+        path
+        for path in tracked
+        if any(matches(path, pattern) for pattern in version_policy["active_globs"])
+        and not any(matches(path, pattern) for pattern in version_policy["historical_exclusions"])
+    )
+    violations = []
+    for path in paths:
+        phrase = lifecycle_claim_violation((ROOT / path).read_text(encoding="utf-8"), lifecycle_policy)
+        if phrase is not None:
+            violations.append((path, phrase))
+    if violations:
+        for path, phrase in violations:
+            print(f"PUBLIC_LIFECYCLE_CLAIM_DRIFT:{path}:{phrase}", file=sys.stderr)
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:PUBLIC_LIFECYCLE_CLAIM_DRIFT")
+    return paths
+
+def candidate_changelog_lines(text, candidate_version):
+    lines = text.splitlines()
+    prefix = f"## [{candidate_version}] - "
+    matches = [index for index, line in enumerate(lines) if line.startswith(prefix)]
+    if len(matches) != 1:
+        raise SystemExit("RELEASE_CONTRACT_BLOCKED:CANDIDATE_CHANGELOG_SECTION")
+    start = matches[0]
+    result = []
+    for index in range(start, len(lines)):
+        line = lines[index]
+        if index > start and line.startswith("## ["):
+            break
+        result.append((index + 1, line))
+    return result
+
 def validate_public_doc_versions(contract, candidate_version):
     policy = public_doc_version_policy(contract)
     pins = provider_versions_from_pins(policy)
@@ -248,7 +305,11 @@ def validate_public_doc_versions(contract, candidate_version):
     violations = []
     for path in paths:
         text = (ROOT / path).read_text(encoding="utf-8")
-        for line_number, line in enumerate(text.splitlines(), start=1):
+        if path == "CHANGELOG.md":
+            source_lines = candidate_changelog_lines(text, candidate_version)
+        else:
+            source_lines = list(enumerate(text.splitlines(), start=1))
+        for line_number, line in source_lines:
             for match in SEMVER_TOKEN.finditer(line):
                 raw = match.group(0)
                 prefix = match.group("prefix")
@@ -316,8 +377,26 @@ def main():
     if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
         raise SystemExit("RELEASE_CONTRACT_BLOCKED:PROMOTION_PREPARE_REHEARSAL_POLICY")
     public_doc_version_policy(contract)
+    public_lifecycle_claim_policy(contract)
 
     if args.self_test:
+        transport_calls = []
+        def fake_release_api(*parts):
+            transport_calls.append(parts)
+            return json.dumps({
+                "tag_name": "v9.8.7",
+                "published_at": "2026-01-02T03:04:05Z",
+                "draft": False,
+                "prerelease": False,
+                "immutable": True,
+            })
+        if latest_published_release("example/project", api=fake_release_api) != (
+            "v9.8.7",
+            "2026-01-02T03:04:05Z",
+        ):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_GH_API_RESULT")
+        if transport_calls != [("gh", "api", "repos/example/project/releases/latest")]:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_GH_API_TRANSPORT")
         sample=["src/cli/mod.rs","Cargo.lock",".github/dependabot.yml",".github/workflows/ci.yml",".github/FUNDING.yml","scripts/release/readiness.sh","scripts/probe/check-sitemap.py","README.md","tests/cli/info.rs"]
         classified, unknown=classify(sample,contract)
         if unknown or any(not classified[p] for p in sample):
@@ -341,6 +420,11 @@ def main():
         if contract.get("policy", {}).get("pretag_promotion_prepare_rehearsal") != "accepted_main_ubuntu_exact_resolver_invocation_required":
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PROMOTION_PREPARE_REHEARSAL_POLICY")
         doc_policy = public_doc_version_policy(contract)
+        lifecycle_policy = public_lifecycle_claim_policy(contract)
+        if lifecycle_claim_violation("Current published stable line", lifecycle_policy) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_VOLATILE_PUBLISHED_STATUS")
+        if lifecycle_claim_violation("Supported source contract; publication status is in GitHub Releases", lifecycle_policy) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_STABLE_PUBLICATION_STATUS")
         if not any(matches("docs/providers.md", pattern) for pattern in doc_policy["active_globs"]):
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_PUBLIC_DOC_ROOT_GLOB")
         if not any(matches("docs/release/RELEASE_CONTRACT.md", pattern) for pattern in doc_policy["active_globs"]):
@@ -386,6 +470,32 @@ def main():
             "0.4.3", fixture_pins, doc_policy
         ) is None:
             raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CONTEXT_FREE_STALE_VERSION")
+        changelog_fixture = """## [0.4.3] - 2026-10-02
+- Codex CLI 0.156.1 exact
+- recovery from `v0.4.4`
+
+## [0.4.2] - 2026-09-20
+- Codex CLI 0.154.0 historical
+"""
+        active_lines = candidate_changelog_lines(changelog_fixture, "0.4.3")
+        if any("0.154.0" in line for _, line in active_lines):
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_HISTORICAL_CHANGELOG_SCANNED")
+        if public_doc_version_violation(
+            "CHANGELOG.md", "Codex CLI 0.156.0 stale", "", "0.156.0",
+            "0.4.3", fixture_pins, doc_policy
+        ) is None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CHANGELOG_STALE_PROVIDER")
+        if public_doc_version_violation(
+            "CHANGELOG.md", "Codex CLI 0.156.1 exact", "", "0.156.1",
+            "0.4.3", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CHANGELOG_PROVIDER")
+        doc_policy["candidate_changelog_version_inventory"]["allowed_release_references"]["0.4.4"] = "fixture baseline"
+        if public_doc_version_violation(
+            "CHANGELOG.md", "recovery from v0.4.4", "v", "0.4.4",
+            "0.4.3", fixture_pins, doc_policy
+        ) is not None:
+            raise SystemExit("RELEASE_CONTRACT_SELF_TEST_FAIL_CURRENT_CHANGELOG_HISTORICAL_REFERENCE")
         validate_public_doc_versions(
             contract,
             __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"],
@@ -464,6 +574,7 @@ def main():
 
     version = __import__("tomllib").loads((ROOT/"Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]
     doc_version_inventory = validate_public_doc_versions(contract, version)
+    validate_public_lifecycle_claims(contract)
     changelog_lines = (ROOT/"CHANGELOG.md").read_text(encoding="utf-8").splitlines()
     try:
         declared_release_date = changelog_release_date(changelog_lines, version)

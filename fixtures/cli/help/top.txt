@@ -12,15 +12,22 @@ Usage
   clroom codex exec [CODEX_ARGS...] Qualified non-interactive Codex exec
   clroom claude [CLAUDE_ARGS...] Launch Claude Code
   clroom claude --with=plugin:<id> Admit one qualified Claude plugin
+  clroom --preset=<name> [ARGS...] Infer provider from a reusable launch preset
   clroom info codex          Inspect provider state
-  Provider options: repeat --pass-env=NAME to admit exact existing environment
-  names. Drop-in commands: clroom-codex and clroom-claude.
+  Launcher options: --preset=name[,name] reuses bounded launch intent; repeat
+  --pass-env=NAME to admit exact existing environment names. Drop-in commands:
+  clroom-codex and clroom-claude.
   clroom doctor --root .     Check installation
 
 Skill sets
   /tmp/clroom-help-config/clroom/skill-sets.yaml
   Open file and create skill groups and reuse them by name, such as
   @any-my-skill-set.
+
+Presets
+  /tmp/clroom-help-config/clroom/presets.yaml
+  Save provider-bounded launch intent once; use --preset=none to bypass user
+  presets.
 
 More
   clroom help <command>

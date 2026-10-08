@@ -19,7 +19,7 @@ grep -Fq -- 'subject-checksums: pretag-stage/SHA256SUMS' "$candidate_workflow" |
 grep -Fq -- 'sbom-path: release-stage/sbom.cdx.json' "$release_workflow" || fail "TAG_SBOM_SUBJECTS"
 grep -Fq -- 'sbom-path: pretag-stage/sbom.cdx.json' "$candidate_workflow" || fail "PRETAG_SBOM_SUBJECTS"
 
-for required in   '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"'   '--source-digest "$GITHUB_SHA"'   '--source-ref "$GITHUB_REF"'   '--deny-self-hosted-runners'   '.provenance.sigstore.json'   '.sbom.sigstore.json'   'release-attestations-v'   'gh release upload'
+for required in   '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"'   '--source-digest "$GITHUB_SHA"'   '--source-ref "$GITHUB_REF"'   '--deny-self-hosted-runners'   '.provenance.sigstore.json'   '.sbom.sigstore.json'   'release-attestations-v'   'python3 scripts/release/release-external-action.py draft-promote'
 do
   grep -Fq -- "$required" "$release_workflow" || fail "TAG_ATTEST_CONTRACT:$required"
 done

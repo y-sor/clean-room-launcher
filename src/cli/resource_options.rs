@@ -16,7 +16,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
     let mut provider_args = Vec::with_capacity(args.len() + 1);
     let mut launcher_options = true;
     let mut raw_chrome_override = false;
-    let mut raw_plugin_activation = false;
+    let mut raw_resource_activation = false;
 
     for argument in args {
         if launcher_options && argument == "--" {
@@ -42,7 +42,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                         || argument.starts_with("--plugin-dir=")
                         || argument.starts_with("--plugin-url=")
                     {
-                        raw_plugin_activation = true;
+                        raw_resource_activation = true;
                     }
                 } else if provider == Provider::Codex
                     && (matches!(
@@ -63,7 +63,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
                         || argument.starts_with("--disable=")
                         || argument.starts_with("--plugin="))
                 {
-                    raw_plugin_activation = true;
+                    raw_resource_activation = true;
                 }
             }
             provider_args.push(argument.clone());
@@ -77,7 +77,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         .any(|target| matches!(target, SelectionTarget::All))
     {
         return Err(
-            "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4: --with=all/--without=all is unavailable in v0.4.x"
+            "CLROOM_RESOURCE_ALL_UNAVAILABLE: --with=all/--without=all is not available in this bounded selector"
                 .to_owned(),
         );
     }
@@ -98,15 +98,15 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
         });
     if unsupported_exact {
         return Err(match provider {
-            Provider::Codex => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin or standalone MCP selection is available in v0.4.x; continue locally",
-            Provider::Claude => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available in v0.4.x; continue locally",
+            Provider::Codex => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin or standalone MCP selection is available; continue locally",
+            Provider::Claude => "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified whole-plugin selection is available; continue locally",
         }
         .to_owned());
     }
 
-    if !request.is_empty() && raw_plugin_activation {
+    if !request.is_empty() && raw_resource_activation {
         return Err(
-            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: raw provider plugin/config activation controls cannot be combined with CLROOM --with/--without selection"
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: raw provider config/plugin/MCP activation controls cannot be combined with CLROOM --with/--without selection"
                 .to_owned(),
         );
     }
@@ -196,7 +196,7 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_resource_kinds_and_all_remain_closed_in_v0_4_x() {
+    fn unsupported_resource_kinds_and_all_remain_closed() {
         for (provider, selector, code) in [
             (
                 Provider::Claude,
@@ -206,7 +206,7 @@ mod tests {
             (
                 Provider::Claude,
                 "--with=all",
-                "CLROOM_RESOURCE_ALL_UNAVAILABLE_IN_V0_4:",
+                "CLROOM_RESOURCE_ALL_UNAVAILABLE:",
             ),
         ] {
             let error = prepare(provider, &strings(&[selector])).unwrap_err();
@@ -215,8 +215,11 @@ mod tests {
 
         let all_error =
             prepare(Provider::Claude, &strings(&["--with=all"])).unwrap_err();
-        assert!(all_error.contains("unavailable in v0.4.x"), "{all_error}");
-        assert!(!all_error.contains("unavailable in v0.4.0"), "{all_error}");
+        assert!(
+            all_error.contains("not available in this bounded selector"),
+            "{all_error}"
+        );
+        assert!(!all_error.contains("v0.4.x"), "{all_error}");
     }
 
     #[test]
@@ -234,6 +237,30 @@ mod tests {
                 id: "local-tools".to_owned(),
             }]
         );
+        assert_eq!(prepared.provider_args, strings(&["--model", "gpt-5"]));
+    }
+
+    #[test]
+    fn codex_plugin_and_mcp_are_preserved_in_one_structured_request() {
+        let prepared = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=plugin:codex-app-tools@openai-bundled",
+                "--with=mcp:local-tools",
+                "--model",
+                "gpt-5",
+            ]),
+        )
+        .unwrap();
+
+        assert!(prepared.request.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::Plugin,
+            id: "codex-app-tools@openai-bundled".to_owned(),
+        }));
+        assert!(prepared.request.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::McpServer,
+            id: "local-tools".to_owned(),
+        }));
         assert_eq!(prepared.provider_args, strings(&["--model", "gpt-5"]));
     }
 
@@ -291,6 +318,20 @@ mod tests {
                 "{flag}: {error}"
             );
         }
+
+        let raw_mcp = prepare(
+            Provider::Codex,
+            &strings(&[
+                "--with=mcp:local-tools",
+                "-c",
+                "mcp_servers.synthetic={command=\"false\"}",
+            ]),
+        )
+        .unwrap_err();
+        assert!(
+            raw_mcp.starts_with("CLROOM_RESOURCE_ACTIVATION_CONFLICT:"),
+            "{raw_mcp}"
+        );
 
         let literal = prepare(
             Provider::Codex,

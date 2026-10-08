@@ -7,6 +7,240 @@ Semantic Versioning after the first public release.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-07
+
+### Added
+
+- Added strict user-owned reusable launch presets in
+  `$XDG_CONFIG_HOME/clroom/presets.yaml` (falling back to
+  `~/.config/clroom/presets.yaml`) with schema `clroom.presets.v1`.
+- Added `--preset=<name>[,...]`, the ordinary implicit `default` preset,
+  the single `none` reset token, and unambiguous provider inference for
+  provider-bounded presets.
+- Added preset reuse of existing CLROOM skill selection, qualified
+  `--with`/`--without` resource selectors, explicit environment-name
+  admission, and literal provider argv through the same launch pipeline.
+- Added preset provenance to `clroom inspect codex` human and JSON output.
+  JSON inspection advances explicitly to `clroom.resolved-launch.v2` rather than
+  changing the v1 schema under an existing identifier.
+
+### Changed
+
+- Current source version advances to `v0.6.0`; publication identity and
+  downloadable artifacts remain authoritative in GitHub Releases until the
+  separate release lifecycle completes.
+- Explicit CLI CLROOM options remain the highest user-controlled launch layer.
+  Ordered preset resource choices are collapsed before the existing
+  qualification path so later preset layers and explicit CLI resource choices
+  can replace earlier preset intent without creating a second resolver.
+- Native Codex profiles, Claude settings/subagent controls, authentication,
+  managed policy, and provider-owned configuration remain provider-native.
+  A CLROOM preset is a saved top-level clean/selective launch intent, not a
+  replacement provider settings framework.
+
+### Security
+
+- Preset parsing is local, size/count bounded, strict-schema, and fail-closed
+  before provider birth for malformed configuration, incompatible providers,
+  sensitive provider arguments, or attempts to smuggle CLROOM-owned controls
+  through provider argv.
+- Presets do not support shell expansion, command substitution, scripts,
+  implicit interpolation, secret values, remote includes/registries, or
+  capability expansion. Unsupported resource/cardinality/provider paths remain
+  unsupported when named by a preset.
+- Zero-auth provider auth/login/logout boundaries remain closed after
+  launcher-owned options are resolved.
+
+### Dependencies
+
+- No runtime or build dependency changes.
+
+
+## [0.5.0] - 2026-10-04
+
+### Added
+
+- Added one typed shared Codex `ResolvedLaunch` truth for bounded resource
+  composition, sanitized human/JSON effective-launch inspection, and the real
+  launch path.
+- Added bounded composition of exactly one qualified installed whole Codex
+  plugin with exactly one qualified root-user standalone stdio MCP server in the
+  same interactive launch.
+- Added exact-candidate real-provider composition rehearsal covering selected
+  plugin and MCP runtime visibility, sibling exclusion, environment admission,
+  source drift, and task-owned lifecycle closure.
+
+### Changed
+
+- Codex resource planning now resolves plugin and standalone MCP selections from
+  one structured request, composes provider activation deterministically, and
+  action-time revalidates every selected source before provider birth.
+- Raw provider config/plugin/MCP activation controls remain mutually exclusive
+  with CLROOM resource selection, preserving one activation authority.
+- Effective launch inspection reports only bounded identities, decisions,
+  qualification state, admitted environment-variable names, boundary controls,
+  and a redacted provider-argv count; provider arguments, secret values and
+  private paths are not emitted.
+
+### Security
+
+- A source change on either side of a composed Codex launch invalidates the
+  whole resolved launch. Plugin/MCP identity overlap and ambient MCP sibling
+  layers fail closed.
+- Literal MCP environment values remain refused; every MCP environment-variable
+  reference still requires explicit `--pass-env=NAME` admission.
+- Composition does not add persistent provider configuration mutation,
+  marketplace/network installation, remote/OAuth MCP, multiple plugins or MCP
+  servers, Claude standalone MCP, `--with=all`, presets, or component-level
+  plugin surgery.
+
+### Dependencies
+
+- No runtime or build dependency changes.
+
+## [0.4.7] - 2026-10-04
+
+### Added
+
+- Added bounded standalone Codex MCP selection for one exact root-user stdio
+  server per interactive launch, with fail-closed environment admission,
+  layer-conflict checks, source revalidation, real-provider initialization and
+  task-owned lifecycle closure.
+- Added pre-tag publishable-surface closure: exact release facts, rendered
+  release notes and the publish preview are materialized, semantically checked
+  against authoritative product/provider facts, content-addressed and required
+  by release topology before a protected tag can be created.
+- Added canonical guarded tag, Draft and publish action paths with authoritative
+  reconciliation for ambiguous local outcomes, plus post-public verification of
+  the real `releases/latest/download` installer route and an isolated install.
+- Added independent Bing site verification to the generated documentation head,
+  with repository tests rejecting a missing or placeholder verification value.
+
+### Changed
+
+- Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
+  Claude Code `2.1.289`, with registry/package/native identities frozen into
+  accepted pre-tag evidence.
+- A consumed protected release identity now resolves to
+  `RELEASE_QUARANTINED`: release-only candidate lanes remain disabled for that
+  identity while ordinary source/docs/CI maintenance continues through normal
+  protected-PR gates. A fresh version whose tag is absent returns to the full
+  `ACTIVE_CANDIDATE` topology.
+- IndexNow keeps the same-SHA CI + Pages success dependency but removes the
+  duplicate fixed polling deadline; the job-level bounded timeout is the single
+  deadline and actual dependency failures still fail immediately.
+- The current candidate changelog section remains active semantic release input.
+  Older changelog sections are historical, while current publishable claims are
+  validated against the exact candidate/provider facts.
+- Tightens the site and homepage discovery descriptions to a concise CLROOM
+  positioning while preserving the product/provider/project-context signals
+  enforced by discovery-surface regression tests.
+
+### Fixed
+
+- The protected `v0.4.5` and `v0.4.6` tags and their unpublished Drafts
+  remain incident evidence. They are not moved, reused, manually rewritten or
+  promoted; this recovery advances under the fresh `v0.4.7` identity from the
+  published `v0.4.4` baseline.
+- Draft promotion no longer interprets an arbitrary release-by-tag lookup
+  failure as proof of absence. The canonical helper proves absence through the
+  authenticated release collection, fails closed on uncertainty, and recovers
+  existing matching Drafts by numeric release ID.
+- Tag push, Draft create/edit/upload and publish transitions reconcile the
+  authoritative destination after simulated or real local post-action errors,
+  preventing blind retries after an effect may already have succeeded.
+- Guarded publication remains exact-source-bound: accepted main, protected tag
+  target, staged bytes and Draft identity must agree immediately before the one
+  publish transition, so an older incident Draft cannot be promoted after main
+  has moved.
+- Release quarantine is enforced at the release boundary instead of by a
+  repository-wide path allowlist, preventing both consumed-identity reuse and
+  accidental freezing of unrelated protected development.
+
+### Dependencies
+
+- The runtime delta from published `v0.4.4` includes bounded TOML parsing for
+  standalone Codex MCP configuration. The `v0.4.7` recovery adds no further
+  runtime or build dependency.
+
+### Security
+
+- Before a protected tag, the exact public body/title/state/asset contract is
+  rendered and bound to structured provider/product/platform facts; stale or
+  unclassified volatile claims block the candidate even when file hashes match.
+- Release-system first-execution closure now covers the canonical external
+  action branches before a product tag is consumed, including failure/ambiguity
+  reconciliation. Tag and publish remain separate Owner-authorized boundaries.
+- Publication is executed through one checked-in helper that re-verifies the
+  Draft and action-time fingerprint immediately before the irreversible
+  transition, then reconciles the published object. Public-route install
+  verification remains a distinct post-publication state.
+
+## [0.4.6] - 2026-10-02
+
+### Added
+
+- Added bounded standalone Codex MCP selection for one exact root-user stdio
+  server per interactive launch, with fail-closed environment admission,
+  layer-conflict checks, source revalidation, real-provider initialization and
+  task-owned lifecycle closure.
+- Added pre-tag publishable-surface closure: exact release facts, rendered
+  release notes and the publish preview are materialized, semantically checked
+  against authoritative product/provider facts, content-addressed and required
+  by release topology before a protected tag can be created.
+- Added a canonical guarded publish action plus post-public verification of the
+  real `releases/latest/download` installer route and an isolated install.
+
+### Changed
+
+- Advances exact macOS Apple Silicon qualification to Codex `0.160.0` and
+  Claude Code `2.1.288`, with registry/package/native identities frozen into
+  accepted pre-tag evidence.
+- The current candidate changelog section is now active release input. Older
+  changelog sections remain historical, but they can no longer exempt the
+  current publishable section from provider/product version validation.
+- Draft reconciliation now binds title, body, draft/prerelease state and asset
+  set to the exact accepted pre-tag publish preview; post-tag automation remains
+  promotion-only and does not introduce first-time semantic/provider/build gates.
+
+### Fixed
+
+- Closed the release-harness defect that allowed byte-perfect staged notes to
+  contain stale provider claims. Hash equality now proves identity only;
+  machine-verifiable public claims receive an independent semantic PASS before
+  tag creation.
+- Exact shipped clean/plugin provider tuples are now machine-bound to the
+  canonical release provider pins. A provider refresh that updates package
+  identities but leaves product qualification constants stale fails readiness
+  before local human-TTY rehearsal.
+- The protected `v0.4.5` tag and Draft remain unpublished incident evidence.
+  They are not moved, reused, manually rewritten or promoted; this recovery
+  advances under the new `v0.4.6` identity from published baseline `v0.4.4`.
+- Release-required topology and the tag helper now fail closed if the distinct
+  publishable-content semantic predecessor/evidence is absent or unsuccessful.
+- Claude clean/selected human-TTY evidence now requires an explicit
+  pre-launch readiness acknowledgement while the operator is looking at the
+  terminal. The acknowledgement is consumed before Claude starts, never reaches
+  provider stdin, is bound into evidence schema v6, and post-hoc confirmations
+  without that readiness evidence are rejected.
+
+### Dependencies
+
+- The runtime delta from published `v0.4.4` includes bounded TOML parsing for
+  standalone Codex MCP configuration. The `v0.4.6` recovery adds no further
+  runtime or build dependency.
+
+### Security
+
+- Before a protected tag, the exact public body/title/state/asset contract is
+  rendered and bound to structured provider/product/platform facts; stale or
+  unclassified volatile claims block the candidate even when all file hashes
+  are correct.
+- Publication is a separate Owner gate executed through one checked-in helper
+  that re-verifies the Draft and action-time fingerprint immediately before the
+  irreversible transition, then reconciles the published object. Public-route
+  install verification remains a separate post-publication state.
+
 ## [0.4.5] - 2026-09-29
 
 ### Added
@@ -51,6 +285,10 @@ Semantic Versioning after the first public release.
 - The standalone-MCP source-mutation rehearsal is event-driven on macOS so the
   TOCTOU negative fails on the actual preflight creation seam instead of a
   polling race.
+- The source-mutation provider observer is bound to the task-owned preflight
+  directory lifecycle rather than provider argv spelling: provider processes
+  inside preflight are classified as machine preflight, while any non-version
+  provider birth after preflight teardown remains a fail-closed escape.
 
 ## [0.4.4] - 2026-09-23
 

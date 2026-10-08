@@ -168,10 +168,9 @@ jobs:
           python3 scripts/release/verify-pretag-stage.py             --dir release-stage             --version "${{ needs.prepare.outputs.version }}"             --source-head "$GITHUB_SHA"             --codex-version "$CODEX_VERSION"             --claude-version "$CLAUDE_VERSION"
           test -s "release-attestations/${{ needs.prepare.outputs.artifact_name }}.provenance.sigstore.json"
           test -s "release-attestations/${{ needs.prepare.outputs.artifact_name }}.sbom.sigstore.json"
-      - name: Create or refresh Draft using accepted bytes only
+      - name: Promote Draft through canonical external action path
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.prepare.outputs.version }}
           PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
           ARTIFACT: ${{ needs.prepare.outputs.artifact_name }}
         shell: bash
@@ -179,61 +178,48 @@ jobs:
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
           title="$tag — Clean Room Launcher"
-          if gh release view "$tag" --json isDraft,isPrerelease,tagName >/tmp/clroom-release.json 2>/dev/null; then
-            test "$(jq -r .isDraft /tmp/clroom-release.json)" = true
-            test "$(jq -r .tagName /tmp/clroom-release.json)" = "$tag"
-            test "$(jq -r .isPrerelease /tmp/clroom-release.json)" = "$PRERELEASE"
-            gh release edit "$tag" --title "$title" --notes-file release-stage/release-notes.md
-          else
-            args=(release create "$tag" --draft --verify-tag --title "$title" --notes-file release-stage/release-notes.md)
-            if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
-            gh "${args[@]}"
-          fi
-          gh release upload "$tag"             "release-stage/$ARTIFACT"             release-stage/SHA256SUMS             release-stage/sbom.cdx.json             release-stage/install.sh             "release-attestations/$ARTIFACT.provenance.sigstore.json"             "release-attestations/$ARTIFACT.sbom.sigstore.json"             --clobber
-      - name: Reconcile Draft bytes against accepted pre-tag manifest
+          args=(
+            python3 scripts/release/release-external-action.py draft-promote
+            --repository "$GITHUB_REPOSITORY"
+            --tag "$tag"
+            --title "$title"
+            --notes-file release-stage/release-notes.md
+            --preview-json release-stage/publish-preview.json
+            --asset "release-stage/$ARTIFACT"
+            --asset release-stage/SHA256SUMS
+            --asset release-stage/sbom.cdx.json
+            --asset release-stage/install.sh
+            --asset "release-attestations/$ARTIFACT.provenance.sigstore.json"
+            --asset "release-attestations/$ARTIFACT.sbom.sigstore.json"
+            --download-dir "$RUNNER_TEMP/draft-reconcile/assets"
+          )
+          if [[ "$PRERELEASE" == true ]]; then args+=(--prerelease); fi
+          "${args[@]}"
+      - name: Verify tag-bound attestations on reconciled Draft bytes
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.prepare.outputs.version }}
           ARTIFACT: ${{ needs.prepare.outputs.artifact_name }}
         shell: bash
         run: |
           set -euo pipefail
           tmp="$RUNNER_TEMP/draft-reconcile"
-          rm -rf "$tmp"
-          mkdir -p "$tmp"
-          gh release view "$GITHUB_REF_NAME" --json tagName,name,isDraft,isPrerelease,assets >"$tmp/release.json"
-          python3 - "$tmp/release.json" "$GITHUB_REF_NAME" "$VERSION" "${{ needs.prepare.outputs.prerelease }}" <<'PY'
-          import json, sys
-          path, tag, version, prerelease = sys.argv[1:]
-          data = json.load(open(path, encoding="utf-8"))
-          if data.get("tagName") != tag or data.get("name") != f"{tag} — Clean Room Launcher":
-              raise SystemExit("release-identity")
-          if data.get("isDraft") is not True or data.get("isPrerelease") is not (prerelease == "true"):
-              raise SystemExit("release-state")
-          expected = {
-              f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz",
-              f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.provenance.sigstore.json",
-              f"clean-room-launcher-v{version}-aarch64-apple-darwin.tar.gz.sbom.sigstore.json",
-              "install.sh", "sbom.cdx.json", "SHA256SUMS",
-          }
-          actual = {item.get("name") for item in data.get("assets", [])}
-          if actual != expected:
-              raise SystemExit("asset-set:" + repr(sorted(actual)))
-          PY
-          gh release download "$GITHUB_REF_NAME" --dir "$tmp/assets"
-          python3 - release-stage/pretag-manifest.json "$tmp/assets" <<'PY'
-          import hashlib, json, pathlib, sys
-          manifest = json.load(open(sys.argv[1], encoding="utf-8"))
-          root = pathlib.Path(sys.argv[2])
-          for name in (manifest["artifact_name"], "SHA256SUMS", "sbom.cdx.json", "install.sh"):
-              h = hashlib.sha256((root / name).read_bytes()).hexdigest()
-              if h != manifest["files"][name]:
-                  raise SystemExit("byte-drift:" + name)
-          PY
           provenance="$tmp/assets/$ARTIFACT.provenance.sigstore.json"
           sbom="$tmp/assets/$ARTIFACT.sbom.sigstore.json"
           for subject in "$ARTIFACT" sbom.cdx.json install.sh; do
-            gh attestation verify "$tmp/assets/$subject"               -R "$GITHUB_REPOSITORY"               --bundle "$provenance"               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"               --source-digest "$GITHUB_SHA"               --source-ref "$GITHUB_REF"               --deny-self-hosted-runners
+            gh attestation verify "$tmp/assets/$subject" \
+              -R "$GITHUB_REPOSITORY" \
+              --bundle "$provenance" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners
           done
-          gh attestation verify "$tmp/assets/$ARTIFACT"             -R "$GITHUB_REPOSITORY"             --bundle "$sbom"             --predicate-type https://cyclonedx.org/bom             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"             --source-digest "$GITHUB_SHA"             --source-ref "$GITHUB_REF"             --deny-self-hosted-runners
+          gh attestation verify "$tmp/assets/$ARTIFACT" \
+            -R "$GITHUB_REPOSITORY" \
+            --bundle "$sbom" \
+            --predicate-type https://cyclonedx.org/bom \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --deny-self-hosted-runners
           echo "DRAFT_PROMOTION_RECONCILE_PASS tag=$GITHUB_REF_NAME source=$GITHUB_SHA"

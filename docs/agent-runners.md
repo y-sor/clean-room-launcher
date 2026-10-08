@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Use CLROOM from coding-agent runners, orchestrators, scripts, and CI
-description: Launch Codex and Claude Code workers with a clean/selective per-run setup and task-specific global skills while keeping project context and the developer's normal setup intact.
+title: CLROOM for coding-agent runners, scripts, and CI
+description: Use CLROOM from runners, scripts, and CI to start Codex or Claude Code workers with per-run skills and qualified Codex plugin/MCP inputs.
 permalink: /agent-runners/
 nav_title: Agent runners
 ---
@@ -57,13 +57,21 @@ The launch is session-specific. CLROOM does not rewrite ordinary Codex or Claude
 <a id="different-capabilities-per-worker"></a>
 ## Different capabilities per worker
 
-Different workers can receive different skill sets:
+Different workers can receive different skill sets or reusable CLROOM launch presets:
 
 ```sh
 clroom codex --skill-set=@planning
-clroom codex --skill-set=@review
-clroom claude --skill-set=@debugging
+clroom codex --preset=review
+clroom claude --preset=debugging
 ```
+
+A preset belongs to the top-level CLROOM launch. It can reuse the already-supported skill/resource/environment selections and literal provider argv without turning the outer runner into a CLROOM-specific SDK. The runner still owns roles, scheduling, retries, worktrees, and session lifecycle.
+
+On the current qualified Codex path, independently launched workers can also differ in the bounded provider resources admitted for that process. For example, one worker can start with a selected standalone stdio MCP while another uses the ordinary clean launch; a supported worker can also use the bounded one-plugin + one-MCP composition described in the Codex guide.
+
+That per-process boundary matters when an external runner owns separate provider processes. It does **not** mean CLROOM rewrites provider-owned subagent definitions inside one already-running provider session.
+
+Claude Code now has native subagent controls for that inner boundary: `tools` / `disallowedTools` can narrow a subagent's inherited tool pool, including MCP server-level patterns, and `mcpServers` can give a subagent servers that are not present in the parent conversation. Prefer those Claude-native controls when the requirement lives inside one Claude session; use separate CLROOM launches when the orchestration layer owns separate workers and needs an independent per-process CLROOM boundary.
 
 Project-local skills remain part of the project. `--skill-set` controls the personal-global skills CLROOM deliberately adds for that launch.
 
@@ -75,12 +83,14 @@ A fresh worker avoids inheriting assumptions from an earlier conversation. A res
 <a id="claude-code-and-codex"></a>
 ## Claude Code and Codex
 
-Codex and Claude Code expose different flags, configuration files, skill locations, MCP behavior, and session mechanisms. CLROOM provides one narrow shared idea: start the installed provider with a clean/selective session setup, then add only the personal-global skills this worker needs.
+Codex and Claude Code expose different flags, configuration files, skill locations, MCP behavior, and session mechanisms. CLROOM provides one narrow shared idea: start the installed provider with a clean/selective session setup, then deliberately add the supported personal-global inputs this worker needs. Resource activation remains provider-specific; current Codex qualification is broader than Claude's and must not be generalized across providers.
 
 <a id="subagents-and-agent-teams"></a>
 ## Separate worker processes vs provider-owned subagents
 
-A separate `clroom codex ...` or `clroom claude ...` process gets its own CLROOM launch. Provider-owned subagents or agent-team teammates are created inside the provider session and follow that provider's inheritance and scoping rules. A top-level CLROOM skill choice does not automatically create a different skill set for every internal teammate. Use independently launched worker processes when you need independently controlled inputs.
+A separate `clroom codex ...` or `clroom claude ...` process gets its own CLROOM launch. Provider-owned subagents or agent-team teammates are created inside the provider session and follow that provider's own current inheritance and scoping rules. A top-level CLROOM skill choice does not automatically create a different skill set for every internal teammate.
+
+For Claude Code specifically, native subagent definitions can narrow tools and MCP access or attach MCP servers to that subagent. Use that provider-native mechanism for inner-session specialization. Use independently launched CLROOM worker processes when the outer runner needs independently controlled launch boundaries, provider lifecycles, or CLROOM-selected top-level inputs.
 
 <a id="symlinked-shared-skills"></a>
 ## Shared skill libraries and symlinks
@@ -96,6 +106,7 @@ CLROOM does not provide worker scheduling or queues, git worktree management, mo
 - [Problem index](problem-index.md)
 - [Use cases](use-cases.md)
 - [Skill sets](skill-sets.md)
+- [Presets](presets.md)
 - [Claude Code](claude-code.md)
 - [Codex](codex.md)
 - [Configuration matrix](configuration-matrix.md)

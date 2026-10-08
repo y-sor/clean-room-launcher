@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Codex and CLROOM
-description: How Clean Room Launcher (CLROOM) relates to Codex global and project AGENTS.md, CODEX_HOME, profiles, skills, and session-specific clean launches.
+description: Use CLROOM with Codex for clean/selective launches, global vs project AGENTS.md, skills, bounded plugin/MCP selection, CODEX_HOME alternatives, and inspection.
 permalink: /codex/
 nav_title: Codex
 ---
@@ -33,11 +33,13 @@ CLROOM is useful when you want a repeatable per-launch clean/selective setup wit
 
 ## Codex profiles vs CLROOM
 
-Codex profiles are useful for reusable configuration values.
+Current Codex supports reusable configuration profiles selected with `--profile profile-name`. The profile is a provider-native configuration layer (for example `$CODEX_HOME/profile-name.config.toml`) and participates in Codex's own configuration precedence together with project, user, cloud-managed, system, and CLI layers.
 
-That is not automatically the same problem as controlling which personal-global instructions and skill contents can participate in a session.
+Use a Codex profile when the problem is **reusing Codex configuration values**. Project-level `.codex/config.toml` and managed configuration can also be the right native answer when the desired settings belong to a repository or organization.
 
-Use a profile when a profile solves the actual problem. Use CLROOM when the problem is per-launch composition of known personal-global inputs.
+That is not the same contract as CLROOM's current clean/selective launch boundary. CLROOM's shipped skill/resource selectors are aimed at deciding which supported personal-global inputs participate in this run without turning a provider profile into a second CLROOM configuration authority.
+
+CLROOM v0.6 keeps that distinction explicit. A CLROOM preset saves top-level CLROOM launch intent—supported skill/resource selectors, admitted environment-variable names, and literal provider argv—and compiles it into the same qualified launch path. It does not define typed copies of Codex model/reasoning/approval/sandbox/agent-role settings. Use [Presets](presets.md) for the exact schema and precedence.
 
 ## Skills are separate from `AGENTS.md`
 
@@ -68,79 +70,88 @@ CLROOM preflights this capability and injects the flag for its qualified
 selected-skill inventory. Interactive Codex uses the same existing isolation
 path without that exec-only flag.
 
-## v0.4.5: select one installed whole plugin
+## Select one installed whole plugin
 
-The v0.4.5 source adds one bounded Codex whole-plugin selector for the
-interactive launch path:
+CLROOM admits at most one provider-native installed Codex plugin for an
+interactive launch:
 
 ```sh
 codex plugin list --json
 clroom codex --with=plugin:plugin-name@marketplace-name
 ```
 
-The selector preserves Codex's provider-native plugin ID and admits at most one
-already-installed bundle for that launch. CLROOM does not install, update,
-remove, or refresh plugins or marketplaces.
+The selected bundle is source-bound, revalidated, projected alone into the
+private shadow `CODEX_HOME` `PluginStore`, made non-writable, and enabled only
+for that process. Sibling plugins remain absent. CLROOM does not install, update,
+remove, or refresh plugins or marketplaces. App-owned `codex_app` surfaces
+remain `HOST_REQUIRED` rather than being emulated outside the Codex Desktop
+host.
 
-For a selected launch, CLROOM revalidates the exact installed source bundle,
-copies only that bundle into its existing private shadow `CODEX_HOME`
-`PluginStore`, makes the projection non-writable, keeps sibling plugins absent,
-and enables only that plugin through session-layer Codex configuration.
-`features.apps`, `features.hooks`, and `features.remote_plugin` remain off.
-The following ordinary clean launch removes only the verified CLROOM-owned
-projection and does not inherit the selected plugin.
+OpenAI's current plugin documentation also describes a portable package format with root `plugin.json`, optional `skills/` and `mcp.json`, plus `.codex-plugin/plugin.json` as a compatibility fallback. That upstream packaging evolution does not automatically widen CLROOM support: the current activation claim remains bound to the exact installed provider-native surface and provider tuple that CLROOM qualified.
 
-Raw Codex configuration/plugin controls such as `-c`, `--config`,
-`--profile`, `--enable`, `--disable`, and `--plugin` are refused while a
-CLROOM plugin selection is active, so there is only one activation authority.
+## Select one standalone stdio MCP server
 
-The exact v0.4.5 qualification target is Codex CLI `0.159.0` on macOS Apple
-Silicon. Release qualification uses a task-owned standalone MCP plugin fixture
-with the real provider and requires provider startup, MCP `initialize`,
-`tools/list` with at least one tool, and a real fixture tool call; `mcp list`
-alone is not runtime evidence. A plugin exposing the app-owned `codex_app` MCP
-surface is classified `HOST_REQUIRED` and fails closed in standalone CLROOM
-rather than emulating the Codex Desktop host. Evidence remains bound to exact
-candidate and provider bytes. The ordinary parser/runtime minimum remains
-`0.147.0+`.
-
-This whole-plugin path does not add multi-plugin selection, `--with=all`,
-component-level plugin surgery, persistent Codex configuration mutation, or
-marketplace installation/update behavior.
-
-## v0.4.5: select one standalone stdio MCP server
-
-v0.4.5 adds a separate bounded standalone MCP path:
+CLROOM also admits exactly one root-user `mcp_servers.<id>` entry:
 
 ```sh
 clroom codex --with=mcp:my-server
 clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
 ```
 
-The selector resolves exactly one root-user `mcp_servers.<id>` entry from the
-ambient Codex `config.toml`. It accepts only stdio definitions with a command,
-string arguments, an optional absolute `cwd`, and plain environment-variable
-name references. Literal `env` values, structured/remote environment sources,
-HTTP transports, OAuth/helper fields, interpolation in identity fields, extra
-security-sensitive fields, multiple MCP selectors, and MCP/plugin mixing fail
-closed.
+Only bounded stdio definitions are qualified. Literal environment values,
+structured/remote environment sources, HTTP transports, OAuth/helper fields,
+identity-field interpolation, extra security-sensitive fields, and relative MCP
+working directories fail closed. Each plain environment-variable name referenced
+by the MCP must also be explicitly admitted with `--pass-env=NAME`; values are
+never stored or printed.
 
-Environment references are two-keyed: the MCP definition must name the variable,
-and the same name must be explicitly admitted with `--pass-env=NAME`. CLROOM
-never stores or prints the value.
+The selected definition is a session-layer override. The ambient file is not
+rewritten. Before provider birth CLROOM performs a no-model Codex
+`config/read` preflight and refuses active non-session MCP layers. The selected
+source remains digest-bound and is re-read before the real launch.
 
-The selected definition becomes only a session-layer Codex override; the
-ambient file is not copied or rewritten. Immediately before provider birth,
-CLROOM starts a no-model Codex app-server preflight with a private temporary
-SQLite home and asks `config/read` for the active layers. The probe retains only
-layer kind, disabled state, and MCP-key presence. It requires the selected MCP
-to exist in `SessionFlags` and refuses any enabled non-session MCP layer. The
-ambient selected source is digest-bound and re-read before the main provider
-launch.
+If your problem is a large ambient MCP/tool inventory, start with Codex's own current MCP configuration/status surfaces, such as `codex mcp list`, and the provider documentation for the installed Codex version. OpenAI also documents deferred tool search in its API/agent runtimes, but that is a separate product surface and must not be projected onto the qualified Codex CLI path without evidence.
 
-Release qualification for this path requires exact-candidate macOS real-provider
-rehearsal against pinned Codex CLI `0.159.0`. Claude standalone MCP is not part
-of this slice.
+CLROOM's narrower value is per-launch selection: the clean path does not rewrite the normal user configuration, and the qualified resource path can deliberately admit one supported standalone stdio MCP for this run. That can reduce configuration ambiguity, but it is not a claim of universal lazy MCP loading or control over every provider-owned tool surface.
+
+## Configuration presence vs runtime MCP tool availability
+
+A configured or initialized MCP server is not automatically the same thing as tools being visible and callable in the active Codex session. Provider runtime mode, model/tool-discovery behavior, host surface, authentication, and upstream regressions can affect the final tool-exposure step.
+
+CLROOM's selected-MCP preflight and `clroom inspect codex ...` prove only the bounded launch/configuration facts they own. They do not claim that every provider host or later runtime state will expose a configured tool successfully. When the symptom is **"the MCP is configured but the model cannot call its tools,"** use current Codex MCP/status/tool-discovery diagnostics as well as the CLROOM launch evidence.
+
+## Compose one plugin with one standalone MCP
+
+The current source resolves both bounded selectors in one interactive launch:
+
+```sh
+clroom codex \
+  --with=plugin:plugin-name@marketplace-name \
+  --with=mcp:my-server \
+  --pass-env=MY_TOKEN
+```
+
+One typed resolved launch owns the plugin plan, MCP plan, environment-name
+admissions, deterministic provider-argument composition and final source
+revalidation. A source change on either side invalidates the whole launch.
+Plugin/MCP identity overlap fails closed. Raw Codex configuration/plugin/MCP
+activation controls are refused while CLROOM selection is active so there is
+only one activation authority.
+
+The exact qualification target for these Codex resource paths is Codex CLI `0.161.0` on macOS Apple Silicon. Multiple plugins, multiple standalone MCP
+servers, `--with=all`, component-level plugin surgery, persistent provider
+configuration mutation, remote/OAuth MCP and marketplace installation/update
+remain outside this bounded slice. Claude standalone MCP is not qualified.
+
+## Inspect the effective Codex launch
+
+`clroom inspect codex ...` uses the same resolved-launch planning truth as the
+real launch. Use `clroom --output json inspect codex ...` for the machine
+representation. Both surfaces expose bounded resource identities, decisions,
+qualification state, admitted environment-variable names and boundary controls
+while provider argument values, secret values and private source paths remain
+redacted.
+
 
 ## Is CLROOM a way around managed Codex controls?
 
@@ -153,8 +164,9 @@ Administrator-managed behavior belongs to a different control plane from the per
 - [Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md/)
 - [Codex configuration reference](https://developers.openai.com/codex/config-reference/)
 - [Build skills](https://developers.openai.com/codex/skills/)
+- [Package plugins](https://developers.openai.com/plugins/build/plugins)
 - [OpenAI developer documentation index](https://developers.openai.com/llms.txt)
 
 The `developers.openai.com` Codex URLs can redirect to their current ChatGPT Learn canonical pages.
 
-Last verified against current OpenAI documentation: **2026-09-07**.
+Last verified against current OpenAI documentation: **2026-10-06**.

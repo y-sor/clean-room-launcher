@@ -15,7 +15,9 @@
 
 <p align="center">
   <a href="https://y-sor.github.io/clean-room-launcher/">Documentation →</a> ·
-  <a href="docs/demo.md">Read the clean-launch walkthrough →</a>
+  <a href="docs/demo.md">Read the clean-launch walkthrough →</a> ·
+  <a href="docs/verify-release.md">Verify a release →</a> ·
+  <a href="docs/SUPPORT.md">Support →</a>
 </p>
 
 Maintained by [Yevgeniy Sorokin](https://yevgeniy-sorokin.pages.dev/) ([GitHub](https://github.com/ewgenij87snwork)).
@@ -42,6 +44,8 @@ Maintained by [Yevgeniy Sorokin](https://yevgeniy-sorokin.pages.dev/) ([GitHub](
 CLROOM starts the installed `codex` or `claude` CLI without rewriting the setup you normally use. Project files, project instructions, and project-local skills stay available. Known unrelated personal-global instructions and global skills you did not select stay out of that launch.
 
 Use `clroom codex` or `clroom claude` directly, choose reusable skill sets for different kinds of work, or put CLROOM underneath software that starts coding-agent processes.
+
+On the current qualified Codex path, a launch can also combine one already-installed whole plugin with one standalone stdio MCP server, and `clroom inspect codex ...` can show the sanitized resolved launch before the provider starts.
 
 Each independently launched worker can get a different CLROOM setup while the outer tool keeps ownership of roles, missions, scheduling, worktrees, session reuse, and coordination.
 
@@ -109,6 +113,59 @@ feature-planning:
 
 </details>
 
+## Reuse the whole CLROOM launch intent
+
+Skill sets save only a group of personal-global skills. **Presets** save the broader
+CLROOM-owned launch intent: supported skill selection, qualified resource selectors,
+admitted environment-variable names, and literal provider arguments.
+
+The normal file is:
+
+```text
+~/.config/clroom/presets.yaml
+```
+
+A minimal example:
+
+```yaml
+schema: clroom.presets.v1
+presets:
+  review:
+    default-provider: codex
+    providers:
+      codex: {}
+      claude: {}
+    skill-set:
+      - "@review"
+    pass-env:
+      - REVIEW_TOKEN
+```
+
+Then reuse it:
+
+```sh
+clroom codex --preset=review
+clroom claude --preset=review
+clroom --preset=review
+clroom codex --preset=none
+```
+
+An explicit provider wins. Without one, provider inference must be unambiguous.
+The special `none` token resets preset layers. Presets compile into the same
+existing CLROOM skill/resource/environment/qualification path; they do not create
+a second launcher or silently widen provider support.
+
+A CLROOM preset is **not** a Codex profile or Claude settings system. Use native
+provider configuration when the reusable object is provider settings. Presets are
+for reusable top-level CLROOM clean/selective launch intent.
+
+Provider arguments in presets are literal argv elements, never shell strings.
+Preset files do not support scripts, command substitution, interpolation, secret
+values, remote includes, or new provider capabilities.
+
+See [Presets](docs/presets.md) for schema, precedence, security behavior, and the
+exact distinction from provider-native profiles.
+
 ## See the clean launch as Codex starts
 
 Run `clroom codex --skill-set=my-skill,@my-skill-set` from the directory where
@@ -123,7 +180,7 @@ summary of the active filesystem restrictions:
 - developer instructions and notifications are cleared by default.
 
 ```text
-╓──○──╖ ╭─ CLEAN ROOM ─ v0.4.5 ─────────╮
+╓──○──╖ ╭─ CLEAN ROOM ─ v0.6.0 ─────────╮
 ║░░░░░║⠒│                               │
 ║░░░░░║⠒│     Global AGENTS.md  off     │
 ║░░░░░║⠒│     Global skills    3 on     │
@@ -167,8 +224,7 @@ If `~/.local/bin` is not in `PATH`, the installer tells you what to add.
 The macOS release archive is unsigned and unnotarized. Do not disable Gatekeeper
 globally to run it.
 
-See the [install guide](docs/install.md) for manual archive verification, Cargo
-installation, removal, and provider checks.
+See the [install guide](docs/install.md) for installation and removal. Before executing downloaded release artifacts, use the [release verification guide](docs/verify-release.md) for checksum, provenance, CycloneDX SBOM attestation, immutable-release identity, and the limits of those checks.
 
 ## Launch
 
@@ -219,56 +275,79 @@ clroom codex --help
 clroom codex --version
 ```
 
-The v0.4.5 source can also admit exactly one already-installed whole Codex
-plugin for one interactive launch:
+CLROOM can admit exactly one already-installed whole Codex plugin for one
+interactive launch:
 
 ```sh
 codex plugin list --json
 clroom codex --with=plugin:plugin-name@marketplace-name
 ```
 
-CLROOM preserves the provider-native plugin ID, revalidates the exact installed
+It preserves the provider-native plugin ID, revalidates the exact installed
 bundle, projects only that bundle into its private shadow `CODEX_HOME`
 `PluginStore`, makes the projection non-writable, and enables only that plugin
 for the process. Sibling plugins remain absent and the next ordinary clean launch
 removes only the verified CLROOM-owned projection. CLROOM does not install,
 update, remove, or refresh Codex plugins or marketplaces.
 
-While this selection is active, raw Codex config/plugin controls such as
-`-c`, `--config`, `--profile`, `--enable`, `--disable`, and
-`--plugin` are refused before provider birth. The exact v0.4.5 qualification
-target for this path is Codex CLI `0.159.0` on macOS Apple Silicon. A plugin
-whose effective MCP surface includes the app-owned `codex_app` server is
-host-required and fails closed for standalone CLROOM activation; configuration
-visibility is not treated as proof that app-hosted tools exist.
-
-v0.4.5 also adds a deliberately narrower standalone Codex MCP selector for
-interactive launches:
+CLROOM can also admit exactly one root-user standalone stdio MCP server:
 
 ```sh
 clroom codex --with=mcp:my-server
 clroom codex --with=mcp:my-server --pass-env=MY_TOKEN
 ```
 
-This path selects exactly one root-user `mcp_servers.<id>` entry from the
-normal Codex `config.toml` and supports stdio transport only. Literal MCP
-environment values are refused. Every plain `env_vars` reference must also be
-admitted explicitly with `--pass-env=NAME`. Command/argument interpolation and
-relative MCP working directories are refused in this first slice.
+The MCP definition comes from `mcp_servers.<id>` in the normal Codex
+`config.toml`. Literal MCP environment values are refused, and every plain
+`env_vars` reference must also be admitted explicitly with
+`--pass-env=NAME`. Command/argument interpolation and relative MCP working
+directories are refused.
 
-Before the real Codex process starts, CLROOM performs a no-model provider-native
-`config/read` check with the selected MCP already present in the session layer.
-The check fails closed unless that selected session MCP is visible and no active
-project, system, enterprise, or legacy-managed layer contributes another MCP
-surface. Raw configuration values are discarded during this check. The selected
-ambient source is digest-bound and revalidated again before provider birth.
+The current source composes the two bounded selectors in the same interactive
+launch:
 
-This path does not support multiple standalone MCP servers, HTTP/SSE/
-WebSocket transports, OAuth or helper-based authentication, project/local MCP
-restore, standalone MCP exclusions, mixing standalone MCP with whole-plugin
-selection, or `--with=all`. Claude standalone MCP remains unqualified and
-fails closed. The exact v0.4.5 qualification target for this path is Codex CLI `0.159.0`
-on macOS Apple Silicon.
+```sh
+clroom codex \
+  --with=plugin:plugin-name@marketplace-name \
+  --with=mcp:my-server \
+  --pass-env=MY_TOKEN
+```
+
+The composed launch still admits at most one whole plugin and one standalone
+MCP. CLROOM resolves both through one typed launch plan, refuses overlapping
+plugin/MCP identities, composes provider arguments deterministically, and
+revalidates both selected sources before provider birth. A change on either side
+invalidates the whole launch.
+
+Before a launch containing a standalone MCP, CLROOM performs a no-model
+provider-native `config/read` check with the selected MCP in the session layer.
+The check fails closed unless that MCP is visible and no active project, system,
+enterprise, or legacy-managed layer contributes another MCP surface. Raw
+configuration values are discarded during this check.
+
+Raw Codex config/plugin/MCP activation controls such as `-c`, `--config`,
+`--profile`, `--enable`, `--disable`, and `--plugin` are refused while
+CLROOM resource selection is active. The exact qualification target is Codex CLI `0.161.0` on macOS Apple Silicon. A plugin whose effective MCP surface
+includes the app-owned `codex_app` server remains host-required and fails
+closed; configuration visibility is not treated as proof that app-hosted tools
+exist.
+
+Inspect the same resolved launch truth without starting the real provider
+session:
+
+```sh
+clroom inspect codex --with=plugin:plugin-name@marketplace-name --with=mcp:my-server
+clroom --output json inspect codex --with=plugin:plugin-name@marketplace-name --with=mcp:my-server
+```
+
+Inspection exposes selected identities, decisions, qualification state, admitted
+environment-variable names and boundary controls, but redacts provider argument
+values and does not expose secret values or private source paths.
+
+Multiple plugins, multiple standalone MCP servers, HTTP/SSE/WebSocket transports,
+OAuth or helper-based authentication, project/local MCP restore, standalone MCP
+exclusions, and `--with=all` remain unsupported. Claude standalone MCP remains
+unqualified and fails closed.
 
 ### Claude Code
 
@@ -286,7 +365,7 @@ global skills for this launch with the same skill choice:
 clroom claude --skill-set=my-skill,@my-skill-set
 ```
 
-The v0.4.5 source can also admit exactly one already-installed whole Claude
+The current source can also admit exactly one already-installed whole Claude
 plugin for one launch:
 
 ```sh
@@ -303,18 +382,18 @@ launch, and asks Claude to load it for this session. Raw Claude
 resource selection.
 
 This whole-plugin path is currently an exact macOS Apple Silicon qualification
-target for Claude Code `2.1.284`. v0.4.x deliberately qualifies a narrower
-subset of Claude's plugin format: the installed provider-native ID must have a matching
+target for Claude Code `2.1.293`. The current path deliberately keeps the narrower
+qualified subset of Claude's plugin format: the installed provider-native ID must have a matching
 `.claude-plugin/plugin.json` identity, and the observed effective components
 must come only from the default one-level `skills/<name>/SKILL.md` layout.
 Manifestless plugins, root `SKILL.md` single-skill plugins, custom skill paths,
 slash commands, hooks, MCP servers, agents, LSP servers, background monitors,
 plugin executables, or plugin settings may be observed by inventory but are not
-activation-qualified in v0.4.x. They fail closed instead of receiving a broader
+activation-qualified by the current source. They fail closed instead of receiving a broader
 filesystem seam. The qualified bundle is still passed to Claude atomically;
 CLROOM does not extract individual components.
 
-v0.4.5 targets Claude Code `2.1.284` for both ordinary clean launch and the
+The current source retains Claude Code `2.1.293` as the exact qualification target for both ordinary clean launch and the
 whole-plugin activation path. Codex whole-plugin activation is separately
 qualified through its own shadow-PluginStore mechanism. Standalone MCP
 selection, `--with=all`, multi-plugin selection, and component-level plugin
@@ -398,7 +477,7 @@ read. It does not mean Codex failed to start.
 If the required macOS filesystem restrictions cannot be created, Clean Room Launcher
 fails instead of silently starting a normal inherited Codex session.
 
-See [the current limitations](docs/limitations.md) and
+See [the current limitations](docs/limitations.md), [privacy and data flow](docs/privacy-data-flow.md), and
 [security policy](SECURITY.md).
 
 <details>
@@ -422,12 +501,12 @@ The qualified macOS provider paths for this source tree are:
 
 | Coding agent and launch path | Platform | Status |
 |---|---|---|
-| Codex CLI 0.159.0 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.159.0 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Codex CLI 0.159.0 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
-| Codex CLI 0.159.0 — `clroom codex --with=mcp:<id>` | macOS / Apple Silicon | Exact one-stdio-MCP activation qualification target |
-| Claude Code CLI 2.1.284 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
-| Claude Code CLI 2.1.284 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
+| Codex CLI 0.161.0 — interactive `clroom codex` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.161.0 — `clroom codex exec` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Codex CLI 0.161.0 — `clroom codex --with=plugin:<id>` | macOS / Apple Silicon | Exact one-plugin activation qualification target |
+| Codex CLI 0.161.0 — `clroom codex --with=mcp:<id>` | macOS / Apple Silicon | Exact one-stdio-MCP activation qualification target |
+| Claude Code CLI 2.1.293 — interactive `clroom claude` | macOS / Apple Silicon | Exact clean-launch qualification target |
+| Claude Code CLI 2.1.293 — `clroom claude --with=plugin:<id>` | macOS / Apple Silicon | Exact skill-only plugin-activation qualification target |
 | Claude Code CLI `-p` response-output semantics | macOS / Apple Silicon | Not independently qualified |
 
 Linux and Windows are `NOT_QUALIFIED`. Intel macOS, Homebrew, crates.io,
@@ -442,9 +521,11 @@ For exact provider behavior, native alternatives, current limitations, and commo
 
 - [Why CLROOM exists](docs/why-clroom.md)
 - [Coding-agent configuration problem index](docs/problem-index.md)
+- [Terminology glossary](docs/glossary.md)
 - [When to use Clean Room Launcher (CLROOM) — and when not to](docs/when-to-use-clroom.md)
 - [Use cases](docs/use-cases.md)
 - [Skill sets](docs/skill-sets.md)
+- [Reusable launch presets](docs/presets.md)
 - [Claude Code and CLROOM](docs/claude-code.md)
 - [Codex and CLROOM](docs/codex.md)
 - [Configuration matrix](docs/configuration-matrix.md)
@@ -528,16 +609,19 @@ Removing the binaries does not modify provider authentication.
 
 ## Project status
 
-This source tree is prepared for `v0.4.5` on macOS Apple Silicon. See the
+Current source version: `v0.6.0`. See the
 [latest GitHub release](https://github.com/y-sor/clean-room-launcher/releases/latest)
-for publication status and downloadable artifacts. Real-provider qualification
-is bound to the exact behavior-specific provider versions above. The macOS
-archive is unsigned and unnotarized.
+for authoritative publication status and downloadable artifacts. Real-provider
+qualification is bound to the exact behavior-specific provider versions above.
+The macOS archive is unsigned and unnotarized.
 
-It supports the documented Codex interactive and exec clean paths, the bounded
-v0.4.5 Codex one-plugin path, the ordinary interactive Claude Code clean launch,
-and the bounded Claude skill-only whole-plugin activation path. Qualification is limited to the documented macOS
-Apple Silicon paths.
+The current source supports the documented Codex interactive and exec clean
+paths; bounded one-plugin and one-standalone-stdio-MCP selection; composition of
+one qualified Codex whole plugin with one qualified standalone MCP through the
+same resolved launch; sanitized human/JSON launch inspection; the ordinary
+interactive Claude Code clean launch; and the bounded Claude skill-only
+whole-plugin activation path. Qualification remains limited to the documented
+macOS Apple Silicon paths.
 
 External launchers can use `clroom-codex` or `clroom-claude` as their provider
 executable override. See the [agent runner guide](docs/agent-runners.md).

@@ -110,9 +110,10 @@ mkdir -p "$extract_dir"
 tar -xzf "$artifact" -C "$extract_dir"
 archive_root=$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -print -quit)
 [[ -n "$archive_root" ]] || fail "ARCHIVE_ROOT_MISSING"
+clroom_candidate="$archive_root/bin/clroom"
 codex_candidate="$archive_root/bin/clroom-codex"
 claude_candidate="$archive_root/bin/clroom-claude"
-[[ -x "$codex_candidate" && -x "$claude_candidate" ]] || fail "ARCHIVE_PROVIDER_ENTRYPOINTS"
+[[ -x "$clroom_candidate" && -x "$codex_candidate" && -x "$claude_candidate" ]] || fail "ARCHIVE_PROVIDER_ENTRYPOINTS"
 
 scripts/release/qualify-real-provider.sh   --provider codex   --executable "$CLROOM_PROVIDER_CODEX"   --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION"   --candidate "$codex_candidate"   --source-head "$head"   --version "$version"   --output "$output/codex-qualification.json"   || fail "GENERIC_CODEX_QUALIFICATION"
 
@@ -131,7 +132,23 @@ codex_evidence="$evidence_dir/codex-stage-v${version}-${head:0:12}.json"
 [[ -s "$codex_evidence" ]] || fail "CODEX_STAGE_EVIDENCE_MISSING"
 install -m 0644 "$codex_evidence" "$output/codex-stage.json"
 
+artifact_sha256="$(shasum -a 256 "$artifact" | awk '{print $1}')"
+python3 scripts/release/rehearse-codex-composition.py \
+  --candidate "$clroom_candidate" \
+  --provider "$CLROOM_PROVIDER_CODEX" \
+  --source-head "$head" \
+  --expected-provider-version "$CLROOM_PROVIDER_CODEX_VERSION" \
+  --expected-provider-sha256 "$codex_provider_sha" \
+  --artifact-sha256 "$artifact_sha256" \
+  --home "$tmp/codex-composition-home" \
+  --output "$output/codex-composition-stage.json" \
+  || fail "CODEX_COMPOSITION_EXACT_ARCHIVE_RUNTIME"
+[[ -s "$output/codex-composition-stage.json" ]] || fail "CODEX_COMPOSITION_STAGE_EVIDENCE_MISSING"
+
 python3 scripts/release/render-release-notes.py   --version "$version"   --artifact "$artifact_name"   --output "$output/release-notes.md"   || fail "RELEASE_NOTES"
+python3 scripts/release/release-facts.py   --output "$output/release-facts.json"   || fail "RELEASE_FACTS"
+python3 scripts/release/render-publish-preview.py   --facts "$output/release-facts.json"   --notes "$output/release-notes.md"   --output "$output/publish-preview.json"   || fail "PUBLISH_PREVIEW"
+python3 scripts/release/verify-publishable-surface.py   --facts "$output/release-facts.json"   --preview "$output/publish-preview.json"   --notes "$output/release-notes.md"   --output "$output/publishable-surface.json"   || fail "PUBLISHABLE_SURFACE"
 
 python3 -   "$output" "$version" "$head" "$source_tree" "$reviewed_content_digest"   "$artifact_name" "$CODEX_VERSION" "$CODEX_SHA512" "$CODEX_PLATFORM_SHA512" "$codex_provider_sha"   "$CLAUDE_VERSION" "$CLAUDE_SHA512" "$CLAUDE_PLATFORM_SHA512" "$claude_provider_sha" <<'PY'
 import hashlib, json, pathlib, sys
@@ -155,13 +172,17 @@ names = [
     "sbom.cdx.json",
     "install.sh",
     "release-notes.md",
+    "release-facts.json",
+    "publish-preview.json",
+    "publishable-surface.json",
     "codex-qualification.json",
     "claude-qualification.json",
     "codex-stage.json",
+    "codex-composition-stage.json",
 ]
 files = {name: sha(root / name) for name in names}
 record = {
-    "schema_version": "clroom.pretag-stage.v1",
+    "schema_version": "clroom.pretag-stage.v2",
     "release_version": version,
     "source_head": source_head,
     "source_tree": source_tree,
@@ -170,6 +191,11 @@ record = {
     "provider_registry_freshness": "PASS",
     "generic_provider_qualification": "PASS",
     "codex_exact_archive_runtime": "PASS",
+    "codex_composition_exact_archive_runtime": "PASS",
+    "publishable_surface_semantic": "PASS",
+    "release_facts_sha256": files["release-facts.json"],
+    "publish_preview_sha256": files["publish-preview.json"],
+    "publishable_surface_evidence_sha256": files["publishable-surface.json"],
     "providers": {
         "codex": {
             "version": codex_version,
@@ -190,8 +216,12 @@ record = {
         "exact_shipping_archive",
         "generic_provider_qualification",
         "codex_exact_archive_runtime",
+        "codex_composition_exact_archive_runtime",
         "installer_contract",
         "release_notes_render",
+        "release_facts",
+        "exact_publish_preview",
+        "publishable_surface_semantic",
         "provider_registry_freeze",
     }),
     "post_tag_only": sorted({

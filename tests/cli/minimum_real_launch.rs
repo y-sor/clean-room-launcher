@@ -125,7 +125,6 @@ fn unimplemented_local_lifecycle_commands_refuse_truthfully_without_a_provider()
         &["scan"][..],
         &["prepare"][..],
         &["check"][..],
-        &["inspect", "skill:rust"][..],
         &["explain", "skill:rust"][..],
     ] {
         let output = Command::new(env!("CARGO_BIN_EXE_clroom"))

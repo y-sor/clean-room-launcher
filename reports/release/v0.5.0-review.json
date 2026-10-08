@@ -1,0 +1,131 @@
+{
+  "schema_version": "clroom.release-review.v2",
+  "release": "v0.5.0",
+  "baseline_release": "v0.4.7",
+  "domain_dispositions": {
+    "runtime": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "One typed ResolvedLaunch now owns bounded Codex whole-plugin and standalone-stdio-MCP selection, deterministic activation composition, admitted environment-variable names, isolation/provider identity and action-time source revalidation.",
+        "The bounded cardinality remains zero/one plugin plus zero/one standalone MCP; unsupported resource kinds, --with=all, multi-plugin, multi-MCP and overlapping plugin/MCP identities fail closed."
+      ]
+    },
+    "tests": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Focused regressions cover clean, plugin-only, MCP-only and composed plugin+MCP planning, deterministic argv ordering, overlap refusal, raw provider activation conflict, qualification/env negatives, source drift and sanitized inspection.",
+        "Exact-candidate macOS real-provider composition rehearsal requires selected plugin and MCP runtime evidence, sibling absence, environment admission, negative failure modes and task-owned process lifecycle closure.",
+        "The release-harness regression now forbids raw Python GitHub HTTP in check-release-contract.py and behaviorally self-tests the exact gh api releases/latest transport used by the Owner tag path."
+      ]
+    },
+    "dependencies": {
+      "decision": "COVERED",
+      "evidence": [
+        "The candidate changes only the clean-room-launcher package version from 0.4.7 to 0.5.0; runtime/build dependency versions and the locked dependency graph are unchanged.",
+        "Existing dependency review, cargo-deny, locked build/test and supply-chain metadata gates remain mandatory."
+      ]
+    },
+    "ci": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Release-candidate topology now runs the composition rehearsal on exact PR-candidate bytes and carries its evidence into the mandatory release graph.",
+        "The new rehearsal is wired through the existing release-eligibility/readiness topology rather than a parallel manual path."
+      ]
+    },
+    "release": {
+      "decision": "CONTRACT_EXPAND",
+      "evidence": [
+        "Release Contract v1 now treats exact Codex plugin+MCP composition as a blocker-producing capability that must be rehearsed on the PR candidate and preserved in pre-tag stage evidence.",
+        "Accepted-main staging and pretag verification bind composition evidence to the exact future shipping archive before protected tag creation.",
+        "A pre-tag Owner-executor escape exposed split GitHub transport trust: the canonical tag helper qualified gh auth but check-release-contract.py independently used Python urllib TLS. The repair normalizes the baseline lookup to the already-required gh api transport and makes that transport invariant machine-checked."
+      ]
+    },
+    "public_claims": {
+      "decision": "COVERED",
+      "evidence": [
+        "README, Codex/provider/configuration/limitations/Claude docs and CHANGELOG describe the bounded v0.5.0 composition and effective-launch inspection without widening unsupported transports, cardinality, platforms or Claude standalone MCP.",
+        "Human and JSON inspection claims are limited to sanitized identities, decisions, qualification state, environment-variable names and boundary metadata; provider argv values, secrets and private source paths are explicitly non-claims."
+      ]
+    }
+  },
+  "near_misses": [
+    {
+      "id": "composed-resource-one-side-drift",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A plugin or standalone MCP source can change after planning, leaving a composed launch partly bound to stale authority.",
+      "durable_control": "ResolvedLaunch retains both typed source plans and revalidates both before provider birth; focused mutation regressions require any one-side drift to invalidate the whole composed launch, and exact-provider rehearsal exercises the action-time boundary."
+    },
+    {
+      "id": "composed-plugin-mcp-authority-overlap",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A selected whole plugin can expose the same MCP identity as the separately selected standalone MCP, creating two activation authorities for one logical server.",
+      "durable_control": "Resolution compares the selected plugin MCP component IDs with the standalone MCP ID and fails closed on overlap before launch; raw provider config/plugin/MCP activation controls are also refused while CLROOM selection is active."
+    },
+    {
+      "id": "effective-launch-inspection-secret-or-private-path-leak",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "A shared launch-plan inspection surface could serialize provider arguments, literal environment values, source paths or other private configuration while trying to explain the effective launch.",
+      "durable_control": "ResolvedLaunch emits a dedicated sanitized summary containing bounded identities/reasons, environment-variable names, boundary controls and provider-argv element count only; unit/CLI regressions reject provider argv values, secret values, cwd/source paths and other private material in human/JSON output."
+    },
+    {
+      "id": "composition-order-diverges-between-inspection-and-exec",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "Independent plugin/MCP mutation steps could produce order-dependent provider argv or make inspection describe a different launch than the process actually executes.",
+      "durable_control": "One ResolvedLaunch performs deterministic plugin-then-MCP activation composition and is consumed by both inspection and the real process launch; ordering and clean/plugin-only/MCP-only compatibility are regression-tested."
+    },
+    {
+      "id": "owner-pretag-split-github-transport",
+      "decision": "CONTRACT_EXPAND",
+      "failure_mode": "The canonical Owner tag helper can pass its authenticated gh/toolchain preflight but fail later because a nested release-contract check reaches the same GitHub authority through a different language-runtime TLS/CA stack that was never qualified on the Owner executor.",
+      "durable_control": "check-release-contract.py resolves releases/latest only through the already-required gh api transport; its self-test asserts the exact invocation, and check-harness-contract.py fails if raw Python GitHub HTTP or api.github.com reappears in that checker."
+    }
+  ],
+  "artifact_capability_gates": [
+    {
+      "id": "codex-composed-plugin-mcp-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Exercise exact v0.5.0 PR-candidate bytes on macOS Apple Silicon with pinned Codex 0.160.0; require one qualified whole plugin plus one qualified root-user stdio MCP in the same launch, usable runtime evidence for both, admitted-env canary only, sibling absence, fail-closed overlap/drift/config-layer negatives and task-owned lifecycle closure."
+    },
+    {
+      "id": "codex-provider-capabilities",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Build the exact future shipping v0.5.0 archive once from accepted main and requalify clean, whole-plugin, standalone-MCP and composed plugin+MCP Codex capabilities against frozen exact provider inputs before tag creation."
+    },
+    {
+      "id": "claude-skill-only-plugin-activation",
+      "phase": "PR_CANDIDATE_REHEARSAL",
+      "requirement": "Preserve exact v0.5.0 candidate qualification of the unchanged Claude clean and bounded skill-only whole-plugin paths on pinned Claude Code 2.1.289 without widening Claude standalone MCP authority."
+    },
+    {
+      "id": "publishable-surface-semantic-closure",
+      "phase": "ACCEPTED_MAIN_PRETAG_STAGE",
+      "requirement": "Materialize exact v0.5.0 release facts, notes and publish preview, require semantic public-claim PASS, and bind the accepted digests into pretag evidence before tag."
+    },
+    {
+      "id": "guarded-publish-action",
+      "phase": "PRE_PUBLISH_ACTION_TIME",
+      "requirement": "After separate Owner publish approval, use only the canonical guarded publish helper with exact Draft/tag/payload revalidation and authoritative reconciliation."
+    },
+    {
+      "id": "public-install-route",
+      "phase": "POST_PUBLICATION",
+      "requirement": "Verify the actual Latest Release, releases/latest/download bytes, attestations and isolated public installer route before reporting PUBLIC_INSTALL_VERIFIED."
+    }
+  ],
+  "product_outcome": "Ship v0.5.0 as the minimal shared Codex launch-composition foundation: one typed resolved launch can preserve clean/plugin-only/MCP-only behavior, safely compose exactly one qualified whole plugin with exactly one qualified standalone stdio MCP, expose sanitized human/JSON inspection from the same truth, and remain fail-closed under conflict, environment, sibling and source-drift conditions.",
+  "contract_evolution_review": {
+    "decision": "EXPAND",
+    "rationale": "v0.5.0 adds a new blocker-producing provider capability: two previously separate bounded Codex resource paths can now coexist in one launch. The release contract therefore expands only enough to require exact-candidate mixed runtime rehearsal, accepted-main preservation of that evidence and privacy/atomicity regressions for the shared ResolvedLaunch. The pre-tag Owner-executor escape also expands the release-system contract to require one qualified GitHub transport inside the canonical tag path rather than an unproven secondary Python TLS stack.",
+    "promoted_controls": [
+      "single typed ResolvedLaunch shared by human/JSON inspection and real Codex launch",
+      "bounded zero/one whole-plugin plus zero/one standalone-stdio-MCP composition with deterministic activation ordering",
+      "fail-closed plugin/MCP identity-overlap and raw provider activation-conflict checks",
+      "both selected source plans revalidated at action time; one-side drift invalidates the whole composed launch",
+      "sanitized effective-launch summary exposes environment names and bounded metadata but no provider argv values, secret values or private source paths",
+      "exact-PR macOS real-provider composition rehearsal bound to exact candidate/provider bytes",
+      "accepted-main pretag stage preserves exact composition evidence before protected tag creation",
+      "canonical release-baseline lookup uses the same qualified gh api transport as the guarded tag path; raw Python GitHub HTTP is forbidden by harness regression"
+    ]
+  },
+  "reviewed_content_digest": "4a7364a9bbf12e11d2e02899277f8e3a5e5fedaed68b94722a721750a9564219"
+}

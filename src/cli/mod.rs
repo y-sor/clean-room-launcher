@@ -4,10 +4,12 @@ mod dispatch;
 mod doctor;
 mod help;
 mod info;
+mod inspect;
 mod launch_contract;
 mod output;
 mod parser;
 mod process;
+mod presets;
 mod resource_options;
 mod screen;
 mod skill_sets;
@@ -27,9 +29,9 @@ use clroom::adapters::claude::{
 };
 use clroom::catalog::selection::SelectionRequest;
 use clroom::adapters::codex::{
-    activation::{self as codex_activation, ActivationError as CodexActivationError},
+    activation::ActivationError as CodexActivationError,
     isolation::{IsolationError, IsolationInputs, plan_with_skills},
-    mcp::{self as codex_mcp, ActivationError as CodexMcpActivationError},
+    mcp::ActivationError as CodexMcpActivationError,
 };
 
 pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode {
@@ -74,6 +76,33 @@ pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode
     if first == "claude" {
         return run_claude(&mut source);
     }
+    if first == "--preset" {
+        eprintln!("CLROOM_PRESET_SELECTOR_INVALID: use --preset=name[,name] or --preset=none");
+        return ExitCode::from(2);
+    }
+    if first.starts_with("--preset=") {
+        let mut preset_args = vec![first];
+        while let Some(argument) = match next_argument(&mut source) {
+            Ok(argument) => argument,
+            Err(exit) => return exit,
+        } {
+            preset_args.push(argument);
+        }
+        let resolution = match presets::apply(None, &preset_args) {
+            Ok(resolution) => resolution,
+            Err(message) => {
+                eprintln!("{message}");
+                return ExitCode::from(2);
+            }
+        };
+        if explicit_provider_auth_command(&preset_args, resolution.provider) {
+            return external_refusal(parser::Command::Provider, false);
+        }
+        return match resolution.provider {
+            resource_options::Provider::Codex => run_codex_args(resolution.args),
+            resource_options::Provider::Claude => run_claude_args(resolution.args),
+        };
+    }
     if let Some(exit) = external_prefix(&first) {
         return exit;
     }
@@ -94,7 +123,7 @@ pub fn run(invoked_as: &str, args: impl IntoIterator<Item = String>) -> ExitCode
             if let Some(exit) = external_prefix(&command) {
                 return exit;
             }
-            let collect_tail = command == "info";
+            let collect_tail = matches!(command.as_str(), "info" | "inspect");
             local_args.push(command);
             if collect_tail {
                 while let Some(argument) = match next_argument(&mut source) {
@@ -132,6 +161,23 @@ fn run_codex(source: &mut impl Iterator<Item = String>) -> ExitCode {
     } {
         args.push(argument);
     }
+    if explicit_provider_auth_command(&args, resource_options::Provider::Codex) {
+        return external_refusal(parser::Command::Provider, false);
+    }
+    let resolution = match presets::apply(Some(resource_options::Provider::Codex), &args) {
+        Ok(resolution) => resolution,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    run_codex_args(resolution.args)
+}
+
+fn run_codex_args(args: Vec<String>) -> ExitCode {
+    if explicit_provider_auth_command(&args, resource_options::Provider::Codex) {
+        return external_refusal(parser::Command::Provider, false);
+    }
     let prepared = match resource_options::prepare(resource_options::Provider::Codex, &args) {
         Ok(prepared) => prepared,
         Err(message) => {
@@ -166,18 +212,29 @@ fn run_claude(source: &mut impl Iterator<Item = String>) -> ExitCode {
         Ok(argument) => argument,
         Err(exit) => return exit,
     };
-    if first
-        .as_deref()
-        .is_some_and(|argument| matches!(argument, "auth" | "login" | "logout"))
-    {
-        return external_refusal(parser::Command::Provider, false);
-    }
     let mut args = first.into_iter().collect::<Vec<_>>();
     while let Some(argument) = match next_argument(source) {
         Ok(argument) => argument,
         Err(exit) => return exit,
     } {
         args.push(argument);
+    }
+    if explicit_provider_auth_command(&args, resource_options::Provider::Claude) {
+        return external_refusal(parser::Command::Provider, false);
+    }
+    let resolution = match presets::apply(Some(resource_options::Provider::Claude), &args) {
+        Ok(resolution) => resolution,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    run_claude_args(resolution.args)
+}
+
+fn run_claude_args(args: Vec<String>) -> ExitCode {
+    if explicit_provider_auth_command(&args, resource_options::Provider::Claude) {
+        return external_refusal(parser::Command::Provider, false);
     }
     let prepared = match resource_options::prepare(resource_options::Provider::Claude, &args) {
         Ok(prepared) => prepared,
@@ -205,6 +262,209 @@ fn run_claude(source: &mut impl Iterator<Item = String>) -> ExitCode {
             eprintln!("{message}");
             ExitCode::from(2)
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum GlobalOptionArity {
+    Flag,
+    Value,
+    Ambiguous,
+}
+
+fn explicit_provider_auth_command(args: &[String], provider: resource_options::Provider) -> bool {
+    let mut index = 0;
+    while let Some(argument) = args.get(index).map(String::as_str) {
+        if argument == "--" {
+            return false;
+        }
+        if matches!(
+            argument,
+            "--preset" | "--with" | "--without" | "--skill-set" | "--pass-env"
+        ) {
+            if args.get(index + 1).is_none() {
+                return true;
+            }
+            index += 2;
+            continue;
+        }
+        if [
+            "--preset=",
+            "--with=",
+            "--without=",
+            "--skill-set=",
+            "--pass-env=",
+        ]
+        .iter()
+        .any(|prefix| argument.starts_with(prefix))
+        {
+            index += 1;
+            continue;
+        }
+        if !argument.starts_with('-') {
+            return provider_auth_commands(provider).contains(&argument);
+        }
+
+        // Attached values are self-delimiting, including provider-native
+        // forms such as --model=login and Codex -c=key=value.
+        if argument.contains('=') {
+            index += 1;
+            continue;
+        }
+
+        match provider_global_option_arity(provider, argument) {
+            Some(GlobalOptionArity::Flag) => index += 1,
+            Some(GlobalOptionArity::Value) => {
+                if args.get(index + 1).is_none() {
+                    return true;
+                }
+                index += 2;
+            }
+            Some(GlobalOptionArity::Ambiguous) | None => {
+                // Unknown or variadic option grammar could consume the next
+                // token as a value. Refuse if an auth command remains before
+                // the literal terminator rather than guessing its position.
+                return args[index + 1..]
+                    .iter()
+                    .take_while(|value| value.as_str() != "--")
+                    .any(|value| provider_auth_commands(provider).contains(&value.as_str()));
+            }
+        }
+    }
+    false
+}
+
+fn provider_auth_commands(provider: resource_options::Provider) -> &'static [&'static str] {
+    match provider {
+        resource_options::Provider::Codex => &["login", "logout"],
+        resource_options::Provider::Claude => &["auth", "login", "logout"],
+    }
+}
+
+fn provider_global_option_arity(
+    provider: resource_options::Provider,
+    option: &str,
+) -> Option<GlobalOptionArity> {
+    use GlobalOptionArity::{Ambiguous, Flag, Value};
+    let arity = match provider {
+        resource_options::Provider::Codex => match option {
+            "--add-dir" | "--ask-for-approval" | "--cd" | "--color" | "--config" | "-c"
+            | "--disable" | "--enable" | "--model" | "--profile" | "--sandbox"
+            | "--local-provider" => Value,
+            "--image" | "-i" => Ambiguous,
+            "--dangerously-bypass-approvals-and-sandbox"
+            | "--full-auto"
+            | "--help"
+            | "-h"
+            | "--no-alt-screen"
+            | "--oss"
+            | "--search"
+            | "--version"
+            | "-V"
+            | "--yolo" => Flag,
+            _ => return None,
+        },
+        resource_options::Provider::Claude => match option {
+            "--model"
+            | "--fallback-model"
+            | "--input-format"
+            | "--output-format"
+            | "--permission-mode"
+            | "--permission-prompt-tool"
+            | "--max-turns"
+            | "--resume"
+            | "-r"
+            | "--append-system-prompt"
+            | "--system-prompt"
+            | "--agent"
+            | "--agents"
+            | "--settings"
+            | "--setting-sources"
+            | "--mcp-config"
+            | "--plugin-dir"
+            | "--betas"
+            | "--tools" => Value,
+            "--add-dir" | "--allowedTools" | "--disallowedTools" => Ambiguous,
+            "--continue"
+            | "-c"
+            | "--dangerously-skip-permissions"
+            | "--debug"
+            | "--disable-slash-commands"
+            | "--fork-session"
+            | "--help"
+            | "-h"
+            | "--ide"
+            | "--include-partial-messages"
+            | "--no-session-persistence"
+            | "--print"
+            | "-p"
+            | "--strict-mcp-config"
+            | "--verbose"
+            | "--version" => Flag,
+            _ => return None,
+        },
+    };
+    Some(arity)
+}
+
+#[cfg(test)]
+mod provider_auth_command_tests {
+    use super::{explicit_provider_auth_command, resource_options::Provider};
+
+    fn words(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
+    }
+
+    #[test]
+    fn auth_commands_after_provider_global_options_are_found() {
+        for args in [
+            words(&["--profile", "safe", "login"]),
+            words(&["--model", "gpt-5", "logout"]),
+            words(&["-c", "model_reasoning_effort=high", "login"]),
+        ] {
+            assert!(explicit_provider_auth_command(&args, Provider::Codex));
+        }
+        for args in [
+            words(&["--model", "sonnet", "auth"]),
+            words(&["--permission-mode", "plan", "auth"]),
+        ] {
+            assert!(explicit_provider_auth_command(&args, Provider::Claude));
+        }
+    }
+
+    #[test]
+    fn auth_looking_values_and_terminator_data_are_not_commands() {
+        for args in [
+            words(&["--model", "login"]),
+            words(&["--profile", "auth"]),
+            words(&["-c", "login"]),
+            words(&["--", "login"]),
+        ] {
+            assert!(!explicit_provider_auth_command(&args, Provider::Codex));
+        }
+        for args in [
+            words(&["--model", "auth"]),
+            words(&["--permission-mode", "login"]),
+            words(&["--", "auth"]),
+        ] {
+            assert!(!explicit_provider_auth_command(&args, Provider::Claude));
+        }
+    }
+
+    #[test]
+    fn unknown_option_grammar_fails_closed_only_before_literal_terminator() {
+        assert!(explicit_provider_auth_command(
+            &words(&["--future-provider-option", "opaque", "login"]),
+            Provider::Codex,
+        ));
+        assert!(!explicit_provider_auth_command(
+            &words(&["--future-provider-option", "--", "login"]),
+            Provider::Codex,
+        ));
+        assert!(!explicit_provider_auth_command(
+            &words(&["exec", "login"]),
+            Provider::Codex,
+        ));
     }
 }
 
@@ -277,93 +537,72 @@ fn launch_isolated_codex(
                 .to_owned(),
         );
     }
-    let mcp_activation = codex_mcp::plan(
+    let resolved = launch_contract::ResolvedLaunch::resolve_codex(
+        contract,
+        identity,
+        plan,
+        &home,
         &inputs.codex_home,
         resource_request,
-        &identity,
         pass_env,
+        provider_args.len(),
     )
-    .map_err(codex_mcp_activation_error_message)?;
-    if mcp_activation.is_some() && !launch_contract::codex_top_level_interactive(provider_args) {
+    .map_err(codex_resolved_launch_error_message)?;
+    if resolved.mcp_activation().is_some()
+        && !launch_contract::codex_top_level_interactive(provider_args)
+    {
         return Err(
             "CLROOM_RESOURCE_NOT_SELECTABLE: standalone Codex MCP activation is qualified only for top-level interactive launch; provider subcommands are refused"
                 .to_owned(),
         );
     }
-    let activation = if resource_request.is_empty() || mcp_activation.is_some() {
-        None
-    } else {
-        codex_activation::plan(&home, &inputs.codex_home, resource_request, &identity)
-            .map_err(codex_activation_error_message)?
-    };
-    if let Some(activation) = activation.as_ref() {
-        activation
-            .revalidate(&home, &inputs.codex_home)
-            .map_err(codex_activation_error_message)?;
-    }
-    if let Some(mcp_activation) = mcp_activation.as_ref() {
-        mcp_activation
-            .revalidate()
-            .map_err(codex_mcp_activation_error_message)?;
+    resolved
+        .revalidate_codex_sources(&home, &inputs.codex_home)
+        .map_err(codex_resolved_launch_error_message)?;
+    if resolved.mcp_activation().is_some() {
+        // Reject project-local sibling MCP layers before preparing persistent
+        // provider state. The full provider-layer preflight repeats this check
+        // immediately before provider birth to close the action-time boundary.
+        process::preflight_codex_project_mcp_layers(&resolved.isolation().project)?;
     }
     let state = if invocation == launch_contract::CodexInvocation::Interactive {
         Some(process::prepare_codex_state(
             &home,
             &inputs.codex_home,
-            &plan.selected_global_skill_paths,
-            activation.as_ref(),
+            &resolved.isolation().selected_global_skill_paths,
+            resolved.plugin_activation(),
         )?)
     } else {
         None
     };
-    if let Some(activation) = activation.as_ref() {
-        activation
-            .revalidate(&home, &inputs.codex_home)
-            .map_err(codex_activation_error_message)?;
-        contract.add_codex_plugin_activation(
-            &activation
-                .provider_config_args()
-                .map_err(codex_activation_error_message)?,
-        );
-    }
-    if let Some(mcp_activation) = mcp_activation.as_ref() {
-        mcp_activation
-            .revalidate()
-            .map_err(codex_mcp_activation_error_message)?;
+    resolved
+        .revalidate_codex_sources(&home, &inputs.codex_home)
+        .map_err(codex_resolved_launch_error_message)?;
+    if resolved.mcp_activation().is_some() {
         let state = state
             .as_ref()
             .ok_or_else(|| "CLROOM_CODEX_MCP_PREFLIGHT_FAILED: clean Codex state is unavailable; continue locally".to_owned())?;
-        process::preflight_codex_mcp_layers(
-            &plan,
-            &identity,
-            state,
-            mcp_activation,
-        )?;
-        contract.add_codex_mcp_activation(&mcp_activation.provider_config_args());
+        process::preflight_codex_mcp_layers(&resolved, state)?;
     }
     if std::io::stderr().is_terminal() {
         let feature_state = screen::PlaqueFeatureState::from_provider_args(&provider_args);
         eprintln!(
             "{}",
             screen::render_isolated_preview(
-                &plan.project,
-                plan.selected_global_skills,
+                &resolved.isolation().project,
+                resolved.isolation().selected_global_skills,
                 feature_state,
             )
             .join("\n")
         );
     }
     process::launch_isolated_codex(
-        &plan,
         &executable,
-        &contract,
-        &identity,
+        &resolved,
         pass_env,
         &home,
         &inputs.codex_home,
         state.as_ref(),
-        activation.as_ref(),
-        mcp_activation.as_ref(),
     )
 }
 
@@ -646,7 +885,7 @@ fn codex_activation_error_message(error: CodexActivationError) -> String {
             "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for whole-plugin activation; continue locally".to_owned()
         }
         CodexActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Codex plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE: this release admits one exact Codex plugin per launch".to_owned()
         }
         CodexActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex plugin changed before launch; retry".to_owned()
@@ -667,16 +906,29 @@ fn codex_activation_error_message(error: CodexActivationError) -> String {
     }
 }
 
+fn codex_resolved_launch_error_message(error: launch_contract::ResolveCodexError) -> String {
+    match error {
+        launch_contract::ResolveCodexError::UnsupportedRequest => {
+            "CLROOM_RESOURCE_NOT_SELECTABLE: only exact qualified Codex whole-plugin and standalone MCP selection is available in this release; continue locally".to_owned()
+        }
+        launch_contract::ResolveCodexError::ActivationConflict => {
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: selected Codex whole-plugin and standalone MCP overlap on a provider MCP identity".to_owned()
+        }
+        launch_contract::ResolveCodexError::Plugin(error) => codex_activation_error_message(error),
+        launch_contract::ResolveCodexError::Mcp(error) => codex_mcp_activation_error_message(error),
+    }
+}
+
 fn codex_mcp_activation_error_message(error: CodexMcpActivationError) -> String {
     match error {
         CodexMcpActivationError::ProviderTupleNotQualified => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: installed Codex version/platform is not qualified for standalone MCP activation; continue locally".to_owned()
         }
         CodexMcpActivationError::MultipleMcp => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: first standalone MCP slice admits one exact Codex MCP server per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE: this release admits one exact standalone Codex MCP server per launch".to_owned()
         }
         CodexMcpActivationError::MixedSelection => {
-            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: standalone MCP and whole-plugin selection cannot be combined in this slice".to_owned()
+            "CLROOM_RESOURCE_ACTIVATION_CONFLICT: the standalone MCP planner received a mixed resource request; continue locally".to_owned()
         }
         CodexMcpActivationError::UnsupportedRequest => {
             "CLROOM_RESOURCE_NOT_SELECTABLE: use one exact --with=mcp:<id>; standalone MCP exclusions are unavailable in this slice".to_owned()
@@ -691,16 +943,16 @@ fn codex_mcp_activation_error_message(error: CodexMcpActivationError) -> String 
             format!("CLROOM_ENV_SELECTOR_REQUIRED: selected MCP references {name}; admit it explicitly with --pass-env={name}")
         }
         CodexMcpActivationError::UnsupportedEnvironmentReference => {
-            "CLROOM_MCP_ENV_REFERENCE_REFUSED: first standalone MCP slice admits only plain environment-variable names".to_owned()
+            "CLROOM_MCP_ENV_REFERENCE_REFUSED: the bounded standalone MCP contract admits only plain environment-variable names".to_owned()
         }
         CodexMcpActivationError::UnsupportedField(_) => {
-            "CLROOM_RESOURCE_NOT_SELECTABLE: selected MCP uses fields outside the first reference-only stdio contract; continue locally".to_owned()
+            "CLROOM_RESOURCE_NOT_SELECTABLE: selected MCP uses fields outside the bounded reference-only stdio contract; continue locally".to_owned()
         }
         CodexMcpActivationError::InvalidIdentityField => {
             "CLROOM_MCP_IDENTITY_FIELD_REFUSED: MCP command/args/cwd are invalid or contain environment interpolation".to_owned()
         }
         CodexMcpActivationError::RelativeWorkingDirectory => {
-            "CLROOM_MCP_CWD_REFUSED: first standalone MCP slice requires an absolute cwd".to_owned()
+            "CLROOM_MCP_CWD_REFUSED: the bounded standalone MCP contract requires an absolute cwd".to_owned()
         }
         CodexMcpActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Codex MCP changed before launch; retry".to_owned()
@@ -714,7 +966,7 @@ fn claude_activation_error_message(error: ClaudeActivationError) -> String {
             "CLROOM_RESOURCE_NOT_SELECTABLE: installed Claude version/platform is not qualified for whole-plugin activation; continue locally".to_owned()
         }
         ClaudeActivationError::MultiplePlugins => {
-            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE_IN_V0_4: this release admits one exact Claude plugin per launch".to_owned()
+            "CLROOM_RESOURCE_MULTI_SELECT_UNAVAILABLE: this release admits one exact Claude plugin per launch".to_owned()
         }
         ClaudeActivationError::StateChanged => {
             "CLROOM_RESOURCE_STATE_CHANGED: selected Claude plugin changed before launch; retry".to_owned()
@@ -743,7 +995,7 @@ fn local_prefix(
     first: String,
     source: &mut impl Iterator<Item = String>,
 ) -> Result<Vec<String>, ExitCode> {
-    if first == "info" {
+    if matches!(first.as_str(), "info" | "inspect") {
         let mut args = vec![first];
         while let Some(argument) = next_argument(source)? {
             args.push(argument);
@@ -813,6 +1065,18 @@ fn run_local(invoked_as: &str, args: Vec<String>) -> ExitCode {
                 }
             };
         }
+        if args.first().is_some_and(|argument| argument == "inspect") {
+            return match inspect::run(&args[1..], output::Mode::Json) {
+                Ok(report) => {
+                    println!("{report}");
+                    ExitCode::SUCCESS
+                }
+                Err(message) => {
+                    eprintln!("{message}");
+                    ExitCode::from(2)
+                }
+            };
+        }
         eprintln!(
             "OUTPUT_UNSUPPORTED_FOR_COMMAND: {}; use human output",
             args[0]
@@ -867,6 +1131,13 @@ fn run_local(invoked_as: &str, args: Vec<String>) -> ExitCode {
                 return ExitCode::from(2);
             }
         },
+        parser::Command::Inspect => match inspect::run(&args[1..], output::Mode::Human) {
+            Ok(report) => println!("{report}"),
+            Err(message) => {
+                eprintln!("{message}");
+                return ExitCode::from(2);
+            }
+        },
         parser::Command::Doctor => match doctor::run(&args[1..]) {
             Ok(report) => println!("{report}"),
             Err(message) => {
@@ -898,7 +1169,6 @@ fn run_launcher_owned_local(invoked_as: &str, command: parser::Command) -> ExitC
         parser::Command::Prepare => "prepare",
         parser::Command::Check => "check",
         parser::Command::Explain => "explain",
-        parser::Command::Inspect => "inspect",
         _ => unreachable!("only unavailable local lifecycle commands reach this boundary"),
     };
     eprintln!(

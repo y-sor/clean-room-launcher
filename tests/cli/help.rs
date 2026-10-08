@@ -66,6 +66,8 @@ fn top_help_shows_the_single_skill_set_option_and_resolved_file() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("--skill-set=any-my-skill,@any-my-skill-set --approve-for-me"));
     assert!(stdout.contains("/tmp/clroom-help-config/clroom/skill-sets.yaml"));
+    assert!(stdout.contains("/tmp/clroom-help-config/clroom/presets.yaml"));
+    assert!(stdout.contains("clroom --preset=<name> [ARGS...]"));
     assert!(stdout.contains("clroom codex exec") || stdout.contains(
         "Open file and create skill groups and reuse them by name, such as\n  @any-my-skill-set."
     ));
@@ -169,6 +171,23 @@ fn skill_set_help_topic_explains_selectors_and_the_editable_yaml_file() {
         assert!(stdout.contains(
             "clroom codex exec --skill-set=any-my-skill,@any-my-skill-set --approve-for-me"
         ));
+        assert!(output.stderr.is_empty());
+    }
+}
+
+#[test]
+fn preset_help_topic_explains_schema_reset_and_provider_inference() {
+    for topic in ["preset", "presets"] {
+        let output = run(&["help", topic]);
+        assert_eq!(output.status.code(), Some(0));
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("clroom <codex|claude> --preset=<NAME>[,...]"));
+        assert!(stdout.contains("clroom --preset=<NAME>[,...]"));
+        assert!(stdout.contains("/tmp/clroom-help-config/clroom/presets.yaml"));
+        assert!(stdout.contains("schema: clroom.presets.v1"));
+        assert!(stdout.contains("--preset=none"));
+        assert!(stdout.contains("provider args are literal argv elements"));
+        assert!(stdout.contains("secret values, scripts, interpolation"));
         assert!(output.stderr.is_empty());
     }
 }

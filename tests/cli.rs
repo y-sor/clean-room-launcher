@@ -34,6 +34,8 @@ mod local_codex_launch;
 mod minimum_real_launch;
 #[path = "cli/non_tty_json.rs"]
 mod non_tty_json;
+#[path = "cli/presets.rs"]
+mod presets;
 #[path = "cli/saved_start_call_path.rs"]
 mod saved_start_call_path;
 #[path = "cli/saved_starts.rs"]

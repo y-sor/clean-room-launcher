@@ -38,6 +38,11 @@ python3 scripts/release/check-workflow-exec-contract.py || fail "WORKFLOW_EXEC_C
 python3 scripts/release/check-harness-contract.py --self-test || fail "HARNESS_CONTRACT_SELF_TEST"
 python3 scripts/release/check-harness-contract.py || fail "HARNESS_CONTRACT"
 python3 scripts/release/stage-binding.py --self-test || fail "STAGE_BINDING_SELF_TEST"
+python3 scripts/release/verify-claude-stage-evidence.py --self-test || fail "CLAUDE_STAGE_EVIDENCE_SELF_TEST"
+python3 scripts/release/check-provider-source-pins.py --self-test || fail "PROVIDER_SOURCE_PIN_SELF_TEST"
+python3 scripts/release/check-provider-source-pins.py || fail "PROVIDER_SOURCE_PIN_CONTRACT"
+python3 scripts/release/release-external-action.py self-test || fail "RELEASE_EXTERNAL_ACTION_SELF_TEST"
+python3 scripts/release/rehearse-external-release-lifecycle.py --self-test || fail "RELEASE_INTEGRATION_REHEARSAL_SELF_TEST"
 
 legacy_upper=$(printf '%s%s' TASK SEAL)
 legacy_lower=$(printf '%s%s' task seal)
@@ -70,9 +75,19 @@ fi
 [[ -f scripts/release/check-harness-contract.py ]] || fail "HARNESS_CONTRACT_MISSING"
 [[ -f scripts/release/stage-binding.py ]] || fail "STAGE_BINDING_HELPER_MISSING"
 [[ -f scripts/release/verify-claude-stage-evidence.py ]] || fail "CLAUDE_STAGE_VERIFIER_MISSING"
+[[ -f scripts/release/check-provider-source-pins.py ]] || fail "PROVIDER_SOURCE_PIN_CHECKER_MISSING"
+[[ -f scripts/release/release-external-action.py ]] || fail "RELEASE_EXTERNAL_ACTION_HELPER_MISSING"
+[[ -f scripts/release/rehearse-external-release-lifecycle.py ]] || fail "RELEASE_INTEGRATION_REHEARSAL_MISSING"
 [[ -f scripts/release/render-release-notes.py ]] || fail "RELEASE_NOTES_RENDERER_MISSING"
+[[ -f scripts/release/release-facts.py ]] || fail "RELEASE_FACTS_MISSING"
+[[ -f scripts/release/render-publish-preview.py ]] || fail "PUBLISH_PREVIEW_RENDERER_MISSING"
+[[ -f scripts/release/verify-publishable-surface.py ]] || fail "PUBLISHABLE_SURFACE_VERIFIER_MISSING"
+[[ -x scripts/release/publish-release.sh ]] || fail "GUARDED_PUBLISH_HELPER_MISSING"
+[[ -x scripts/release/verify-public-release.sh ]] || fail "PUBLIC_ROUTE_VERIFIER_MISSING"
 [[ -f scripts/release/check-post-tag-contract.sh ]] || fail "POST_TAG_CONTRACT_MISSING"
 python3 scripts/release/check-release-contract.py --self-test || fail "RELEASE_CONTRACT_SELF_TEST"
+python3 scripts/release/release-facts.py --self-test || fail "RELEASE_FACTS_SELF_TEST"
+python3 scripts/release/verify-publishable-surface.py --self-test || fail "PUBLISHABLE_SURFACE_SELF_TEST"
 python3 scripts/release/codex-mcp-fixture.py --self-test || fail "CODEX_MCP_FIXTURE_SELF_TEST"
 if [[ "$lifecycle" == "ACTIVE_CANDIDATE" ]]; then
   python3 scripts/release/check-release-contract.py || fail "RELEASE_CONTRACT"
@@ -98,6 +113,8 @@ if command -v shellcheck >/dev/null 2>&1; then
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/resolve-codex-rehearsal-evidence.sh \
     scripts/release/verify-draft-release.sh \
+    scripts/release/publish-release.sh \
+    scripts/release/verify-public-release.sh \
     scripts/release/stage-release.sh \
     scripts/release/resolve-pretag-stage.sh \
     scripts/release/check-post-tag-contract.sh \
@@ -117,6 +134,8 @@ else
     scripts/release/local-codex-plugin-activation-smoke.sh \
     scripts/release/resolve-codex-rehearsal-evidence.sh \
     scripts/release/verify-draft-release.sh \
+    scripts/release/publish-release.sh \
+    scripts/release/verify-public-release.sh \
     scripts/release/stage-release.sh \
     scripts/release/resolve-pretag-stage.sh \
     scripts/release/check-post-tag-contract.sh \

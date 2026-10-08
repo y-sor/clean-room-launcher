@@ -128,9 +128,9 @@ const COMMANDS: &[CommandSpec] = &[
         command: Command::Inspect,
         canonical: "inspect",
         aliases: &[],
-        description: "Inspect one skill decision",
-        usage: "inspect <skill>",
-        example: "inspect skill:rust",
+        description: "Inspect the resolved Codex launch without starting a model",
+        usage: "inspect codex [CODEX_ARGS...]",
+        example: "inspect codex --with=plugin:<id> --with=mcp:<id>",
     },
     CommandSpec {
         command: Command::Doctor,
@@ -176,6 +176,8 @@ pub fn top(invoked_as: &str) -> String {
         .unwrap_or_else(|| std::path::PathBuf::from("$HOME"));
     let skill_sets_path = super::skill_sets::config_path(&home)
         .unwrap_or_else(|_| std::path::PathBuf::from("$HOME/.config/clroom/skill-sets.yaml"));
+    let presets_path = super::presets::config_path()
+        .unwrap_or_else(|_| std::path::PathBuf::from("$HOME/.config/clroom/presets.yaml"));
     let width = std::env::var("COLUMNS")
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
@@ -189,13 +191,20 @@ pub fn top(invoked_as: &str) -> String {
     render_top(
         invoked_as,
         &display_skill_sets_path(&skill_sets_path, &home),
+        &display_skill_sets_path(&presets_path, &home),
         width,
         styled,
     )
     .join("\n")
 }
 
-fn render_top(invoked_as: &str, skill_sets_path: &str, width: usize, styled: bool) -> Vec<String> {
+fn render_top(
+    invoked_as: &str,
+    skill_sets_path: &str,
+    presets_path: &str,
+    width: usize,
+    styled: bool,
+) -> Vec<String> {
     let mut lines = vec![String::new(), String::new()];
     let version = format!("v{}", env!("CARGO_PKG_VERSION"));
     lines.push(if styled {
@@ -245,13 +254,19 @@ fn render_top(invoked_as: &str, skill_sets_path: &str, width: usize, styled: boo
         styled,
     ));
     lines.extend(usage(
+        &format!("{invoked_as} --preset=<name> [ARGS...]"),
+        "Infer provider from a reusable launch preset",
+        width,
+        styled,
+    ));
+    lines.extend(usage(
         &format!("{invoked_as} info codex"),
         "Inspect provider state",
         width,
         styled,
     ));
     lines.extend(styled_wrapped(
-        "Provider options: repeat --pass-env=NAME to admit exact existing environment names. Drop-in commands: clroom-codex and clroom-claude.",
+        "Launcher options: --preset=name[,name] reuses bounded launch intent; repeat --pass-env=NAME to admit exact existing environment names. Drop-in commands: clroom-codex and clroom-claude.",
         width,
         2,
         styled,
@@ -278,6 +293,22 @@ fn render_top(invoked_as: &str, skill_sets_path: &str, width: usize, styled: boo
         2,
         styled,
         Style::SkillSetNote,
+    ));
+    lines.push(String::new());
+    lines.push(section("Presets", styled));
+    lines.extend(styled_wrapped(
+        presets_path,
+        width,
+        2,
+        styled,
+        Style::Plain,
+    ));
+    lines.extend(styled_wrapped(
+        "Save provider-bounded launch intent once; use --preset=none to bypass user presets.",
+        width,
+        2,
+        styled,
+        Style::Dim,
     ));
     lines.push(String::new());
     lines.push(section("More", styled));
@@ -378,14 +409,19 @@ fn usage(command: &str, description: &str, width: usize, styled: bool) -> Vec<St
             plain
         }];
     }
-    vec![
-        if styled {
-            format!("  \u{1b}[1m{command}\u{1b}[0m")
-        } else {
-            format!("  {command}")
-        },
-        format!("    {description}"),
-    ]
+    let mut lines = vec![if styled {
+        format!("  \u{1b}[1m{command}\u{1b}[0m")
+    } else {
+        format!("  {command}")
+    }];
+    lines.extend(styled_wrapped(
+        description,
+        width,
+        4,
+        styled,
+        Style::Plain,
+    ));
+    lines
 }
 
 fn section(name: &str, styled: bool) -> String {
@@ -407,15 +443,26 @@ fn wrap_words(text: &str, width: usize) -> Vec<String> {
     let mut lines = Vec::new();
     let mut line = String::new();
     for word in text.split_whitespace() {
-        let next = line.chars().count() + usize::from(!line.is_empty()) + word.chars().count();
-        if next > width && !line.is_empty() {
-            lines.push(line);
-            line = word.to_owned();
-        } else {
+        let mut chunks = word
+            .chars()
+            .collect::<Vec<_>>()
+            .chunks(width.max(1))
+            .map(|chunk| chunk.iter().collect::<String>())
+            .collect::<Vec<_>>();
+        for chunk in chunks.drain(..) {
+            let next = line.chars().count() + usize::from(!line.is_empty()) + chunk.chars().count();
+            if next > width && !line.is_empty() {
+                lines.push(line);
+                line = String::new();
+            }
             if !line.is_empty() {
                 line.push(' ');
             }
-            line.push_str(word);
+            line.push_str(&chunk);
+            if line.chars().count() == width {
+                lines.push(line);
+                line = String::new();
+            }
         }
     }
     if !line.is_empty() {
@@ -427,6 +474,9 @@ fn wrap_words(text: &str, width: usize) -> Vec<String> {
 pub fn card(invoked_as: &str, token: &str) -> Option<String> {
     if matches!(token, "skill-set" | "skill-sets") {
         return Some(render_skill_set_card(invoked_as));
+    }
+    if matches!(token, "preset" | "presets") {
+        return Some(render_preset_card(invoked_as));
     }
     resolve(token).map(|spec| render_card(invoked_as, spec))
 }
@@ -443,10 +493,27 @@ fn render_skill_set_card(invoked_as: &str) -> String {
     )
 }
 
-fn render_card(invoked_as: &str, spec: &CommandSpec) -> String {
+fn render_preset_card(invoked_as: &str) -> String {
+    let home = std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from("$HOME"));
+    let presets_path = super::presets::config_path()
+        .unwrap_or_else(|_| std::path::PathBuf::from("$HOME/.config/clroom/presets.yaml"));
+    let presets_path = display_skill_sets_path(&presets_path, &home);
     format!(
-        "Clean Room Launcher — {}\n\n{} without changing state.\n\nUsage: {invoked_as} {}\n\nExample:\n  {invoked_as} {}\n\nFor more: {invoked_as} help",
-        spec.canonical, spec.description, spec.usage, spec.example
+        "Clean Room Launcher — preset\n\nReuse one bounded CLROOM launch intent without creating a second provider settings system.\n\nUsage:\n  {invoked_as} <codex|claude> --preset=<NAME>[,...] [PROVIDER_ARGS...]\n  {invoked_as} --preset=<NAME>[,...] [PROVIDER_ARGS...]\n\nReset:\n  {invoked_as} codex --preset=none\n\nPreset file:\n  {presets_path}\n\nSchema:\n  schema: clroom.presets.v1\n  presets:\n    review:\n      default-provider: codex\n      providers:\n        codex: {{}}\n        claude: {{}}\n      skill-set:\n        - @review\n      pass-env:\n        - REVIEW_TOKEN\n\nRules:\n  - default is an ordinary implicit preset when present\n  - none resets preset layers\n  - explicit provider wins; otherwise inference must be unambiguous\n  - provider args are literal argv elements, not shell strings\n  - secret values, scripts, interpolation, and new provider capabilities are not preset features\n"
+    )
+}
+
+fn render_card(invoked_as: &str, spec: &CommandSpec) -> String {
+    let description = if spec.command == Command::Inspect {
+        spec.description.to_owned()
+    } else {
+        format!("{} without changing state", spec.description)
+    };
+    format!(
+        "Clean Room Launcher — {}\n\n{description}.\n\nUsage: {invoked_as} {}\n\nExample:\n  {invoked_as} {}\n\nFor more: {invoked_as} help",
+        spec.canonical, spec.usage, spec.example
     )
 }
 

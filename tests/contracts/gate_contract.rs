@@ -443,14 +443,18 @@ fn tag_push_requires_complete_stage_then_refreshes_only_mutable_state() {
         .find("# Final mutable action-time guard.")
         .expect("tag helper must have a final mutable-state guard");
     let push = source
-        .find("git push origin \"refs/tags/$tag\"")
-        .expect("tag helper must perform a protected tag push");
+        .find("release-external-action.py tag-push")
+        .expect("tag helper must call the canonical protected tag-push action");
     let reconcile = source
-        .find("TAG_PUSH_OUTCOME_UNKNOWN:REMOTE_TARGET_NOT_RECONCILED")
-        .expect("tag helper must reconcile push outcome");
+        .find("tag_push_rc=$?")
+        .expect("tag helper must consume the canonical tag-push reconciliation result");
 
     assert!(stage < claude && claude < final_remote && final_remote < push && push < reconcile);
-    assert_eq!(source.matches("git push origin \"refs/tags/$tag\"").count(), 1);
+    assert_eq!(source.matches("release-external-action.py tag-push").count(), 1);
+    assert!(
+        !source.contains("git push origin \"refs/tags/$tag\""),
+        "tag wrapper must not duplicate the canonical external tag-push mutation"
+    );
 
     for forbidden in [
         "check-provider-pins.sh",
@@ -545,7 +549,8 @@ fn claude_release_smoke_is_prompt_free_and_preflights_before_tty() {
     assert!(
         !source.contains("Reply exactly UNUSED.")
             && !source.contains("--output-format stream-json")
-            && source.contains("No model prompt was sent in either TUI")
+            && source.contains("No inference/model response appeared in either TUI")
+            && source.contains("claude-tty-supervisor.py")
             && source.contains("MODEL_PROMPT_SENT=NO"),
         "release rehearsal must not send or encode an automated model prompt"
     );
@@ -662,6 +667,10 @@ fn codex_release_evidence_uses_actions_before_tag_not_owner_or_draft_runtime() {
     let release = std::fs::read_to_string(".github/workflows/release.yml").unwrap();
     let stage = std::fs::read_to_string("scripts/release/stage-release.sh").unwrap();
     let resolver = std::fs::read_to_string("scripts/release/resolve-pretag-stage.sh").unwrap();
+    let admission =
+        std::fs::read_to_string("scripts/release/pretag-run-admission.py").unwrap();
+    let promotion =
+        std::fs::read_to_string(".github/workflows/release-promotion-rehearsal.yml").unwrap();
     let contract =
         std::fs::read_to_string("schemas/release/release-contract-v1.json").unwrap();
     let release_docs =
@@ -672,9 +681,17 @@ fn codex_release_evidence_uses_actions_before_tag_not_owner_or_draft_runtime() {
     assert!(candidate.contains("Upload Codex pre-merge rehearsal evidence"));
     assert!(candidate.contains("Rehearse/stage exact release bytes"));
     assert!(stage.contains("local-codex-plugin-activation-smoke.sh stage"));
-    assert!(resolver.contains(r#""event": "push""#));
-    assert!(resolver.contains(r#""head_branch": "main""#));
+    assert!(resolver.contains("pretag-run-admission.py"));
     assert!(resolver.contains("SUCCESSFUL_MAIN_STAGE_RUN_NOT_FOUND"));
+    assert!(admission.contains(r#""event": "push""#));
+    assert!(admission.contains(r#""head_branch": "main""#));
+    assert!(admission.contains(r#""head_sha": expected_sha"#));
+    assert!(admission.contains(r#"run.get("status") == "completed""#));
+    assert!(admission.contains(r#"run.get("status") != "in_progress""#));
+    assert!(admission.contains("Rehearse/stage exact release bytes"));
+    assert!(admission.contains("Rehearse attestation mechanism before tag"));
+    assert!(promotion.contains("CLROOM_PRETAG_CURRENT_RUN_ID: ${{ github.run_id }}"));
+    assert!(!release.contains("CLROOM_PRETAG_CURRENT_RUN_ID"));
 
     assert!(!release.contains("local-codex-plugin-activation-smoke.sh"));
     assert!(!release.contains("verify-codex-draft:"));

@@ -31,6 +31,9 @@ for forbidden in \
   'npm view' \
   'immutable-releases' \
   'check-release-contract.py' \
+  'release-facts.py' \
+  'render-publish-preview.py' \
+  'verify-publishable-surface.py' \
   'resolve-release-lifecycle.py' \
   'git ls-remote --symref origin HEAD' \
   'refs/heads/main'
@@ -51,6 +54,7 @@ allowed = {
     "scripts/release/provider-pins.sh",
     "scripts/release/resolve-pretag-stage.sh",
     "scripts/release/verify-pretag-stage.py",
+    "scripts/release/release-external-action.py",
 }
 unexpected = sorted(actual - allowed)
 if unexpected:
@@ -85,7 +89,7 @@ for required in \
   'resolve-pretag-stage.sh' \
   'verify-pretag-stage.py' \
   'uses: actions/attest@' \
-  'gh release upload' \
+  'release-external-action.py draft-promote' \
   'DRAFT_PROMOTION_RECONCILE_PASS'
 do
   grep -Fq -- "$required" "$release_workflow" || fail "PROMOTION_CONTRACT:$required"

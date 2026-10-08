@@ -1,6 +1,21 @@
 use std::{collections::BTreeSet, path::Path};
 
-use clroom::adapters::claude::managed::Presence;
+use clroom::{
+    adapters::{
+        claude::managed::Presence,
+        codex::{
+            activation::{self as codex_activation, PluginActivationPlan},
+            isolation::IsolationPlan,
+            mcp::{self as codex_mcp, McpActivationPlan},
+        },
+        identity::ProviderIdentity,
+    },
+    catalog::{
+        resource::ResourceKind,
+        selection::{SelectionRequest, SelectionTarget},
+    },
+};
+use serde::Serialize;
 
 const CODEX_CLEAN_DEFAULTS: &[&str] = &[
     "-c",
@@ -125,6 +140,273 @@ pub struct LaunchContract {
     pub user_or_provider_model_choice: bool,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ResolvedResourceSummary {
+    pub kind: &'static str,
+    pub id: String,
+    pub decision: &'static str,
+    pub reason: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qualification: Option<&'static str>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ResolvedProviderArgSummary {
+    pub element_count: usize,
+    pub values_exposed: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ResolvedLaunchSummary {
+    pub schema_version: &'static str,
+    pub provider: &'static str,
+    pub provider_version: String,
+    pub os: String,
+    pub arch: String,
+    pub resources: Vec<ResolvedResourceSummary>,
+    pub selected_global_skills: Vec<String>,
+    pub pass_env: Vec<String>,
+    pub boundary: &'static str,
+    pub boundary_controls: Vec<&'static str>,
+    pub provider_argv: ResolvedProviderArgSummary,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ResolveCodexError {
+    UnsupportedRequest,
+    ActivationConflict,
+    Plugin(codex_activation::ActivationError),
+    Mcp(codex_mcp::ActivationError),
+}
+
+pub struct ResolvedLaunch {
+    contract: LaunchContract,
+    identity: ProviderIdentity,
+    isolation: IsolationPlan,
+    plugin_activation: Option<PluginActivationPlan>,
+    mcp_activation: Option<McpActivationPlan>,
+    mcp_activation_args: Vec<String>,
+    pass_env: Vec<String>,
+    resources: Vec<ResolvedResourceSummary>,
+    provider_arg_count: usize,
+}
+
+impl ResolvedLaunch {
+    pub fn resolve_codex(
+        mut contract: LaunchContract,
+        identity: ProviderIdentity,
+        isolation: IsolationPlan,
+        home: &Path,
+        ambient_codex_home: &Path,
+        request: &SelectionRequest,
+        pass_env: &[String],
+        provider_arg_count: usize,
+    ) -> Result<Self, ResolveCodexError> {
+        let (plugin_request, mcp_request) = partition_codex_request(request)?;
+        let plugin_activation = codex_activation::plan(
+            home,
+            ambient_codex_home,
+            &plugin_request,
+            &identity,
+        )
+        .map_err(ResolveCodexError::Plugin)?;
+        let mcp_activation = codex_mcp::plan(
+            ambient_codex_home,
+            &mcp_request,
+            &identity,
+            pass_env,
+        )
+        .map_err(ResolveCodexError::Mcp)?;
+
+        if let (Some(plugin), Some(mcp)) =
+            (plugin_activation.as_ref(), mcp_activation.as_ref())
+            && plugin
+                .mcp_server_ids()
+                .iter()
+                .any(|server_id| server_id == mcp.id())
+        {
+            return Err(ResolveCodexError::ActivationConflict);
+        }
+
+        let plugin_activation_args = plugin_activation
+            .as_ref()
+            .map(PluginActivationPlan::provider_config_args)
+            .transpose()
+            .map_err(ResolveCodexError::Plugin)?
+            .unwrap_or_default();
+        let mcp_activation_args = mcp_activation
+            .as_ref()
+            .map(McpActivationPlan::provider_config_args)
+            .unwrap_or_default();
+        contract.add_codex_resource_activations(
+            &plugin_activation_args,
+            &mcp_activation_args,
+        );
+
+        let mut pass_env = pass_env.to_vec();
+        pass_env.sort();
+        pass_env.dedup();
+
+        Ok(Self {
+            contract,
+            identity,
+            isolation,
+            plugin_activation,
+            mcp_activation,
+            mcp_activation_args,
+            pass_env,
+            resources: resolved_resource_summaries(request),
+            provider_arg_count,
+        })
+    }
+
+    pub fn contract(&self) -> &LaunchContract {
+        &self.contract
+    }
+
+    pub fn identity(&self) -> &ProviderIdentity {
+        &self.identity
+    }
+
+    pub fn isolation(&self) -> &IsolationPlan {
+        &self.isolation
+    }
+
+    pub fn plugin_activation(&self) -> Option<&PluginActivationPlan> {
+        self.plugin_activation.as_ref()
+    }
+
+    pub fn mcp_activation(&self) -> Option<&McpActivationPlan> {
+        self.mcp_activation.as_ref()
+    }
+
+    pub fn mcp_activation_args(&self) -> &[String] {
+        &self.mcp_activation_args
+    }
+
+    pub fn revalidate_codex_sources(
+        &self,
+        home: &Path,
+        ambient_codex_home: &Path,
+    ) -> Result<(), ResolveCodexError> {
+        if let Some(activation) = &self.plugin_activation {
+            activation
+                .revalidate(home, ambient_codex_home)
+                .map_err(ResolveCodexError::Plugin)?;
+        }
+        if let Some(activation) = &self.mcp_activation {
+            activation.revalidate().map_err(ResolveCodexError::Mcp)?;
+        }
+        Ok(())
+    }
+
+    pub fn summary(&self) -> ResolvedLaunchSummary {
+        ResolvedLaunchSummary {
+            schema_version: "clroom.resolved-launch.v2",
+            provider: "codex",
+            provider_version: format!(
+                "{}.{}.{}",
+                self.identity.version.0, self.identity.version.1, self.identity.version.2
+            ),
+            os: self.identity.os.clone(),
+            arch: self.identity.arch.clone(),
+            resources: self.resources.clone(),
+            selected_global_skills: self
+                .isolation
+                .selected_global_skill_paths
+                .iter()
+                .map(|(id, _)| id.clone())
+                .collect(),
+            pass_env: self.pass_env.clone(),
+            boundary: self.contract.boundary_label(),
+            boundary_controls: self.contract.boundary_controls.clone(),
+            provider_argv: ResolvedProviderArgSummary {
+                element_count: self.provider_arg_count,
+                values_exposed: false,
+            },
+        }
+    }
+}
+
+fn partition_codex_request(
+    request: &SelectionRequest,
+) -> Result<(SelectionRequest, SelectionRequest), ResolveCodexError> {
+    let mut plugins = SelectionRequest::default();
+    let mut mcp = SelectionRequest::default();
+    partition_codex_targets(
+        &request.includes,
+        &mut plugins.includes,
+        &mut mcp.includes,
+    )?;
+    partition_codex_targets(
+        &request.excludes,
+        &mut plugins.excludes,
+        &mut mcp.excludes,
+    )?;
+    Ok((plugins, mcp))
+}
+
+fn partition_codex_targets(
+    source: &BTreeSet<SelectionTarget>,
+    plugins: &mut BTreeSet<SelectionTarget>,
+    mcp: &mut BTreeSet<SelectionTarget>,
+) -> Result<(), ResolveCodexError> {
+    for target in source {
+        match target {
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::Plugin => {
+                plugins.insert(target.clone());
+            }
+            SelectionTarget::Exact { kind, .. } if *kind == ResourceKind::McpServer => {
+                mcp.insert(target.clone());
+            }
+            _ => return Err(ResolveCodexError::UnsupportedRequest),
+        }
+    }
+    Ok(())
+}
+
+fn resolved_resource_summaries(request: &SelectionRequest) -> Vec<ResolvedResourceSummary> {
+    let mut resources = Vec::new();
+    for target in &request.excludes {
+        if let Some((kind, id)) = resolved_resource_identity(target) {
+            resources.push(ResolvedResourceSummary {
+                kind,
+                id: id.to_owned(),
+                decision: "excluded",
+                reason: "explicit-exclusion",
+                qualification: None,
+            });
+        }
+    }
+    for target in &request.includes {
+        if request.excludes.contains(target) {
+            continue;
+        }
+        if let Some((kind, id)) = resolved_resource_identity(target) {
+            resources.push(ResolvedResourceSummary {
+                kind,
+                id: id.to_owned(),
+                decision: "selected",
+                reason: "explicit-selection",
+                qualification: Some("qualified"),
+            });
+        }
+    }
+    resources
+}
+
+fn resolved_resource_identity(target: &SelectionTarget) -> Option<(&'static str, &str)> {
+    match target {
+        SelectionTarget::Exact { kind, id } if *kind == ResourceKind::Plugin => {
+            Some(("plugin", id))
+        }
+        SelectionTarget::Exact { kind, id } if *kind == ResourceKind::McpServer => {
+            Some(("mcp", id))
+        }
+        _ => None,
+    }
+}
+
 impl LaunchContract {
     pub fn codex(user_args: &[String]) -> Self {
         Self::codex_with_pass_env(user_args, &[])
@@ -206,30 +488,38 @@ impl LaunchContract {
         }
     }
 
-    pub fn add_codex_plugin_activation(&mut self, activation_args: &[String]) {
-        if self.provider != Provider::Codex || activation_args.is_empty() {
+    pub fn add_codex_resource_activations(
+        &mut self,
+        plugin_args: &[String],
+        mcp_args: &[String],
+    ) {
+        if self.provider != Provider::Codex || (plugin_args.is_empty() && mcp_args.is_empty()) {
             return;
         }
         let insert_at = CODEX_CLEAN_DEFAULTS.len();
-        self.argv
-            .splice(insert_at..insert_at, activation_args.iter().cloned());
+        let activation_args = plugin_args
+            .iter()
+            .chain(mcp_args.iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        self.argv.splice(insert_at..insert_at, activation_args);
         self.boundary = BoundaryState::Expanded;
-        if !self.boundary_controls.contains(&"plugin") {
+        if !plugin_args.is_empty() && !self.boundary_controls.contains(&"plugin") {
             self.boundary_controls.push("plugin");
+        }
+        if !mcp_args.is_empty() && !self.boundary_controls.contains(&"mcp") {
+            self.boundary_controls.push("mcp");
         }
     }
 
+    #[cfg(test)]
+    pub fn add_codex_plugin_activation(&mut self, activation_args: &[String]) {
+        self.add_codex_resource_activations(activation_args, &[]);
+    }
+
+    #[cfg(test)]
     pub fn add_codex_mcp_activation(&mut self, activation_args: &[String]) {
-        if self.provider != Provider::Codex || activation_args.is_empty() {
-            return;
-        }
-        let insert_at = CODEX_CLEAN_DEFAULTS.len();
-        self.argv
-            .splice(insert_at..insert_at, activation_args.iter().cloned());
-        self.boundary = BoundaryState::Expanded;
-        if !self.boundary_controls.contains(&"mcp") {
-            self.boundary_controls.push("mcp");
-        }
+        self.add_codex_resource_activations(&[], activation_args);
     }
 
     pub fn add_claude_plugin_activation(&mut self, activation_args: &[String]) {
@@ -249,7 +539,6 @@ impl LaunchContract {
         }
     }
 
-    #[cfg(test)]
     pub fn boundary_label(&self) -> &'static str {
         match self.boundary {
             BoundaryState::Clean => "clean",
@@ -412,8 +701,239 @@ fn analyze(
 
 #[cfg(test)]
 mod tests {
-    use super::{BoundaryState, CODEX_CLEAN_DEFAULTS, LaunchContract, Presence};
-    use std::path::Path;
+    use super::{
+        partition_codex_request, BoundaryState, CODEX_CLEAN_DEFAULTS, LaunchContract, Presence,
+        ResolveCodexError, ResolvedLaunch,
+    };
+    use clroom::{
+        adapters::{
+            codex::isolation::IsolationPlan,
+            identity::ProviderIdentity,
+        },
+        catalog::{
+            provider_inventory::CODEX_PLUGIN_ACTIVATION_EXACT,
+            resource::ResourceKind,
+            selection::{SelectionRequest, SelectionTarget},
+        },
+    };
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        sync::atomic::{AtomicU64, Ordering},
+    };
+
+    static RESOLVED_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+    fn resolved_fixture(standalone_id: &str, config_extra: &str) -> (PathBuf, PathBuf, IsolationPlan, ProviderIdentity) {
+        let root = std::env::temp_dir().join(format!(
+            "clroom-resolved-launch-{}-{}",
+            std::process::id(),
+            RESOLVED_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let home = root.join("home");
+        let codex_home = home.join(".codex");
+        let plugin = codex_home.join("plugins/cache/openai-bundled/codex-app-tools/0.1.4");
+        fs::create_dir_all(plugin.join(".codex-plugin")).unwrap();
+        fs::create_dir_all(plugin.join("skills/review")).unwrap();
+        fs::write(
+            plugin.join(".codex-plugin/plugin.json"),
+            r#"{"name":"codex-app-tools","skills":["./skills"]}"#,
+        )
+        .unwrap();
+        fs::write(
+            plugin.join(".mcp.json"),
+            r#"{"mcpServers":{"alpha.server":{"command":"node","args":[]},"zeta":{"command":"node","args":[]}}}"#,
+        )
+        .unwrap();
+        fs::write(plugin.join("skills/review/SKILL.md"), "fixture\n").unwrap();
+        fs::write(
+            codex_home.join("config.toml"),
+            format!(
+                r#"[mcp_servers."{standalone_id}"]
+command = "/usr/bin/docs-mcp"
+{config_extra}"#
+            ),
+        )
+        .unwrap();
+        let project = root.join("project");
+        fs::create_dir_all(&project).unwrap();
+        let isolation = IsolationPlan {
+            profile: "(version 1) (allow default)".to_owned(),
+            project,
+            selected_global_skills: 0,
+            selected_global_skill_paths: Vec::new(),
+        };
+        let identity = ProviderIdentity {
+            provider_id: "codex".to_owned(),
+            real_executable: PathBuf::from("/usr/bin/codex"),
+            artifact_digest: "0".repeat(64),
+            version: CODEX_PLUGIN_ACTIVATION_EXACT,
+            os: "macos".to_owned(),
+            arch: "aarch64".to_owned(),
+            interpreter: None,
+        };
+        (home, codex_home, isolation, identity)
+    }
+
+    fn mixed_request(mcp: &str) -> SelectionRequest {
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        request.include_value(&format!("mcp:{mcp}")).unwrap();
+        request
+    }
+
+    #[test]
+    fn resolved_codex_launch_composes_plugin_and_standalone_mcp_from_one_truth() {
+        let (home, codex_home, isolation, identity) = resolved_fixture("docs", "");
+        let resolved = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("docs"),
+            &[],
+            2,
+        )
+        .unwrap();
+
+        assert_eq!(
+            resolved.plugin_activation().map(|plan| plan.plugin_id()),
+            Some("codex-app-tools@openai-bundled")
+        );
+        assert_eq!(resolved.mcp_activation().map(|plan| plan.id()), Some("docs"));
+        assert_eq!(resolved.contract().boundary_controls, vec!["plugin", "mcp"]);
+        let plugin = resolved
+            .contract()
+            .argv
+            .iter()
+            .position(|arg| arg == "features.plugins=true")
+            .unwrap();
+        let mcp = resolved
+            .contract()
+            .argv
+            .iter()
+            .position(|arg| arg.contains("mcp_servers={\"docs\""))
+            .unwrap();
+        let model = resolved
+            .contract()
+            .argv
+            .iter()
+            .position(|arg| arg == "--model")
+            .unwrap();
+        assert!(plugin < mcp && mcp < model);
+        assert_eq!(resolved.revalidate_codex_sources(&home, &codex_home), Ok(()));
+
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn resolved_codex_launch_refuses_plugin_mcp_identity_overlap() {
+        let (home, codex_home, isolation, identity) = resolved_fixture("alpha.server", "");
+        let result = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex(&[]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("alpha.server"),
+            &[],
+            0,
+        );
+        assert!(matches!(result, Err(ResolveCodexError::ActivationConflict)));
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn drift_on_one_side_invalidates_the_whole_resolved_launch() {
+        let (home, codex_home, isolation, identity) = resolved_fixture("docs", "");
+        let resolved = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex(&[]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("docs"),
+            &[],
+            0,
+        )
+        .unwrap();
+
+        fs::write(
+            codex_home.join("config.toml"),
+            "[mcp_servers.docs]\ncommand = \"changed\"\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            resolved.revalidate_codex_sources(&home, &codex_home),
+            Err(ResolveCodexError::Mcp(
+                clroom::adapters::codex::mcp::ActivationError::StateChanged
+            ))
+        ));
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn resolved_summary_is_sanitized_and_keeps_only_env_names() {
+        let (home, codex_home, isolation, identity) =
+            resolved_fixture("docs", "env_vars = [\"DOCS_TOKEN\"]\ncwd = \"/private/tmp/hidden-work\"\n");
+        let resolved = ResolvedLaunch::resolve_codex(
+            LaunchContract::codex_with_pass_env(&["safe-prompt".to_owned()], &["DOCS_TOKEN".to_owned()]),
+            identity,
+            isolation,
+            &home,
+            &codex_home,
+            &mixed_request("docs"),
+            &["DOCS_TOKEN".to_owned()],
+            1,
+        )
+        .unwrap();
+
+        let json = serde_json::to_string(&resolved.summary()).unwrap();
+        assert!(json.contains("codex-app-tools@openai-bundled"));
+        assert!(json.contains("\"docs\""));
+        assert!(json.contains("DOCS_TOKEN"));
+        assert!(json.contains("\"values_exposed\":false"));
+        assert!(!json.contains("safe-prompt"));
+        assert!(!json.contains("/usr/bin/docs-mcp"));
+        assert!(!json.contains("/private/tmp/hidden-work"));
+        assert!(!json.contains(codex_home.to_string_lossy().as_ref()));
+        let _ = fs::remove_dir_all(home.parent().unwrap());
+    }
+
+    #[test]
+    fn codex_request_partition_preserves_one_plugin_and_one_mcp_independently() {
+        let mut request = SelectionRequest::default();
+        request
+            .include_value("plugin:codex-app-tools@openai-bundled")
+            .unwrap();
+        request.include_value("mcp:review").unwrap();
+
+        let (plugins, mcp) = partition_codex_request(&request).unwrap();
+        assert_eq!(plugins.includes.len(), 1);
+        assert_eq!(mcp.includes.len(), 1);
+        assert!(plugins.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::Plugin,
+            id: "codex-app-tools@openai-bundled".to_owned(),
+        }));
+        assert!(mcp.includes.contains(&SelectionTarget::Exact {
+            kind: ResourceKind::McpServer,
+            id: "review".to_owned(),
+        }));
+    }
+
+    #[test]
+    fn codex_request_partition_keeps_all_and_unsupported_kinds_closed() {
+        let mut request = SelectionRequest::default();
+        request.include_value("all").unwrap();
+        assert_eq!(
+            partition_codex_request(&request),
+            Err(ResolveCodexError::UnsupportedRequest)
+        );
+    }
 
     #[test]
     fn standalone_mcp_top_level_guard_refuses_provider_subcommands() {
@@ -510,6 +1030,30 @@ mod tests {
         );
         assert_eq!(contract.boundary, BoundaryState::Expanded);
         assert!(contract.boundary_controls.contains(&"plugin"));
+    }
+
+    #[test]
+    fn codex_owned_plugin_and_mcp_activation_order_is_deterministic() {
+        let mut contract = LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]);
+        contract.add_codex_resource_activations(
+            &["-c".to_owned(), "synthetic_plugin=true".to_owned()],
+            &["-c".to_owned(), "synthetic_mcp=true".to_owned()],
+        );
+
+        let plugin = contract
+            .argv
+            .windows(2)
+            .position(|pair| pair[0] == "-c" && pair[1] == "synthetic_plugin=true")
+            .unwrap();
+        let mcp = contract
+            .argv
+            .windows(2)
+            .position(|pair| pair[0] == "-c" && pair[1] == "synthetic_mcp=true")
+            .unwrap();
+        let model = contract.argv.iter().position(|arg| arg == "--model").unwrap();
+        assert!(plugin < mcp);
+        assert!(mcp < model);
+        assert_eq!(contract.boundary_controls, vec!["plugin", "mcp"]);
     }
 
     #[test]
