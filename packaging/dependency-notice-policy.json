@@ -2,7 +2,7 @@
   "schema_version": "clroom.dependency-notice-policy.v2",
   "canonical_fallbacks": [
     {
-      "package": "jsonschema-regex@0.49.9",
+      "package": "jsonschema-regex@0.58.6",
       "declared_expression": "MIT",
       "selected_license": "MIT",
       "source_path": "packaging/licenses/MIT.txt",
@@ -10,7 +10,7 @@
       "sha256": "a306b08221195a76a7c37ffeb370dde0948993091e8b10f454b17fda1673d885"
     },
     {
-      "package": "jsonschema-value@0.49.9",
+      "package": "jsonschema-value@0.58.6",
       "declared_expression": "MIT",
       "selected_license": "MIT",
       "source_path": "packaging/licenses/MIT.txt",
