@@ -45,6 +45,24 @@ If these checks do not explain the failure, use [Support](SUPPORT.md) and includ
 
 The [problem index](problem-index.md#install-first-run-failures) also maps common first-run wording to this answer.
 
+## Verify the first clean session
+
+The help/version commands above check command availability; they do **not**
+prove that a real clean provider session starts successfully. From an existing
+project directory where the installed provider already works on its own, start
+`clroom codex` **or** `clroom claude` (whichever provider you use).
+
+Confirm that CLROOM prints its launch summary, then that the provider starts
+its normal interactive session. Project-side files and provider-owned behavior
+are not supposed to disappear. Exit using the provider's normal exit method;
+CLROOM does not install a background service. For a guided check, see the
+[first-run walkthrough](demo.md). If the provider does not start, follow
+[Troubleshooting](troubleshooting.md) instead of changing security settings or
+restoring broad ambient configuration to hide the failure.
+
+This is a user-facing verification procedure, not evidence that independent
+unassisted users have completed onboarding.
+
 ## Package-manager status
 
 The current supported binary distribution is the GitHub Release installer/archive above.
