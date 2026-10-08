@@ -65,7 +65,7 @@ def main() -> int:
         raise SystemExit("CLROOM_PACKAGING_LEGAL_NOTICE_REFUSED:LOCK_BINDING")
     if any(marker in body for marker in ("/Users/", "/home/", "Documents/it", "ghp_", "sk-")):
         raise SystemExit("CLROOM_PACKAGING_LEGAL_NOTICE_REFUSED:PRIVATE_DATA")
-    for missing_file_package in ("jsonschema-regex@0.49.9", "jsonschema-value@0.49.9", "r-efi@5.3.0", "uuid-simd@0.8.0", "vsimd@0.8.0"):
+    for missing_file_package in ("jsonschema-regex@0.58.6", "jsonschema-value@0.58.6", "r-efi@5.3.0", "uuid-simd@0.8.0", "vsimd@0.8.0"):
         if f"Canonical fallback for: {missing_file_package}" not in body:
             raise SystemExit("CLROOM_PACKAGING_LEGAL_NOTICE_REFUSED:FALLBACK:" + missing_file_package)
 
