@@ -45,7 +45,7 @@ jobs:
           report = json.loads(Path(sys.argv[1]).read_text())
           assert report["source_commit"] == os.environ["WATCH_SOURCE_HEAD"]
           assert len(report["signals"]) == 5
-          unknown = [signal["source"] for signal in report["signals"] if signal["state"] == "UNKNOWN"]
+          unknown = [signal["source"] + ":" + signal.get("reason", "no-reason") for signal in report["signals"] if signal["state"] == "UNKNOWN"]
           print("DAILY_WATCH_UNKNOWN_SOURCES=" + ",".join(unknown))
           assert not unknown, "unknown external source evidence"
           assert report["release_decision"] == "NOT_AUTHORIZED"
