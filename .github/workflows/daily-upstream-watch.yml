@@ -18,12 +18,16 @@ concurrency:
 jobs:
   watch:
     name: Read-only provider and standards source signals
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      WATCH_SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Negative and offline contract tests
         run: python3 scripts/probe/watch-agent-ecosystem.py --self-test
@@ -32,6 +36,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/probe/watch-agent-ecosystem.py --output "$RUNNER_TEMP/compatibility-watch.json"
+      - name: Prove PR input coverage and exact source binding
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - "$RUNNER_TEMP/compatibility-watch.json" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          report = json.loads(Path(sys.argv[1]).read_text())
+          assert report["source_commit"] == os.environ["WATCH_SOURCE_HEAD"]
+          assert len(report["signals"]) == 5
+          assert all(signal["state"] != "UNKNOWN" for signal in report["signals"])
+          assert report["release_decision"] == "NOT_AUTHORIZED"
+          print("DAILY_WATCH_SOURCE_REHEARSAL_PASS")
+          PY
       - name: Preserve reviewable exact-run signal artifact
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
