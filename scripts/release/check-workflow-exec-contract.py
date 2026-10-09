@@ -49,6 +49,13 @@ def violations_for_text(text: str, modes: dict[str, str], workflow: str) -> list
         stripped = raw.lstrip()
         if stripped.startswith("#"):
             continue
+        # A YAML paths filter is data, not a shell command. Continue checking
+        # actual run commands for non-executable script invocations.
+        if re.fullmatch(
+            r"""-\s*['"]?(?:\./)?(?:scripts|packaging)/[A-Za-z0-9_./-]+\.(?:sh|py)['"]?\s*""",
+            stripped,
+        ):
+            continue
         for match in LOCAL_SCRIPT.finditer(raw):
             path = normalized(match.group("path"))
             mode = modes.get(path)
@@ -86,6 +93,8 @@ run: |
         "run: scripts/release/exec.sh arg",
         "  source scripts/release/nonexec.sh",
         '  if git diff --quiet "$BASE"...HEAD -- scripts/release/nonexec.sh; then',
+        "    - 'scripts/release/nonexec.sh'",
+        '    - "scripts/release/tool.py"',
     ):
         if violations_for_text(good, modes, "fixture.yml"):
             raise SystemExit("WORKFLOW_EXEC_CONTRACT_SELF_TEST_FAIL_WRAPPER")
