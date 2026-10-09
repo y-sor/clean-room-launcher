@@ -72,19 +72,29 @@ def inspect_standard(name,url,raw):
         result["reason"]="invalid-source-sha"
     return result
 
+def source_error_reason(error):
+    if isinstance(error, urllib.error.HTTPError):
+        return "http-" + str(error.code)
+    if isinstance(error, ValueError) and str(error) == "redirect-not-allowed-for-authenticated-source":
+        return "redirect-denied"
+    if isinstance(error, json.JSONDecodeError):
+        return "invalid-json"
+    return "source-transport-or-invalid"
+
+
 def collect(pin_text,getter):
     qualified=pins(pin_text)
     results=[]
     for name,url,key,pattern in PROVIDERS:
         try:
             results.append(inspect_release(name,url,qualified[key],pattern,getter(url)))
-        except (OSError,ValueError,urllib.error.URLError,json.JSONDecodeError):
-            results.append({"source":name,"kind":"provider","url":url,"state":"UNKNOWN","reason":"source-unavailable-or-invalid"})
+        except (OSError,ValueError,urllib.error.URLError,json.JSONDecodeError) as error:
+            results.append({"source":name,"kind":"provider","url":url,"state":"UNKNOWN","reason":source_error_reason(error)})
     for name,url in STANDARDS:
         try:
             results.append(inspect_standard(name,url,getter(url)))
-        except (OSError,ValueError,urllib.error.URLError,json.JSONDecodeError):
-            results.append({"source":name,"kind":"standard-source","url":url,"state":"UNKNOWN","reason":"source-unavailable-or-invalid"})
+        except (OSError,ValueError,urllib.error.URLError,json.JSONDecodeError) as error:
+            results.append({"source":name,"kind":"standard-source","url":url,"state":"UNKNOWN","reason":source_error_reason(error)})
     status="UNKNOWN" if any(x["state"]=="UNKNOWN" for x in results) else (
         "REVIEW_NEEDED" if any(x["state"]=="REVIEW_NEEDED" for x in results) else "NO_PROVIDER_PIN_DRIFT_OBSERVED"
     )
