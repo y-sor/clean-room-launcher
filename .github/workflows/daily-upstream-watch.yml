@@ -27,13 +27,13 @@ jobs:
           persist-credentials: false
       - name: Negative and offline contract tests
         run: python3 scripts/probe/watch-agent-ecosystem.py --self-test
-      - name: Read official source signals, no mutation or notification
-        if: github.event_name != 'pull_request'
+      - name: Rehearse exact-source public API inputs (same path used by daily schedule)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/probe/watch-agent-ecosystem.py --output "$RUNNER_TEMP/compatibility-watch.json"
-      - name: Preserve reviewable daily signal artifact
-        if: github.event_name != 'pull_request'
+      - name: Preserve reviewable exact-run signal artifact
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: daily-upstream-watch-${{ github.run_id }}
