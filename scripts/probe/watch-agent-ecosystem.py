@@ -16,9 +16,9 @@ PROVIDERS = (
  ("claude","https://api.github.com/repos/anthropics/claude-code/releases/latest","CLAUDE_VERSION",r"v(\d+\.\d+\.\d+)"),
 )
 STANDARDS = (
- ("agent-plugins","https://api.github.com/repos/agentplugins/agent-plugins-spec/commits/main"),
- ("agent-skills","https://api.github.com/repos/agentskills/agentskills/commits/main"),
- ("mcp","https://api.github.com/repos/modelcontextprotocol/modelcontextprotocol/commits/main"),
+ ("agent-plugins","https://api.github.com/repos/agentplugins/agent-plugins-spec/git/ref/heads/main"),
+ ("agent-skills","https://api.github.com/repos/agentskills/agentskills/git/ref/heads/main"),
+ ("mcp","https://api.github.com/repos/modelcontextprotocol/modelcontextprotocol/git/ref/heads/main"),
 )
 
 def pins(text):
@@ -44,8 +44,8 @@ def get_json(url):
     with urllib.request.build_opener(NoRedirect()).open(request,timeout=15) as response:
         if response.status!=200:
             raise ValueError("unexpected HTTP status")
-        body=response.read(131073)
-        if len(body)>131072:
+        body=response.read(524289)
+        if len(body)>524288:
             raise ValueError("oversized response")
         return json.loads(body)
 
@@ -66,8 +66,8 @@ def inspect_release(name,url,pin,tag_pattern,raw):
 
 def inspect_standard(name,url,raw):
     result={"source":name,"kind":"standard-source","url":url,"state":"UNKNOWN"}
-    if isinstance(raw,dict) and isinstance(raw.get("sha"),str) and re.fullmatch(r"[0-9a-f]{40}",raw["sha"]):
-        result.update({"state":"OBSERVED_UNTRIAGED","revision":raw["sha"],"reason":"main-head-not-published-standard"})
+    if isinstance(raw,dict) and isinstance(raw.get("object"),dict) and isinstance(raw["object"].get("sha"),str) and re.fullmatch(r"[0-9a-f]{40}",raw["object"]["sha"]):
+        result.update({"state":"OBSERVED_UNTRIAGED","revision":raw["object"]["sha"],"reason":"main-head-not-published-standard"})
     else:
         result["reason"]="invalid-source-sha"
     return result
@@ -79,6 +79,8 @@ def source_error_reason(error):
         return "redirect-denied"
     if isinstance(error, json.JSONDecodeError):
         return "invalid-json"
+    if isinstance(error, ValueError) and str(error) == "oversized response":
+        return "response-exceeds-512kib-bound"
     return "source-transport-or-invalid"
 
 
@@ -117,7 +119,7 @@ def self_test():
     text="CODEX_VERSION=0.161.0\nCLAUDE_VERSION=2.1.293\n"
     fixtures={PROVIDERS[0][1]:{"tag_name":"rust-v0.161.0","draft":False,"prerelease":False},
       PROVIDERS[1][1]:{"tag_name":"v2.1.293","draft":False,"prerelease":False}}
-    fixtures.update({url:{"sha":"a"*40} for name,url in STANDARDS})
+    fixtures.update({url:{"object":{"sha":"a"*40}} for name,url in STANDARDS})
     assert collect(text,fixtures.__getitem__)["overall"]=="NO_PROVIDER_PIN_DRIFT_OBSERVED"
     fixtures[PROVIDERS[0][1]]["tag_name"]="rust-v0.162.0"
     assert collect(text,fixtures.__getitem__)["overall"]=="REVIEW_NEEDED"
@@ -125,7 +127,7 @@ def self_test():
     fixtures[PROVIDERS[0][1]]["draft"]=True
     assert collect(text,fixtures.__getitem__)["overall"]=="UNKNOWN"
     fixtures[PROVIDERS[0][1]]["draft"]=False
-    fixtures[STANDARDS[1][1]]={"sha":"../../invalid"}
+    fixtures[STANDARDS[1][1]]={"object":{"sha":"../../invalid"}}
     assert collect(text,fixtures.__getitem__)["overall"]=="UNKNOWN"
     try:
         pins(text+"CODEX_VERSION=0.161.0\n")
