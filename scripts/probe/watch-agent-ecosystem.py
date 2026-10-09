@@ -91,7 +91,7 @@ def collect(pin_text,getter):
     return {
       "schema":"clroom.advisory-watch.v1",
       "observed_at":dt.datetime.now(dt.timezone.utc).isoformat(),
-      "source_commit":os.getenv("GITHUB_SHA","LOCAL"),
+      "source_commit":os.getenv("WATCH_SOURCE_HEAD",os.getenv("GITHUB_SHA","LOCAL")),
       "overall":status,
       "release_decision":"NOT_AUTHORIZED",
       "signals":results,
