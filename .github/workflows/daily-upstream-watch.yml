@@ -1,0 +1,42 @@
+name: Daily upstream source watch (advisory)
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/probe/watch-agent-ecosystem.py'
+      - '.github/workflows/daily-upstream-watch.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-upstream-watch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    name: Read-only provider and standards source signals
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Negative and offline contract tests
+        run: python3 scripts/probe/watch-agent-ecosystem.py --self-test
+      - name: Read official source signals, no mutation or notification
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/probe/watch-agent-ecosystem.py --output "$RUNNER_TEMP/compatibility-watch.json"
+      - name: Preserve reviewable daily signal artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: daily-upstream-watch-${{ github.run_id }}
+          path: ${{ runner.temp }}/compatibility-watch.json
+          if-no-files-found: error
+          retention-days: 30
