@@ -30,13 +30,18 @@ def pins(text):
         out[key]=values[0]
     return out
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,req,fp,code,msg,headers,newurl):
+        raise ValueError("redirect-not-allowed-for-authenticated-source")
+
+
 def get_json(url):
     token=os.getenv("GH_TOKEN","")
     hdr={"Accept":"application/vnd.github+json","User-Agent":"CLROOM-upstream-watch/1"}
     if token:
         hdr["Authorization"]="Bearer "+token
     request=urllib.request.Request(url,headers=hdr)
-    with urllib.request.urlopen(request,timeout=15) as response:
+    with urllib.request.build_opener(NoRedirect()).open(request,timeout=15) as response:
         if response.status!=200:
             raise ValueError("unexpected HTTP status")
         body=response.read(131073)
@@ -117,7 +122,12 @@ def self_test():
         raise AssertionError("duplicate pin accepted")
     except ValueError:
         pass
-    print("ADVISORY_WATCH_SELF_TEST_PASS: unchanged, drift, draft, bad source, ambiguous pin")
+    try:
+        NoRedirect().redirect_request(None,None,302,"",{},"https://example.invalid/")
+        raise AssertionError("redirect accepted")
+    except ValueError:
+        pass
+    print("ADVISORY_WATCH_SELF_TEST_PASS: unchanged, drift, draft, bad source, ambiguous pin, denied redirect")
 
 def main():
     parser=argparse.ArgumentParser()
