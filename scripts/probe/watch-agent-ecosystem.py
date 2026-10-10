@@ -66,7 +66,7 @@ def inspect_release(name,url,pin,tag_pattern,raw):
 
 def inspect_standard(name,url,raw):
     result={"source":name,"kind":"standard-source","url":url,"state":"UNKNOWN"}
-    if isinstance(raw,dict) and isinstance(raw.get("object"),dict) and isinstance(raw["object"].get("sha"),str) and re.fullmatch(r"[0-9a-f]{40}",raw["object"]["sha"]):
+    if (isinstance(raw,dict) and raw.get("ref") == "refs/heads/main" and isinstance(raw.get("object"),dict) and raw["object"].get("type") == "commit" and isinstance(raw["object"].get("sha"),str) and re.fullmatch(r"[0-9a-f]{40}",raw["object"]["sha"])):
         result.update({"state":"OBSERVED_UNTRIAGED","revision":raw["object"]["sha"],"reason":"main-head-not-published-standard"})
     else:
         result["reason"]="invalid-source-sha"
@@ -119,7 +119,7 @@ def self_test():
     text="CODEX_VERSION=0.161.0\nCLAUDE_VERSION=2.1.293\n"
     fixtures={PROVIDERS[0][1]:{"tag_name":"rust-v0.161.0","draft":False,"prerelease":False},
       PROVIDERS[1][1]:{"tag_name":"v2.1.293","draft":False,"prerelease":False}}
-    fixtures.update({url:{"object":{"sha":"a"*40}} for name,url in STANDARDS})
+    fixtures.update({url:{"ref":"refs/heads/main","object":{"type":"commit","sha":"a"*40}} for name,url in STANDARDS})
     assert collect(text,fixtures.__getitem__)["overall"]=="NO_PROVIDER_PIN_DRIFT_OBSERVED"
     fixtures[PROVIDERS[0][1]]["tag_name"]="rust-v0.162.0"
     assert collect(text,fixtures.__getitem__)["overall"]=="REVIEW_NEEDED"
@@ -127,7 +127,11 @@ def self_test():
     fixtures[PROVIDERS[0][1]]["draft"]=True
     assert collect(text,fixtures.__getitem__)["overall"]=="UNKNOWN"
     fixtures[PROVIDERS[0][1]]["draft"]=False
-    fixtures[STANDARDS[1][1]]={"object":{"sha":"../../invalid"}}
+    fixtures[STANDARDS[1][1]]={"ref":"refs/heads/main","object":{"type":"commit","sha":"../../invalid"}}
+    assert collect(text,fixtures.__getitem__)["overall"]=="UNKNOWN"
+    fixtures[STANDARDS[1][1]]={"ref":"refs/heads/main","object":{"type":"tree","sha":"a"*40}}
+    assert collect(text,fixtures.__getitem__)["overall"]=="UNKNOWN"
+    fixtures[STANDARDS[1][1]]={"ref":"refs/tags/v1.0","object":{"type":"commit","sha":"a"*40}}
     assert collect(text,fixtures.__getitem__)["overall"]=="UNKNOWN"
     try:
         pins(text+"CODEX_VERSION=0.161.0\n")
@@ -139,7 +143,7 @@ def self_test():
         raise AssertionError("redirect accepted")
     except ValueError:
         pass
-    print("ADVISORY_WATCH_SELF_TEST_PASS: unchanged, drift, draft, bad source, ambiguous pin, denied redirect")
+    print("ADVISORY_WATCH_SELF_TEST_PASS: unchanged, drift, draft, bad source/ref/type, ambiguous pin, denied redirect")
 
 def main():
     parser=argparse.ArgumentParser()
