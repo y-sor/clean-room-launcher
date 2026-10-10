@@ -175,9 +175,9 @@ def assemble(inventory, getter, now):
         try:
             matched, pages = collect_pages(ecosystem, inventory, getter, now)
             signals.extend(matched)
-            coverage["github-reviewed-" + ecosystem] = "OBSERVED_RECENT_WINDOW_PAGES_" + str(pages)
+            coverage["github-reviewed-" + ("npm-provider-pins" if ecosystem == "npm" else ecosystem)] = "OBSERVED_RECENT_WINDOW_PAGES_" + str(pages)
         except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError) as error:
-            coverage["github-reviewed-" + ecosystem] = "UNKNOWN:" + source_reason(error)
+            coverage["github-reviewed-" + ("npm-provider-pins" if ecosystem == "npm" else ecosystem)] = "UNKNOWN:" + source_reason(error)
     try:
         kev = parse_kev(getter(KEV_URL))
         coverage["cisa-kev-mirror"] = "OBSERVED_SNAPSHOT"
@@ -197,6 +197,7 @@ def assemble(inventory, getter, now):
             "nonclaims": [
                 "Observed GHSA modifications in a rolling 30-day window, not a complete historical vulnerability audit.",
                 "Package names may match while installed versions are not vulnerable; vulnerable version ranges and exploitability are NOT evaluated.",
+                "npm feed is limited to pinned Codex and Claude packages, not the entire npm ecosystem.",
                 "CISA KEV only enriches matched CVEs and does not establish CLROOM exposure.",
                 "Dependabot private alerts, OSV, provider native advisories and full threat assessment are NOT checked by this script.",
                 "No severity classification, automatic PR, notification, pin update, release or publish is authorized."]}
