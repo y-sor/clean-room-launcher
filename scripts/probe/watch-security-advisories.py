@@ -82,9 +82,13 @@ def installed_inventory(root):
 def query(ecosystem, now):
     start = (now - dt.timedelta(days=WINDOW_DAYS)).date().isoformat()
     # 'modified' includes advisories published OR updated in the rolling window.
-    params = urllib.parse.urlencode({"type": "reviewed", "ecosystem": ecosystem,
-                                     "modified": ">=" + start, "per_page": MAX_ADVISORIES})
-    return "https://api.github.com/advisories?" + params
+    filters = {"type": "reviewed", "ecosystem": ecosystem,
+               "modified": ">=" + start, "per_page": MAX_ADVISORIES}
+    # The npm ecosystem is enormous; this CLROOM product runs only two
+    # explicitly pinned provider npm packages, not arbitrary npm dependencies.
+    if ecosystem == "npm":
+        filters["affects"] = "@openai/codex,@anthropic-ai/claude-code"
+    return "https://api.github.com/advisories?" + urllib.parse.urlencode(filters)
 
 
 def parse_advisories(ecosystem, records, inventory):
@@ -206,6 +210,7 @@ def self_test():
             "severity": "critical", "cve_id": "CVE-2026-12345",
             "vulnerabilities": [{"package": {"ecosystem": "rust", "name": "testcrate"},
                                  "vulnerable_version_range": "<2.0.0"}]}
+    assert "affects=%40openai%2Fcodex%2C%40anthropic-ai%2Fclaude-code" in query("npm", now)
     sources = {query(e, now): [] for e in ("rust", "actions", "npm")}
     sources[query("rust", now)] = [safe]
     sources[KEV_URL] = {"count": 100, "vulnerabilities": [{"cveID": "CVE-2026-12345"}] +
