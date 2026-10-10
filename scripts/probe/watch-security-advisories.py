@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 KEV_URL = "https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json"
 WINDOW_DAYS = 30
 MAX_ADVISORIES = 100
+MAX_PAGES = 20
 MAX_RESPONSE = 8 * 1024 * 1024
 CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,19}$")
 GHSA_RE = re.compile(r"^GHSA-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}$")
@@ -87,7 +88,7 @@ def query(ecosystem, now):
 
 
 def parse_advisories(ecosystem, records, inventory):
-    if not isinstance(records, list) or len(records) >= MAX_ADVISORIES:
+    if not isinstance(records, list) or len(records) > MAX_ADVISORIES:
         raise ValueError("advisory-page-unverified-or-truncated")
     matches = []
     for entry in records:
@@ -124,6 +125,17 @@ def parse_advisories(ecosystem, records, inventory):
     return matches
 
 
+def collect_pages(ecosystem, inventory, getter, now):
+    matches = []
+    for page in range(1, MAX_PAGES + 1):
+        url = query(ecosystem, now) + ("&page=" + str(page) if page > 1 else "")
+        raw = getter(url)
+        matches.extend(parse_advisories(ecosystem, raw, inventory))
+        if len(raw) < MAX_ADVISORIES:
+            return matches, page
+    raise ValueError("advisory-page-limit-exceeded")
+
+
 def parse_kev(raw):
     if not isinstance(raw, dict) or not isinstance(raw.get("vulnerabilities"), list):
         raise ValueError("invalid-kev-shape")
@@ -144,7 +156,7 @@ def source_reason(error):
         return "http-" + str(error.code)
     if isinstance(error, ValueError):
         code = str(error)
-        if code in {"advisory-page-unverified-or-truncated", "invalid-advisory-shape",
+        if code in {"advisory-page-unverified-or-truncated", "advisory-page-limit-exceeded", "invalid-advisory-shape",
                     "unexpected-advisory-type", "missing-advisory-packages",
                     "invalid-vulnerability-package", "invalid-cve-id", "invalid-kev-shape",
                     "invalid-kev-count", "invalid-kev-cve", "source-redirect-denied",
@@ -156,11 +168,10 @@ def source_reason(error):
 def assemble(inventory, getter, now):
     signals, coverage = [], {}
     for ecosystem in ("rust", "actions", "npm"):
-        url = query(ecosystem, now)
         try:
-            matched = parse_advisories(ecosystem, getter(url), inventory)
+            matched, pages = collect_pages(ecosystem, inventory, getter, now)
             signals.extend(matched)
-            coverage["github-reviewed-" + ecosystem] = "OBSERVED_RECENT_WINDOW"
+            coverage["github-reviewed-" + ecosystem] = "OBSERVED_RECENT_WINDOW_PAGES_" + str(pages)
         except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError) as error:
             coverage["github-reviewed-" + ecosystem] = "UNKNOWN:" + source_reason(error)
     try:
@@ -206,6 +217,9 @@ def self_test():
     sources[query("rust", now)] = [dict(safe, vulnerabilities=[{"package":{"ecosystem":"rust","name":"unrelated"}}])]
     assert assemble(inv, sources.__getitem__, now)["overall"] == "NO_MATCH_OBSERVED_IN_30_DAY_WINDOW"
     sources[query("rust", now)] = [safe] * MAX_ADVISORIES
+    sources[query("rust", now) + "&page=2"] = []
+    assert assemble(inv, sources.__getitem__, now)["coverage"]["github-reviewed-rust"] == "OBSERVED_RECENT_WINDOW_PAGES_2"
+    del sources[query("rust", now) + "&page=2"]
     assert assemble(inv, sources.__getitem__, now)["overall"] == "UNKNOWN_COVERAGE"
     sources[query("rust", now)] = [safe]
     sources[KEV_URL] = {"count": 1, "vulnerabilities": []}
