@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/probe/watch-agent-ecosystem.py'
       - 'scripts/probe/watch-security-advisories.py'
+      - 'scripts/probe/assemble-risk-evidence.py'
       - '.github/workflows/daily-upstream-watch.yml'
 
 permissions:
@@ -74,6 +75,26 @@ jobs:
           assert result["release_decision"] == "NOT_AUTHORIZED"
           print("ADVISORY_EVIDENCE_REHEARSAL_PASS")
           PY
+      - name: Test cross-source envelope invariants (offline negative fixtures)
+        run: python3 scripts/probe/assemble-risk-evidence.py --self-test
+      - name: Bind freshness and risk review candidates to exact source
+        env:
+          WATCH_SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 scripts/probe/assemble-risk-evidence.py \
+            --upstream "$RUNNER_TEMP/compatibility-watch.json" \
+            --advisories "$RUNNER_TEMP/security-advisory-evidence.json" \
+            --output "$RUNNER_TEMP/risk-intelligence-input.json" \
+            --source-head "$WATCH_SOURCE_HEAD"
+      - name: Prove strict fresh input contract on exact PR candidate
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 scripts/probe/assemble-risk-evidence.py \
+            --upstream "$RUNNER_TEMP/compatibility-watch.json" \
+            --advisories "$RUNNER_TEMP/security-advisory-evidence.json" \
+            --output "$RUNNER_TEMP/risk-intelligence-input.json" \
+            --source-head "$WATCH_SOURCE_HEAD" \
+            --require-fresh-observed
       - name: Preserve reviewable exact-run signal artifact
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -82,5 +103,6 @@ jobs:
           path: |
             ${{ runner.temp }}/compatibility-watch.json
             ${{ runner.temp }}/security-advisory-evidence.json
+            ${{ runner.temp }}/risk-intelligence-input.json
           if-no-files-found: error
           retention-days: 30
