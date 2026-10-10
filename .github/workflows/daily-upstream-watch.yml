@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'scripts/probe/watch-agent-ecosystem.py'
+      - 'scripts/probe/watch-security-advisories.py'
       - '.github/workflows/daily-upstream-watch.yml'
 
 permissions:
@@ -51,11 +52,35 @@ jobs:
           assert report["release_decision"] == "NOT_AUTHORIZED"
           print("DAILY_WATCH_SOURCE_REHEARSAL_PASS")
           PY
+      - name: Test security-advisory intake (offline negative fixtures)
+        run: python3 scripts/probe/watch-security-advisories.py --self-test
+      - name: Read public GHSA + CISA KEV advisories (no writes)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/probe/watch-security-advisories.py --output "$RUNNER_TEMP/security-advisory-evidence.json"
+      - name: Rehearse exact-source advisory coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - "$RUNNER_TEMP/security-advisory-evidence.json" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          result = json.loads(Path(sys.argv[1]).read_text())
+          assert result["schema"] == "clroom.advisory-intake.v1"
+          assert result["source_commit"] == os.environ["WATCH_SOURCE_HEAD"]
+          assert len(result["coverage"]) == 4
+          unknown = [f"{key}:{state}" for key,state in result["coverage"].items() if state.startswith("UNKNOWN")]
+          print("ADVISORY_UNKNOWN_FEEDS=" + ",".join(unknown))
+          assert not unknown, "advisory source input not observed on exact PR HEAD"
+          assert result["release_decision"] == "NOT_AUTHORIZED"
+          print("ADVISORY_EVIDENCE_REHEARSAL_PASS")
+          PY
       - name: Preserve reviewable exact-run signal artifact
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: daily-upstream-watch-${{ github.run_id }}
-          path: ${{ runner.temp }}/compatibility-watch.json
+          path: |
+            ${{ runner.temp }}/compatibility-watch.json
+            ${{ runner.temp }}/security-advisory-evidence.json
           if-no-files-found: error
           retention-days: 30
