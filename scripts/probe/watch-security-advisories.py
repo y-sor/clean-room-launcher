@@ -220,7 +220,11 @@ def self_test():
     sources[query("rust", now) + "&page=2"] = []
     assert assemble(inv, sources.__getitem__, now)["coverage"]["github-reviewed-rust"] == "OBSERVED_RECENT_WINDOW_PAGES_2"
     del sources[query("rust", now) + "&page=2"]
-    assert assemble(inv, sources.__getitem__, now)["overall"] == "UNKNOWN_COVERAGE"
+    def unavailable_page(url):
+        if url == query("rust", now) + "&page=2":
+            raise ValueError("simulated-source-page-unavailable")
+        return sources[url]
+    assert assemble(inv, unavailable_page, now)["overall"] == "UNKNOWN_COVERAGE"
     sources[query("rust", now)] = [safe]
     sources[KEV_URL] = {"count": 1, "vulnerabilities": []}
     assert assemble(inv, sources.__getitem__, now)["coverage"]["cisa-kev-mirror"].startswith("UNKNOWN")
