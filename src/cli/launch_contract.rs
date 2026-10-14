@@ -118,7 +118,11 @@ const CODEX_NON_TOP_LEVEL_COMMANDS: &[&str] = &[
 pub(crate) fn codex_top_level_interactive(args: &[String]) -> bool {
     args.iter()
         .take_while(|argument| argument.as_str() != "--")
-        .all(|argument| !CODEX_NON_TOP_LEVEL_COMMANDS.contains(&argument.as_str()))
+        .all(|argument| !is_codex_subcommand(argument))
+}
+
+pub(super) fn is_codex_subcommand(argument: &str) -> bool {
+    CODEX_NON_TOP_LEVEL_COMMANDS.contains(&argument)
 }
 
 #[allow(dead_code)]
@@ -138,6 +142,7 @@ pub struct LaunchContract {
     pub boundary_controls: Vec<&'static str>,
     pub managed: Option<Presence>,
     pub user_or_provider_model_choice: bool,
+    host_args: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -200,7 +205,7 @@ impl ResolvedLaunch {
         ambient_codex_home: &Path,
         request: &SelectionRequest,
         pass_env: &[String],
-        provider_arg_count: usize,
+        _provider_arg_count: usize,
     ) -> Result<Self, ResolveCodexError> {
         let (plugin_request, mcp_request) = partition_codex_request(request)?;
         let plugin_activation = codex_activation::plan(
@@ -228,6 +233,16 @@ impl ResolvedLaunch {
             return Err(ResolveCodexError::ActivationConflict);
         }
 
+        if plugin_activation.as_ref().is_some_and(|plugin| {
+            super::resource_options::validate_plugin_mcp_config(
+                &contract.host_args,
+                plugin.mcp_server_ids(),
+            )
+            .is_err()
+        }) {
+            return Err(ResolveCodexError::ActivationConflict);
+        }
+
         let plugin_activation_args = plugin_activation
             .as_ref()
             .map(PluginActivationPlan::provider_config_args)
@@ -242,6 +257,7 @@ impl ResolvedLaunch {
             &plugin_activation_args,
             &mcp_activation_args,
         );
+        let resolved_provider_arg_count = contract.argv.len();
 
         let mut pass_env = pass_env.to_vec();
         pass_env.sort();
@@ -256,7 +272,7 @@ impl ResolvedLaunch {
             mcp_activation_args,
             pass_env,
             resources: resolved_resource_summaries(request),
-            provider_arg_count,
+            provider_arg_count: resolved_provider_arg_count,
         })
     }
 
@@ -452,6 +468,7 @@ impl LaunchContract {
             boundary_controls,
             managed: None,
             user_or_provider_model_choice: model_choice,
+            host_args: user_args.to_vec(),
         }
     }
 
@@ -485,6 +502,7 @@ impl LaunchContract {
             boundary_controls,
             managed: Some(managed),
             user_or_provider_model_choice: model_choice,
+            host_args: user_args.to_vec(),
         }
     }
 
@@ -893,6 +911,10 @@ command = "/usr/bin/docs-mcp"
         .unwrap();
 
         let json = serde_json::to_string(&resolved.summary()).unwrap();
+        assert_eq!(
+            resolved.summary().provider_argv.element_count,
+            resolved.contract().argv.len()
+        );
         assert!(json.contains("codex-app-tools@openai-bundled"));
         assert!(json.contains("\"docs\""));
         assert!(json.contains("DOCS_TOKEN"));
@@ -1034,7 +1056,10 @@ command = "/usr/bin/docs-mcp"
 
     #[test]
     fn codex_owned_plugin_and_mcp_activation_order_is_deterministic() {
-        let mut contract = LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]);
+        let mut contract = LaunchContract::codex(&[
+            "-c".to_owned(),
+            "model='example'".to_owned(),
+        ]);
         contract.add_codex_resource_activations(
             &["-c".to_owned(), "synthetic_plugin=true".to_owned()],
             &["-c".to_owned(), "synthetic_mcp=true".to_owned()],
@@ -1050,10 +1075,14 @@ command = "/usr/bin/docs-mcp"
             .windows(2)
             .position(|pair| pair[0] == "-c" && pair[1] == "synthetic_mcp=true")
             .unwrap();
-        let model = contract.argv.iter().position(|arg| arg == "--model").unwrap();
+        let host_model = contract
+            .argv
+            .windows(2)
+            .position(|pair| pair[0] == "-c" && pair[1] == "model='example'")
+            .unwrap();
         assert!(plugin < mcp);
-        assert!(mcp < model);
-        assert_eq!(contract.boundary_controls, vec!["plugin", "mcp"]);
+        assert!(mcp < host_model);
+        assert_eq!(contract.boundary_controls, vec!["config", "plugin", "mcp"]);
     }
 
     #[test]
