@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Public CLROOM trust gate. Read-only; never edits PRs, alerts, releases or settings."""
 import argparse
-import datetime as dt
 import json
 import os
 import pathlib
@@ -13,7 +12,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 REPO = "y-sor/clean-room-launcher"
 API = "https://api.github.com/repos/" + REPO
 REQUIRED = ("CI", "Fuzz smoke", "Release candidate readiness")
-ASSETS = {"install.sh", "SHA256SUMS", "clean-room-launcher-v0.6.0-aarch64-apple-darwin.tar.gz"}
 LEVELS = ("PASS", "ATTENTION", "BLOCKER", "UNKNOWN")
 
 
@@ -172,7 +170,7 @@ def self_test():
         "/actions/runs?branch=main&per_page=100": {
             "workflow_runs": [{"name": n, "head_sha": sha, "event": "push",
                                "created_at": "2026-10-15T00:00:00Z", "conclusion": "success"}
-                              for n in REQUIRED]},
+                              for n in (*REQUIRED, "OpenSSF Scorecard")]},
         "/pulls?state=open&per_page=100": [],
     }
     assert decision(live_checks("", fixture.__getitem__), "daily") == "PASS"
