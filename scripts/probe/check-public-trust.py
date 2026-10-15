@@ -11,7 +11,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 REPO = "y-sor/clean-room-launcher"
 API = "https://api.github.com/repos/" + REPO
-REQUIRED = ("CI", "Fuzz smoke", "Release candidate readiness")
+REQUIRED = ("CI", "Fuzz smoke", "Release candidate readiness", "CodeQL")
 LEVELS = ("PASS", "ATTENTION", "BLOCKER", "UNKNOWN")
 
 
@@ -91,6 +91,25 @@ def live_checks(token, read=None):
         active = any(x.get("enforcement") == "active" and x.get("name") == "CLROOM main protection" for x in rules)
         record(out, "main-ruleset", "PASS" if active else "BLOCKER", "active main protection" if active else "missing/inactive")
 
+    precise = get("/rulesets/22516055", "main-ruleset-contract")
+    if isinstance(precise, dict):
+        conditions = precise.get("conditions", {}).get("ref_name", {})
+        rows = {rule.get("type"): rule.get("parameters", {}) for rule in precise.get("rules", [])}
+        checks = rows.get("required_status_checks", {})
+        contexts = {c.get("context") for c in checks.get("required_status_checks", [])}
+        expected = {"Release required", "Required", "Bounded cargo-fuzz smoke", "Review dependency delta"}
+        codeql = rows.get("code_scanning", {}).get("code_scanning_tools", [])
+        valid = (precise.get("enforcement") == "active"
+                 and "refs/heads/main" in conditions.get("include", [])
+                 and {"deletion", "non_fast_forward", "pull_request",
+                      "required_status_checks", "code_scanning"} <= rows.keys()
+                 and checks.get("strict_required_status_checks_policy") is True
+                 and expected <= contexts
+                 and any(tool.get("tool") == "CodeQL" and tool.get("security_alerts_threshold") == "high_or_higher"
+                         for tool in codeql))
+        record(out, "main-protection-contract", "PASS" if valid else "BLOCKER",
+               "active protected main + required checks + CodeQL" if valid else "protection contract drift")
+
     if sha:
         runs = get("/actions/runs?branch=main&per_page=100", "main-workflow-runs")
         if isinstance(runs, dict):
@@ -167,6 +186,16 @@ def self_test():
                              "assets": [{"name": "install.sh"}, {"name": "SHA256SUMS"},
                                         {"name": "clean-room-launcher-v0.6.0-aarch64-apple-darwin.tar.gz"}]},
         "/rulesets?includes_parents=true": [{"name": "CLROOM main protection", "enforcement": "active"}],
+        "/rulesets/22516055": {
+            "enforcement": "active",
+            "conditions": {"ref_name": {"include": ["refs/heads/main"]}},
+            "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}, {"type": "pull_request"},
+                      {"type": "required_status_checks", "parameters": {
+                          "strict_required_status_checks_policy": True,
+                          "required_status_checks": [{"context": k} for k in (
+                              "Release required", "Required", "Bounded cargo-fuzz smoke", "Review dependency delta")]}},
+                      {"type": "code_scanning", "parameters": {
+                          "code_scanning_tools": [{"tool": "CodeQL", "security_alerts_threshold": "high_or_higher"}]}}]},
         "/actions/runs?branch=main&per_page=100": {
             "workflow_runs": [{"name": n, "head_sha": sha, "event": "push",
                                "created_at": "2026-10-15T00:00:00Z", "conclusion": "success"}
@@ -174,6 +203,10 @@ def self_test():
         "/pulls?state=open&per_page=100": [],
     }
     assert decision(live_checks("", fixture.__getitem__), "daily") == "PASS"
+    fixture["/rulesets/22516055"]["rules"][3]["parameters"]["required_status_checks"] = []
+    assert decision(live_checks("", fixture.__getitem__), "release") == "BLOCKED"
+    fixture["/rulesets/22516055"]["rules"][3]["parameters"]["required_status_checks"] = [
+        {"context": k} for k in ("Release required", "Required", "Bounded cargo-fuzz smoke", "Review dependency delta")]
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = "failure"
     assert decision(live_checks("", fixture.__getitem__), "release") == "BLOCKED"
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = "success"
