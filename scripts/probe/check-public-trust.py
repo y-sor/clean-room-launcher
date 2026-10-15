@@ -55,7 +55,7 @@ def request_json(path, token, read=None):
         return json.load(response)
 
 
-def live_checks(token, read=None):
+def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
     out = []
 
     def get(path, key, critical=True):
@@ -121,9 +121,20 @@ def live_checks(token, read=None):
                     record(out, "main:" + name, "UNKNOWN", "no exact-main push evidence:critical")
                 else:
                     latest = max(candidates, key=lambda x: x.get("created_at", ""))
-                    ok = latest.get("conclusion") == "success"
-                    record(out, "main:" + name, "PASS" if ok else "BLOCKER",
-                           str(latest.get("conclusion") or latest.get("status")))
+                    conclusion = latest.get("conclusion")
+                    status = latest.get("status")
+                    if conclusion == "success":
+                        level = "PASS"
+                    elif status in ("queued", "in_progress", "pending", "waiting", "requested"):
+                        # A main-push release-readiness run must not require its own
+                        # success before it can finish. Required checks close separately.
+                        level = "ATTENTION"
+                    else:
+                        level = "BLOCKER"
+                    record(out, "main:" + name, level,
+                           str(conclusion or status or "unknown") + (
+                               ":same-push-deferred" if phase == "release" and event == "push"
+                               and running_sha == sha and level == "ATTENTION" else ""))
 
     prs = get("/pulls?state=open&per_page=100", "open-prs", critical=False)
     if isinstance(prs, list):
@@ -207,6 +218,11 @@ def self_test():
     assert decision(live_checks("", fixture.__getitem__), "release") == "BLOCKED"
     fixture["/rulesets/22516055"]["rules"][3]["parameters"]["required_status_checks"] = [
         {"context": k} for k in ("Release required", "Required", "Bounded cargo-fuzz smoke", "Review dependency delta")]
+    fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = None
+    fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["status"] = "in_progress"
+    assert decision(live_checks("", fixture.__getitem__, phase="release", event="push", running_sha=sha), "release") == "PASS"
+    assert decision(live_checks("", fixture.__getitem__, phase="daily"), "daily") == "ATTENTION_REQUIRED"
+    fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["status"] = "completed"
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = "failure"
     assert decision(live_checks("", fixture.__getitem__), "release") == "BLOCKED"
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = "success"
@@ -231,7 +247,12 @@ def main():
     records = static_checks(ROOT)
     mode = "daily" if args.daily else "release"
     if args.release_live or args.daily:
-        records.extend(live_checks(os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", "")))
+        records.extend(live_checks(
+            os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""),
+            phase=mode,
+            event=os.environ.get("GITHUB_EVENT_NAME"),
+            running_sha=os.environ.get("GITHUB_SHA"),
+        ))
     verdict = decision(records, mode)
     report = {"schema": "clroom.public-trust.v1", "verdict": verdict, "checks": records,
               "disclaimer": "Read-only public evidence; security-alert access, user adoption and auto-remediation not claimed"}
