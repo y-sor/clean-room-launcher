@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Public CLROOM trust gate. Read-only; never edits PRs, alerts, releases or settings."""
 import argparse
+from public_trust_ops import classify_run, settle, incident_report, self_test as ops_self_test
 import json
 import os
 import pathlib
@@ -12,13 +13,16 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 REPO = "y-sor/clean-room-launcher"
 API = "https://api.github.com/repos/" + REPO
 REQUIRED = ("CI", "Fuzz smoke", "Release candidate readiness", "CodeQL")
-LEVELS = ("PASS", "ATTENTION", "BLOCKER", "UNKNOWN")
+LEVELS = ("PASS", "PENDING", "ATTENTION", "BLOCKER", "UNKNOWN")
 
 
-def record(items, name, state, detail):
+def record(items, name, state, detail, evidence=None):
     if state not in LEVELS:
         raise ValueError("invalid state")
-    items.append({"check": name, "state": state, "detail": str(detail)[:180]})
+    row = {"check": name, "state": state, "detail": str(detail)[:180]}
+    if evidence is not None:
+        row["evidence"] = evidence
+    items.append(row)
 
 
 def static_checks(root):
@@ -75,6 +79,9 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
         record(out, "repo-identity", "PASS" if valid else "BLOCKER", "repository ID, default branch, archive status")
     if not sha:
         record(out, "main-commit", "UNKNOWN", "missing-current-main-sha:critical")
+    elif phase == "daily" and running_sha and running_sha != sha:
+        record(out, "main-commit-stale", "UNKNOWN", "event SHA differs from main:critical",
+               {"expected_sha": running_sha, "observed_sha": sha})
 
     release = get("/releases/latest", "latest-release")
     if isinstance(release, dict):
@@ -114,27 +121,27 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
         runs = get("/actions/runs?branch=main&per_page=100", "main-workflow-runs")
         if isinstance(runs, dict):
             all_runs = runs.get("workflow_runs", [])
-            for name in REQUIRED:
-                candidates = [r for r in all_runs if r.get("name") == name and r.get("head_sha") == sha
-                              and r.get("event") == "push"]
+            if not isinstance(all_runs, list):
+                record(out, "main-workflow-runs-shape", "UNKNOWN", "invalid run listing:critical")
+                all_runs = []
+            for name in (*REQUIRED, "OpenSSF Scorecard"):
+                candidates = [r for r in all_runs if isinstance(r, dict) and
+                              r.get("name") == name and r.get("head_sha") == sha and
+                              r.get("event") == "push"]
+                key = "scorecard-latest" if name == "OpenSSF Scorecard" else "main:" + name
                 if not candidates:
-                    record(out, "main:" + name, "UNKNOWN", "no exact-main push evidence:critical")
-                else:
-                    latest = max(candidates, key=lambda x: x.get("created_at", ""))
-                    conclusion = latest.get("conclusion")
-                    status = latest.get("status")
-                    if conclusion == "success":
-                        level = "PASS"
-                    elif status in ("queued", "in_progress", "pending", "waiting", "requested"):
-                        # A main-push release-readiness run must not require its own
-                        # success before it can finish. Required checks close separately.
-                        level = "ATTENTION"
-                    else:
-                        level = "BLOCKER"
-                    record(out, "main:" + name, level,
-                           str(conclusion or status or "unknown") + (
-                               ":same-push-deferred" if phase == "release" and event == "push"
-                               and running_sha == sha and level == "ATTENTION" else ""))
+                    record(out, key, "UNKNOWN", "no exact-main push evidence:" +
+                           ("critical" if phase == "daily" else "advisory-release-deferred"),
+                           {"sha": sha, "workflow": name})
+                    continue
+                latest = max(candidates, key=lambda r: (
+                    r.get("created_at") or "", r.get("run_attempt") or 0, r.get("id") or 0))
+                state = classify_run(latest)
+                record(out, key, state,
+                       str(latest.get("conclusion") or latest.get("status") or "invalid-status") +
+                       (":critical" if state == "UNKNOWN" and phase == "daily" else ""),
+                       {"sha": sha, "workflow": name, "run_id": latest.get("id"),
+                        "run_attempt": latest.get("run_attempt"), "url": latest.get("html_url")})
 
     prs = get("/pulls?state=open&per_page=100", "open-prs", critical=False)
     if isinstance(prs, list):
@@ -147,19 +154,19 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
             checks = get(f"/commits/{head}/check-runs?per_page=100", f"pr-{number}-checks", critical=False)
             if not isinstance(checks, dict):
                 continue
-            failures = [c.get("name", "unknown") for c in checks.get("check_runs", [])
-                        if c.get("conclusion") in ("failure", "timed_out", "action_required")]
-            if failures:
-                record(out, f"pr-{number}-red", "ATTENTION", ",".join(failures)[:100])
-    scorecard = get("/actions/runs?branch=main&per_page=100", "scorecard-history", critical=False)
-    if isinstance(scorecard, dict):
-        rows = [r for r in scorecard.get("workflow_runs", []) if r.get("name") == "OpenSSF Scorecard"]
-        if rows:
-            latest = max(rows, key=lambda r: r.get("created_at", ""))
-            state = "PASS" if latest.get("conclusion") == "success" else "ATTENTION"
-            record(out, "scorecard-latest", state, str(latest.get("conclusion") or latest.get("status")))
-        else:
-            record(out, "scorecard-latest", "UNKNOWN", "no recent Scorecard run:advisory")
+            rows = checks.get("check_runs", [])
+            if not isinstance(rows, list) or checks.get("total_count", len(rows)) > len(rows):
+                record(out, f"pr-{number}-checks-incomplete", "UNKNOWN",
+                       "incomplete PR check listing:advisory", {"sha": head, "pr": number})
+                continue
+            for row in rows:
+                if row.get("status") == "completed" and row.get("conclusion") in (
+                        "failure", "timed_out", "action_required", "cancelled", "startup_failure"):
+                    record(out, f"pr-{number}-red", "ATTENTION",
+                           str(row.get("name") or "unnamed") + ":" + str(row.get("conclusion")),
+                           {"sha": head, "pr": number, "check_run_id": row.get("id"),
+                            "url": row.get("html_url")})
+
     return out
 
 
@@ -168,6 +175,8 @@ def decision(records, mode):
     missing_core = [r for r in records if r["state"] == "UNKNOWN" and ":critical" in r["detail"]]
     if blocked or missing_core:
         return "BLOCKED"
+    if mode == "daily" and any(r["state"] == "PENDING" for r in records):
+        return "PENDING"
     if mode == "daily" and any(r["state"] in ("ATTENTION", "UNKNOWN") for r in records):
         return "ATTENTION_REQUIRED"
     return "PASS"
