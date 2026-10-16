@@ -5,18 +5,16 @@ on:
     - cron: '17 7 * * *'
     - cron: '37 16 * * *'
   workflow_dispatch:
+  workflow_run:
+    workflows: [CI, Fuzz smoke, Release candidate readiness, CodeQL, OpenSSF Scorecard]
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
-    paths:
-      - 'scripts/probe/check-public-trust.py'
-      - 'scripts/release/readiness.sh'
-      - '.github/workflows/public-trust.yml'
-      - '.github/workflows/release-candidate.yml'
-      - 'README.md'
-      - 'SECURITY.md'
   pull_request:
     paths:
       - 'scripts/probe/check-public-trust.py'
+      - 'scripts/probe/public_trust_ops.py'
       - 'scripts/release/readiness.sh'
       - '.github/workflows/public-trust.yml'
       - '.github/workflows/release-candidate.yml'
@@ -36,9 +34,14 @@ concurrency:
 jobs:
   audit:
     name: Public trust audit
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 65
     steps:
       - name: Check out exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,4 +56,4 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/probe/check-public-trust.py --daily
+        run: python3 scripts/probe/check-public-trust.py --daily --settle-seconds 3120
