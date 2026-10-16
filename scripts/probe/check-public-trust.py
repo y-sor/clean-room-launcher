@@ -218,7 +218,8 @@ def self_test():
                           "code_scanning_tools": [{"tool": "CodeQL", "security_alerts_threshold": "high_or_higher"}]}}]},
         "/actions/runs?branch=main&per_page=100": {
             "workflow_runs": [{"name": n, "head_sha": sha, "event": "push",
-                               "created_at": "2026-10-15T00:00:00Z", "conclusion": "success"}
+                               "created_at": "2026-10-15T00:00:00Z", "id": len(n),
+                               "status": "completed", "conclusion": "success"}
                               for n in (*REQUIRED, "OpenSSF Scorecard")]},
         "/pulls?state=open&per_page=100": [],
     }
@@ -230,15 +231,51 @@ def self_test():
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = None
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["status"] = "in_progress"
     assert decision(live_checks("", fixture.__getitem__, phase="release", event="push", running_sha=sha), "release") == "PASS"
-    assert decision(live_checks("", fixture.__getitem__, phase="daily"), "daily") == "ATTENTION_REQUIRED"
+    assert decision(live_checks("", fixture.__getitem__, phase="daily"), "daily") == "PENDING"
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["status"] = "completed"
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = "failure"
     assert decision(live_checks("", fixture.__getitem__), "release") == "BLOCKED"
     fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"][0]["conclusion"] = "success"
     fixture["/pulls?state=open&per_page=100"] = [{"number": 7, "head": {"sha": sha}}] * 5
-    fixture[f"/commits/{sha}/check-runs?per_page=100"] = {"check_runs": [{"name": "Fuzz", "conclusion": "failure"}]}
+    fixture[f"/commits/{sha}/check-runs?per_page=100"] = {"check_runs": [{"id": 71, "name": "Fuzz",
+        "status": "completed", "conclusion": "failure"}]}
     assert decision(live_checks("", fixture.__getitem__), "daily") == "ATTENTION_REQUIRED"
     assert decision(live_checks("", fixture.__getitem__), "release") == "PASS"
+    # Real failures, stale snapshots, unknowns and Scorecard are never silently green.
+    fixture["/pulls?state=open&per_page=100"] = []
+    runs = fixture["/actions/runs?branch=main&per_page=100"]["workflow_runs"]
+    for row in runs:
+        row["status"], row["conclusion"] = "completed", "success"
+    assert decision(live_checks("", fixture.__getitem__, phase="daily",
+                                running_sha="b" * 40), "daily") == "BLOCKED"
+    runs[0]["status"], runs[0]["conclusion"] = "queued", None
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "PENDING"
+    runs[0]["status"], runs[0]["conclusion"] = "completed", None
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "BLOCKED"
+    runs[0]["status"], runs[0]["conclusion"] = "completed", "failure"
+    rows = live_checks("", fixture.__getitem__)
+    assert decision(rows, "daily") == "BLOCKED"
+    assert any(row["evidence"]["run_id"] == len("CI") for row in rows if row["check"] == "main:CI")
+    assert incident_report(rows, sha) == incident_report(rows, sha)
+    runs[0]["status"], runs[0]["conclusion"] = "completed", "success"
+    score = next(row for row in runs if row["name"] == "OpenSSF Scorecard")
+    score["status"], score["conclusion"] = "completed", "failure"
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "BLOCKED"
+    score["status"], score["conclusion"] = "in_progress", None
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "PENDING"
+    score["status"], score["conclusion"] = "completed", "success"
+    saved = runs.pop(0)
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "BLOCKED"
+    runs.insert(0, saved)
+    fixture["/pulls?state=open&per_page=100"] = [{"number": 7, "head": {"sha": sha}}]
+    fixture[f"/commits/{sha}/check-runs?per_page=100"] = {"total_count": 2, "check_runs": []}
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "ATTENTION_REQUIRED"
+    fixture[f"/commits/{sha}/check-runs?per_page=100"] = {
+        "check_runs": [{"id": 99, "name": "Security", "status": "completed",
+                        "conclusion": "timed_out"}]}
+    assert any(row.get("evidence", {}).get("check_run_id") == 99
+               for row in live_checks("", fixture.__getitem__) if row["check"] == "pr-7-red")
+    ops_self_test()
     print("PUBLIC_TRUST_SELF_TEST_PASS")
 
 
@@ -249,31 +286,46 @@ def main():
     options.add_argument("--static", action="store_true")
     options.add_argument("--release-live", action="store_true")
     options.add_argument("--daily", action="store_true")
+    parser.add_argument("--settle-seconds", type=int, default=0)
     args = parser.parse_args()
+    if not 0 <= args.settle_seconds <= 3300:
+        parser.error("settle-seconds must be between 0 and 3300")
     if args.self_test:
         self_test()
         return 0
     records = static_checks(ROOT)
     mode = "daily" if args.daily else "release"
+    settlement = {"state": "not-requested", "attempts": 0}
     if args.release_live or args.daily:
-        records.extend(live_checks(
-            os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""),
-            phase=mode,
-            event=os.environ.get("GITHUB_EVENT_NAME"),
-            running_sha=os.environ.get("GITHUB_SHA"),
-        ))
+        def sample():
+            return static_checks(ROOT) + live_checks(
+                os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""),
+                phase=mode, event=os.environ.get("GITHUB_EVENT_NAME"),
+                running_sha=os.environ.get("GITHUB_SHA") if args.daily else None)
+        if args.daily:
+            records, settlement = settle(sample, args.settle_seconds)
+        else:
+            records = sample()
+            settlement = {"state": "release-preflight-not-terminal-watch", "attempts": 1}
     verdict = decision(records, mode)
-    report = {"schema": "clroom.public-trust.v1", "verdict": verdict, "checks": records,
-              "disclaimer": "Read-only public evidence; security-alert access, user adoption and auto-remediation not claimed"}
+    incidents = incident_report(records, os.environ.get("GITHUB_SHA"))
+    report = {"schema": "clroom.public-trust.v2", "verdict": verdict,
+              "settlement": settlement, "checks": records, "incidents": incidents,
+              "remediation": "Read-only. No automatic fix, notification delivery, merge or settings changes.",
+              "disclaimer": "Public evidence only; not a comprehensive security/adoption audit"}
     print(json.dumps(report, sort_keys=True, ensure_ascii=True))
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle:
             handle.write(f"### CLROOM public trust: {verdict}\n\n")
-            for x in records:
-                if x["state"] != "PASS":
-                    handle.write(f"- {x['state']} {x['check']}: {x['detail']}\n")
-            handle.write("\nNo automatic closes, merges, security bypasses or settings changes.\n")
+            handle.write(f"Settlement: {settlement['state']} ({settlement['attempts']} observations)\n\n")
+            for item in incidents:
+                handle.write(f"- **{item['state']}** {item['check']} / incident {item['id']}: {item['observed']}\n")
+                if item["evidence"]:
+                    handle.write(f"  - Evidence: {json.dumps(item['evidence'], sort_keys=True)}\n")
+                handle.write(f"  - Next: {item['recommended_action']}\n")
+            handle.write("\nFollow-up: Owner-authorized fix in branch/PR; workflow_dispatch read-only re-audit.\n")
+            handle.write("No automatic merges, bypasses or settings changes.\n")
     return 0 if verdict == "PASS" else 1
 
 
