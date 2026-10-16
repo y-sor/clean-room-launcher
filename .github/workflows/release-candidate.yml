@@ -117,6 +117,11 @@ jobs:
     if: needs.release-eligibility.outputs.lifecycle != 'RELEASE_QUARANTINED'
     runs-on: macos-14
     timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
     env:
       CLROOM_RELEASE_VERSION: ${{ needs.release-eligibility.outputs.version }}
       CLROOM_RELEASE_BASE_REF: ${{ needs.release-eligibility.outputs.baseline }}
@@ -129,6 +134,14 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
+      - name: Verify live public trust before expensive release lanes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/probe/check-public-trust.py --self-test
+          python3 scripts/probe/check-public-trust.py --static
+          python3 scripts/probe/check-public-trust.py --release-live
       - name: Validate workflow-local execution parity
         shell: bash
         run: |
