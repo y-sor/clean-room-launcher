@@ -52,6 +52,33 @@ jobs:
         run: python3 scripts/probe/check-public-trust.py --self-test
       - name: Validate static public trust contract
         run: python3 scripts/probe/check-public-trust.py --static
+      - name: Rehearse exact-candidate live GitHub read path
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          env = dict(os.environ)
+          env.pop("GITHUB_SHA", None)  # PR merge SHA is not current default-branch SHA.
+          proc = subprocess.run(
+              ["python3", "scripts/probe/check-public-trust.py", "--daily", "--settle-seconds", "0"],
+              env=env, capture_output=True, text=True, timeout=90, check=False)
+          assert proc.returncode in (0, 1), proc.stderr
+          result = json.loads(proc.stdout)
+          assert result["schema"] == "clroom.public-trust.v2"
+          by_name = {row["check"]: row for row in result["checks"]}
+          assert by_name["repo-identity"]["state"] == "PASS"
+          assert by_name["main-protection-contract"]["state"] == "PASS"
+          assert by_name["public-install-assets"]["state"] == "PASS"
+          for name in ("CI", "Fuzz smoke", "Release candidate readiness", "CodeQL"):
+              row = by_name["main:" + name]
+              assert row["evidence"]["run_id"] and row["evidence"]["sha"]
+          assert by_name["scorecard-latest"]["evidence"]["run_id"]
+          print("PUBLIC_TRUST_LIVE_READ_REHEARSAL_PASS")
+          PY
       - name: Audit live public state and classify repair needed
         if: github.event_name != 'pull_request'
         env:
