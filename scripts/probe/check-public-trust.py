@@ -145,6 +145,27 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
                        {"sha": sha, "workflow": name, "run_id": latest.get("id"),
                         "run_attempt": latest.get("run_attempt"), "url": latest.get("html_url")})
 
+    # The CodeQL workflow can succeed while the separate code-scanning policy
+    # check fails for a newly introduced high-severity alert. Do not conflate them.
+    if sha:
+        checks = get(f"/commits/{sha}/check-runs?per_page=100", "main-check-runs")
+        if isinstance(checks, dict):
+            rows = checks.get("check_runs", [])
+            if not isinstance(rows, list) or checks.get("total_count", len(rows)) > len(rows):
+                record(out, "main-check-runs-shape", "UNKNOWN",
+                       "incomplete/malformed main check-run listing:critical", {"sha": sha})
+            else:
+                for row in rows:
+                    if (isinstance(row, dict) and row.get("name") == "CodeQL" and
+                            isinstance(row.get("app"), dict) and
+                            row["app"].get("slug") == "github-advanced-security"):
+                        state = classify_run(row)
+                        record(out, "main:CodeQL-security", state,
+                               str(row.get("conclusion") or row.get("status") or "invalid-status") +
+                               (":critical" if state == "UNKNOWN" else ""),
+                               {"sha": sha, "check_run_id": row.get("id"),
+                                "url": row.get("html_url")})
+
     prs = get("/pulls?state=open&per_page=100", "open-prs", critical=False)
     if isinstance(prs, list):
         record(out, "open-pr-count", "PASS" if len(prs) < 5 else "ATTENTION", str(len(prs)) + " open PRs")
@@ -223,6 +244,7 @@ def self_test():
                                "created_at": "2026-10-15T00:00:00Z", "id": len(n),
                                "status": "completed", "conclusion": "success"}
                               for n in (*REQUIRED, "OpenSSF Scorecard")]},
+        f"/commits/{sha}/check-runs?per_page=100": {"check_runs": []},
         "/pulls?state=open&per_page=100": [],
     }
     assert decision(live_checks("", fixture.__getitem__), "daily") == "PASS"
@@ -277,6 +299,26 @@ def self_test():
                         "conclusion": "timed_out"}]}
     assert any(row.get("evidence", {}).get("check_run_id") == 99
                for row in live_checks("", fixture.__getitem__) if row["check"] == "pr-7-red")
+    # A successful workflow does not override a failed separate security check.
+    fixture["/pulls?state=open&per_page=100"] = []
+    main_scans = fixture[f"/commits/{sha}/check-runs?per_page=100"]
+    main_scans["check_runs"] = [{"name": "CodeQL", "app": {"slug": "github-advanced-security"},
+                                "status": "completed", "conclusion": "failure", "id": 911}]
+    records = live_checks("", fixture.__getitem__)
+    assert decision(records, "daily") == "BLOCKED"
+    assert next(r for r in records if r["check"] == "main:CodeQL-security")["evidence"]["check_run_id"] == 911
+    assert any(x["evidence"].get("check_run_id") == 911
+               for x in incident_report(records, sha) if x["check"] == "main:CodeQL-security")
+    main_scans["check_runs"][0]["status"], main_scans["check_runs"][0]["conclusion"] = "in_progress", None
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "PENDING"
+    main_scans["check_runs"][0]["status"], main_scans["check_runs"][0]["conclusion"] = "completed", "success"
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "PASS"
+    main_scans["check_runs"] = []
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "PASS"
+    main_scans["total_count"] = 3
+    assert decision(live_checks("", fixture.__getitem__), "daily") == "BLOCKED"
+    main_scans.pop("total_count")
+
     ops_self_test()
     print("PUBLIC_TRUST_SELF_TEST_PASS")
 
