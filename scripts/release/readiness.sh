@@ -33,6 +33,8 @@ expected_lifecycle="$(python3 scripts/release/resolve-release-lifecycle.py \
 
 git diff --check || fail "DIFF_CHECK"
 git diff --quiet || fail "CLEAN_TREE_REQUIRED"
+python3 scripts/probe/check-public-trust.py --self-test || fail "PUBLIC_TRUST_SELF_TEST"
+python3 scripts/probe/check-public-trust.py --static || fail "PUBLIC_TRUST_STATIC"
 python3 scripts/release/check-workflow-exec-contract.py --self-test || fail "WORKFLOW_EXEC_CONTRACT_SELF_TEST"
 python3 scripts/release/check-workflow-exec-contract.py || fail "WORKFLOW_EXEC_CONTRACT"
 python3 scripts/release/check-harness-contract.py --self-test || fail "HARNESS_CONTRACT_SELF_TEST"
