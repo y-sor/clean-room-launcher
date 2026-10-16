@@ -193,7 +193,13 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
                              and row["app"].get("slug") == "github-advanced-security"]
             if security_rows:
                 security = max(security_rows, key=lambda row: row.get("id") or 0)
-                status = classify_run(security)
+                # GitHub treats a completed neutral check as non-blocking;
+                # the code-scanning PR policy commonly reports neutral when
+                # no blocking alert is present. This exception is PR-policy
+                # specific; ordinary workflow conclusions remain strict.
+                status = ("PASS" if security.get("status") == "completed" and
+                          security.get("conclusion") in ("success", "neutral")
+                          else classify_run(security))
                 if status != "PASS":
                     record(out, f"pr-{number}-codeql-policy",
                            "ATTENTION" if status in ("PENDING", "BLOCKER") else "UNKNOWN",
@@ -337,6 +343,12 @@ def self_test():
         {"status": "completed", "conclusion": "success"})
     assert not any(row["check"] == "pr-7-codeql-policy"
                    for row in live_checks("", fixture.__getitem__))
+    fixture[f"/commits/{pr_sha}/check-runs?per_page=100"]["check_runs"][-1]["conclusion"] = "neutral"
+    assert not any(row["check"] == "pr-7-codeql-policy"
+                   for row in live_checks("", fixture.__getitem__))
+    fixture[f"/commits/{pr_sha}/check-runs?per_page=100"]["check_runs"][-1]["conclusion"] = "skipped"
+    assert any(row["check"] == "pr-7-codeql-policy" and row["state"] == "UNKNOWN"
+               for row in live_checks("", fixture.__getitem__))
     assert any(row.get("evidence", {}).get("check_run_id") == 99
                for row in live_checks("", fixture.__getitem__) if row["check"] == "pr-7-red")
     # A successful workflow does not override a failed separate security check.
