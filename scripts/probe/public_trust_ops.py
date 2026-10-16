@@ -48,7 +48,9 @@ def incident_report(records, main_sha):
             continue
         check = row["check"]
         evidence = row.get("evidence") or {}
-        if check.startswith("main:") or check == "scorecard-latest":
+        if check == "main:CodeQL-security":
+            next_action = "Inspect exact code scanning check and alert; fix the source in a reviewed branch. Do not dismiss/bypass the scanner."
+        elif check.startswith("main:") or check == "scorecard-latest":
             next_action = "Inspect exact workflow run/job; propose an isolated branch fix and rerun checks."
         elif check.startswith("pr-"):
             next_action = "Inspect exact PR check and SHA; propose a reviewed PR fix."
@@ -107,4 +109,7 @@ def self_test():
     assert incident_report(red, "a" * 40) == incident_report(red, "a" * 40)
     assert incident_report(red, "a" * 40)[0]["evidence"]["run_id"] == 42
     assert incident_report(red, "a" * 40)[0]["commit_sha"] == "a" * 40
+    scan = [{"check": "main:CodeQL-security", "state": "BLOCKER", "detail": "failure",
+             "evidence": {"check_run_id": 11, "sha": "a" * 40}}]
+    assert "Do not dismiss/bypass" in incident_report(scan, "a" * 40)[0]["recommended_action"]
     print("PUBLIC_TRUST_OPS_SELF_TEST_PASS")
