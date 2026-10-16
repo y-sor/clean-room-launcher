@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Public CLROOM trust gate. Read-only; never edits PRs, alerts, releases or settings."""
 import argparse
+import sys
+# This probe is executed inside release public-boundary scans. Never emit local pyc files.
+sys.dont_write_bytecode = True
 from public_trust_ops import classify_run, settle, incident_report, self_test as ops_self_test
 import json
 import os
 import pathlib
-import sys
 import urllib.error
 import urllib.request
 
