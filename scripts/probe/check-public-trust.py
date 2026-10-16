@@ -145,8 +145,10 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
                        {"sha": sha, "workflow": name, "run_id": latest.get("id"),
                         "run_attempt": latest.get("run_attempt"), "url": latest.get("html_url")})
 
-    # The CodeQL workflow can succeed while the separate code-scanning policy
-    # check fails for a newly introduced high-severity alert. Do not conflate them.
+    # On push, CodeQL analysis is observable as a workflow. The distinct
+    # code-scanning merge-protection check applies to PRs; GitHub does not
+    # guarantee a separate check-run for the default branch. Observe a main
+    # security check if present, without treating its absence as a success.
     if sha:
         checks = get(f"/commits/{sha}/check-runs?per_page=100", "main-check-runs")
         if isinstance(checks, dict):
@@ -182,7 +184,32 @@ def live_checks(token, read=None, phase="daily", event=None, running_sha=None):
                 record(out, f"pr-{number}-checks-incomplete", "UNKNOWN",
                        "incomplete PR check listing:advisory", {"sha": head, "pr": number})
                 continue
+            # GitHub code-scanning merge protection is a PR policy check, not
+            # a required independent main-push check. Missing PR evidence is
+            # UNKNOWN/advisory, never proof that a security scan passed.
+            security_rows = [row for row in rows if isinstance(row, dict)
+                             and row.get("name") == "CodeQL"
+                             and isinstance(row.get("app"), dict)
+                             and row["app"].get("slug") == "github-advanced-security"]
+            if security_rows:
+                security = max(security_rows, key=lambda row: row.get("id") or 0)
+                status = classify_run(security)
+                if status != "PASS":
+                    record(out, f"pr-{number}-codeql-policy",
+                           "ATTENTION" if status in ("PENDING", "BLOCKER") else "UNKNOWN",
+                           "CodeQL merge-protection:" + status.lower() + ":advisory",
+                           {"sha": head, "pr": number, "check_run_id": security.get("id"),
+                            "url": security.get("html_url")})
+            else:
+                record(out, f"pr-{number}-codeql-policy", "UNKNOWN",
+                       "PR code-scanning merge-protection signal unavailable:advisory",
+                       {"sha": head, "pr": number})
+            if any(not isinstance(row, dict) for row in rows):
+                record(out, f"pr-{number}-checks-shape", "UNKNOWN",
+                       "malformed PR check result:advisory", {"sha": head, "pr": number})
             for row in rows:
+                if not isinstance(row, dict):
+                    continue
                 if row.get("status") == "completed" and row.get("conclusion") in (
                         "failure", "timed_out", "action_required", "cancelled", "startup_failure"):
                     record(out, f"pr-{number}-red", "ATTENTION",
@@ -298,6 +325,18 @@ def self_test():
     fixture[f"/commits/{pr_sha}/check-runs?per_page=100"] = {
         "check_runs": [{"id": 99, "name": "Security", "status": "completed",
                         "conclusion": "timed_out"}]}
+    assert any(row["check"] == "pr-7-codeql-policy" and row["state"] == "UNKNOWN"
+               for row in live_checks("", fixture.__getitem__))
+    fixture[f"/commits/{pr_sha}/check-runs?per_page=100"]["check_runs"].append(
+        {"id": 100, "name": "CodeQL", "app": {"slug": "github-advanced-security"},
+         "status": "completed", "conclusion": "failure"})
+    rows = live_checks("", fixture.__getitem__)
+    assert any(row["check"] == "pr-7-codeql-policy" and row["state"] == "ATTENTION"
+               and row["evidence"]["check_run_id"] == 100 for row in rows)
+    fixture[f"/commits/{pr_sha}/check-runs?per_page=100"]["check_runs"][-1].update(
+        {"status": "completed", "conclusion": "success"})
+    assert not any(row["check"] == "pr-7-codeql-policy"
+                   for row in live_checks("", fixture.__getitem__))
     assert any(row.get("evidence", {}).get("check_run_id") == 99
                for row in live_checks("", fixture.__getitem__) if row["check"] == "pr-7-red")
     # A successful workflow does not override a failed separate security check.
