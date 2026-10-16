@@ -291,10 +291,11 @@ def self_test():
     saved = runs.pop(0)
     assert decision(live_checks("", fixture.__getitem__), "daily") == "BLOCKED"
     runs.insert(0, saved)
-    fixture["/pulls?state=open&per_page=100"] = [{"number": 7, "head": {"sha": sha}}]
-    fixture[f"/commits/{sha}/check-runs?per_page=100"] = {"total_count": 2, "check_runs": []}
+    pr_sha = "b" * 40
+    fixture["/pulls?state=open&per_page=100"] = [{"number": 7, "head": {"sha": pr_sha}}]
+    fixture[f"/commits/{pr_sha}/check-runs?per_page=100"] = {"total_count": 2, "check_runs": []}
     assert decision(live_checks("", fixture.__getitem__), "daily") == "ATTENTION_REQUIRED"
-    fixture[f"/commits/{sha}/check-runs?per_page=100"] = {
+    fixture[f"/commits/{pr_sha}/check-runs?per_page=100"] = {
         "check_runs": [{"id": 99, "name": "Security", "status": "completed",
                         "conclusion": "timed_out"}]}
     assert any(row.get("evidence", {}).get("check_run_id") == 99
