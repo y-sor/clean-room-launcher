@@ -35,19 +35,45 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError("redirect-not-allowed-for-authenticated-source")
 
 
+def compact_graphql_release(raw):
+    """Use GitHub's latestRelease metadata, not the huge REST release asset list."""
+    if not isinstance(raw, dict) or raw.get("errors"):
+        raise ValueError("invalid-graphql-latest-release")
+    repository = raw.get("data", {}).get("repository")
+    latest = repository.get("latestRelease") if isinstance(repository, dict) else None
+    if (not isinstance(latest, dict)
+            or latest.get("isLatest") is not True
+            or not isinstance(latest.get("tagName"), str)
+            or type(latest.get("isDraft")) is not bool
+            or type(latest.get("isPrerelease")) is not bool):
+        raise ValueError("invalid-graphql-latest-release")
+    return {"tag_name": latest["tagName"],
+            "draft": latest["isDraft"], "prerelease": latest["isPrerelease"]}
+
+
 def get_json(url):
     token=os.getenv("GH_TOKEN","")
     hdr={"Accept":"application/vnd.github+json","User-Agent":"CLROOM-upstream-watch/1"}
     if token:
         hdr["Authorization"]="Bearer "+token
-    request=urllib.request.Request(url,headers=hdr)
+    if url==PROVIDERS[0][1]:
+        if not token:
+            raise ValueError("missing-gh-token-for-graphql")
+        graphql='query { repository(owner:"openai", name:"codex") { latestRelease { tagName isDraft isPrerelease isLatest } } }'
+        request=urllib.request.Request(
+            "https://api.github.com/graphql",
+            data=json.dumps({"query":graphql}).encode("utf-8"),
+            headers={**hdr,"Content-Type":"application/json"},method="POST")
+    else:
+        request=urllib.request.Request(url,headers=hdr)
     with urllib.request.build_opener(NoRedirect()).open(request,timeout=15) as response:
         if response.status!=200:
             raise ValueError("unexpected HTTP status")
         body=response.read(524289)
         if len(body)>524288:
             raise ValueError("oversized response")
-        return json.loads(body)
+        parsed=json.loads(body)
+    return compact_graphql_release(parsed) if url==PROVIDERS[0][1] else parsed
 
 def inspect_release(name,url,pin,tag_pattern,raw):
     result={"source":name,"kind":"provider","url":url,"qualified_pin":pin,"state":"UNKNOWN"}
@@ -143,7 +169,21 @@ def self_test():
         raise AssertionError("redirect accepted")
     except ValueError:
         pass
-    print("ADVISORY_WATCH_SELF_TEST_PASS: unchanged, drift, draft, bad source/ref/type, ambiguous pin, denied redirect")
+    stable={"data":{"repository":{"latestRelease":{
+        "tagName":"rust-v0.161.0","isDraft":False,
+        "isPrerelease":False,"isLatest":True}}}}
+    assert compact_graphql_release(stable)=={
+        "tag_name":"rust-v0.161.0","draft":False,"prerelease":False}
+    for invalid in ({"errors":[{"message":"rate-limited"}]}, {"data":{"repository":None}},
+                    {"data":{"repository":{"latestRelease":{"tagName":"rust-v0.161.0",
+                     "isDraft":False,"isPrerelease":False,"isLatest":False}}}}):
+        try:
+            compact_graphql_release(invalid)
+            raise AssertionError("invalid GraphQL result accepted")
+        except ValueError:
+            pass
+    print("ADVISORY_WATCH_SELF_TEST_PASS: unchanged, drift, draft, bad source/ref/type, ambiguous pin, denied redirect, compact-graphql")
+
 
 def main():
     parser=argparse.ArgumentParser()
