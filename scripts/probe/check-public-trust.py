@@ -288,12 +288,32 @@ def main():
     options.add_argument("--static", action="store_true")
     options.add_argument("--release-live", action="store_true")
     options.add_argument("--daily", action="store_true")
+    options.add_argument("--rehearse-live", action="store_true")
     parser.add_argument("--settle-seconds", type=int, default=0)
     args = parser.parse_args()
     if not 0 <= args.settle_seconds <= 3300:
         parser.error("settle-seconds must be between 0 and 3300")
     if args.self_test:
         self_test()
+        return 0
+    if args.rehearse_live:
+        rows = static_checks(ROOT) + live_checks(
+            os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""),
+            phase="daily")
+        by_name = {row["check"]: row for row in rows}
+        for key in ("repo-identity", "main-protection-contract", "public-install-assets"):
+            if by_name.get(key, {}).get("state") != "PASS":
+                print("PUBLIC_TRUST_LIVE_READ_REHEARSAL_BLOCKED:" + key)
+                return 1
+        required = tuple("main:" + name for name in REQUIRED) + ("scorecard-latest",)
+        for key in required:
+            evidence = by_name.get(key, {}).get("evidence") or {}
+            if not evidence.get("run_id") or not evidence.get("sha"):
+                print("PUBLIC_TRUST_LIVE_READ_REHEARSAL_BLOCKED:" + key)
+                return 1
+        print("PUBLIC_TRUST_LIVE_READ_REHEARSAL_PASS")
+        print(json.dumps({key: by_name[key]["evidence"] for key in required},
+                         sort_keys=True, ensure_ascii=True))
         return 0
     records = static_checks(ROOT)
     mode = "daily" if args.daily else "release"
