@@ -63,6 +63,7 @@ def incident_report(records, main_sha):
             evidence.get("check_run_id", ""), evidence.get("sha", "")))
         incidents.append({
             "id": hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()[:20],
+            "commit_sha": main_sha,
             "check": check, "state": row["state"], "observed": row["detail"],
             "evidence": evidence,
             "cause_class": ("unfinished" if row["state"] == "PENDING" else
@@ -105,4 +106,5 @@ def self_test():
             "evidence": {"sha": "a" * 40, "run_id": 42, "url": "https://github.com/example/run/42"}}]
     assert incident_report(red, "a" * 40) == incident_report(red, "a" * 40)
     assert incident_report(red, "a" * 40)[0]["evidence"]["run_id"] == 42
+    assert incident_report(red, "a" * 40)[0]["commit_sha"] == "a" * 40
     print("PUBLIC_TRUST_OPS_SELF_TEST_PASS")
