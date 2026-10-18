@@ -7,16 +7,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'scripts/probe/check-public-trust.py'
-      - 'scripts/release/readiness.sh'
-      - '.github/workflows/public-trust.yml'
-      - '.github/workflows/release-candidate.yml'
-      - 'README.md'
-      - 'SECURITY.md'
   pull_request:
     paths:
       - 'scripts/probe/check-public-trust.py'
+      - 'scripts/probe/public_trust_ops.py'
       - 'scripts/release/readiness.sh'
       - '.github/workflows/public-trust.yml'
       - '.github/workflows/release-candidate.yml'
@@ -38,7 +32,7 @@ jobs:
     name: Public trust audit
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 65
     steps:
       - name: Check out exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,8 +43,13 @@ jobs:
         run: python3 scripts/probe/check-public-trust.py --self-test
       - name: Validate static public trust contract
         run: python3 scripts/probe/check-public-trust.py --static
+      - name: Rehearse exact-candidate live GitHub read path
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/probe/check-public-trust.py --rehearse-live
       - name: Audit live public state and classify repair needed
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/probe/check-public-trust.py --daily
+        run: python3 scripts/probe/check-public-trust.py --daily --settle-seconds 3120
