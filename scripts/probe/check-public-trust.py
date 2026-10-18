@@ -238,6 +238,29 @@ def decision(records, mode):
     return "PASS"
 
 
+def build_report(records, settlement, mode, main_sha=None):
+    """Reuse the same incident and verdict semantics for logs and retained evidence."""
+    verdict = decision(records, mode)
+    return {"schema": "clroom.public-trust.v2", "verdict": verdict,
+            "settlement": settlement, "checks": records,
+            "incidents": incident_report(records, main_sha),
+            "remediation": "Read-only. No automatic fix, notification delivery, merge or settings changes.",
+            "disclaimer": "Public evidence only; not a comprehensive security/adoption audit"}
+
+
+def persist_report(report, path):
+    """Write an exclusive bounded local evidence file; never mutate repository state."""
+    if not path:
+        return
+    payload = (json.dumps(report, sort_keys=True, ensure_ascii=True) + "\n").encode("utf-8")
+    if len(payload) > 262144:
+        raise ValueError("public trust report exceeds 256 KiB")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(payload)
+
+
 def self_test():
     import tempfile
     with tempfile.TemporaryDirectory() as td:
@@ -371,6 +394,35 @@ def self_test():
     assert decision(live_checks("", fixture.__getitem__), "daily") == "BLOCKED"
     main_scans.pop("total_count")
 
+    # PASS and failed audits must both survive as parseable, exclusive evidence.
+    with tempfile.TemporaryDirectory() as td:
+        path = str(pathlib.Path(td) / "trust-report.json")
+        failed = build_report([{"check": "main:CI", "state": "BLOCKER",
+                                "detail": "failure", "evidence": {"sha": sha, "run_id": 42}}],
+                              {"state": "failure-observed", "attempts": 2}, "daily", sha)
+        assert failed["verdict"] == "BLOCKED" and failed["incidents"][0]["evidence"]["run_id"] == 42
+        persist_report(failed, path)
+        assert json.loads(pathlib.Path(path).read_text(encoding="utf-8")) == failed
+        try:
+            persist_report(failed, path)
+        except FileExistsError:
+            pass
+        else:
+            raise AssertionError("report evidence must never overwrite an existing file")
+        success = build_report([{"check": "main:CI", "state": "PASS", "detail": "success"}],
+                               {"state": "terminal", "attempts": 3}, "daily", sha)
+        assert success["verdict"] == "PASS" and success["incidents"] == []
+        success_path = str(pathlib.Path(td) / "pass.json")
+        persist_report(success, success_path)
+        assert json.loads(pathlib.Path(success_path).read_text(encoding="utf-8")) == success
+        try:
+            persist_report({"large": "a" * 262144}, str(pathlib.Path(td) / "too-large.json"))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("unbounded report must fail closed")
+        assert not (pathlib.Path(td) / "too-large.json").exists()
+
     ops_self_test()
     print("PUBLIC_TRUST_SELF_TEST_PASS")
 
@@ -384,6 +436,7 @@ def main():
     options.add_argument("--daily", action="store_true")
     options.add_argument("--rehearse-live", action="store_true")
     parser.add_argument("--settle-seconds", type=int, default=0)
+    parser.add_argument("--report-path", help="exclusive local JSON evidence file (Actions artifact)")
     args = parser.parse_args()
     if not 0 <= args.settle_seconds <= 3300:
         parser.error("settle-seconds must be between 0 and 3300")
@@ -394,6 +447,13 @@ def main():
         rows = static_checks(ROOT) + live_checks(
             os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN", ""),
             phase="daily")
+        # Execute the identical report serialization path used by the live audit.
+        # The PR sample is not a settled terminal watch and never claims to be.
+        main_sha = next((row.get("evidence", {}).get("sha") for row in rows
+                         if row["check"] == "main:CI"), None)
+        rehearsal = build_report(rows, {"state": "pr-live-sample-not-terminal", "attempts": 1},
+                                 "daily", main_sha)
+        persist_report(rehearsal, args.report_path)
         by_name = {row["check"]: row for row in rows}
         for key in ("repo-identity", "main-protection-contract", "public-install-assets"):
             if by_name.get(key, {}).get("state") != "PASS":
@@ -423,12 +483,10 @@ def main():
         else:
             records = sample()
             settlement = {"state": "release-preflight-not-terminal-watch", "attempts": 1}
-    verdict = decision(records, mode)
-    incidents = incident_report(records, os.environ.get("GITHUB_SHA"))
-    report = {"schema": "clroom.public-trust.v2", "verdict": verdict,
-              "settlement": settlement, "checks": records, "incidents": incidents,
-              "remediation": "Read-only. No automatic fix, notification delivery, merge or settings changes.",
-              "disclaimer": "Public evidence only; not a comprehensive security/adoption audit"}
+    report = build_report(records, settlement, mode, os.environ.get("GITHUB_SHA"))
+    persist_report(report, args.report_path)
+    verdict = report["verdict"]
+    incidents = report["incidents"]
     print(json.dumps(report, sort_keys=True, ensure_ascii=True))
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

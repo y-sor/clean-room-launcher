@@ -47,9 +47,17 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/probe/check-public-trust.py --rehearse-live
+        run: python3 scripts/probe/check-public-trust.py --rehearse-live --report-path "$RUNNER_TEMP/clroom-public-trust-report.json"
       - name: Audit live public state and classify repair needed
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/probe/check-public-trust.py --daily --settle-seconds 3120
+        run: python3 scripts/probe/check-public-trust.py --daily --settle-seconds 3120 --report-path "$RUNNER_TEMP/clroom-public-trust-report.json"
+      - name: Retain bounded public trust incident handoff
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: public-trust-${{ github.event_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/clroom-public-trust-report.json
+          if-no-files-found: error
+          retention-days: 14
