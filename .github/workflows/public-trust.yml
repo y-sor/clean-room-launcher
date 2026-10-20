@@ -1,0 +1,63 @@
+name: Public trust watch
+
+on:
+  schedule:
+    - cron: '17 7 * * *'
+    - cron: '37 16 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'scripts/probe/check-public-trust.py'
+      - 'scripts/probe/public_trust_ops.py'
+      - 'scripts/release/readiness.sh'
+      - '.github/workflows/public-trust.yml'
+      - '.github/workflows/release-candidate.yml'
+      - 'README.md'
+      - 'SECURITY.md'
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+
+concurrency:
+  group: public-trust-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Public trust audit
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Run public trust negative regression fixtures
+        run: python3 scripts/probe/check-public-trust.py --self-test
+      - name: Validate static public trust contract
+        run: python3 scripts/probe/check-public-trust.py --static
+      - name: Rehearse exact-candidate live GitHub read path
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/probe/check-public-trust.py --rehearse-live --report-path "$RUNNER_TEMP/clroom-public-trust-report.json"
+      - name: Audit live public state and classify repair needed
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/probe/check-public-trust.py --daily --settle-seconds 3120 --report-path "$RUNNER_TEMP/clroom-public-trust-report.json"
+      - name: Retain bounded public trust incident handoff
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: public-trust-${{ github.event_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/clroom-public-trust-report.json
+          if-no-files-found: error
+          retention-days: 14
