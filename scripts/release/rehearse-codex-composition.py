@@ -594,6 +594,23 @@ def structured_provider_diagnostic(
             proc.wait(timeout=2)
 
 
+def composed_provider_argv_shape_matches(
+    runtime_argv: list[str] | None,
+    inspected_element_count: int,
+) -> bool:
+    # Inspect injects --model + the private canary (2 argv elements).
+    # Interactive runtime uses --no-alt-screen (1 element), while the
+    # observed process argv additionally includes the executable (1 element).
+    # Compare the common resolved arguments, not the distinct probe tails.
+    if (
+        not runtime_argv
+        or runtime_argv[-1] != "--no-alt-screen"
+        or inspected_element_count < 2
+    ):
+        return False
+    return len(runtime_argv) - 2 == inspected_element_count - 2
+
+
 def positive_probe(
     candidate: pathlib.Path,
     project: pathlib.Path,
@@ -760,7 +777,7 @@ def positive_probe(
         and native_args.get("host_config_preserved") is True
         and native_args.get("host_enable_preserved") is True
         and provider_argv is not None
-        and len(provider_argv) - 1 == inspect_provider_arg_count
+        and composed_provider_argv_shape_matches(provider_argv, inspect_provider_arg_count)
     )
     if not success:
         diagnostic = tail.decode("utf-8", errors="replace")
@@ -968,6 +985,18 @@ def self_test() -> None:
             fail("process_snapshot result arity self-test")
     if snapshot_calls != 2:
         fail("process_snapshot call-count self-test")
+
+    # Detect argument-count drift while accounting for the known probe-only
+    # --model canary and runtime-only --no-alt-screen terminal option.
+    runtime_shape = ["codex", "-c", HOST_CONFIG_CANARY, "--enable", HOST_ENABLE_CANARY, "--no-alt-screen"]
+    if not composed_provider_argv_shape_matches(runtime_shape, len(runtime_shape)):
+        fail("native inspect/runtime argv count normalization self-test")
+    if (
+        composed_provider_argv_shape_matches(runtime_shape, len(runtime_shape) + 1)
+        or composed_provider_argv_shape_matches(runtime_shape[:-1], len(runtime_shape))
+        or composed_provider_argv_shape_matches(None, len(runtime_shape))
+    ):
+        fail("native inspect/runtime argv mismatch negative self-test")
 
     composed_report = {
         "schema_version": INSPECT_SCHEMA_VERSION,
