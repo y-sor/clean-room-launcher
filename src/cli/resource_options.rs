@@ -163,17 +163,21 @@ fn native_option_arity(provider: Provider, argument: &str) -> Option<NativeOptio
                 Some(NativeOptionArity::Many)
             } else if matches!(
                 argument,
-                "--cloud" | "--debug" | "--from-pr" | "--prompt-suggestions" | "--remote-control"
-                    | "--resume" | "--teleport" | "--worktree"
+                "--cloud" | "--debug" | "-d" | "--from-pr" | "--prompt-suggestions"
+                    | "--remote-control" | "--resume" | "-r" | "--teleport" | "--tmux"
+                    | "--worktree" | "-w"
             ) {
                 Some(NativeOptionArity::Optional)
             } else if matches!(
                 argument,
-                "--agent" | "--append-system-prompt" | "--autocompact" | "--environment"
+                "--agent" | "--append-system-prompt" | "--append-system-prompt-file"
+                    | "--autocompact" | "--debug-file" | "--effort" | "--environment"
                     | "--fallback-model" | "--input-format" | "--json-schema" | "--max-budget-usd"
                     | "--model" | "--name" | "--output-format" | "--permission-mode"
-                    | "--permission-prompts" | "--plugin-dir" | "--plugin-url" | "--setting-sources"
-                    | "--settings" | "--system-prompt" | "--system-prompt-snapshot"
+                    | "--permission-prompts" | "--permission-prompt-tool" | "--plugin-dir"
+                    | "--plugin-url" | "--remote-control-session-name-prefix" | "--session-id"
+                    | "--setting-sources" | "--settings" | "--system-prompt"
+                    | "--system-prompt-snapshot"
             ) {
                 Some(NativeOptionArity::One)
             } else {
@@ -190,7 +194,30 @@ fn native_option_takes_value(provider: Provider, argument: &str) -> bool {
 fn native_subcommand(provider: Provider, argument: &str) -> bool {
     match provider {
         Provider::Codex => super::launch_contract::is_codex_subcommand(argument),
-        Provider::Claude => matches!(argument, "mcp" | "plugin" | "auth" | "doctor"),
+        Provider::Claude => matches!(
+            argument,
+            "agents"
+                | "attach"
+                | "auth"
+                | "auto-mode"
+                | "doctor"
+                | "gateway"
+                | "import"
+                | "install"
+                | "logs"
+                | "mcp"
+                | "plugin"
+                | "plugins"
+                | "purge"
+                | "respawn"
+                | "rm"
+                | "setup-token"
+                | "stop"
+                | "kill"
+                | "ultrareview"
+                | "update"
+                | "upgrade"
+        ),
     }
 }
 
@@ -233,6 +260,9 @@ fn validate_native_composition(
         if argument == "--" {
             break;
         }
+        if native_subcommand(provider, argument) {
+            break;
+        }
 
         match provider {
             Provider::Codex => {
@@ -240,7 +270,11 @@ fn validate_native_composition(
                     argument,
                     "--dangerously-bypass-approvals-and-sandbox"
                         | "--dangerously-bypass-hook-trust"
-                ) {
+                        | "--approve-for-me"
+                        | "--yolo"
+                ) || argument.starts_with("--dangerously-bypass-approvals-and-sandbox=")
+                    || argument.starts_with("--dangerously-bypass-hook-trust=")
+                {
                     return Err(
                         "CLROOM_ISOLATION_CONFLICT: Codex dangerous bypass flags cannot be composed through CLROOM"
                             .to_owned(),
@@ -254,12 +288,31 @@ fn validate_native_composition(
                             .to_owned(),
                     );
                 }
-                if !request.is_empty()
-                    && matches!(argument, "--sandbox" | "-s")
-                    && args.get(index + 1).is_some_and(|value| value == "danger-full-access")
-                {
+                let sandbox_value = if matches!(argument, "--sandbox" | "-s") {
+                    args.get(index + 1).map(String::as_str)
+                } else {
+                    argument
+                        .split_once('=')
+                        .filter(|(option, _)| matches!(*option, "--sandbox" | "-s"))
+                        .map(|(_, value)| value)
+                };
+                if sandbox_value == Some("danger-full-access") {
                     return Err(
-                        "CLROOM_ISOLATION_CONFLICT: Codex full-access sandbox cannot be composed with selected resources"
+                        "CLROOM_ISOLATION_CONFLICT: Codex full-access sandbox cannot be composed through CLROOM"
+                            .to_owned(),
+                    );
+                }
+                let approval_value = if matches!(argument, "--ask-for-approval" | "-a") {
+                    args.get(index + 1).map(String::as_str)
+                } else {
+                    argument
+                        .split_once('=')
+                        .filter(|(option, _)| matches!(*option, "--ask-for-approval" | "-a"))
+                        .map(|(_, value)| value)
+                };
+                if approval_value == Some("never") {
+                    return Err(
+                        "CLROOM_ISOLATION_CONFLICT: Codex approval bypass cannot be composed through CLROOM"
                             .to_owned(),
                     );
                 }
@@ -332,11 +385,13 @@ fn validate_native_composition(
                             .to_owned(),
                     );
                 }
-                if !request.is_empty()
-                    && argument == "--permission-mode"
-                    && args.get(index + 1).is_some_and(|value| {
-                        matches!(value.as_str(), "bypassPermissions" | "dontAsk")
-                    })
+                let permission_mode = if argument == "--permission-mode" {
+                    args.get(index + 1).map(String::as_str)
+                } else {
+                    argument.strip_prefix("--permission-mode=")
+                };
+                if permission_mode
+                    .is_some_and(|value| matches!(value, "bypassPermissions" | "dontAsk"))
                 {
                     return Err(
                         "CLROOM_ISOLATION_CONFLICT: Claude permission mode cannot bypass selected-resource policy"
@@ -356,10 +411,14 @@ fn validate_native_composition(
                             .to_owned(),
                     );
                 }
-                if argument == "--setting-sources" {
-                    index += 1;
-                    value_consumed = true;
-                    let value = args.get(index).map(String::as_str).unwrap_or_default();
+                if argument == "--setting-sources" || argument.starts_with("--setting-sources=") {
+                    let value = if argument == "--setting-sources" {
+                        index += 1;
+                        value_consumed = true;
+                        args.get(index).map(String::as_str).unwrap_or_default()
+                    } else {
+                        argument.split_once('=').map_or("", |(_, value)| value)
+                    };
                     if !request.is_empty()
                         && value.split(',').any(|source| source.trim() == "user")
                     {
@@ -446,6 +505,9 @@ pub(super) fn validate_plugin_mcp_config(
     while index < args.len() {
         let argument = args[index].as_str();
         if argument == "--" {
+            break;
+        }
+        if native_subcommand(Provider::Codex, argument) {
             break;
         }
         let mut value_consumed = false;
@@ -735,6 +797,30 @@ mod tests {
         assert!(subcommand.request.is_empty());
         assert_eq!(subcommand.provider_args, subcommand_args);
 
+        let codex_command_args = strings(&[
+            "features",
+            "--dangerously-bypass-approvals-and-sandbox",
+        ]);
+        assert_eq!(
+            prepare(Provider::Codex, &codex_command_args)
+                .unwrap()
+                .provider_args,
+            codex_command_args
+        );
+
+        let claude_command_args = strings(&["mcp", "add", "--setting-sources=user"]);
+        assert_eq!(
+            prepare(Provider::Claude, &claude_command_args)
+                .unwrap()
+                .provider_args,
+            strings(&[
+                "--no-chrome",
+                "mcp",
+                "add",
+                "--setting-sources=user"
+            ])
+        );
+
         let missing_value = prepare(Provider::Codex, &strings(&["--with=plugin:x@y", "-c"]))
             .unwrap_err();
         assert!(missing_value.starts_with("CLROOM_NATIVE_ARGUMENT_INVALID:"));
@@ -826,6 +912,16 @@ mod tests {
         )
         .unwrap_err();
         assert!(ambient_settings_conflict.contains("personal-global"));
+
+        let attached_settings_conflict = prepare(
+            Provider::Claude,
+            &strings(&[
+                "--with=plugin:review-tools@team",
+                "--setting-sources=user,project,local",
+            ]),
+        )
+        .unwrap_err();
+        assert!(attached_settings_conflict.contains("personal-global"));
 
         let mcp_source_conflict = prepare(
             Provider::Claude,
@@ -919,6 +1015,12 @@ mod tests {
         for args in [
             strings(&["--dangerously-bypass-approvals-and-sandbox"]),
             strings(&["--dangerously-bypass-hook-trust"]),
+            strings(&["--approve-for-me"]),
+            strings(&["--yolo"]),
+            strings(&["--sandbox=danger-full-access"]),
+            strings(&["-s=danger-full-access"]),
+            strings(&["--ask-for-approval=never"]),
+            strings(&["-a=never"]),
         ] {
             let error = prepare(Provider::Codex, &args).unwrap_err();
             assert!(error.starts_with("CLROOM_ISOLATION_CONFLICT:"), "{error}");
@@ -939,6 +1041,7 @@ mod tests {
                 Provider::Claude,
                 strings(&["--with=plugin:x@y", "--permission-mode", "bypassPermissions"]),
             ),
+            (Provider::Claude, strings(&["--permission-mode=bypassPermissions"])),
         ] {
             let error = prepare(provider, &args).unwrap_err();
             assert!(error.starts_with("CLROOM_ISOLATION_CONFLICT:"), "{error}");

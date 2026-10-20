@@ -113,6 +113,7 @@ const CODEX_NON_TOP_LEVEL_COMMANDS: &[&str] = &[
     "stdio-to-uds",
     "exec-server",
     "features",
+    "help",
 ];
 
 pub(crate) fn codex_top_level_interactive(args: &[String]) -> bool {
