@@ -126,12 +126,24 @@ fn clroom_is_the_only_public_identity_and_preserves_the_native_codex_process() {
         format!("{clean_defaults}exec\0--ignore-user-config\0")
     );
 
-    let forwarded = native(&["--help", "--approve-for-me", "--yolo"]);
+    let forwarded = native(&["--help", "--no-alt-screen"]);
     assert!(forwarded.status.success());
     assert_eq!(
         fs::read_to_string(&capture).unwrap(),
-        format!("{clean_defaults}exec\0--ignore-user-config\0--help\0--approve-for-me\0--yolo\0")
+        format!("{clean_defaults}exec\0--ignore-user-config\0--help\0--no-alt-screen\0")
     );
+
+    for unsafe_flag in ["--approve-for-me", "--yolo"] {
+        let _ = fs::remove_file(&capture);
+        let refused = native(&[unsafe_flag]);
+        assert_eq!(refused.status.code(), Some(2));
+        assert!(refused.stdout.is_empty());
+        assert!(!capture.exists(), "unsafe option started a provider child");
+        assert!(
+            String::from_utf8_lossy(&refused.stderr).contains("CLROOM_ISOLATION_CONFLICT"),
+            "unsafe option was not refused before provider birth"
+        );
+    }
 
     let mut stdio = Command::new(clroom())
         .args(["codex", "exec", "--stdio"])
