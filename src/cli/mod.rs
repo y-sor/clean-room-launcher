@@ -769,8 +769,21 @@ fn select_launcher_options(
     let mut selectors = None;
     let mut provider_args = Vec::with_capacity(args.len());
     let mut index = 0;
+    let mut codex_exec = false;
     while let Some(argument) = args.get(index) {
-        if argument == "--" || resource_options::native_subcommand(provider, argument) {
+        if argument == "--" {
+            provider_args.extend_from_slice(&args[index..]);
+            break;
+        }
+        if !codex_exec && resource_options::native_subcommand(provider, argument) {
+            if provider == resource_options::Provider::Codex
+                && matches!(argument.as_str(), "exec" | "e")
+            {
+                codex_exec = true;
+                provider_args.push(argument.clone());
+                index += 1;
+                continue;
+            }
             provider_args.extend_from_slice(&args[index..]);
             break;
         }
@@ -859,10 +872,19 @@ mod launcher_option_arity_tests {
 
     #[test]
     fn subcommand_and_terminator_arguments_remain_provider_owned() {
-        let codex = words(&["exec", "--pass-env=CANARY", "--skill-set=literal"]);
+        // Codex exec historically accepts CLROOM skill selectors after the
+        // command; preserving that behavior is covered by launch E2E tests.
+        let codex = words(&["exec", "--pass-env=CANARY", "--skill-set=review"]);
         let (skills, args, env) = select_codex_options(&codex).unwrap();
-        assert!(skills.is_empty() && env.is_empty());
-        assert_eq!(args, codex);
+        assert_eq!(skills, words(&["review"]));
+        assert_eq!(env, words(&["CANARY"]));
+        assert_eq!(args, words(&["exec"]));
+
+        let codex_management = words(&["mcp", "list", "--pass-env=CANARY"]);
+        let (_, management_args, management_env) =
+            select_codex_options(&codex_management).unwrap();
+        assert_eq!(management_args, codex_management);
+        assert!(management_env.is_empty());
 
         let claude = words(&["mcp", "add", "--pass-env=CANARY"]);
         let (skills, args, env) = select_provider_options(&claude).unwrap();
