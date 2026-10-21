@@ -254,6 +254,7 @@ fn validate_native_composition(
         .collect::<Vec<_>>();
 
     let mut index = 0;
+    let mut codex_exec = false;
     while index < args.len() {
         let argument = args[index].as_str();
         let mut value_consumed = false;
@@ -261,7 +262,17 @@ fn validate_native_composition(
             break;
         }
         if native_subcommand(provider, argument) {
-            break;
+            // Codex exec (including exec resume) launches an agent; its native
+            // security and configuration flags remain subject to validation.
+            // Other provider management subcommands retain their own grammar.
+            if provider != Provider::Codex
+                || (!codex_exec && !matches!(argument, "exec" | "e"))
+            {
+                break;
+            }
+            codex_exec = true;
+            index += 1;
+            continue;
         }
 
         match provider {
@@ -274,6 +285,8 @@ fn validate_native_composition(
                         | "--yolo"
                 ) || argument.starts_with("--dangerously-bypass-approvals-and-sandbox=")
                     || argument.starts_with("--dangerously-bypass-hook-trust=")
+                    || argument.starts_with("--approve-for-me=")
+                    || argument.starts_with("--yolo=")
                 {
                     return Err(
                         "CLROOM_ISOLATION_CONFLICT: Codex dangerous bypass flags cannot be composed through CLROOM"
@@ -290,6 +303,8 @@ fn validate_native_composition(
                 }
                 let sandbox_value = if matches!(argument, "--sandbox" | "-s") {
                     args.get(index + 1).map(String::as_str)
+                } else if let Some(value) = argument.strip_prefix("-s") {
+                    Some(value.strip_prefix('=').unwrap_or(value))
                 } else {
                     argument
                         .split_once('=')
@@ -304,6 +319,8 @@ fn validate_native_composition(
                 }
                 let approval_value = if matches!(argument, "--ask-for-approval" | "-a") {
                     args.get(index + 1).map(String::as_str)
+                } else if let Some(value) = argument.strip_prefix("-a") {
+                    Some(value.strip_prefix('=').unwrap_or(value))
                 } else {
                     argument
                         .split_once('=')
@@ -319,7 +336,7 @@ fn validate_native_composition(
                 if !request.is_empty()
                     && (matches!(argument, "--profile" | "-p" | "--config-file")
                     || argument.starts_with("--profile=")
-                    || argument.starts_with("-p=")
+                    || (argument.starts_with("-p") && argument.len() > 2)
                     || argument.starts_with("--config-file="))
                 {
                     return Err(format!(
@@ -342,6 +359,10 @@ fn validate_native_composition(
                     validate_codex_config_override(value, &selected_plugins, &selected_mcp)?;
                 } else if let Some((option, value)) = argument.split_once('=')
                     && matches!(option, "-c" | "--config")
+                {
+                    validate_codex_config_override(value, &selected_plugins, &selected_mcp)?;
+                } else if let Some(value) = argument.strip_prefix("-c")
+                    && !value.is_empty()
                 {
                     validate_codex_config_override(value, &selected_plugins, &selected_mcp)?;
                 } else if matches!(argument, "--enable" | "--disable") {
@@ -373,7 +394,9 @@ fn validate_native_composition(
                 if matches!(
                     argument,
                     "--dangerously-skip-permissions" | "--allow-dangerously-skip-permissions"
-                ) {
+                ) || argument.starts_with("--dangerously-skip-permissions=")
+                    || argument.starts_with("--allow-dangerously-skip-permissions=")
+                {
                     return Err(
                         "CLROOM_ISOLATION_CONFLICT: Claude permission bypass flags cannot be composed through CLROOM"
                             .to_owned(),
@@ -391,7 +414,7 @@ fn validate_native_composition(
                     argument.strip_prefix("--permission-mode=")
                 };
                 if permission_mode
-                    .is_some_and(|value| matches!(value, "bypassPermissions" | "dontAsk"))
+                    .is_some_and(|value| value == "bypassPermissions")
                 {
                     return Err(
                         "CLROOM_ISOLATION_CONFLICT: Claude permission mode cannot bypass selected-resource policy"
@@ -454,32 +477,36 @@ fn validate_codex_config_override(
         );
     };
     let key = key.trim();
-    let setting = setting.trim();
     if key.is_empty() {
         return Err("CLROOM_NATIVE_ARGUMENT_INVALID: Codex config key is empty".to_owned());
     }
-
+    // Resolve TOML dotted and quoted keys semantically, not by textual prefix:
+    // mcp_servers."docs".enabled and "sandbox_mode" are native valid forms.
+    let parsed_key = toml::from_str::<toml::Value>(&format!("{key} = true")).map_err(|_| {
+        "CLROOM_NATIVE_ARGUMENT_INVALID: Codex config key is invalid".to_owned()
+    })?;
     let plugin_selected = !selected_plugins.is_empty();
-    let mcp_key = key.strip_prefix("mcp_servers.");
-    if (plugin_selected && (key == "plugins" || key.starts_with("plugins.")))
-        || selected_mcp.iter().any(|id| {
-            mcp_key.is_some_and(|key| key == id.as_str() || key.starts_with(&format!("{id}.")))
-        })
-        || (!selected_mcp.is_empty() && key == "mcp_servers")
-        || (plugin_selected && key == "features.plugins" && setting == "false")
-    {
+    let feature_override = parsed_key.get("features");
+    let selected_plugin_conflict = plugin_selected
+        && (parsed_key.get("plugins").is_some()
+            || feature_override.is_some_and(|features| {
+                !features.is_table() || features.get("plugins").is_some()
+            }));
+    let selected_mcp_conflict = !selected_mcp.is_empty()
+        && parsed_key.get("mcp_servers").is_some_and(|servers| {
+            !servers.is_table()
+                || selected_mcp
+                    .iter()
+                    .any(|id| servers.get(id.as_str()).is_some())
+        });
+    if selected_plugin_conflict || selected_mcp_conflict {
         return Err(resource_conflict("selected Codex resource"));
     }
 
-    if matches!(
-        key,
-        "sandbox_mode"
-            | "approval_policy"
-            | "shell_environment_policy"
-            | "shell_environment_policy.inherit"
-            | "shell_environment_policy.include_only"
-            | "shell_environment_policy.ignore_default_excludes"
-    ) {
+    if ["sandbox_mode", "approval_policy", "shell_environment_policy"]
+        .iter()
+        .any(|key| parsed_key.get(key).is_some())
+    {
         return Err(
             "CLROOM_RESOURCE_COMPOSITION_CONFLICT: Codex config cannot override CLROOM isolation or approval controls"
                 .to_owned(),
@@ -1068,6 +1095,67 @@ mod tests {
             &selected,
         )
         .unwrap();
+    }
+
+    #[test]
+    fn codex_exec_security_flags_and_short_attached_forms_fail_closed() {
+        for args in [
+            strings(&["exec", "--dangerously-bypass-approvals-and-sandbox"]),
+            strings(&["exec", "resume", "--yolo"]),
+            strings(&["-m", "gpt-5", "exec", "--ask-for-approval=never"]),
+            strings(&["exec", "-sdanger-full-access"]),
+            strings(&["exec", "-anever"]),
+            strings(&["exec", "-c", "shell_environment_policy.filters.PATH='include'"]),
+            strings(&["-csandbox_mode='danger-full-access'"]),
+        ] {
+            let error = prepare(Provider::Codex, &args).unwrap_err();
+            assert!(
+                error.starts_with("CLROOM_ISOLATION_CONFLICT:")
+                    || error.starts_with("CLROOM_RESOURCE_COMPOSITION_CONFLICT:"),
+                "{args:?}: {error}"
+            );
+        }
+        let literal = strings(&["exec", "--", "--yolo"]);
+        assert_eq!(prepare(Provider::Codex, &literal).unwrap().provider_args, literal);
+    }
+
+    #[test]
+    fn toml_quoted_and_nested_resource_keys_fail_closed() {
+        for config in [
+            "features={plugins=false}",
+            "mcp_servers.\\\"docs\\\".enabled=false",
+            "\\\"sandbox_mode\\\"='danger-full-access'",
+            "shell_environment_policy.filters.PATH='include'",
+        ] {
+            let args = strings(&[
+                "--with=plugin:codex-app-tools@openai-bundled",
+                "--with=mcp:docs",
+                "-c",
+                config,
+            ]);
+            let error = prepare(Provider::Codex, &args).unwrap_err();
+            assert!(error.contains("COMPOSITION_CONFLICT:"), "{config}: {error}");
+        }
+        let disjoint = strings(&[
+            "--with=plugin:codex-app-tools@openai-bundled",
+            "-c",
+            "features.unified_exec=true",
+        ]);
+        assert!(prepare(Provider::Codex, &disjoint).is_ok());
+    }
+
+    #[test]
+    fn claude_dont_ask_preserves_deny_without_prompt_native_intent() {
+        let args = strings(&["--permission-mode=dontAsk"]);
+        assert_eq!(
+            prepare(Provider::Claude, &args).unwrap().provider_args,
+            strings(&["--no-chrome", "--permission-mode=dontAsk"])
+        );
+        assert!(prepare(
+            Provider::Claude,
+            &strings(&["--allow-dangerously-skip-permissions=true"])
+        )
+        .is_err());
     }
 
     #[test]
