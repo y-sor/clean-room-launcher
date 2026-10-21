@@ -12,7 +12,7 @@ pub struct Prepared {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum NativeOptionArity {
+pub(super) enum NativeOptionArity {
     One,
     Optional,
     Many,
@@ -135,7 +135,7 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
     })
 }
 
-fn native_option_arity(provider: Provider, argument: &str) -> Option<NativeOptionArity> {
+pub(super) fn native_option_arity(provider: Provider, argument: &str) -> Option<NativeOptionArity> {
     match provider {
         Provider::Codex => {
             if matches!(argument, "--image") {
@@ -191,7 +191,7 @@ fn native_option_takes_value(provider: Provider, argument: &str) -> bool {
     native_option_arity(provider, argument).is_some()
 }
 
-fn native_subcommand(provider: Provider, argument: &str) -> bool {
+pub(super) fn native_subcommand(provider: Provider, argument: &str) -> bool {
     match provider {
         Provider::Codex => super::launch_contract::is_codex_subcommand(argument),
         Provider::Claude => matches!(
