@@ -471,7 +471,7 @@ fn validate_codex_config_override(
     selected_plugins: &[&String],
     selected_mcp: &[&String],
 ) -> Result<(), String> {
-    let Some((key, setting)) = value.split_once('=') else {
+    let Some((key, _setting)) = value.split_once('=') else {
         return Err(
             "CLROOM_NATIVE_ARGUMENT_INVALID: Codex -c/--config requires key=value".to_owned(),
         );
