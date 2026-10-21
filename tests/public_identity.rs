@@ -145,6 +145,28 @@ fn clroom_is_the_only_public_identity_and_preserves_the_native_codex_process() {
         );
     }
 
+    // Resume/fork are agent launches, not provider-management commands: a
+    // dangerous subcommand override must be refused before provider birth.
+    for unsafe_args in [
+        &["resume", "--dangerously-bypass-approvals-and-sandbox"][..],
+        &["resume", "--dangerously-bypass-hook-trust"][..],
+        &["fork", "--yolo"][..],
+    ] {
+        let _ = fs::remove_file(&capture);
+        let refused = Command::new(clroom())
+            .arg("codex")
+            .args(unsafe_args)
+            .env("PATH", provider_path)
+            .output()
+            .unwrap();
+        assert_eq!(refused.status.code(), Some(2));
+        assert!(!capture.exists(), "unsafe subcommand launched provider child");
+        assert!(
+            String::from_utf8_lossy(&refused.stderr).contains("CLROOM_ISOLATION_CONFLICT"),
+            "unsafe subcommand did not fail closed: {unsafe_args:?}"
+        );
+    }
+
     let mut stdio = Command::new(clroom())
         .args(["codex", "exec", "--stdio"])
         .env("PATH", provider_path)

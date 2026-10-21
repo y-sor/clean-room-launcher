@@ -256,7 +256,7 @@ fn validate_native_composition(
         .collect::<Vec<_>>();
 
     let mut index = 0;
-    let mut codex_exec = false;
+    let mut codex_agent_command = false;
     while index < args.len() {
         let argument = args[index].as_str();
         let mut value_consumed = false;
@@ -264,15 +264,16 @@ fn validate_native_composition(
             break;
         }
         if native_subcommand(provider, argument) {
-            // Codex exec (including exec resume) launches an agent; its native
-            // security and configuration flags remain subject to validation.
-            // Other provider management subcommands retain their own grammar.
+            // Codex exec, resume, fork, and review launch an agent. Continue
+            // validating native security overrides after those subcommands,
+            // but leave provider management subcommands to their own grammar.
             if provider != Provider::Codex
-                || (!codex_exec && !matches!(argument, "exec" | "e"))
+                || (!codex_agent_command
+                    && !matches!(argument, "exec" | "e" | "resume" | "fork" | "review"))
             {
                 break;
             }
-            codex_exec = true;
+            codex_agent_command = true;
             index += 1;
             continue;
         }
@@ -1118,6 +1119,11 @@ mod tests {
         for args in [
             strings(&["exec", "--dangerously-bypass-approvals-and-sandbox"]),
             strings(&["exec", "resume", "--yolo"]),
+            strings(&["resume", "--dangerously-bypass-approvals-and-sandbox"]),
+            strings(&["resume", "--dangerously-bypass-hook-trust"]),
+            strings(&["fork", "--yolo"]),
+            strings(&["review", "--sandbox=danger-full-access"]),
+            strings(&["--model", "gpt-5", "resume", "-anever"]),
             strings(&["-m", "gpt-5", "exec", "--ask-for-approval=never"]),
             strings(&["exec", "-sdanger-full-access"]),
             strings(&["exec", "-anever"]),

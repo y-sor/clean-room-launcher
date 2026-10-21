@@ -1300,7 +1300,17 @@ command = "/usr/bin/docs-mcp"
 
     #[test]
     fn codex_invocation_classification_is_fail_closed_for_interactive_paths() {
-        use super::{CodexInvocation, classify_codex_invocation};
+        use super::{CodexInvocation, classify_codex_invocation, codex_top_level_interactive};
+
+        // Selected resources are qualified only for the top-level interactive
+        // host, not for agent-starting native subcommands such as resume.
+        for command in ["exec", "resume", "fork", "review"] {
+            assert!(!codex_top_level_interactive(&[command.to_owned()]));
+        }
+        assert!(codex_top_level_interactive(&[
+            "--model".to_owned(),
+            "gpt-5".to_owned()
+        ]));
 
         assert_eq!(
             classify_codex_invocation(&["exec".to_owned(), "prompt".to_owned()]),

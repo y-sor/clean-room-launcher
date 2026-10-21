@@ -530,7 +530,8 @@ fn launch_isolated_codex(
     };
     let invocation = launch_contract::classify_codex_invocation(&provider_args);
     if !resource_request.is_empty()
-        && invocation != launch_contract::CodexInvocation::Interactive
+        && (invocation != launch_contract::CodexInvocation::Interactive
+            || !launch_contract::codex_top_level_interactive(provider_args))
     {
         return Err(
             "CLROOM_RESOURCE_NOT_SELECTABLE: Codex resource activation is qualified only for interactive launch; continue locally"
