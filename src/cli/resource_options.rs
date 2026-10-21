@@ -138,13 +138,14 @@ pub fn prepare(provider: Provider, args: &[String]) -> Result<Prepared, String> 
 pub(super) fn native_option_arity(provider: Provider, argument: &str) -> Option<NativeOptionArity> {
     match provider {
         Provider::Codex => {
-            if matches!(argument, "--image") {
+            if matches!(argument, "--image" | "-i") {
                 Some(NativeOptionArity::Many)
             } else if matches!(
                 argument,
                 "--config" | "-c" | "--profile" | "-p" | "--enable" | "--disable"
                     | "--plugin" | "--config-file" | "--remote" | "--remote-auth-token-env"
                     | "--model" | "-m" | "--local-provider" | "--sandbox" | "-s"
+                    | "--color"
                     | "--ask-for-approval" | "-a" | "--cd" | "-C" | "--add-dir"
                     | "--instructions" | "--project-doc"
             ) {
@@ -173,6 +174,7 @@ pub(super) fn native_option_arity(provider: Provider, argument: &str) -> Option<
                 "--agent" | "--append-system-prompt" | "--append-system-prompt-file"
                     | "--autocompact" | "--debug-file" | "--effort" | "--environment"
                     | "--fallback-model" | "--input-format" | "--json-schema" | "--max-budget-usd"
+                    | "--max-turns"
                     | "--model" | "--name" | "--output-format" | "--permission-mode"
                     | "--permission-prompts" | "--permission-prompt-tool" | "--plugin-dir"
                     | "--plugin-url" | "--remote-control-session-name-prefix" | "--session-id"
@@ -1034,6 +1036,20 @@ mod tests {
                 "Read",
                 "Write",
             ])
+        );
+    }
+
+    #[test]
+    fn native_arity_matches_provider_short_and_color_options() {
+        let codex = strings(&["-i", "exec", "--color", "--with=opaque-color", "--skill-set=review"]);
+        let prepared = prepare(Provider::Codex, &codex).unwrap();
+        assert_eq!(prepared.provider_args, codex);
+
+        let claude = strings(&["--max-turns", "--with=opaque-limit", "--skill-set=review"]);
+        let prepared = prepare(Provider::Claude, &claude).unwrap();
+        assert_eq!(
+            prepared.provider_args,
+            strings(&["--no-chrome", "--max-turns", "--with=opaque-limit", "--skill-set=review"])
         );
     }
 
