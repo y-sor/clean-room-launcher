@@ -72,9 +72,9 @@ pub(crate) enum CodexInvocation {
 }
 
 pub(crate) fn classify_codex_invocation(args: &[String]) -> CodexInvocation {
-    match args.first().map(String::as_str) {
-        Some("exec" | "e") => CodexInvocation::Exec(0),
-        Some("--help" | "-h" | "--version" | "-V") => CodexInvocation::Diagnostic,
+    match codex_first_command(args) {
+        Some((index, "exec" | "e")) => CodexInvocation::Exec(index),
+        Some((_, "--help" | "-h" | "--version" | "-V")) => CodexInvocation::Diagnostic,
         _ => CodexInvocation::Interactive,
     }
 }
@@ -117,13 +117,45 @@ const CODEX_NON_TOP_LEVEL_COMMANDS: &[&str] = &[
 ];
 
 pub(crate) fn codex_top_level_interactive(args: &[String]) -> bool {
-    args.iter()
-        .take_while(|argument| argument.as_str() != "--")
-        .all(|argument| !is_codex_subcommand(argument))
+    !codex_first_command(args).is_some_and(|(_, command)| is_codex_subcommand(command))
 }
 
 pub(super) fn is_codex_subcommand(argument: &str) -> bool {
     CODEX_NON_TOP_LEVEL_COMMANDS.contains(&argument)
+}
+
+// The provider command is the first positional token outside native option
+// operands. Treating a model/config operand such as "exec" as a command would
+// change selected-resource admission and clean exec defaults.
+fn codex_first_command(args: &[String]) -> Option<(usize, &str)> {
+    use super::resource_options::{NativeOptionArity, Provider, native_option_arity};
+
+    let mut index = 0;
+    while let Some(argument) = args.get(index).map(String::as_str) {
+        if argument == "--" {
+            return None;
+        }
+        if matches!(argument, "--help" | "-h" | "--version" | "-V") {
+            return Some((index, argument));
+        }
+        if !argument.starts_with('-') {
+            return Some((index, argument));
+        }
+        index += 1;
+        if argument.contains('=') {
+            continue;
+        }
+        if let Some(arity) = native_option_arity(Provider::Codex, argument) {
+            if arity == NativeOptionArity::One {
+                index += 1;
+            } else if arity == NativeOptionArity::Many {
+                while args.get(index).is_some_and(|value| !value.starts_with('-')) {
+                    index += 1;
+                }
+            }
+        }
+    }
+    None
 }
 
 #[allow(dead_code)]
@@ -1281,7 +1313,7 @@ command = "/usr/bin/docs-mcp"
                 "exec".to_owned(),
                 "prompt".to_owned(),
             ]),
-            CodexInvocation::Interactive
+            CodexInvocation::Exec(2)
         );
         assert_eq!(
             classify_codex_invocation(&["resume".to_owned(), "thread".to_owned()]),
@@ -1291,5 +1323,31 @@ command = "/usr/bin/docs-mcp"
             classify_codex_invocation(&["--help".to_owned()]),
             CodexInvocation::Diagnostic
         );
+        assert_eq!(
+            classify_codex_invocation(&["--model".to_owned(), "exec".to_owned()]),
+            CodexInvocation::Interactive
+        );
+        assert_eq!(
+            classify_codex_invocation(&[
+                "--model".to_owned(),
+                "gpt-5".to_owned(),
+                "exec".to_owned(),
+                "--no-alt-screen".to_owned(),
+            ]),
+            CodexInvocation::Exec(2)
+        );
+        assert_eq!(
+            classify_codex_invocation(&["--".to_owned(), "exec".to_owned()]),
+            CodexInvocation::Interactive
+        );
+        let prefixed = LaunchContract::codex(&[
+            "--model".to_owned(),
+            "gpt-5".to_owned(),
+            "exec".to_owned(),
+            "prompt".to_owned(),
+        ]);
+        assert!(prefixed.argv.windows(2).any(|parts| {
+            parts[0] == "exec" && parts[1] == "--ignore-user-config"
+        }));
     }
 }
