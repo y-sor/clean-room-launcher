@@ -1123,8 +1123,8 @@ mod tests {
     fn toml_quoted_and_nested_resource_keys_fail_closed() {
         for config in [
             "features={plugins=false}",
-            "mcp_servers.\\\"docs\\\".enabled=false",
-            "\\\"sandbox_mode\\\"='danger-full-access'",
+            "mcp_servers.\"docs\".enabled=false",
+            "\"sandbox_mode\"='danger-full-access'",
             "shell_environment_policy.filters.PATH='include'",
         ] {
             let args = strings(&[
