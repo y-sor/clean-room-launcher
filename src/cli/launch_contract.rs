@@ -72,9 +72,9 @@ pub(crate) enum CodexInvocation {
 }
 
 pub(crate) fn classify_codex_invocation(args: &[String]) -> CodexInvocation {
-    match args.first().map(String::as_str) {
-        Some("exec" | "e") => CodexInvocation::Exec(0),
-        Some("--help" | "-h" | "--version" | "-V") => CodexInvocation::Diagnostic,
+    match codex_first_command(args) {
+        Some((index, "exec" | "e")) => CodexInvocation::Exec(index),
+        Some((_, "--help" | "-h" | "--version" | "-V")) => CodexInvocation::Diagnostic,
         _ => CodexInvocation::Interactive,
     }
 }
@@ -113,12 +113,49 @@ const CODEX_NON_TOP_LEVEL_COMMANDS: &[&str] = &[
     "stdio-to-uds",
     "exec-server",
     "features",
+    "help",
 ];
 
 pub(crate) fn codex_top_level_interactive(args: &[String]) -> bool {
-    args.iter()
-        .take_while(|argument| argument.as_str() != "--")
-        .all(|argument| !CODEX_NON_TOP_LEVEL_COMMANDS.contains(&argument.as_str()))
+    !codex_first_command(args).is_some_and(|(_, command)| is_codex_subcommand(command))
+}
+
+pub(super) fn is_codex_subcommand(argument: &str) -> bool {
+    CODEX_NON_TOP_LEVEL_COMMANDS.contains(&argument)
+}
+
+// The provider command is the first positional token outside native option
+// operands. Treating a model/config operand such as "exec" as a command would
+// change selected-resource admission and clean exec defaults.
+fn codex_first_command(args: &[String]) -> Option<(usize, &str)> {
+    use super::resource_options::{NativeOptionArity, Provider, native_option_arity};
+
+    let mut index = 0;
+    while let Some(argument) = args.get(index).map(String::as_str) {
+        if argument == "--" {
+            return None;
+        }
+        if matches!(argument, "--help" | "-h" | "--version" | "-V") {
+            return Some((index, argument));
+        }
+        if !argument.starts_with('-') {
+            return Some((index, argument));
+        }
+        index += 1;
+        if argument.contains('=') {
+            continue;
+        }
+        if let Some(arity) = native_option_arity(Provider::Codex, argument) {
+            if arity == NativeOptionArity::One {
+                index += 1;
+            } else if arity == NativeOptionArity::Many {
+                while args.get(index).is_some_and(|value| !value.starts_with('-')) {
+                    index += 1;
+                }
+            }
+        }
+    }
+    None
 }
 
 #[allow(dead_code)]
@@ -138,6 +175,7 @@ pub struct LaunchContract {
     pub boundary_controls: Vec<&'static str>,
     pub managed: Option<Presence>,
     pub user_or_provider_model_choice: bool,
+    host_args: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -200,7 +238,7 @@ impl ResolvedLaunch {
         ambient_codex_home: &Path,
         request: &SelectionRequest,
         pass_env: &[String],
-        provider_arg_count: usize,
+        _provider_arg_count: usize,
     ) -> Result<Self, ResolveCodexError> {
         let (plugin_request, mcp_request) = partition_codex_request(request)?;
         let plugin_activation = codex_activation::plan(
@@ -228,6 +266,16 @@ impl ResolvedLaunch {
             return Err(ResolveCodexError::ActivationConflict);
         }
 
+        if plugin_activation.as_ref().is_some_and(|plugin| {
+            super::resource_options::validate_plugin_mcp_config(
+                &contract.host_args,
+                plugin.mcp_server_ids(),
+            )
+            .is_err()
+        }) {
+            return Err(ResolveCodexError::ActivationConflict);
+        }
+
         let plugin_activation_args = plugin_activation
             .as_ref()
             .map(PluginActivationPlan::provider_config_args)
@@ -242,6 +290,7 @@ impl ResolvedLaunch {
             &plugin_activation_args,
             &mcp_activation_args,
         );
+        let resolved_provider_arg_count = contract.argv.len();
 
         let mut pass_env = pass_env.to_vec();
         pass_env.sort();
@@ -256,7 +305,7 @@ impl ResolvedLaunch {
             mcp_activation_args,
             pass_env,
             resources: resolved_resource_summaries(request),
-            provider_arg_count,
+            provider_arg_count: resolved_provider_arg_count,
         })
     }
 
@@ -452,6 +501,7 @@ impl LaunchContract {
             boundary_controls,
             managed: None,
             user_or_provider_model_choice: model_choice,
+            host_args: user_args.to_vec(),
         }
     }
 
@@ -485,6 +535,7 @@ impl LaunchContract {
             boundary_controls,
             managed: Some(managed),
             user_or_provider_model_choice: model_choice,
+            host_args: user_args.to_vec(),
         }
     }
 
@@ -893,6 +944,10 @@ command = "/usr/bin/docs-mcp"
         .unwrap();
 
         let json = serde_json::to_string(&resolved.summary()).unwrap();
+        assert_eq!(
+            resolved.summary().provider_argv.element_count,
+            resolved.contract().argv.len()
+        );
         assert!(json.contains("codex-app-tools@openai-bundled"));
         assert!(json.contains("\"docs\""));
         assert!(json.contains("DOCS_TOKEN"));
@@ -1034,7 +1089,10 @@ command = "/usr/bin/docs-mcp"
 
     #[test]
     fn codex_owned_plugin_and_mcp_activation_order_is_deterministic() {
-        let mut contract = LaunchContract::codex(&["--model".to_owned(), "gpt-5".to_owned()]);
+        let mut contract = LaunchContract::codex(&[
+            "-c".to_owned(),
+            "model='example'".to_owned(),
+        ]);
         contract.add_codex_resource_activations(
             &["-c".to_owned(), "synthetic_plugin=true".to_owned()],
             &["-c".to_owned(), "synthetic_mcp=true".to_owned()],
@@ -1050,10 +1108,14 @@ command = "/usr/bin/docs-mcp"
             .windows(2)
             .position(|pair| pair[0] == "-c" && pair[1] == "synthetic_mcp=true")
             .unwrap();
-        let model = contract.argv.iter().position(|arg| arg == "--model").unwrap();
+        let host_model = contract
+            .argv
+            .windows(2)
+            .position(|pair| pair[0] == "-c" && pair[1] == "model='example'")
+            .unwrap();
         assert!(plugin < mcp);
-        assert!(mcp < model);
-        assert_eq!(contract.boundary_controls, vec!["plugin", "mcp"]);
+        assert!(mcp < host_model);
+        assert_eq!(contract.boundary_controls, vec!["config", "plugin", "mcp"]);
     }
 
     #[test]
@@ -1238,7 +1300,17 @@ command = "/usr/bin/docs-mcp"
 
     #[test]
     fn codex_invocation_classification_is_fail_closed_for_interactive_paths() {
-        use super::{CodexInvocation, classify_codex_invocation};
+        use super::{CodexInvocation, classify_codex_invocation, codex_top_level_interactive};
+
+        // Selected resources are qualified only for the top-level interactive
+        // host, not for agent-starting native subcommands such as resume.
+        for command in ["exec", "resume", "fork", "review"] {
+            assert!(!codex_top_level_interactive(&[command.to_owned()]));
+        }
+        assert!(codex_top_level_interactive(&[
+            "--model".to_owned(),
+            "gpt-5".to_owned()
+        ]));
 
         assert_eq!(
             classify_codex_invocation(&["exec".to_owned(), "prompt".to_owned()]),
@@ -1251,7 +1323,7 @@ command = "/usr/bin/docs-mcp"
                 "exec".to_owned(),
                 "prompt".to_owned(),
             ]),
-            CodexInvocation::Interactive
+            CodexInvocation::Exec(2)
         );
         assert_eq!(
             classify_codex_invocation(&["resume".to_owned(), "thread".to_owned()]),
@@ -1261,5 +1333,31 @@ command = "/usr/bin/docs-mcp"
             classify_codex_invocation(&["--help".to_owned()]),
             CodexInvocation::Diagnostic
         );
+        assert_eq!(
+            classify_codex_invocation(&["--model".to_owned(), "exec".to_owned()]),
+            CodexInvocation::Interactive
+        );
+        assert_eq!(
+            classify_codex_invocation(&[
+                "--model".to_owned(),
+                "gpt-5".to_owned(),
+                "exec".to_owned(),
+                "--no-alt-screen".to_owned(),
+            ]),
+            CodexInvocation::Exec(2)
+        );
+        assert_eq!(
+            classify_codex_invocation(&["--".to_owned(), "exec".to_owned()]),
+            CodexInvocation::Interactive
+        );
+        let prefixed = LaunchContract::codex(&[
+            "--model".to_owned(),
+            "gpt-5".to_owned(),
+            "exec".to_owned(),
+            "prompt".to_owned(),
+        ]);
+        assert!(prefixed.argv.windows(2).any(|parts| {
+            parts[0] == "exec" && parts[1] == "--ignore-user-config"
+        }));
     }
 }
