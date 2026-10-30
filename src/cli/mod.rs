@@ -530,7 +530,8 @@ fn launch_isolated_codex(
     };
     let invocation = launch_contract::classify_codex_invocation(&provider_args);
     if !resource_request.is_empty()
-        && invocation != launch_contract::CodexInvocation::Interactive
+        && (invocation != launch_contract::CodexInvocation::Interactive
+            || !launch_contract::codex_top_level_interactive(provider_args))
     {
         return Err(
             "CLROOM_RESOURCE_NOT_SELECTABLE: Codex resource activation is qualified only for interactive launch; continue locally"
@@ -752,19 +753,47 @@ fn launch_isolated_claude(
 fn select_provider_options(
     args: &[String],
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
+    select_launcher_options(resource_options::Provider::Claude, args)
+}
+
+fn select_codex_options(
+    args: &[String],
+) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
+    select_launcher_options(resource_options::Provider::Codex, args)
+}
+
+fn select_launcher_options(
+    provider: resource_options::Provider,
+    args: &[String],
+) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
     let mut pass_env = Vec::new();
-    let mut provider_selection_args = Vec::with_capacity(args.len());
-    let mut launcher_options = true;
-    for argument in args {
-        if launcher_options && argument == "--" {
-            launcher_options = false;
-            provider_selection_args.push(argument.clone());
-        } else if launcher_options && argument == "--pass-env" {
+    let mut selectors = None;
+    let mut provider_args = Vec::with_capacity(args.len());
+    let mut index = 0;
+    let mut codex_exec = false;
+    while let Some(argument) = args.get(index) {
+        if argument == "--" {
+            provider_args.extend_from_slice(&args[index..]);
+            break;
+        }
+        if !codex_exec && resource_options::native_subcommand(provider, argument) {
+            if provider == resource_options::Provider::Codex
+                && matches!(argument.as_str(), "exec" | "e")
+            {
+                codex_exec = true;
+                provider_args.push(argument.clone());
+                index += 1;
+                continue;
+            }
+            provider_args.extend_from_slice(&args[index..]);
+            break;
+        }
+        if argument == "--pass-env" {
             return Err(
                 "CLROOM_ENV_SELECTOR_INVALID: invalid environment name; use --pass-env=NAME"
                     .to_owned(),
             );
-        } else if launcher_options && let Some(name) = argument.strip_prefix("--pass-env=") {
+        } else if let Some(name) = argument.strip_prefix("--pass-env=") {
             if !valid_pass_env_name(name) {
                 return Err(
                     "CLROOM_ENV_SELECTOR_INVALID: invalid environment name; use --pass-env=NAME"
@@ -774,67 +803,115 @@ fn select_provider_options(
             if !pass_env.iter().any(|selected| selected == name) {
                 pass_env.push(name.to_owned());
             }
-        } else {
-            provider_selection_args.push(argument.clone());
-        }
-    }
-    let (selectors, provider_args) = select_global_skills(&provider_selection_args)?;
-    Ok((selectors, provider_args, pass_env))
-}
-
-fn select_global_skills(args: &[String]) -> Result<(Vec<String>, Vec<String>), String> {
-    let mut selectors = None;
-    let mut provider_args = Vec::with_capacity(args.len());
-    let mut launcher_options = true;
-    for argument in args {
-        if launcher_options && argument == "--" {
-            launcher_options = false;
-            provider_args.push(argument.clone());
-        } else if launcher_options && argument == "--skill-set" {
+        } else if argument == "--skill-set" {
             return Err("CLROOM_SKILL_SELECTOR_INVALID: invalid skill selector; use --skill-set=name[,namespace:name,@set]".to_owned());
-        } else if launcher_options && let Some(value) = argument.strip_prefix("--skill-set=") {
+        } else if let Some(value) = argument.strip_prefix("--skill-set=") {
             if selectors.is_some() {
                 return Err("CLROOM_SKILL_SELECTOR_INVALID: invalid skill selector; use one --skill-set= option".to_owned());
             }
             selectors = Some(value.split(',').map(str::to_owned).collect());
         } else {
             provider_args.push(argument.clone());
+            index += 1;
+            // Keep native operands opaque through this second launcher-option pass.
+            if !argument.contains('=')
+                && let Some(arity) = resource_options::native_option_arity(provider, argument)
+            {
+                let mut consumed = 0;
+                while let Some(value) = args.get(index) {
+                    if (consumed > 0 && arity != resource_options::NativeOptionArity::Many)
+                        || (arity != resource_options::NativeOptionArity::One
+                            && value.starts_with('-'))
+                    {
+                        break;
+                    }
+                    provider_args.push(value.clone());
+                    index += 1;
+                    consumed += 1;
+                    if arity != resource_options::NativeOptionArity::Many {
+                        break;
+                    }
+                }
+            }
+            continue;
         }
+        index += 1;
     }
-    Ok((selectors.unwrap_or_default(), provider_args))
+    Ok((selectors.unwrap_or_default(), provider_args, pass_env))
 }
 
-fn select_codex_options(
-    args: &[String],
-) -> Result<(Vec<String>, Vec<String>, Vec<String>), String> {
-    let mut pass_env = Vec::new();
-    let mut provider_selection_args = Vec::with_capacity(args.len());
-    let mut launcher_options = true;
-    for argument in args {
-        if launcher_options && argument == "--" {
-            launcher_options = false;
-            provider_selection_args.push(argument.clone());
-        } else if launcher_options && argument == "--pass-env" {
-            return Err(
-                "CLROOM_ENV_SELECTOR_INVALID: invalid environment name; use --pass-env=NAME"
-                    .to_owned(),
-            );
-        } else if launcher_options && let Some(name) = argument.strip_prefix("--pass-env=") {
-            if !valid_pass_env_name(name) {
-                return Err(
-                    "CLROOM_ENV_SELECTOR_INVALID: invalid environment name; use --pass-env=NAME"
-                        .to_owned(),
-                );
-            }
-            if !pass_env.iter().any(|selected| selected == name) {
-                pass_env.push(name.to_owned());
-            }
-        } else {
-            provider_selection_args.push(argument.clone());
-        }
+#[cfg(test)]
+mod launcher_option_arity_tests {
+    use super::{select_codex_options, select_provider_options};
+
+    fn words(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_owned()).collect()
     }
-    let (selectors, provider_args) = select_global_skills(&provider_selection_args)?;
-    Ok((selectors, provider_args, pass_env))
+
+    #[test]
+    fn native_values_are_not_reinterpreted_as_launcher_selectors() {
+        let (skills, args, env) = select_codex_options(&words(&[
+            "--model",
+            "--pass-env=CANARY",
+            "--skill-set=review",
+        ]))
+        .unwrap();
+        assert_eq!(skills, words(&["review"]));
+        assert_eq!(args, words(&["--model", "--pass-env=CANARY"]));
+        assert!(env.is_empty());
+
+        let (skills, args, env) = select_provider_options(&words(&[
+            "--append-system-prompt",
+            "--skill-set=literal",
+            "--pass-env=CANARY",
+        ]))
+        .unwrap();
+        assert!(skills.is_empty());
+        assert_eq!(args, words(&["--append-system-prompt", "--skill-set=literal"]));
+        assert_eq!(env, words(&["CANARY"]));
+    }
+
+    #[test]
+    fn subcommand_and_terminator_arguments_remain_provider_owned() {
+        // Codex exec historically accepts CLROOM skill selectors after the
+        // command; preserving that behavior is covered by launch E2E tests.
+        let codex = words(&["exec", "--pass-env=CANARY", "--skill-set=review"]);
+        let (skills, args, env) = select_codex_options(&codex).unwrap();
+        assert_eq!(skills, words(&["review"]));
+        assert_eq!(env, words(&["CANARY"]));
+        assert_eq!(args, words(&["exec"]));
+
+        let codex_management = words(&["mcp", "list", "--pass-env=CANARY"]);
+        let (_, management_args, management_env) =
+            select_codex_options(&codex_management).unwrap();
+        assert_eq!(management_args, codex_management);
+        assert!(management_env.is_empty());
+
+        let claude = words(&["mcp", "add", "--pass-env=CANARY"]);
+        let (skills, args, env) = select_provider_options(&claude).unwrap();
+        assert!(skills.is_empty() && env.is_empty());
+        assert_eq!(args, claude);
+
+        let literal = words(&["--", "--pass-env=CANARY", "--skill-set=literal"]);
+        let (_, args, env) = select_codex_options(&literal).unwrap();
+        assert!(env.is_empty());
+        assert_eq!(args, literal);
+    }
+
+    #[test]
+    fn variadic_native_operands_and_regular_launcher_options_compose() {
+        let (skills, args, env) = select_provider_options(&words(&[
+            "--tools",
+            "Read",
+            "Write",
+            "--skill-set=review",
+            "--pass-env=CANARY",
+        ]))
+        .unwrap();
+        assert_eq!(skills, words(&["review"]));
+        assert_eq!(env, words(&["CANARY"]));
+        assert_eq!(args, words(&["--tools", "Read", "Write"]));
+    }
 }
 
 fn valid_pass_env_name(name: &str) -> bool {

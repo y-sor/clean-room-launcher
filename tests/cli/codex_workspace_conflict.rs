@@ -64,7 +64,9 @@ fn home_directory_collision_refuses_before_provider_probe() {
         .env("HOME", &home)
         .env("CODEX_HOME", &codex_home)
         .env("PATH", &bin)
-        .args(["codex", "--yolo"])
+        // The workspace boundary is the subject of this test; an unsafe
+        // --yolo argument is intentionally rejected earlier by argument validation.
+        .args(["codex"])
         .output()
         .unwrap();
 
