@@ -115,7 +115,7 @@ jobs:
     name: CLROOM release readiness
     needs: release-eligibility
     if: needs.release-eligibility.outputs.lifecycle != 'RELEASE_QUARANTINED'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     permissions:
       contents: read
@@ -426,7 +426,7 @@ jobs:
     name: Rehearse/stage exact release bytes
     needs: [release-eligibility, release-readiness]
     if: needs.release-eligibility.outputs.lifecycle == 'ACTIVE_CANDIDATE' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     permissions:
       contents: read
