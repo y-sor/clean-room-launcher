@@ -18,7 +18,7 @@ target_entry_policy = "CI selects only names listed in qualified_targets and ver
 [[targets]]
 name = "alpha-macos-aarch64"
 rust_target = "aarch64-apple-darwin"
-runner = "macos-14"
+runner = "macos-15"
 qualification_status = "INTEGRITY_VERIFIED"
 artifact_name = "clean-room-launcher-v0.4.0-aarch64-apple-darwin"
 required_checks = "fmt, clippy, test, schema, target-matrix"
