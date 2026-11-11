@@ -247,7 +247,7 @@ fn supported_arm64_runner_is_consistent_across_ci_and_release() {
     let targets = read("packaging/targets.toml");
     let ci = read(".github/workflows/ci.yml");
     let release = read(".github/workflows/release-candidate.yml");
-    assert!(targets.contains("runner = \\"macos-15\\""));
+    assert!(targets.contains("runner = \"macos-15\""));
     assert!(ci.contains("runner: macos-15"));
     assert_eq!(release.matches("runs-on: macos-15").count(), 2);
     for source in [&targets, &ci, &release] {
