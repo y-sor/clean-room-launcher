@@ -59,7 +59,7 @@ fn workflow_is_bound_to_qualified(source: &str) -> bool {
         && source.contains("runs-on: ${{ matrix.runner }}")
         && source.contains("matrix:")
         && source.contains("name: alpha-macos-aarch64")
-        && source.contains("runner: macos-14")
+        && source.contains("runner: macos-15")
         && source.contains("rust_target: aarch64-apple-darwin")
         && source.contains("cargo test")
         && !source.contains("test -z \"$qualified\"")
@@ -232,12 +232,27 @@ fn fixtures_distinguish_supported_unsupported_and_missing_runner() {
 fn workflow_is_structurally_bound_to_qualified_entries() {
     let workflow = read(".github/workflows/ci.yml");
     assert!(workflow_is_bound_to_qualified(&workflow));
+    let retired_runner = workflow.replace("runner: macos-15", "runner: macos-14");
+    assert!(!workflow_is_bound_to_qualified(&retired_runner));
     let advertised_binding = workflow.replace("qualified_targets", "advertised_targets");
     assert!(!workflow_is_bound_to_qualified(&advertised_binding));
     let hardcoded_runner = workflow.replace("runs-on: ${{ matrix.runner }}", "runs-on: ubuntu-latest");
     assert!(!workflow_is_bound_to_qualified(&hardcoded_runner));
     let global_fmt = format!("{workflow}\n      - run: cargo fmt --all -- --check\n");
     assert!(!workflow_is_bound_to_qualified(&global_fmt));
+}
+
+#[test]
+fn supported_arm64_runner_is_consistent_across_ci_and_release() {
+    let targets = read("packaging/targets.toml");
+    let ci = read(".github/workflows/ci.yml");
+    let release = read(".github/workflows/release-candidate.yml");
+    assert!(targets.contains("runner = \"macos-15\""));
+    assert!(ci.contains("runner: macos-15"));
+    assert_eq!(release.matches("runs-on: macos-15").count(), 2);
+    for source in [&targets, &ci, &release] {
+        assert!(!source.contains("macos-14"), "retired runner must not be used");
+    }
 }
 
 #[test]

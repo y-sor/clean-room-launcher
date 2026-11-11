@@ -151,7 +151,7 @@ jobs:
       matrix:
         include:
           - name: alpha-macos-aarch64
-            runner: macos-14
+            runner: macos-15
             rust_target: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
