@@ -33,6 +33,8 @@ SIBLING_MCP = "clroom_sibling"
 ALLOWED_ENV = standalone.ALLOWED_ENV
 BLOCKED_ENV = standalone.BLOCKED_ENV
 PRIVATE_ARG_CANARY = "CLROOM_PRIVATE_ARG_CANARY"
+HOST_CONFIG_CANARY = "model=gpt-5.3-codex"
+HOST_ENABLE_CANARY = "unified_exec"
 INSPECT_SCHEMA_VERSION = "clroom.resolved-launch.v2"
 
 
@@ -291,7 +293,7 @@ def inspect_probe(
     provider: pathlib.Path,
     plugin_server: pathlib.Path,
     root_server: pathlib.Path,
-) -> dict[str, bool]:
+) -> dict[str, bool | int]:
     env = standalone.child_env(home, provider)
     args = [
         str(candidate),
@@ -302,6 +304,10 @@ def inspect_probe(
         f"--with=plugin:{PLUGIN_ID}",
         f"--with=mcp:{STANDALONE_MCP}",
         f"--pass-env={ALLOWED_ENV}",
+        "-c",
+        HOST_CONFIG_CANARY,
+        "--enable",
+        HOST_ENABLE_CANARY,
         "--model",
         PRIVATE_ARG_CANARY,
     ]
@@ -321,6 +327,9 @@ def inspect_probe(
         fail("machine inspect did not report composed identities/reasons under the current schema")
     if report.get("pass_env") != [ALLOWED_ENV]:
         fail("machine inspect pass-env names mismatch")
+    provider_arg_count = (report.get("provider_argv") or {}).get("element_count", 0)
+    if not isinstance(provider_arg_count, int) or provider_arg_count < 2:
+        fail("machine inspect omitted resolved provider argv count")
     if (report.get("provider_argv") or {}).get("values_exposed") is not False:
         fail("machine inspect provider argv values are not redacted")
 
@@ -355,6 +364,7 @@ def inspect_probe(
         "human_inspection_sanitized": True,
         "json_inspection_sanitized": True,
         "inspection_same_resource_identities": True,
+        "inspect_provider_argv_element_count": provider_arg_count,
     }
 
 
@@ -390,6 +400,37 @@ def overlap_negative(
     return True
 
 
+def native_resource_override_negative(
+    candidate: pathlib.Path,
+    project: pathlib.Path,
+    home: pathlib.Path,
+    provider: pathlib.Path,
+) -> bool:
+    for override in (
+        ["-c", "features.plugins=false"],
+        ["-c", f"mcp_servers.{STANDALONE_MCP}.enabled=false"],
+    ):
+        result = subprocess.run(
+            [
+                str(candidate),
+                "codex",
+                f"--with=plugin:{PLUGIN_ID}",
+                f"--with=mcp:{STANDALONE_MCP}",
+                *override,
+                "--no-alt-screen",
+            ],
+            cwd=project,
+            env=standalone.child_env(home, provider),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode == 0 or "CLROOM_RESOURCE_COMPOSITION_CONFLICT" not in result.stderr:
+            fail("native selected-resource override did not fail closed")
+    return True
+
+
 def structured_provider_diagnostic(
     provider: pathlib.Path,
     project: pathlib.Path,
@@ -409,6 +450,8 @@ def structured_provider_diagnostic(
         "plugins_feature_enabled": "features.plugins=true" in args,
         "plugin_selection_present": any(PLUGIN_ID in arg for arg in args),
         "standalone_selection_present": any(STANDALONE_MCP in arg for arg in args),
+        "host_config_preserved": HOST_CONFIG_CANARY in args,
+        "host_enable_preserved": HOST_ENABLE_CANARY in args,
     }
 
     shadow_home = home / ".codex" / ".clroom-clean-state-v2" / "home"
@@ -551,6 +594,23 @@ def structured_provider_diagnostic(
             proc.wait(timeout=2)
 
 
+def composed_provider_argv_shape_matches(
+    runtime_argv: list[str] | None,
+    inspected_element_count: int,
+) -> bool:
+    # Inspect injects --model + the private canary (2 argv elements).
+    # Interactive runtime uses --no-alt-screen (1 element), while the
+    # observed process argv additionally includes the executable (1 element).
+    # Compare the common resolved arguments, not the distinct probe tails.
+    if (
+        not runtime_argv
+        or runtime_argv[-1] != "--no-alt-screen"
+        or inspected_element_count < 2
+    ):
+        return False
+    return len(runtime_argv) - 2 == inspected_element_count - 2
+
+
 def positive_probe(
     candidate: pathlib.Path,
     project: pathlib.Path,
@@ -561,6 +621,7 @@ def positive_probe(
     plugin_log: pathlib.Path,
     standalone_log: pathlib.Path,
     sibling_logs: list[pathlib.Path],
+    inspect_provider_arg_count: int,
 ) -> dict[str, bool]:
     for path in [plugin_log, standalone_log, *sibling_logs]:
         standalone.unlink(path)
@@ -577,6 +638,10 @@ def positive_probe(
             f"--with=plugin:{PLUGIN_ID}",
             f"--with=mcp:{STANDALONE_MCP}",
             f"--pass-env={ALLOWED_ENV}",
+            "-c",
+            HOST_CONFIG_CANARY,
+            "--enable",
+            HOST_ENABLE_CANARY,
             "--no-alt-screen",
         ]
         os.execve(str(candidate), argv, env)
@@ -693,6 +758,9 @@ def positive_probe(
         [projected_plugin_server, root_server],
     )
     siblings_absent = not any(path.exists() for path in sibling_logs)
+    native_args = structured_provider_diagnostic(
+        provider, project, home, provider_argv
+    )
     success = (
         interactive_seen
         and bool(linked["plugin"])
@@ -706,6 +774,10 @@ def positive_probe(
         and not standalone_observed["blocked_canary_present"]
         and siblings_absent
         and lifecycle_closed
+        and native_args.get("host_config_preserved") is True
+        and native_args.get("host_enable_preserved") is True
+        and provider_argv is not None
+        and composed_provider_argv_shape_matches(provider_argv, inspect_provider_arg_count)
     )
     if not success:
         diagnostic = tail.decode("utf-8", errors="replace")
@@ -719,16 +791,13 @@ def positive_probe(
             diagnostic = diagnostic.replace(value, replacement)
         if len(diagnostic) > 2048:
             diagnostic = diagnostic[-2048:]
-        structured = structured_provider_diagnostic(
-            provider, project, home, provider_argv
-        )
         fail(
             "composed runtime evidence incomplete "
             f"(interactive={interactive_seen}, plugin_pids={len(linked['plugin'])}, "
             f"standalone_pids={len(linked['standalone'])}, plugin={plugin_observed}, "
             f"standalone={standalone_observed}, siblings_absent={siblings_absent}, "
             f"lifecycle_closed={lifecycle_closed}, wait_status={wait_status}, "
-            f"structured={structured}, pty_tail={diagnostic!r})"
+            f"structured={native_args}, pty_tail={diagnostic!r})"
         )
     return {
         "interactive_provider_birth": True,
@@ -742,6 +811,9 @@ def positive_probe(
         "blocked_env_absent": True,
         "unselected_siblings_absent": True,
         "task_owned_processes_closed": True,
+        "host_config_preserved": True,
+        "host_enable_preserved": True,
+        "launch_inspect_argv_count_match": True,
         "model_prompt_sent": False,
     }
 
@@ -823,6 +895,9 @@ def rehearse(args: argparse.Namespace) -> None:
             provider,
             [plugin_log, standalone_log, overlap_log, sibling_log],
         )
+        native_override_refused = native_resource_override_negative(
+            candidate, project, home, provider
+        )
         # Restore the exact non-overlapping ambient fixture before the positive
         # composition proof. Codex config registrations outrank plugin MCP
         # registrations with the same name, so carrying the overlap fixture
@@ -845,6 +920,7 @@ def rehearse(args: argparse.Namespace) -> None:
             plugin_log,
             standalone_log,
             [overlap_log, sibling_log],
+            inspection["inspect_provider_argv_element_count"],
         )
         ambient_after = fingerprint([codex_home / "config.toml", codex_home / "plugins"])
         plugin_after = fingerprint([plugin_root])
@@ -872,6 +948,7 @@ def rehearse(args: argparse.Namespace) -> None:
         "plugin_mcp_id": PLUGIN_MCP,
         "standalone_mcp_id": STANDALONE_MCP,
         "overlap_conflict_refused": overlap_refused,
+        "native_resource_override_refused": native_override_refused,
         "ambient_provider_state_unchanged": True,
         "plugin_source_unchanged": True,
         "synthetic_auth_only": True,
@@ -908,6 +985,18 @@ def self_test() -> None:
             fail("process_snapshot result arity self-test")
     if snapshot_calls != 2:
         fail("process_snapshot call-count self-test")
+
+    # Detect argument-count drift while accounting for the known probe-only
+    # --model canary and runtime-only --no-alt-screen terminal option.
+    runtime_shape = ["codex", "-c", HOST_CONFIG_CANARY, "--enable", HOST_ENABLE_CANARY, "--no-alt-screen"]
+    if not composed_provider_argv_shape_matches(runtime_shape, len(runtime_shape)):
+        fail("native inspect/runtime argv count normalization self-test")
+    if (
+        composed_provider_argv_shape_matches(runtime_shape, len(runtime_shape) + 1)
+        or composed_provider_argv_shape_matches(runtime_shape[:-1], len(runtime_shape))
+        or composed_provider_argv_shape_matches(None, len(runtime_shape))
+    ):
+        fail("native inspect/runtime argv mismatch negative self-test")
 
     composed_report = {
         "schema_version": INSPECT_SCHEMA_VERSION,

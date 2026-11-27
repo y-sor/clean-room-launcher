@@ -1,6 +1,9 @@
 #[path = "../../src/cli/launch_contract.rs"]
 #[allow(dead_code)]
 mod launch_contract;
+#[path = "../../src/cli/resource_options.rs"]
+#[allow(dead_code)]
+mod resource_options;
 #[path = "../../src/cli/screen.rs"]
 #[allow(dead_code)]
 mod screen;
